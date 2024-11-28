@@ -1,0 +1,15 @@
+# Konfiguration für Codeabdeckung:
+
+[run]
+# Verzeichnisse und Dateien, die getestet werden sollen
+source =
+    src
+#    main.py
+
+# Verzeichnisse und Dateien, die nicht getestet werden sollen
+omit =
+    _*
+
+[report]
+# Zeigt die nicht abgedeckten Zeilen im Bericht an
+show_missing = True

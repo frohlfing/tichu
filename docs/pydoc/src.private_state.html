@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Python: module src.private_state</title>
+</head><body>
+
+<table class="heading">
+<tr class="heading-text decor">
+<td class="title">&nbsp;<br><strong class="title"><a href="src.html" class="white">src</a>.private_state</strong></td>
+<td class="extra"><a href=".">index</a><br><a href="file:c%3A%5Cusers%5Cfrank%5Csource%5Ctichu-server%5Csrc%5Cprivate_state.py">c:\users\frank\source\tichu-server\src\private_state.py</a></td></tr></table>
+    <p></p>
+<p>
+<table class="section">
+<tr class="decor index-decor heading-text">
+<td class="section-title" colspan=3>&nbsp;<br><strong class="bigsection">Classes</strong></td></tr>
+    
+<tr><td class="decor index-decor"><span class="code">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>&nbsp;</td>
+<td class="singlecolumn"><dl>
+<dt class="heading-text"><a href="builtins.html#object">builtins.object</a>
+</dt><dd>
+<dl>
+<dt class="heading-text"><a href="src.private_state.html#PrivateState">PrivateState</a>
+</dt></dl>
+</dd>
+</dl>
+ <p>
+<table class="section">
+<tr class="decor title-decor heading-text">
+<td class="section-title" colspan=3>&nbsp;<br><a name="PrivateState">class <strong>PrivateState</strong></a>(<a href="builtins.html#object">builtins.object</a>)</td></tr>
+    
+<tr><td class="decor title-decor" rowspan=2><span class="code">&nbsp;&nbsp;&nbsp;</span></td>
+<td class="decor title-decor" colspan=2><span class="code"><a href="#PrivateState">PrivateState</a>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;player:&nbsp;int,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;hand=(),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;schupfed=(),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;combinations=(),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;partitions=(),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;partitions_aborted=True,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;moves=0<br>
+)<br>
+&nbsp;<br>
+<br>&nbsp;</span></td></tr>
+<tr><td>&nbsp;</td>
+<td class="singlecolumn">Methods defined here:<br>
+<dl><dt><a name="PrivateState-__init__"><strong>__init__</strong></a>(
+    self,
+    player: int,
+    hand=(),
+    schupfed=(),
+    combinations=(),
+    partitions=(),
+    partitions_aborted=True,
+    moves=0
+)</dt><dd><span class="code">Initialize&nbsp;self.&nbsp;&nbsp;See&nbsp;help(type(self))&nbsp;for&nbsp;accurate&nbsp;signature.</span></dd></dl>
+
+<dl><dt><a name="PrivateState-play"><strong>play</strong></a>(self, combi: tuple)</dt><dd><span class="code">#&nbsp;Kombination&nbsp;ausspielen&nbsp;(oder&nbsp;passen)<br>
+#&nbsp;combi:&nbsp;Ausgewählte&nbsp;Kombination&nbsp;(Karten,&nbsp;(Typ,&nbsp;Länge,&nbsp;Wert))</span></dd></dl>
+
+<dl><dt><a name="PrivateState-print_board"><strong>print_board</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="PrivateState-reset"><strong>reset</strong></a>(self)</dt><dd><span class="code">#&nbsp;Alles&nbsp;für&nbsp;eine&nbsp;neue&nbsp;Runde&nbsp;zurücksetzen</span></dd></dl>
+
+<dl><dt><a name="PrivateState-schupf"><strong>schupf</strong></a>(self, schupfed: list[tuple]) -&gt; list[tuple]</dt><dd><span class="code">#&nbsp;Karten&nbsp;an&nbsp;die&nbsp;Mitspieler&nbsp;abgeben&nbsp;(schweigend,&nbsp;d.h.,&nbsp;Tichu&nbsp;darf&nbsp;man&nbsp;jetzt&nbsp;nicht&nbsp;sagen!))<br>
+#&nbsp;schupfed:&nbsp;Karte&nbsp;für&nbsp;rechten&nbsp;Gegner,&nbsp;Karte&nbsp;für&nbsp;Partner,&nbsp;Karte&nbsp;für&nbsp;linken&nbsp;Gegner<br>
+#&nbsp;return:&nbsp;Karten&nbsp;für&nbsp;Spieler&nbsp;0&nbsp;bis&nbsp;3,&nbsp;kanonische&nbsp;Form&nbsp;(der&nbsp;eigene&nbsp;Spieler&nbsp;kriegt&nbsp;nichts,&nbsp;also&nbsp;None)</span></dd></dl>
+
+<dl><dt><a name="PrivateState-take_cards"><strong>take_cards</strong></a>(self, cards: list[tuple])</dt><dd><span class="code">#&nbsp;Handkarten&nbsp;für&nbsp;eine&nbsp;neue&nbsp;Runde&nbsp;aufnehmen&nbsp;(und&nbsp;Tichu&nbsp;sagen,&nbsp;wenn&nbsp;man&nbsp;möchte)<br>
+#&nbsp;n:&nbsp;Anzahl&nbsp;Karten&nbsp;(8&nbsp;oder&nbsp;14)</span></dd></dl>
+
+<dl><dt><a name="PrivateState-take_schupfed_cards"><strong>take_schupfed_cards</strong></a>(self, cards: list[tuple])</dt><dd><span class="code">#&nbsp;Schupf-Karten&nbsp;der&nbsp;Mitspieler&nbsp;aufnehmen&nbsp;(auch&nbsp;schweigend!)<br>
+#&nbsp;cards:&nbsp;die&nbsp;Schupf-Karten&nbsp;der&nbsp;Spieler&nbsp;0&nbsp;bis&nbsp;3&nbsp;(None&nbsp;steht&nbsp;für&nbsp;keine&nbsp;Karte;&nbsp;eigener&nbsp;Spieler)</span></dd></dl>
+
+<dl><dt><a name="PrivateState-to_string"><strong>to_string</strong></a>(self) -&gt; str</dt><dd><span class="code">#&nbsp;Status&nbsp;als&nbsp;eindeutigen&nbsp;String</span></dd></dl>
+
+<hr>
+Readonly properties defined here:<br>
+<dl><dt><strong>combinations</strong></dt>
+</dl>
+<dl><dt><strong>hand</strong></dt>
+</dl>
+<dl><dt><strong>has_mahjong</strong></dt>
+</dl>
+<dl><dt><strong>moves</strong></dt>
+</dl>
+<dl><dt><strong>number_of_cards</strong></dt>
+</dl>
+<dl><dt><strong>opponent_left</strong></dt>
+</dl>
+<dl><dt><strong>opponent_right</strong></dt>
+</dl>
+<dl><dt><strong>partitions</strong></dt>
+</dl>
+<dl><dt><strong>partner</strong></dt>
+</dl>
+<dl><dt><strong>player</strong></dt>
+</dl>
+<dl><dt><strong>schupfed</strong></dt>
+</dl>
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><span class="code">dictionary&nbsp;for&nbsp;instance&nbsp;variables</span></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><span class="code">list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object</span></dd>
+</dl>
+</td></tr></table></td></tr></table><p>
+<table class="section">
+<tr class="decor data-decor heading-text">
+<td class="section-title" colspan=3>&nbsp;<br><strong class="bigsection">Data</strong></td></tr>
+    
+<tr><td class="decor data-decor"><span class="code">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>&nbsp;</td>
+<td class="singlecolumn"><strong>CARD_MAH</strong> = (1, 0)<br>
+<strong>FIGURE_PASS</strong> = (0, 0, 0)</td></tr></table>
+</body></html>
