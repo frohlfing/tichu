@@ -1,5 +1,3 @@
-import numpy as np
-from typing import Optional
 from src.private_state import PrivateState
 from src.public_state import PublicState
 
@@ -7,14 +5,8 @@ from src.public_state import PublicState
 class Player:
     # Basisklasse für einen Spieler
 
-    def __init__(self, seed=None):
-        self._seed: Optional[int] = seed  # Initialwert für Zufallsgenerator (Integer > 0 oder None)
-        #self._random: Optional[np.random.Generator] = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
-        self._random = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
-
-    @property
-    def name(self) -> str:
-        return type(self).__name__
+    def __init__(self):
+        pass
 
     def reset(self):  # pragma: no cover
         pass
@@ -44,8 +36,6 @@ class Player:
     def gift(self, pub: PublicState, priv: PrivateState) -> int:  # pragma: no cover
         pass
 
-    # Gibt eine zufällige Ganzzahl zwischen low (inklusiv) und high (exklusiv) zurück
-    def _rand_int(self, low, high):
-        if not self._random:
-            self._random = np.random.RandomState(seed=self._seed)
-        return self._random.randint(low, high)
+    @property
+    def name(self) -> str:
+        return type(self).__name__

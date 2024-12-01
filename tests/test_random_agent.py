@@ -12,13 +12,13 @@ class TestRandomAgent(unittest.TestCase):
         self.priv = PrivateState(0)
 
     def test_name(self):
-        self.assertEqual(self.agent.name, "RandomAgent")
+        self.assertEqual("RandomAgent", self.agent.name)
 
     def test_schupf(self):
         self.priv._hand = parse_cards("S4 B4 G4 R4 S3 B3 G3 R3 S2 B2 G2 R2 Ma Hu")
         self.pub._number_of_cards = [14, 14, 14, 14]
         result = self.agent.schupf(self.pub, self.priv)
-        self.assertEqual(result, parse_cards("Hu G4 R4"))
+        self.assertEqual(parse_cards("S4 B3 G4"), result)
 
     def test_announce(self):
         result = self.agent.announce(self.pub, self.priv)

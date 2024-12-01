@@ -73,7 +73,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.priv.take_cards(cards)
         self.pub._number_of_cards = [14, 14, 14, 14]
         self.pub._announcements = [1, 0, 0, 0]
-        self.assertEqual([(11, 2), (0, 0), (11, 4)], self.agent.schupf(self.pub, self.priv))
+        self.assertEqual([(11, 2), (0, 0), (11, 3)], self.agent.schupf(self.pub, self.priv))
 
         # Partner hat Tichu angesagt
         self.pub.reset()
@@ -86,7 +86,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.priv.take_cards(cards)
         self.pub._number_of_cards = [14, 14, 14, 14]
         self.pub._announcements = [0, 0, 1, 0]
-        self.assertEqual([(8, 1), (10, 1), (7, 2)], self.agent.schupf(self.pub, self.priv))
+        self.assertEqual([(7, 2), (10, 1), (5, 4)], self.agent.schupf(self.pub, self.priv))
 
         # Partner hat Tichu angesagt und ich hab den Drachen
         self.pub.reset()

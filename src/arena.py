@@ -1,5 +1,4 @@
 import config
-import numpy as np
 from multiprocessing import Pool, Manager, cpu_count
 from src.game_engine import GameEngine
 from src.players.agent import Agent
@@ -13,11 +12,11 @@ from typing import Optional
 class Arena:
     # In der Arena können Agenten gegeneinander antreten.
 
-    def __init__(self, agents: list[Agent], max_episodes: int, verbose=False,
-                 early_stopping=False, win_rate: float=config.ARENA_WIN_RATE,
+    def __init__(self, agents: list[Agent], max_episodes: int, verbose: bool = False,
+                 early_stopping: bool = False, win_rate: float = config.ARENA_WIN_RATE,
                  pubs: list[PublicState] = None, privs: list[list[PrivateState]] = None,
                  worker: int = config.ARENA_WORKER,
-                 seed=None):
+                 seed: int = None):
         assert len(agents) == 4
         self._agents = agents  # Agent 0, Agent 1, Agent 2 und Agent 3
         self._max_episodes = max_episodes  # Maximale Anzahl zu spielende Partien
@@ -30,15 +29,13 @@ class Arena:
         self._worker = worker  # wenn größer 1, werden die Episode in entsprechend vielen Prozessen parallel ausgeführt
         #self._progbar = Progbar(max_episodes, stateful_metrics=["Wins", "Lost", "Draws"])
         self._time_start = None  # Zeitstempel zu Beginn der ersten Partie.
-        self._seconds = 0  # Spieldauer insgesamt in Sekunden
-        self._episodes = 0  # Anzahl Episoden
-        self._rounds = 0  # Rundenzähler über alle Episoden
-        self._tricks = 0  # Stichzähler über alle Episoden
+        self._seconds: int = 0  # Spieldauer insgesamt in Sekunden
+        self._episodes: int = 0  # Anzahl Episoden
+        self._rounds: int = 0  # Rundenzähler über alle Episoden
+        self._tricks: int = 0  # Stichzähler über alle Episoden
         self._rating = [0, 0, 0]  # Kumulative Bewertung des Teams 20 (Anzahl Partien gewonnenen, verloren, unentschieden)
-        self._seed = seed  # Initialwert für Zufallsgenerator (Integer > 0 oder None)
-        self._random = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
         self._number_of_clients = sum([int(isinstance(agent, Client)) for agent in agents])
-        self._engine = GameEngine(self._agents, self._seed)
+        self._engine = GameEngine(self._agents, seed)
 
     def run(self) -> tuple:
         # Wettkampf durchführen
@@ -124,7 +121,9 @@ class Arena:
 
     @staticmethod
     def cpu_count() -> int:
-        # Ermittelt die Anzahl verfügbarer CPU-Kerne
+        """
+        Ermittelt die Anzahl verfügbarer CPU-Kerne
+        """
         return cpu_count()
 
     @property
@@ -157,5 +156,7 @@ class Arena:
 
     @property
     def rating(self) -> list:
-        # Kumulative Bewertung des Teams 20 (Anzahl Partien gewonnenen, verloren, unentschieden)
+        """
+        Kumulative Bewertung des Teams 20 (Anzahl Partien gewonnenen, verloren, unentschieden)
+        """
         return self._rating

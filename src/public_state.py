@@ -1,39 +1,62 @@
-import numpy as np
+from src.common.rand import Random
 from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_MAH, CARD_DRA
 from src.lib.combinations import SINGLE, FIGURE_PASS, FIGURE_MAH, FIGURE_PHO, FIGURE_DRA, FIGURE_DOG
 
 
 class PublicState:
-    def __init__(self, current_player_index=-1, start_player_index=-1, number_of_cards=(0, 0, 0, 0), number_of_players=4,
-                 played_cards=(), announcements=(0, 0, 0, 0), wish=0, gift=-1,
-                 trick_player_index=-1, trick_figure=(0, 0, 0), trick_points=0,
-                 history=(), points=(0, 0, 0, 0), winner=-1, loser=-1, is_done=False, double_win=False,
-                 score=(0, 0), trick_counter=0, _round_counter=0,
-                 seed=None):
+    def __init__(self,
+                 current_player_index: int = -1,
+                 start_player_index: int = -1,
+                 number_of_cards: list[int] = None,
+                 number_of_players: int = 4,
+                 played_cards: list[tuple] = None,
+                 announcements: list[int] = None,
+                 wish: int = 0,
+                 gift: int = -1,
+                 trick_player_index: int = -1,
+                 trick_figure: tuple[int, int, int] = (0, 0, 0),
+                 trick_points: int = 0,
+                 history: list[tuple] = None,
+                 points: list[int] = None,
+                 winner: int = -1,
+                 loser: int = -1,
+                 is_done: bool = False,
+                 double_win: bool = False,
+                 score: list[int] = None,
+                 trick_counter: int = 0,
+                 round_counter: int = 0,
+                 seed: int = None):
+        if number_of_cards:
+            assert len(number_of_cards) == 4
+        if announcements:
+            assert len(announcements) == 4
+        if points:
+            assert len(points) == 4
+        if score:
+            assert len(score) == 2
         self._mixed_deck = list(deck)  # gemischtes Kartendeck
-        self._seed = seed  # Initialwert für Zufallsgenerator (Integer > 0 oder None)
-        self._random = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
+        self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
         # Public Observation Space:
         self._current_player_index: int = current_player_index  # Index des Spielers, der am Zug ist (-1, falls noch kein Startspieler feststeht)
         self._start_player_index: int = start_player_index  # Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest)
-        self._number_of_cards: list[int] = list(number_of_cards)  # Anzahl der Handkarten aller Spieler
+        self._number_of_cards: list[int] = number_of_cards if number_of_cards else [0, 0, 0, 0]  # Anzahl der Handkarten aller Spieler
         self._number_of_players: int = number_of_players  # Anzahl Spieler, die noch im Rennen sind
-        self._played_cards: list[tuple] = list(played_cards)  # bereits gespielte Karten
-        self._announcements: list[int] = list(announcements)  # Ansagen (0 == keine Ansage, 1 == kleines, 2 == großes Tichu)
+        self._played_cards: list[tuple] = played_cards if played_cards else []  # bereits gespielte Karten
+        self._announcements: list[int] = announcements if announcements else [0, 0, 0, 0]  # Ansagen (0 == keine Ansage, 1 == kleines, 2 == großes Tichu)
         self._wish: int = wish  # Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt)
         self._gift: int = gift  # Nummer des Spielers, der den Drachen bekommen hat (-1 == noch niemand)
         self._trick_player_index: int = trick_player_index  # Besitzer des Stichs (-1 == noch nichts gelegt oder gerade Stich abgeräumt)
         self._trick_figure: tuple = trick_figure  # Typ, Länge, Wert des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
         self._trick_points: int = trick_points  # Punkte des aktuellen Stichs
-        self._history: list[tuple] = list(history)  # Spielverlauf der Runde [(player, combi), ...]
-        self._points: list[int] = list(points)  # Punktestand der aktuellen Runde
+        self._history: list[tuple] = history if history else []  # Spielverlauf der Runde [(player, combi), ...]
+        self._points: list[int] = points if points else [0, 0, 0, 0]  # Punktestand der aktuellen Runde
         self._winner: int = winner  # Index des Spielers, der zuerst fertig wurde (-1 == alle Spieler sind noch dabei)
         self._loser: int = loser  # Index des letzten Spielers (-1 == Spiel läuft noch oder Doppelsieg)
         self._is_done: bool = is_done  # Runde fertig?
         self._double_win: bool = double_win  # Doppelsieg?
-        self._score: list[int] = list(score)  # Gesamt-Punktestand der Episode für Team A (Spieler 0 und 2) und B (1 und 3)
+        self._score: list[int] = score if score else [0, 0]  # Gesamt-Punktestand der Episode für Team 20 und Team 31
         self._trick_counter: int = trick_counter  # Stich-Zähler (nur für statistische Zwecke)
-        self._round_counter: int = _round_counter  # Anzahl beendete Runden (nur für statistische Zwecke)
+        self._round_counter: int = round_counter  # Anzahl beendete Runden (nur für statistische Zwecke)
 
     # Spielzustand für eine neue Runde zurücksetzen
     def reset(self):  # pragma: no cover
@@ -85,8 +108,6 @@ class PublicState:
 
     # Karten mischen
     def shuffle_cards(self):
-        if not self._random:
-            self._random = np.random.default_rng(self._seed)
         self._random.shuffle(self._mixed_deck)
 
     # Karten austeilen

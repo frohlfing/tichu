@@ -1,3 +1,4 @@
+from src.common.rand import Random
 from src.players.player import Player
 from src.private_state import PrivateState
 from src.public_state import PublicState
@@ -10,31 +11,31 @@ class Client(Player):
     # Client ist von Player abgeleitet. Das Objekt kommuniziert über die Websocket mit der Gegenstelle (peer).
 
     def __init__(self, websocket: ServerConnection, seed=None):
-        super().__init__(seed=seed)
-        self.websocket = websocket
+        super().__init__() 
+        self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
 
     # Welche Karten an die Mitspieler abgeben?
     # return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner
     def schupf(self, pub: PublicState, priv: PrivateState) -> list[tuple]:
         hand = list(priv.hand)
-        return [hand.pop(self._rand_int(0, 14)), hand.pop(self._rand_int(0, 13)), hand.pop(self._rand_int(0, 12))]
+        return [hand.pop(self._random.integer(0, 14)), hand.pop(self._random.integer(0, 13)), hand.pop(self._random.integer(0, 12))]
 
     # Tichu ansagen?
     def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
-        return self._rand_int(0, 20 if grand else 10) == 0
+        return self._random.choice([True, False], [1, 19] if grand else [1, 9])
 
     # Welche Kombination soll gespielt werden?
     # action_space: Mögliche Kombinationen (inklusiv Passen)
     # return: Ausgewählte Kombination (Karten, (Typ, Länge, Wert))
     def combination(self, pub: PublicState, priv: PrivateState, action_space: list[tuple]) -> tuple:
-        return action_space[self._rand_int(0, len(action_space))]
+        return action_space[self._random.integer(0, len(action_space))]
 
     # Welcher Kartenwert wird gewünscht?
     # return: Wert zw. 2 und 14
     def wish(self, pub: PublicState, priv: PrivateState) -> int:
-        return self._rand_int(2, 15)
+        return self._random.choice([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
 
     # Welcher Gegner soll den Drachen bekommen?
     # return: Nummer des Gegners
     def gift(self, pub: PublicState, priv: PrivateState) -> int:
-        return priv.opponent_right if self._rand_int(0, 2) == 1 else priv.opponent_left
+        return priv.opponent_right if self._random.boolean() else priv.opponent_left

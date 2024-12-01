@@ -1,7 +1,8 @@
 import config
 import math
+from src.common.rand import Random
 from src.lib.cards import CARD_DOG, CARD_MAH
-from src.lib.combinations import build_action_space, remove_combinations, calc_statistic, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, SINGLE, PAIR, STREET, BOMB
+from src.lib.combinations import build_action_space, remove_combinations, calc_statistic, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, SINGLE, STREET, BOMB
 from src.lib.partitions import partition_quality, filter_playable_combinations, filter_playable_partitions
 from src.players.agent import Agent
 from src.private_state import PrivateState
@@ -14,7 +15,8 @@ class HeuristicAgent(Agent):
     # Die Entscheidungen werden aufgrund statistischen Berechnungen und Regeln aus Expertenwissen getroffen.
 
     def __init__(self, grand_quality: list[float]=config.HEURISTIC_TICHU_QUALITY, seed=None):
-        super().__init__(seed)
+        super().__init__() 
+        self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
         self.__statistic: dict = {}  # Statistische Häufigkeit der Kombinationen (wird erst berechnet, wenn benötigt)
         self._statistic_key: tuple = ()  # Spieler und Anzahl Handkarten, für die die Statistik berechnet wurde
         self._quality = grand_quality  # Mindestwert für die Güte bei der Tichu-Ansage (kleines, großes)
@@ -94,7 +96,7 @@ class HeuristicAgent(Agent):
                 schupfed[i - 1] = preferred[0]
             else:
                 # Für den Gegner entscheidet der Zufall
-                schupfed[i - 1] = preferred[self._rand_int(0, length)]
+                schupfed[i - 1] = preferred[self._random.integer(0, length)]
         return schupfed
 
     # Tichu ansagen?
@@ -297,7 +299,7 @@ class HeuristicAgent(Agent):
         if value in values:
             values = [value]
 
-        wish = values[self._rand_int(0, len(values))]
+        wish = values[self._random.integer(0, len(values))]
         assert 2 <= wish <= 14, "Der Wunsch muss zw. 2 und 14 (As) liegen."
         return wish
 
@@ -312,7 +314,7 @@ class HeuristicAgent(Agent):
         elif right < left:
             opp = priv.opponent_left
         else:
-            opp = priv.opponent_right if self._rand_int(0, 2) == 1 else priv.opponent_left
+            opp = priv.opponent_right if self._random.integer(0, 2) == 1 else priv.opponent_left
         return opp
 
     # Wahrscheinlichkeit, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können

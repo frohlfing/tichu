@@ -1,21 +1,23 @@
 import numpy as np
+from src.common.rand import Random
 from src.lib.cards import CARD_MAH
 from src.lib.combinations import FIGURE_DOG, FIGURE_DRA, build_action_space, FIGURE_PASS
 from src.players.agent import Agent
 from src.players.client import Client
 from src.private_state import PrivateState
 from src.public_state import PublicState
+from typing import Optional
 
 
 class GameEngine:
     # Spiellogik
 
-    def __init__(self, agents: list[Agent], seed=None):
+    # seed: Initialwert für Zufallsgenerator (Integer > 0 oder None)
+    def __init__(self, agents: list[Agent], seed: int = None):
         assert len(agents) == 4
         self._agents = agents  # Agent 0 bis Agent 3
-        self._seed = seed  # Initialwert für Zufallsgenerator (Integer > 0 oder None)
-        self._random = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
         self._number_of_clients = sum([int(isinstance(agent, Client)) for agent in agents])
+        self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
 
     def play_episode(self, pub: PublicState = None, privs: list[PrivateState] = None) -> PublicState:
         # Spielt eine Episode
@@ -40,7 +42,7 @@ class GameEngine:
             pub.shuffle_cards()
 
             # Karten aufnehmen, erst 8 dann alle
-            first = self._rand_int(0, 4)  # wählt zufällig eine Zahl zwischen 0 und 3
+            first = self._random.integer(0, 4)  # wählt zufällig eine Zahl zwischen 0 und 3
             for n in (8, 14):
                 # Karten verteilen
                 for player in range(0, 4):
@@ -149,8 +151,7 @@ class GameEngine:
             if isinstance(player, Client):
                 pass
 
-    # Gibt eine zufällige Ganzzahl zwischen low (inklusiv) und high (exklusiv) zurück
-    def _rand_int(self, low, high):
-        if not self._random:
-            self._random = np.random.RandomState(seed=self._seed)
-        return self._random.integers(low, high)
+    # Zufallszahlgenerator
+    @property
+    def random(self) -> Random:  # pragma: no cover
+        return self._random
