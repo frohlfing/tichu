@@ -74,12 +74,12 @@ class HeuristicAgent(Agent):
             # Aus den bevorzugten Karten diejenige auswählen, die in möglichst wenig guten Kombis gespielt werden kann.
             length = len(preferred)
             if length > 1:
-                # Zuerst sind die besseren Kombis aufgelistet. Wir durchlaufen die Liste bis zu den hohen Paaren (wenn
-                # wir ein Tichu angesagt haben, durchlaufen wir alle Paare und halten erst bei den Einzelkarten an).
+                # Zuerst sind die besseren Kombis aufgelistet. Wir durchlaufen die Liste bis zu den Einzelkarten.
                 # Wir verwerfen dabei alle bevorzugten Karten, die in den Kombinationen benötigt werden, solange bis
                 # wir nur noch eine bevorzugte Karte haben.
                 for cards, (t, n, v) in priv.combinations:
-                    if (not pub.announcements[priv.player_index] and t == PAIR and v < 7) or t == SINGLE:
+                    #if (not pub.announcements[priv.player_index] and t == PAIR and v < 7) or t == SINGLE:
+                    if t == SINGLE and v < 15:
                         break
                     if length - n >= 1:
                         for card in cards:
@@ -89,9 +89,12 @@ class HeuristicAgent(Agent):
                         if length == 1:
                             break
 
-            # Falls mehrere Karten zur Auswahl stehen, entscheidet der Zufall.
-            schupfed[i - 1] = preferred[self._rand_int(0, length)]
-
+            if i == 2:
+                # Für den Partner nehmen wir die höchste Einzelkarte
+                schupfed[i - 1] = preferred[0]
+            else:
+                # Für den Gegner entscheidet der Zufall
+                schupfed[i - 1] = preferred[self._rand_int(0, length)]
         return schupfed
 
     # Tichu ansagen?

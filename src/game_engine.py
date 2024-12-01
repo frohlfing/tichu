@@ -152,5 +152,5 @@ class GameEngine:
     # Gibt eine zufällige Ganzzahl zwischen low (inklusiv) und high (exklusiv) zurück
     def _rand_int(self, low, high):
         if not self._random:
-            self._random = np.random.default_rng(self._seed)
+            self._random = np.random.RandomState(seed=self._seed)
         return self._random.integers(low, high)
