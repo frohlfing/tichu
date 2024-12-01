@@ -4,6 +4,7 @@ from multiprocessing import Pool, Manager, cpu_count
 from src.lib.cards import CARD_MAH
 from src.lib.combinations import FIGURE_DOG, FIGURE_DRA, build_action_space, FIGURE_PASS
 from src.players.agent import Agent
+from src.players.client import Client
 from src.private_state import PrivateState
 from src.public_state import PublicState
 from time import time
@@ -41,6 +42,14 @@ class Arena:
         self._history = []  # Spielverlauf = [ ([(state, probability, action)], reward) ]
         self._seed = seed  # Initialwert für Zufallsgenerator (Integer > 0 oder None)
         self._random = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
+        self._number_of_clients = sum([int(isinstance(agent, Client)) for agent in agents])
+
+    def notify_clients(self, data) -> None:
+        if not self._number_of_clients:
+            return
+        for player in self._agents:
+            if isinstance(player, Client):
+                pass
 
     def run(self) -> tuple:
         # Wettkampf durchführen
@@ -84,25 +93,28 @@ class Arena:
         pub = self._init_pubs[episode] if self._init_pubs else PublicState()
         privs = self._init_privs[episode] if self._init_privs else (PrivateState(0), PrivateState(1), PrivateState(2), PrivateState(3))
         rounds = 0  # Rundenzähler
-        tricks = 0  # Stichzähler todo raus
+        tricks = 0  # Stichzähler
         while pub.score[0] < 1000 and pub.score[1] < 1000:
             # Neue Runde...
             pub.reset()
             pub.shuffle_cards()
-            rounds += 1  # todo in PublicState zählen
+            rounds += 1
 
             # Karten aufnehmen, erst 8 dann alle
-            first = self._rand(0, 3)  # wir fangen zufällig mit einem Spieler an, weil Tichu gerufen werden könnte
+            first = self._rand_int(0, 3)  # wählt zufällig eine Zahl zwischen 0 und 3 (inklusiv 3)
             for n in (8, 14):
-                for i in range(0, 4):
-                    player = (first + i) % 4
+                for player in range(0, 4):
                     cards = pub.deal_out(player, n)
                     privs[player].take_cards(cards)
                     pub.set_number_of_cards(player, n)
-                    # Tichu ansagen?
+                self.notify_clients("")
+                # Tichu ansagen?
+                for i in range(0, 4):
+                    player = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                     grand = n == 8  # großes Tichu?
                     if not pub.announcements[player] and self._agents[player].announce(pub, privs[player], grand):
                         pub.announce(player, grand)
+                        self.notify_clients("")
 
             # Jetzt müssen die Spieler schupfen.
             schupfed = [None, None, None, None]
@@ -110,6 +122,7 @@ class Arena:
                 schupfed[player] = privs[player].schupf(self._agents[player].schupf(pub, privs[player]))
                 assert privs[player].number_of_cards == 11
                 pub.set_number_of_cards(player, 11)
+            self.notify_clients("")
 
             # Die abgegebenen Karten der Mitspieler aufnehmen.
             for player in range(0, 4):
@@ -118,6 +131,7 @@ class Arena:
                 pub.set_number_of_cards(player, 14)
                 if privs[player].has_mahjong:
                     pub.set_start_player(player)  # Startspieler bekannt geben
+            self.notify_clients("")
 
             # Los geht es. Das eigentliche Spiel kann beginnen...
             assert 0 <= pub.current_player <= 3
@@ -126,6 +140,7 @@ class Arena:
                 agent = self._agents[pub.current_player]
                 assert pub.number_of_cards[priv.player] == priv.number_of_cards
                 assert 0 <= pub.number_of_cards[priv.player] <= 14
+                self.notify_clients("")
 
                 # Falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen.
                 # Der Hund bleibt aber immer liegen.
@@ -133,9 +148,10 @@ class Arena:
                     if not pub.double_win and pub.trick_figure == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                         opponent = agent.gift(pub, priv)
                         assert opponent in ((1, 3) if priv.player in (0, 2) else (0, 2))
-                        pub.clear_trick(opponent)
                     else:
-                        pub.clear_trick()
+                        opponent = -1
+                    pub.clear_trick(opponent)
+                    self.notify_clients("")
 
                 # Hat der Spieler noch Karten?
                 if pub.number_of_cards[priv.player] > 0:
@@ -143,6 +159,7 @@ class Arena:
                     if pub.number_of_cards[priv.player] == 14 and not pub.announcements[priv.player]:
                         if agent.announce(pub, priv):
                             pub.announce(priv.player)
+                            self.notify_clients("")
 
                     # Kombination auswählen
                     action_space = build_action_space(priv.combinations, pub.trick_figure, pub.wish)
@@ -155,6 +172,7 @@ class Arena:
                     assert priv.number_of_cards == pub.number_of_cards[priv.player] - combi[1][1]
                     pub.play(combi)
                     assert pub.number_of_cards[priv.player] == priv.number_of_cards
+                    self.notify_clients("")
 
                     if combi[1] != FIGURE_PASS:
                         # Spiel vorbei?
@@ -164,9 +182,10 @@ class Arena:
                             if not pub.double_win and pub.trick_figure == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                                 opponent = agent.gift(pub, priv)
                                 assert opponent in ((1, 3) if priv.player in (0, 2) else (0, 2))
-                                pub.clear_trick(opponent)
                             else:
-                                pub.clear_trick()
+                                opponent = -1
+                            pub.clear_trick(opponent)
+                            self.notify_clients("")
                             break
 
                         # Falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden.
@@ -175,6 +194,7 @@ class Arena:
                             wish = agent.wish(pub, priv)
                             assert 2 <= wish <= 14
                             pub.set_wish(wish)
+                            self.notify_clients("")
 
                 # Nächster Spieler ist an der Reihe
                 pub.step()
@@ -227,10 +247,12 @@ class Arena:
         #else:
         #    self._progbar.update(sum(self._rating), values=[("Wins", self._rating[0]), ("Lost", self._rating[1]), ("Draws", self._rating[2])])
 
-    def _rand(self, a, b):
+    def _rand_int(self, low, high):
+        # Gibt eine zufällige Ganzzahl zwischen low (inklusiv) und high (inklusiv) zurück
         if not self._random:
             self._random = np.random.RandomState(seed=self._seed)
-        return self._random.randint(a, b) if a != b else a
+
+        return self._random.randint(low, high + 1)
 
     @staticmethod
     def cpu_count() -> int:

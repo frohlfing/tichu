@@ -9,6 +9,10 @@ from src.public_state import PublicState
 
 
 class HeuristicAgent(Agent):
+    # Heuristic-Agent
+    #
+    # Die Entscheidungen werden aufgrund statistischen Berechnungen und Regeln aus Expertenwissen getroffen.
+
     def __init__(self, grand_quality: list[float]=config.HEURISTIC_TICHU_QUALITY, seed=None):
         super().__init__(seed)
         self.__statistic: dict = {}  # Statistische Häufigkeit der Kombinationen (wird erst berechnet, wenn benötigt)

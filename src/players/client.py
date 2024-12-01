@@ -1,15 +1,17 @@
-from src.players.agent import Agent
+from src.players.player import Player
 from src.private_state import PrivateState
 from src.public_state import PublicState
+from websockets.asyncio.server import ServerConnection
 
 
-class RandomAgent(Agent):
-    # Zufallsagent
+class Client(Player):
+    # Bildet einen realen Spieler ab
     #
-    # Die Entscheidungen werden zufällig getroffen.
+    # Client ist von Player abgeleitet. Das Objekt kommuniziert über die Websocket mit der Gegenstelle (peer).
 
-    def __init__(self, seed=None):
-        super().__init__(seed=seed) 
+    def __init__(self, websocket: ServerConnection, seed=None):
+        super().__init__(seed=seed)
+        self.websocket = websocket
 
     # Welche Karten an die Mitspieler abgeben?
     # return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner (d.h. kanonische Anordnung)

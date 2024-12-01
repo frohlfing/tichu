@@ -50,9 +50,9 @@ class PrivateState:
         self.__combinations = []
         self.__partitions = []
 
-    # Karten an die Mitspieler abgeben (schweigend, d.h., Tichu darf man jetzt nicht sagen!))
-    # schupfed: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner
-    # return: Karten für Spieler 0 bis 3, kanonische Form (der eigene Spieler kriegt nichts, also None)
+    # Tauschkarten an die Mitspieler abgeben
+    # schupfed: Tauschkarte für rechten Gegner, Karte für Partner, Karte für linken Gegner
+    # return: Tauschkarten für Spieler 0 bis 3, kanonische Form (der eigene Spieler kriegt nichts, also None)
     def schupf(self, schupfed: list[tuple]) -> list[tuple]:
         # Karten abgeben
         assert len(schupfed) == 3
@@ -67,8 +67,8 @@ class PrivateState:
             cards[(self._player + i + 1) % 4] = self._schupfed[i]
         return cards
 
-    # Schupf-Karten der Mitspieler aufnehmen (auch schweigend!)
-    # cards: die Schupf-Karten der Spieler 0 bis 3 (None steht für keine Karte; eigener Spieler)
+    # Tauschkarten der Mitspieler aufnehmen
+    # cards: Tauschkarten der Spieler 0 bis 3 (None steht für keine Karte; eigener Spieler)
     def take_schupfed_cards(self, cards: list[tuple]):
         assert len(self._hand) == 11
         assert not set(cards).intersection(self._hand)  # darf keine Schnittmenge bilden

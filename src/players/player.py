@@ -4,6 +4,8 @@ from src.public_state import PublicState
 
 
 class Player:
+    # Basisklasse für einen Spieler
+
     def __init__(self, seed=None):
         self._seed = seed  # Initialwert für Zufallsgenerator (Integer > 0 oder None)
         self._random = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
