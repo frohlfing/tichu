@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Optional
 from src.private_state import PrivateState
 from src.public_state import PublicState
 
@@ -7,7 +8,8 @@ class Player:
     # Basisklasse für einen Spieler
 
     def __init__(self, seed=None):
-        self._seed = seed  # Initialwert für Zufallsgenerator (Integer > 0 oder None)
+        self._seed: Optional[int] = seed  # Initialwert für Zufallsgenerator (Integer > 0 oder None)
+        #self._random: Optional[np.random.Generator] = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
         self._random = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
 
     @property
@@ -18,7 +20,7 @@ class Player:
         pass
 
     # Welche Karten an die Mitspieler abgeben?
-    # return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner (d.h. kanonische Anordnung)
+    # return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner
     def schupf(self, pub: PublicState, priv: PrivateState) -> list[tuple]:  # pragma: no cover
         pass
 
@@ -42,8 +44,8 @@ class Player:
     def gift(self, pub: PublicState, priv: PrivateState) -> int:  # pragma: no cover
         pass
 
-    # Return random integers from low (inclusive) to high (exclusive).
-    def _rand(self, a, b):
+    # Gibt eine zufällige Ganzzahl zwischen low (inklusiv) und high (exklusiv) zurück
+    def _rand_int(self, low, high):
         if not self._random:
-            self._random = np.random.RandomState(seed=self._seed)
-        return self._random.randint(a, b)
+            self._random = np.random.default_rng(self._seed)
+        return self._random.integers(low, high)

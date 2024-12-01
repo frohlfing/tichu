@@ -1,62 +1,65 @@
 import numpy as np
-from src.lib.cards import deck, stringify_cards, is_wish_in, sum_card_points, other_cards, CARD_MAH, CARD_DRA
-from src.lib.combinations import stringify_figure, SINGLE, FIGURE_PASS, FIGURE_MAH, FIGURE_PHO, FIGURE_DRA, FIGURE_DOG
+from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_MAH, CARD_DRA
+from src.lib.combinations import SINGLE, FIGURE_PASS, FIGURE_MAH, FIGURE_PHO, FIGURE_DRA, FIGURE_DOG
 
 
 class PublicState:
-    def __init__(self, current_player=-1, start_player=-1, number_of_cards=(0, 0, 0, 0), number_of_players=4,
+    def __init__(self, current_player_index=-1, start_player_index=-1, number_of_cards=(0, 0, 0, 0), number_of_players=4,
                  played_cards=(), announcements=(0, 0, 0, 0), wish=0, gift=-1,
-                 trick_player=-1, trick_figure=(0, 0, 0), trick_points=0, trick_counter=0,
-                 points=(0, 0, 0, 0), winner=-1, loser=-1, is_done=False, double_win=False, score=(0, 0), history=(),
+                 trick_player_index=-1, trick_figure=(0, 0, 0), trick_points=0,
+                 history=(), points=(0, 0, 0, 0), winner=-1, loser=-1, is_done=False, double_win=False,
+                 score=(0, 0), trick_counter=0, _round_counter=0,
                  seed=None):
         self._mixed_deck = list(deck)  # gemischtes Kartendeck
         self._seed = seed  # Initialwert für Zufallsgenerator (Integer > 0 oder None)
         self._random = None  # wegen Multiprocessing ist ein eigener Zufallsgenerator notwendig
         # Public Observation Space:
-        self._current_player: int = current_player  # Spieler der am Zug ist (-1, falls noch kein Startspieler feststeht)
-        self._start_player: int = start_player  # Spieler, der den Mahjong hat oder hatte (-1 == steht noch nicht fest)
+        self._current_player_index: int = current_player_index  # Index des Spielers, der am Zug ist (-1, falls noch kein Startspieler feststeht)
+        self._start_player_index: int = start_player_index  # Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest)
         self._number_of_cards: list[int] = list(number_of_cards)  # Anzahl der Handkarten aller Spieler
         self._number_of_players: int = number_of_players  # Anzahl Spieler, die noch im Rennen sind
         self._played_cards: list[tuple] = list(played_cards)  # bereits gespielte Karten
         self._announcements: list[int] = list(announcements)  # Ansagen (0 == keine Ansage, 1 == kleines, 2 == großes Tichu)
         self._wish: int = wish  # Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt)
         self._gift: int = gift  # Nummer des Spielers, der den Drachen bekommen hat (-1 == noch niemand)
-        self._trick_player: int = trick_player  # Besitzer des Stichs (-1 == noch nichts gelegt oder gerade Stich abgeräumt)
+        self._trick_player_index: int = trick_player_index  # Besitzer des Stichs (-1 == noch nichts gelegt oder gerade Stich abgeräumt)
         self._trick_figure: tuple = trick_figure  # Typ, Länge, Wert des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
         self._trick_points: int = trick_points  # Punkte des aktuellen Stichs
-        self._trick_counter: int = trick_counter  # Stich-Zähler (nur für statistische Zwecke)
+        self._history: list[tuple] = list(history)  # Spielverlauf der Runde [(player, combi), ...]
         self._points: list[int] = list(points)  # Punktestand der aktuellen Runde
-        self._winner: int = winner  # Spieler, der zuerst fertig wurde (-1 == alle Spieler sind noch dabei)
-        self._loser: int = loser  # der letzte Spieler (-1 == Spiel läuft noch oder Doppelsieg)
+        self._winner: int = winner  # Index des Spielers, der zuerst fertig wurde (-1 == alle Spieler sind noch dabei)
+        self._loser: int = loser  # Index des letzten Spielers (-1 == Spiel läuft noch oder Doppelsieg)
         self._is_done: bool = is_done  # Runde fertig?
         self._double_win: bool = double_win  # Doppelsieg?
         self._score: list[int] = list(score)  # Gesamt-Punktestand der Episode für Team A (Spieler 0 und 2) und B (1 und 3)
-        self._history: list[tuple] = list(history)  # Spielverlauf = [(player, combi), ...]
+        self._trick_counter: int = trick_counter  # Stich-Zähler (nur für statistische Zwecke)
+        self._round_counter: int = _round_counter  # Anzahl beendete Runden (nur für statistische Zwecke)
 
-    # Alles (bis auf score) für eine neue Runde zurücksetzen
+    # Spielzustand für eine neue Runde zurücksetzen
     def reset(self):  # pragma: no cover
-        self._current_player = -1
-        self._start_player = -1
+        self._current_player_index = -1
+        self._start_player_index = -1
         self._number_of_cards = [0, 0, 0, 0]
         self._number_of_players = 4
         self._played_cards = []
         self._announcements = [0, 0, 0, 0]
         self._wish = 0
         self._gift = -1
-        self._trick_player = -1
+        self._trick_player_index = -1
         self._trick_figure = (0, 0, 0)
         self._trick_points = 0
-        self._trick_counter = 0
+        self._history = []
         self._points = [0, 0, 0, 0]
         self._winner = -1
         self._loser = -1
         self._is_done = False
         self._double_win = False
-        self._history = []
 
-    # Gesamt-Punktestand für eine neue Episode zurücksetzen
+    # Spielzustand für eine neue Episode zurücksetzen
     def reset_score(self):  # pragma: no cover
         self._score = [0, 0]
+        self._trick_counter = 0
+        self._round_counter = 0
 
     # def copy(self) -> 'PublicState':
     #     return PublicState(current_player=self._current_player,
@@ -70,35 +73,20 @@ class PublicState:
     #                        trick_player=self._trick_player,
     #                        trick_figure=self._trick_figure,
     #                        trick_points=self._trick_points,
-    #                        trick_counter=self._trick_counter,
+    #                        history=self._history,
     #                        points=self._points,
     #                        winner=self._winner,
     #                        loser=self._loser,
     #                        is_done=self._is_done,
     #                        double_win=self._double_win,
-    #                        history=self._history)
-
-    def to_string(self) -> str:
-        return f'{self._current_player}{self._start_player}{self._number_of_cards}{self._announcements}{self._wish}{self._gift}'
-
-    def print_board(self):
-        print(f"Current Player: {self._current_player}; Start Player: {self._start_player}; Number of cards: {self._number_of_cards}; Number of players: {self._number_of_players}")
-        print(f"Played cards: {stringify_cards(self._played_cards)}")
-        print(f"Announcements: {self._announcements}; Wish: {self._wish}; Gift: {self._gift}")
-        print(f"Trick: Player: {self._trick_player}, Figure: {stringify_figure(self._trick_figure)}, Points; {self._trick_points}, Counter: {self._trick_counter}")
-        print(f"Points: {self._points}; Winner: {self._winner}; Loser: {self._loser}")
-        print(f"Is done: {self._is_done}; Double win: {self._double_win}; Score: {self._score}")
-        print(f"History: {self._history}")
-        print()
-
-    # def _initialize_random(self):
-    #     if not self._random:
-    #         self._random = np.random.RandomState(self._seed)
+    #                        score=self._score,
+    #                        trick_counter=self._trick_counter,
+    #                        round_counter=self._round_counter)
 
     # Karten mischen
     def shuffle_cards(self):
         if not self._random:
-            self._random = np.random.RandomState(self._seed)
+            self._random = np.random.default_rng(self._seed)
         self._random.shuffle(self._mixed_deck)
 
     # Karten austeilen
@@ -113,10 +101,10 @@ class PublicState:
     def set_start_player(self, player: int):  # pragma: no cover
         assert not self._is_done
         assert 0 <= player <= 3
-        assert self._start_player == -1
-        self._start_player = player
-        assert self._current_player == -1
-        self._current_player = player
+        assert self._start_player_index == -1
+        self._start_player_index = player
+        assert self._current_player_index == -1
+        self._current_player_index = player
 
     # Anzahl der Handkarten angeben
     def set_number_of_cards(self, player: int, n: int):  # pragma: no cover
@@ -133,15 +121,15 @@ class PublicState:
         assert not self._is_done
         assert 0 <= player <= 3
         assert self._announcements[player] == 0
-        assert (grand and self._number_of_cards[player] == 8 and self._start_player == -1) or (not grand and self._number_of_cards[player] == 14)
+        assert (grand and self._number_of_cards[player] == 8 and self._start_player_index == -1) or (not grand and self._number_of_cards[player] == 14)
         self._announcements[player] = 2 if grand else 1
 
     # Kombination spielen
     # combi: Ausgewählte Kombination (Karten, (Typ, Länge, Wert))
     def play(self, combi: tuple):
         assert not self._is_done
-        assert self._current_player != -1
-        self._history.append((self._current_player, combi))
+        assert self._current_player_index != -1
+        self._history.append((self._current_player_index, combi))
         if combi[1] == FIGURE_PASS:
             return
 
@@ -151,8 +139,8 @@ class PublicState:
 
         # Anzahl Handkarten aktualisieren
         assert combi[1][1] == len(combi[0])
-        assert self._number_of_cards[self._current_player] >= combi[1][1]
-        self._number_of_cards[self._current_player] -= combi[1][1]
+        assert self._number_of_cards[self._current_player_index] >= combi[1][1]
+        self._number_of_cards[self._current_player_index] -= combi[1][1]
 
         # Wunsch erfüllt?
         assert self._wish == 0 or -2 >= self._wish >= -14 or 2 <= self._wish <= 14
@@ -161,7 +149,7 @@ class PublicState:
             self._wish = -self._wish
 
         # Stich aktualisieren
-        self._trick_player = self._current_player
+        self._trick_player_index = self._current_player_index
         if combi[1] == FIGURE_PHO:
             assert self._trick_figure == (0, 0, 0) or self._trick_figure[0] == SINGLE
             assert self._trick_figure != FIGURE_DRA  # Phönix auf Drache geht nicht
@@ -174,15 +162,15 @@ class PublicState:
         assert -25 <= self._trick_points <= 125
 
         # Runde beendet?
-        if self._number_of_cards[self._current_player] == 0:
+        if self._number_of_cards[self._current_player_index] == 0:
             self._number_of_players -= 1
             assert 1 <= self._number_of_players <= 3
             if self._number_of_players == 3:
                 assert self._winner == -1
-                self._winner = self._current_player
+                self._winner = self._current_player_index
             elif self._number_of_players == 2:
                 assert 0 <= self._winner <= 3
-                if (self._current_player + 2) % 4 == self._winner:  # Doppelsieg?
+                if (self._current_player_index + 2) % 4 == self._winner:  # Doppelsieg?
                     self._is_done = True
                     self._double_win = True
             elif self._number_of_players == 1:
@@ -205,8 +193,8 @@ class PublicState:
     # opponent: Nummer des Gegners, falls der Stich verschenkt werden muss, ansonsten -1
     def clear_trick(self, opponent: int = -1):
         # Sicherstellen, dass die Funktion nicht zweimal aufgerufen wird, sondern nur, wenn ein Stich abgeräumt werden kann.
-        assert self._trick_player != -1
-        assert self._trick_player == self._current_player
+        assert self._trick_player_index != -1
+        assert self._trick_player_index == self._current_player_index
         assert self._trick_figure != (0, 0, 0)
 
         if self._double_win:
@@ -220,7 +208,7 @@ class PublicState:
             # Stich abräumen
             if opponent != -1:
                 # Verschenken
-                assert opponent in ((1, 3) if self._trick_player in (0, 2) else (0, 2))
+                assert opponent in ((1, 3) if self._trick_player_index in (0, 2) else (0, 2))
                 assert CARD_DRA in self._played_cards
                 assert self._gift == -1
                 self._gift = opponent
@@ -228,8 +216,8 @@ class PublicState:
                 assert -25 <= self._points[opponent] <= 125
             else:
                 # Selbst kassieren
-                self._points[self._trick_player] += self._trick_points
-                assert -25 <= self._points[self._trick_player] <= 125
+                self._points[self._trick_player_index] += self._trick_points
+                assert -25 <= self._points[self._trick_player_index] <= 125
 
             # Runde vorbei?
             if self._is_done:
@@ -248,7 +236,7 @@ class PublicState:
                 assert -25 <= self._points[2] <= 125
                 assert -25 <= self._points[3] <= 125
 
-        self._trick_player = -1
+        self._trick_player_index = -1
         self._trick_figure = (0, 0, 0)
         self._trick_points = 0
         self._trick_counter += 1
@@ -266,25 +254,26 @@ class PublicState:
             # Score (Gesamt-Punktestand der aktuellen Episode)
             self._score[0] += self.points[0] + self.points[2]
             self._score[1] += self.points[1] + self.points[3]
+            self._round_counter += 1
 
     # Nächsten Spieler auswählen
     def step(self):
         assert not self._is_done
-        assert 0 <= self._current_player <= 3
-        if self._trick_figure == FIGURE_DOG and self._trick_player == self._current_player:
-            self._current_player = (self._current_player + 2) % 4
+        assert 0 <= self._current_player_index <= 3
+        if self._trick_figure == FIGURE_DOG and self._trick_player_index == self._current_player_index:
+            self._current_player_index = (self._current_player_index + 2) % 4
         else:
-            self._current_player = (self._current_player + 1) % 4
+            self._current_player_index = (self._current_player_index + 1) % 4
 
     # Spieler der am Zug ist (-1, falls noch kein Startspieler feststeht)
     @property
-    def current_player(self) -> int:  # pragma: no cover
-        return self._current_player
+    def current_player_index(self) -> int:  # pragma: no cover
+        return self._current_player_index
 
     # Spieler, der den Mahjong hat oder hatte (-1 == steht noch nicht fest)
     @property
-    def start_player(self) -> int:  # pragma: no cover
-        return self._start_player
+    def start_player_index(self) -> int:  # pragma: no cover
+        return self._start_player_index
 
     # Anzahl der Handkarten aller Spieler
     @property
@@ -323,8 +312,8 @@ class PublicState:
 
     # Besitzer des Stichs (-1 == noch nichts gelegt oder gerade Stich abgeräumt)
     @property
-    def trick_player(self) -> int:  # pragma: no cover
-        return self._trick_player
+    def trick_player_index(self) -> int:  # pragma: no cover
+        return self._trick_player_index
 
     # Typ, Länge, Wert des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
     @property
@@ -336,10 +325,10 @@ class PublicState:
     def trick_points(self) -> int:  # pragma: no cover
         return self._trick_points
 
-    # Stich-Zähler (nur für statistische Zwecke)
+    # Spielverlauf der Runde [(player, combi), ...]
     @property
-    def trick_counter(self) -> int:  # pragma: no cover
-        return self._trick_counter
+    def history(self) -> list[tuple]:  # pragma: no cover
+        return self._history
 
     # Punktestand der aktuellen Runde
     @property
@@ -376,7 +365,12 @@ class PublicState:
     def score(self) -> list[int]:  # pragma: no cover
         return self._score
 
-    # Spielverlauf = [(player, combi), ...]
+    # Stich-Zähler einer Episode (nur für statistische Zwecke)
     @property
-    def history(self) -> list[tuple]:  # pragma: no cover
-        return self._history
+    def trick_counter(self) -> int:  # pragma: no cover
+        return self._trick_counter
+
+    # Runden-Zähler einer Episode (nur für statistische Zwecke)
+    @property
+    def round_counter(self) -> int:  # pragma: no cover
+        return self._round_counter

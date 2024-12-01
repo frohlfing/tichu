@@ -45,12 +45,12 @@ class TestPrivateState(unittest.TestCase):
     def test_play(self):
         self.priv._hand = parse_cards("S4 B4 G4 R4 S3 B3 G3 R3 S2 B2 G2 R2 Ma")
         self.pub._number_of_cards = [13, 14, 14, 14]
-        self.pub._trick_player = 0
-        self.pub._current_player = 0
+        self.pub._trick_player_index = 0
+        self.pub._current_player_index = 0
         self.pub._trick_figure = FIGURE_DRA
         self.pub._played_cards.append(CARD_DRA)
         # Partitionen
-        partitions = self.priv._partitions
+        partitions = self.priv.partitions
         self.assertEqual(config.PARTITIONS_MAXLEN, len(partitions))
         # der Agent spielt 3erTreppe4
         cards = parse_cards("B4 R4 B3 G3 S2 G2")
@@ -59,16 +59,16 @@ class TestPrivateState(unittest.TestCase):
         self.pub.play(combi)
         self.pub.step()
         self.assertEqual("S4 G4 S3 R3 B2 R2 Ma", stringify_cards(self.priv._hand))
-        self.assertEqual(13, len(self.priv._partitions))
+        self.assertEqual(13, len(self.priv.partitions))
         self.assertEqual([7, 14, 14, 14], self.pub.number_of_cards)
-        self.assertEqual(1, self.pub._current_player)
+        self.assertEqual(1, self.pub._current_player_index)
 
     def test_pass(self):
         combi = [], (0,0,0)  # passen
         self.priv._hand = parse_cards("S7 B7 G6 R6 S5 B5 G4 R4 S3 B3 G2 R2 Ma Hu")
         self.pub._number_of_cards = [14, 14, 14, 13]
-        self.pub._trick_player = 3
-        self.pub._current_player = 0
+        self.pub._trick_player_index = 3
+        self.pub._current_player_index = 0
         self.pub._trick_figure = FIGURE_DRA
         self.pub._played_cards.append(CARD_DRA)
         self.priv.play(combi)
@@ -76,7 +76,7 @@ class TestPrivateState(unittest.TestCase):
         self.pub.step()
         self.assertEqual("S7 B7 G6 R6 S5 B5 G4 R4 S3 B3 G2 R2 Ma Hu", stringify_cards(self.priv._hand))
         self.assertEqual([14, 14, 14, 13], self.pub.number_of_cards)
-        self.assertEqual(1, self.pub._current_player)
+        self.assertEqual(1, self.pub._current_player_index)
 
     def test_done(self):
         cards = parse_cards("S7")
@@ -85,7 +85,7 @@ class TestPrivateState(unittest.TestCase):
         self.pub._number_of_cards = [1, 5, 0, 0]
         self.pub._number_of_players = 2
         self.pub._winner = 2
-        self.pub._current_player = 0
+        self.pub._current_player_index = 0
         self.priv.play(combi)
         self.pub.play(combi)
         self.assertTrue(self.pub.is_done)
@@ -95,7 +95,7 @@ class TestPrivateState(unittest.TestCase):
         combi = cards, get_figure(cards, 0)
         self.priv._hand = cards
         self.pub._number_of_cards = [1, 14, 14, 14]
-        self.pub._current_player = 0
+        self.pub._current_player_index = 0
         self.assertEqual(0, self.pub.wish)
         self.priv.play(combi)
         self.pub.play(combi)

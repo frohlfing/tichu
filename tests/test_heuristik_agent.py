@@ -128,9 +128,9 @@ class TestHeuristicAgent(unittest.TestCase):
         self.agent._hand = cards
         self.pub._number_of_cards = [14, 14, 10, 14]
         action_space = [([], FIGURE_PASS), (parse_cards("RA GA BA"), (3, 3, 14))]
-        self.pub._trick_player = 2
+        self.pub._trick_player_index = 2
         self.assertEqual(action_space[0], self.agent.combination(action_space))
-        self.pub._trick_player = -1
+        self.pub._trick_player_index = -1
 
         # Wir spielen den Hund
         cards = parse_cards("Dr BA Hu")
@@ -201,7 +201,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.agent._hand = parse_cards("Dr BA GA RK SD R8 B7 G6 S5 G4 B3 S2 R2 Ma")
         self.pub._trick_figure = (STREET, 8, 8)
         self.pub._trick_vlaue = 5
-        self.pub._trick_player = 0
+        self.pub._trick_player_index = 0
         self.pub._played_cards = parse_cards("R8 B7 G6 S5 G4 B3 S2 Ma")
         self.pub._number_of_cards = [8, 14, 14, 14]
         self.assertEqual(13, self.agent.wish())
