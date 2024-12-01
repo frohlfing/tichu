@@ -14,14 +14,16 @@ class HeuristicAgent(Agent):
     #
     # Die Entscheidungen werden aufgrund statistischen Berechnungen und Regeln aus Expertenwissen getroffen.
 
-    def __init__(self, grand_quality: list[float]=config.HEURISTIC_TICHU_QUALITY, seed=None):
+    def __init__(self,
+                 grand_quality: list[float] = config.HEURISTIC_TICHU_QUALITY,
+                 seed: int = None):
         super().__init__() 
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
         self.__statistic: dict = {}  # Statistische Häufigkeit der Kombinationen (wird erst berechnet, wenn benötigt)
         self._statistic_key: tuple = ()  # Spieler und Anzahl Handkarten, für die die Statistik berechnet wurde
         self._quality = grand_quality  # Mindestwert für die Güte bei der Tichu-Ansage (kleines, großes)
 
-    def reset(self):
+    def reset(self):  # pragma: no cover
         self.__statistic = {}
         self._statistic_key = ()
 

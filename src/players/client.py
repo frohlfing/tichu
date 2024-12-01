@@ -10,7 +10,7 @@ class Client(Player):
     #
     # Client ist von Player abgeleitet. Das Objekt kommuniziert über die Websocket mit der Gegenstelle (peer).
 
-    def __init__(self, websocket: ServerConnection, seed=None):
+    def __init__(self, websocket: ServerConnection, seed: int = None):
         super().__init__() 
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
 

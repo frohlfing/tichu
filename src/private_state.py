@@ -4,13 +4,19 @@ from src.lib.partitions import build_partitions, remove_partitions
 
 
 class PrivateState:
-    def __init__(self, player_index: int, hand=(), schupfed=(), combinations=(), partitions=(), partitions_aborted=True):
+    def __init__(self,
+                 player_index: int,
+                 hand: list[tuple] = None,
+                 schupfed: list[tuple] = None,
+                 combinations: list[tuple] = None,
+                 partitions: list[list[tuple]] = None,
+                 partitions_aborted: bool = True):
         self._player_index: int = player_index  # Index des Spielers (zw. 0 und 3)
         # Private Observation Space:
-        self._hand: list[tuple] = list(hand)  # Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)]
-        self._schupfed: list[tuple] = list(schupfed)  # abgegebene Tauschkarten (für rechten Gegner, Partner und linken Gegner)
-        self._combination_cache: list[tuple] = list(combinations)  # Kombinationsmöglichkeiten der Hand (wird erst berechnet, wenn benötigt)
-        self._partition_cache: list[list[tuple]] = list(partitions)  # mögliche Partitionen (wird erst berechnet, wenn benötigt)
+        self._hand: list[tuple] = hand if hand else []  # Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)]
+        self._schupfed: list[tuple] = schupfed if schupfed else []  # abgegebene Tauschkarten (für rechten Gegner, Partner und linken Gegner)
+        self._combination_cache: list[tuple] = combinations if combinations else []  # Kombinationsmöglichkeiten der Hand (wird erst berechnet, wenn benötigt)
+        self._partition_cache: list[list[tuple]] = partitions if partitions else [] # mögliche Partitionen (wird erst berechnet, wenn benötigt)
         self._partitions_aborted: bool = partitions_aborted  # True, wenn nicht alle möglichen Partitionen berechnet worden sind
 
     # Alles für eine neue Runde zurücksetzen

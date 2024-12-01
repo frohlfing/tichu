@@ -22,6 +22,9 @@ class TestHeuristicAgent(unittest.TestCase):
         self.pub._number_of_cards = [14, 14, 14, 14]
         result = self.agent.announce(self.pub, self.priv, False)
         self.assertTrue(result)
+        self.pub._announcements = [0, 0, 0, 1]
+        result = self.agent.announce(self.pub, self.priv, False)
+        self.assertFalse(result)
 
     def test_schupf(self):
         # Niemand hat Tichu angesagt

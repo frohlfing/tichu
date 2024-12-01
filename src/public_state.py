@@ -27,13 +27,13 @@ class PublicState:
                  round_counter: int = 0,
                  seed: int = None):
         if number_of_cards:
-            assert len(number_of_cards) == 4
+            assert len(number_of_cards) == 4  # pragma: no cover
         if announcements:
-            assert len(announcements) == 4
+            assert len(announcements) == 4  # pragma: no cover
         if points:
-            assert len(points) == 4
+            assert len(points) == 4  # pragma: no cover
         if score:
-            assert len(score) == 2
+            assert len(score) == 2  # pragma: no cover
         self._mixed_deck = list(deck)  # gemischtes Kartendeck
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
         # Public Observation Space:

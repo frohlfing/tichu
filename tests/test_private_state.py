@@ -19,6 +19,7 @@ class TestPrivateState(unittest.TestCase):
         self.assertEqual("G3 R3 S2 B2 G2 R2 Ma Hu", stringify_cards(self.priv._hand))
         self.assertEqual([8, 0, 0, 0], self.pub.number_of_cards)
         self.assertEqual([0, 0, 0, 0], self.pub.announcements)
+        self.assertTrue(self.priv.has_mahjong)
 
         # take_cards
         cards = self.pub.deal_out(0, 14)
