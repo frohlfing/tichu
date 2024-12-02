@@ -20,7 +20,7 @@ class PrivateState:
         self._partitions_aborted: bool = partitions_aborted  # True, wenn nicht alle möglichen Partitionen berechnet worden sind
 
     # Alles für eine neue Runde zurücksetzen
-    def reset(self):  # pragma: no cover
+    def reset_round(self):  # pragma: no cover
         self._hand = []
         self._schupfed = []
         self._combination_cache = []

@@ -23,7 +23,7 @@ class HeuristicAgent(Agent):
         self._statistic_key: tuple = ()  # Spieler und Anzahl Handkarten, für die die Statistik berechnet wurde
         self._quality = grand_quality  # Mindestwert für die Güte bei der Tichu-Ansage (kleines, großes)
 
-    def reset(self):  # pragma: no cover
+    def reset_round(self):  # pragma: no cover
         self.__statistic = {}
         self._statistic_key = ()
 

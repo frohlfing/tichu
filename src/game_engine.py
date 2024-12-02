@@ -1,4 +1,3 @@
-import numpy as np
 from src.common.rand import Random
 from src.lib.cards import CARD_MAH
 from src.lib.combinations import FIGURE_DOG, FIGURE_DRA, build_action_space, FIGURE_PASS
@@ -6,7 +5,6 @@ from src.players.agent import Agent
 from src.players.client import Client
 from src.private_state import PrivateState
 from src.public_state import PublicState
-from typing import Optional
 
 
 class GameEngine:
@@ -32,13 +30,21 @@ class GameEngine:
         else:
             assert len(privs) == 4
 
-        # Agents zurücksetzen
-        for agent in self._agents:
-            agent.reset()
-
         while pub.score[0] < 1000 and pub.score[1] < 1000:
             # Neue Runde...
-            pub.reset()
+
+            # öffentlichen Spielzustand zurücksetzen
+            pub.reset_round()
+
+            # privaten Spielzustand zurücksetzen
+            for priv in privs:
+                priv.reset_round()
+
+            # Agents zurücksetzen
+            for agent in self._agents:
+                agent.reset_round()
+
+            # Karten mischen
             pub.shuffle_cards()
 
             # Karten aufnehmen, erst 8 dann alle

@@ -8,7 +8,7 @@ class Player:
     def __init__(self):
         pass
 
-    def reset(self):  # pragma: no cover
+    def reset_round(self):  # pragma: no cover
         pass
 
     # Welche Karten an die Mitspieler abgeben?

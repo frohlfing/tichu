@@ -59,7 +59,7 @@ class PublicState:
         self._round_counter: int = round_counter  # Anzahl beendete Runden (nur für statistische Zwecke)
 
     # Spielzustand für eine neue Runde zurücksetzen
-    def reset(self):  # pragma: no cover
+    def reset_round(self):  # pragma: no cover
         self._current_player_index = -1
         self._start_player_index = -1
         self._number_of_cards = [0, 0, 0, 0]
@@ -78,11 +78,12 @@ class PublicState:
         self._is_done = False
         self._double_win = False
 
-    # Spielzustand für eine neue Episode zurücksetzen
-    def reset_score(self):  # pragma: no cover
-        self._score = [0, 0]
-        self._trick_counter = 0
-        self._round_counter = 0
+    # # Spielzustand für eine neue Episode zurücksetzen
+    # def reset_score(self):  # pragma: no cover
+    #     self.reset_round()
+    #     self._score = [0, 0]
+    #     self._trick_counter = 0
+    #     self._round_counter = 0
 
     # def copy(self) -> 'PublicState':
     #     return PublicState(current_player=self._current_player,

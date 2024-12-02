@@ -40,7 +40,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.assertEqual([(3, 1), (13, 4), (2, 4)], self.agent.schupf(self.pub, self.priv))
 
         # Niemand hat Tichu angesagt und ich hab den Hund
-        self.pub.reset()
+        self.pub.reset_round()
         cards = parse_cards("Dr BA GA RD GZ S8 R8 B8 G6 S6 G5 B5 S5 Hu")
         self.pub._mixed_deck = cards + other_cards(cards)
         cards = self.pub.deal_out(0, 8)
@@ -53,7 +53,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.assertEqual([(10, 2), (12, 1), (0, 0)], self.agent.schupf(self.pub, self.priv))
 
         # Ich hab Tichu angesagt
-        self.pub.reset()
+        self.pub.reset_round()
         cards = parse_cards("Ph Dr BA GA RK GK SK RD BD GD SD GB BB SB")
         self.pub._mixed_deck = cards + other_cards(cards)
         cards = self.pub.deal_out(0, 8)
@@ -66,7 +66,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.assertEqual([(11, 2), (11, 3), (11, 4)], self.agent.schupf(self.pub, self.priv))
 
         # Ich hab Tichu angesagt und hab den Hund
-        self.pub.reset()
+        self.pub.reset_round()
         cards = parse_cards("Dr BA GA RK GK SK RD BD GD SD GB BB SB Hu")
         self.pub._mixed_deck = cards + other_cards(cards)
         cards = self.pub.deal_out(0, 8)
@@ -79,7 +79,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.assertEqual([(11, 2), (0, 0), (11, 3)], self.agent.schupf(self.pub, self.priv))
 
         # Partner hat Tichu angesagt
-        self.pub.reset()
+        self.pub.reset_round()
         cards = parse_cards("RZ GZ SZ R9 B9 G9 R8 G8 S8 G7 S7 B6 S5 Hu")
         self.pub._mixed_deck = cards + other_cards(cards)
         cards = self.pub.deal_out(0, 8)
@@ -92,7 +92,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.assertEqual([(7, 2), (10, 1), (5, 4)], self.agent.schupf(self.pub, self.priv))
 
         # Partner hat Tichu angesagt und ich hab den Drachen
-        self.pub.reset()
+        self.pub.reset_round()
         cards = parse_cards("Dr BA GA RK GK SK RD BD GD SD GB BB SB Hu")
         self.pub._mixed_deck = cards + other_cards(cards)
         cards = self.pub.deal_out(0, 8)
@@ -193,7 +193,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.assertEqual(9, self.agent.wish(self.pub, self.priv))
 
        # Straße wurde gespielt
-        self.pub.reset()
+        self.pub.reset_round()
         cards = parse_cards("Dr BA GA RD G9 S8 R8 B7 G6 S5 G4 B3 S2 Ma")
         self.pub._mixed_deck = cards + other_cards(cards)
         cards = self.pub.deal_out(0, 8)
