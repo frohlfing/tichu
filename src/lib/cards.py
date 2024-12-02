@@ -1,6 +1,6 @@
 __all__ = "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
     "deck", "cardlabels", "cardlabels_index", "parse_cards", "stringify_cards", "print_cards", "is_wish_in", \
-    "sum_card_points", "other_cards", "cards_to_hash", "hash_to_cards"
+    "sum_card_points", "other_cards",
 
 # -----------------------------------------------------------------------------
 # Spielkarten
@@ -161,27 +161,3 @@ def sum_card_points(cards: list[tuple]) -> int:
 # Alle übrigen Karten auflisten. Die Reihenfolge entspricht dem Kartendeck (also aufsteigend).
 def other_cards(cards: list[tuple]) -> list[tuple]:
     return [card for card in deck if card not in cards]
-
-
-# -----------------------------------------------------------------------------
-# Codierung der Karten als 64Bit-Hashwert
-# -----------------------------------------------------------------------------
-
-HASH_ALL = 2 ** 56 - 1  # Hashwert für alle Karten
-HASH_DOG = 1 << 0   # Hashwert für den Hund
-HASH_MAH = 1 << 1   # Hashwert für den Mahjong
-HASH_DRA = 1 << 54  # Hashwert für den Drachen
-HASH_PHO = 1 << 55  # Hashwert für den Phönix
-
-
-# Eindeutigen Hashwert der gegebenen Karten erzeugen. Dabei steht jedes Bit im 64-Bit-Integer für eine Karte.
-def cards_to_hash(cards: list[tuple]) -> int:
-    hash_cards = 0
-    for card in cards:
-        hash_cards |= 1 << deck_index[card]
-    return hash_cards
-
-
-# Hashwert in den einzelnen Karten umwandeln. Die Reihenfolge entspricht dem Kartendeck (also aufsteigend).
-def hash_to_cards(hash_cards: int) -> list:
-    return [deck[i] for i in range(0, 56) if hash_cards & (1 << i)]

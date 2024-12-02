@@ -1,6 +1,6 @@
 import unittest
 # noinspection PyProtectedMember
-from src.lib.cards import deck_index, HASH_ALL
+from src.lib.cards import deck_index
 from src.lib.cards import *
 
 
@@ -20,11 +20,6 @@ class TestCards(unittest.TestCase):
 
     def test_other_cards(self):
         self.assertEqual([(14, 1), (14, 2), (14, 3), (14, 4)], other_cards([card for card in deck if card[0] != 14]))
-
-    def test_hash(self):
-        self.assertEqual(HASH_ALL, cards_to_hash(deck))
-        cards = parse_cards("Hu B2 R7 BD SK Ph")
-        self.assertEqual(cards, hash_to_cards(cards_to_hash(cards)))
 
 
 if __name__ == "__main__":
