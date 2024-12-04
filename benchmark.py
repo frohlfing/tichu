@@ -1,7 +1,10 @@
+import math
+import numpy as np
 from src.lib.cards import *
 from src.lib.combinations import *
+from scipy.special import comb
+from scipy.stats import hypergeom
 from timeit import timeit
-
 
 # time_start = time.time()
 # delay = time.time() - time_start
@@ -72,7 +75,126 @@ def remove_combinations():
     # 6.577613882953301
 
 
+# Methoden zur Berechnung des Binomialkoeffizienten
+
+def binomial_math(n, k):
+    return math.comb(n, k)
+
+def binomial_scipy(n, k):
+    return comb(n, k)
+
+def binomial_scipy_exact(n, k):
+    return comb(n, k, exact=True)
+
+def binomial_scipy_int(n, k):
+    return int(comb(n, k))
+
+def binomial_manual(n, k):
+    if k < 0 or k > n:
+        return 0
+    if k == 0 or k == n:
+        return 1
+    k = min(k, n - k)
+    c = 1
+    for i in range(k):
+        c = c * (n - i) // (i + 1)
+    return c
+
+def binomial_benchmark(n=56, k=14):
+    number = 1000  # Anzahl der Wiederholungen
+    print(f"\nn={n}, k={k}")
+    print("math", binomial_math(n, k))
+    print("scipy", binomial_scipy(n, k))
+    print("scipy int", binomial_scipy_int(n, k))
+    print("scipy exact", binomial_scipy_exact(n, k))
+    print("manual", binomial_manual(n, k))
+
+    time_math = timeit(lambda: binomial_math(n, k), number=number)
+    time_scipy = timeit(lambda: binomial_scipy(n, k), number=number)
+    time_scipy_int = timeit(lambda: binomial_scipy_int(n, k), number=number)
+    time_scipy_exact = timeit(lambda: binomial_scipy_exact(n, k), number=number)
+    time_manual = timeit(lambda: binomial_manual(n, k), number=number)
+
+    print(f"math: {time_math:.6f} Sekunden")
+    print(f"scipy: {time_scipy:.6f} Sekunden")
+    print(f"scipy int: {time_scipy_int:.6f} Sekunden")
+    print(f"scipy exact: {time_scipy_exact:.6f} Sekunden")
+    print(f"manual: {time_manual:.6f} Sekunden")
+
+    # math: 0.000093 Sekunden
+    # scipy: 0.003983 Sekunden
+    # scipy int: 0.003876 Sekunden
+    # scipy exact: 0.001189 Sekunden
+    # manual: 0.001108 Sekunden
+
+
+# Methoden zur Berechnung der hypergeometrischen Verteilung
+# https://matheguru.com/stochastik/hypergeometrische-verteilung.html?utm_content=cmp-true
+
+# N: Anzahl der Elemente insgesamt (56 Karten im Kartendeck)
+# n: Anzahl der Elemente in der Stichprobe (14 Handkarten)
+# M: Anzahl der gefragten Elemente insgesamt (z.B. 4 Damen)
+# k: Anzahl der gefragten Elemente, die in der Stichprobe enthalten sind (z.B. 3 Damen als Drilling)
+# noinspection PyPep8Naming
+def hypergeometric_math(N, n, M, k):
+    return math.comb(M, k) * math.comb(N - M, n - k) / math.comb(N, n)
+
+def hypergeometric_math2(n, k, n_features: list|tuple, k_features: list|tuple) -> float:
+    p = math.comb(n - sum(n_features), k - sum(k_features)) / math.comb(n, k)
+    for n_, k_ in zip(n_features, k_features):
+        p *= math.comb(n_, k_)
+    return p
+
+# noinspection PyPep8Naming
+def hypergeometric_scipy(N, n, M, k):
+    return hypergeom.pmf(k, N, M, n)
+
+# noinspection PyPep8Naming
+def hypergeometric_scipy_comb(N, n, M, k):
+    return comb(M, k) * comb(N - M, n - k) / comb(N, n)
+
+# noinspection PyPep8Naming
+def hypergeometric_scipy_exact(N, n, M, k):
+    return comb(M, k, exact=True) * comb(N - M, n - k, exact=True) / comb(N, n, exact=True)
+
+# noinspection PyPep8Naming
+def hypergeometric_manual(N, n, M, k):
+    return binomial_manual(M, k) * binomial_manual(N - M, n - k) / binomial_manual(N, n)
+
+# noinspection PyPep8Naming
+def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
+    number = 1000  # Anzahl der Wiederholungen
+    print(f"\nN={N}, n={n}, M={M}, k={k}")
+    print("math", hypergeometric_math(N, n, M, k))
+    print("math2", hypergeometric_math2(N, n,(M, N-M), (k, n-k)))
+    print("scipy", hypergeometric_scipy(N, n, M, k))
+    print("scipy comb", hypergeometric_scipy_comb(N, n, M, k))
+    print("scipy exact", hypergeometric_scipy_exact(N, n, M, k))
+    print("manual", hypergeometric_manual(N, n, M, k))
+
+    time_math = timeit(lambda: hypergeometric_math(N, n, M, k), number=number)
+    time_math2 = timeit(lambda: hypergeometric_math2(N, n,(M, N-M), (k, n-k)), number=number)
+    time_scipy = timeit(lambda: hypergeometric_scipy(N, n, M, k), number=number)
+    time_scipy_comb = timeit(lambda: hypergeometric_scipy_comb(N, n, M, k), number=number)
+    time_scipy_exact = timeit(lambda: hypergeometric_scipy_exact(N, n, M, k), number=number)
+    time_manual = timeit(lambda: hypergeometric_manual(N, n, M, k), number=number)
+
+    print(f"math: {time_math:.6f} Sekunden")
+    print(f"math2: {time_math2:.6f} Sekunden")
+    print(f"scipy: {time_scipy:.6f} Sekunden")
+    print(f"scipy comb: {time_scipy_comb:.6f} Sekunden")
+    print(f"scipy exact: {time_scipy_exact:.6f} Sekunden")
+    print(f"manual: {time_manual:.6f} Sekunden")
+
+    # math: 0.000233 Sekunden
+    # scipy: 0.058888 Sekunden
+    # scipy comb: 0.012480 Sekunden
+    # scipy exact: 0.002330 Sekunden
+    # manual: 0.002328 Sekunden
+
+
 if __name__ == '__main__':
-    remove_combinations()
-    # benchmark_get_figure()
-    # benchmark_get_combinations()
+    binomial_benchmark(n=56, k=14)
+    binomial_benchmark(n=1000, k=500)
+    hypergeometric_benchmark(N=56, n=14, M=4, k=3)
+    hypergeometric_benchmark(N=1000, n=500, M=100, k=50)

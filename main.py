@@ -1,6 +1,5 @@
 import config
 from src.arena import Arena
-#from src.common.logger import logger
 from src.players.agent import Agent
 from src.players.random_agent import RandomAgent
 

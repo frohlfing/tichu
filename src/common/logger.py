@@ -73,7 +73,7 @@ class ColorStreamHandler(logging.StreamHandler):
             color = msg_colors.get(record.levelno, "white")
             self.colorizer.write(msg + "\n", color)
             self.flush()
-        except (OSError, ValueError) :
+        except (OSError, ValueError):
             self.handleError(record)
 
 
