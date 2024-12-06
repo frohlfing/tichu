@@ -1,5 +1,4 @@
 import math
-import numpy as np
 from src.lib.cards import *
 from src.lib.combinations import *
 from scipy.special import comb
@@ -75,7 +74,9 @@ def remove_combinations():
     # 6.577613882953301
 
 
-# Methoden zur Berechnung des Binomialkoeffizienten
+#
+# Berechnung des Binomialkoeffizienten
+#
 
 def binomial_math(n, k):
     return math.comb(n, k)
@@ -128,13 +129,14 @@ def binomial_benchmark(n=56, k=14):
     # manual: 0.001108 Sekunden
 
 
-# Methoden zur Berechnung der hypergeometrischen Verteilung
+# Berechnung der hypergeometrischen Verteilung
 # https://matheguru.com/stochastik/hypergeometrische-verteilung.html?utm_content=cmp-true
 
 # N: Anzahl der Elemente insgesamt (56 Karten im Kartendeck)
 # n: Anzahl der Elemente in der Stichprobe (14 Handkarten)
 # M: Anzahl der gefragten Elemente insgesamt (z.B. 4 Damen)
 # k: Anzahl der gefragten Elemente, die in der Stichprobe enthalten sind (z.B. 3 Damen als Drilling)
+
 # noinspection PyPep8Naming
 def hypergeometric_math(N, n, M, k):
     return math.comb(M, k) * math.comb(N - M, n - k) / math.comb(N, n)

@@ -557,7 +557,7 @@ def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_
     #           1   2   3   4   5   6   7
     d = [None, [], [], [], [], [], [], []]
 
-    # Anzahl Einzelkarten gesamt  (d[SINGLE][1][15] == Drache, d[SINGLE][1][16] == Phönix)
+    # Anzahl Einzelkarten gesamt (d[SINGLE][1][15] == Drache, d[SINGLE][1][16] == Phönix)
     d[SINGLE] = [None, [c[0][v] + c[1][v] + c[2][v] + c[3][v] for v in range(16)] + [int(phoenix)]]
 
     # Paare, Drillinge und Fullhouse (zunächst ohne Phönix)

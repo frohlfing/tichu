@@ -31,22 +31,17 @@ def possible_samples(elements: list|tuple , k: int) -> list:
 # Wir ziehen 5 Kugeln. Wie groß ist die Wahrscheinlichkeit, dass wir 2 rote und 1 grüne ziehen?
 # hypergeometric_pmf(20, 5, (8, 5), (2, 1))  # 0.18962848297213622
 #
-# Randbedingungen:
-# 1.0, wenn k == 0 und sum(k_features) == 0
-# 0.0, wenn k > n oder sum(k_features) > k
-#
 # n: Anzahl der Elemente gesamt
 # k: Stichprobengröße
-# n_features: Anzahl der einzelnen Merkmale gesamt (die Summe darf nicht größer n sein)
+# n_features: Anzahl der einzelnen Merkmale gesamt
 # k_features: Anzahl der einzelnen Merkmale in der Stichprobe
 def hypergeometric_pmf(n, k, n_features: list|tuple, k_features: list|tuple) -> float:
     assert n >= 0 and k >= 0 and all(n_ >= 0 for n_ in n_features) and all(k_ >= 0 for k_ in k_features), "n and k must be a non-negative integer"
+    assert k <= n, "k must be less than or equal to n"
     nf = sum(n_features)
-    assert nf <= n, "sum(n_features) must not be greater than n"
+    assert nf <= n, "the sum of n_features must be less than or equal to n"
     kf = sum(k_features)
-    if k > n or kf > k:
-        return 0.0
-    p = math.comb(n - nf, k - kf) / math.comb(n, k)
+    p = math.comb(n - nf, k - kf) / math.comb(n, k) if kf <= k else 0.0
     for n_, k_ in zip(n_features, k_features):
         p *= math.comb(n_, k_)
     return p
@@ -60,17 +55,14 @@ def hypergeometric_pmf(n, k, n_features: list|tuple, k_features: list|tuple) -> 
 # Wir ziehen 5 Kugeln. Wie groß ist die Wahrscheinlichkeit, dass wir maximal 2 rote und maximal 1 grüne ziehen?
 # hypergeometric_probability_min(20, 5, (8, 5), (2, 1))  # 0.3738390092879257
 #
-# Randbedingungen:
-# 1.0, wenn k == 0
-# 0.0, wenn k > n
-#
 # n: Anzahl der Elemente gesamt
 # k: Stichprobengröße
-# n_features: Anzahl der einzelnen Merkmale gesamt (die Summe darf nicht größer n sein)
+# n_features: Anzahl der einzelnen Merkmale gesamt
 # k_max_features: Maximalanzahl der einzelnen Merkmale in der Stichprobe
 def hypergeometric_cdf(n, k, n_features: list|tuple, k_max_features: list|tuple) -> float:
     assert n >= 0 and k >= 0 and all(n_ >= 0 for n_ in n_features) and all(k_ >= 0 for k_ in k_max_features), "n and k must be a non-negative integer"
-    assert sum(n_features) <= n, "sum(n_features) must not be greater than n"
+    assert k <= n, "k must be less than or equal to n"
+    assert sum(n_features) <= n, "the sum of n_features must be less than or equal to n"
     p = 0.0
     for k_features in itertools.product(*[range(k_max + 1) for k_max in k_max_features]):
         if sum(k_features) <= k:
@@ -86,17 +78,14 @@ def hypergeometric_cdf(n, k, n_features: list|tuple, k_max_features: list|tuple)
 # Wir ziehen 5 Kugeln. Wie groß ist die Wahrscheinlichkeit, dass wir mindestens 2 rote und mindestens 1 grüne ziehen?
 # hypergeometric_probability_min(20, 5, (8, 5), (2, 1))  # 0.5192208462332302
 #
-# Randbedingungen:
-# 1.0, wenn k == 0 und sum(k_min_features) == 0
-# 0.0, wenn k > n oder sum(k_min_features) > k
-#
 # n: Anzahl der Elemente gesamt
 # k: Stichprobengröße
 # n_features: Anzahl der einzelnen Merkmale gesamt (die Summe darf nicht größer n sein)
 # k_min_features: Mindestanzahl der einzelnen Merkmale in der Stichprobe
 def hypergeometric_ucdf(n, k, n_features: list|tuple, k_min_features: list|tuple) -> float:
     assert n >= 0 and k >= 0 and all(n_ >= 0 for n_ in n_features) and all(k_ >= 0 for k_ in k_min_features), "n and k must be a non-negative integer"
-    assert sum(n_features) <= n, "sum(n_features) must not be greater than n"
+    assert k <= n, "k must be less than or equal to n"
+    assert sum(n_features) <= n, "the sum of n_features must be less than or equal to n"
     p = 0.0
     for k_features in itertools.product(*[range(k_min, n + 1) for n, k_min in zip(n_features, k_min_features)]):
         if sum(k_features) <= k:
@@ -113,7 +102,7 @@ def hypergeometric_pmf_samples(elements: list | tuple, k: int, features: dict) -
     samples = list(itertools.combinations(elements, k))
     matches = []
     for sample in samples:
-        matches.append(all(sum(1 for el in sample if el[0] == feature) == k_min for feature, k_min in features.items()))
+        matches.append(all(sum(1 for el in sample if el[0] == feature) == k_ for feature, k_ in features.items()))
     return matches, samples
 
 
@@ -126,7 +115,7 @@ def hypergeometric_cdf_samples(elements: list|tuple, k: int, features: dict) -> 
     samples = list(itertools.combinations(elements, k))
     matches = []
     for sample in samples:
-        matches.append(all(sum(1 for el in sample if el[0] == feature) <= k_min for feature, k_min in features.items()))
+        matches.append(all(sum(1 for el in sample if el[0] == feature) <= k_max for feature, k_max in features.items()))
     return matches, samples
 
 
@@ -143,25 +132,5 @@ def hypergeometric_ucdf_samples(elements: list|tuple, k: int, features: dict) ->
     return matches, samples
 
 
-# if __name__ == "__main__":
-#
-#     # Extremwerte
-#     for n in range(3):
-#         for k in range(3):
-#             for nf in range(3):
-#                 for kf in range(3):
-#                     # n: Anzahl der Elemente gesamt
-#                     # k: Stichprobengröße
-#                     # n_features: Anzahl der einzelnen Merkmale gesamt
-#                     # k_features: Anzahl der einzelnen Merkmale in der Stichprobe
-#                     try:
-#                         hy = hypergeometric_pmf(n, k, [nf], [kf])
-#                     except ValueError as e:
-#                         # k must be a non-negative integer
-#                         hy = f"ValueError: {e}"
-#                     except ZeroDivisionError as e:
-#                         hy = f"ZeroDivisionError: {e}"
-#                     except AssertionError as e:
-#                         hy = f"AssertionError: {e}"
-#                     #if str(hy_scipy) != str(hy):
-#                     print(f"n={n}, k={k}, nf={nf}, kf={kf}, hy={hy}")
+if __name__ == "__main__":  # pragma: no cover
+    pass
