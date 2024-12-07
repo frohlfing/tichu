@@ -25,8 +25,8 @@ class TestHypergeometricFunctions(unittest.TestCase):
         self.assertEqual(possible_samples([], 10), [], "Randbedingung k > n")
 
     def test_hypergeometric_pmf(self):
-        self.assertAlmostEqual(hypergeometric_pmf(7, 5, [3], [2]), 0.5714285714285714, msg="Pärchen in 5 Handkarten")
-        self.assertAlmostEqual(hypergeometric_pmf(20, 5, (8, 5), (2, 1)), 0.18962848297213622, msg="8 rote und 5 grüne Kugeln")
+        self.assertAlmostEqual(hypergeometric_pmf(7, 5, [3], [2]), 0.5714285714285714, places=16, msg="Pärchen in 5 Handkarten")
+        self.assertAlmostEqual(hypergeometric_pmf(20, 5, (8, 5), (2, 1)), 0.18962848297213622, places=16, msg="8 rote und 5 grüne Kugeln")
         self.assertAlmostEqual(hypergeometric_pmf(49, 6, (6, ), (6, )), 0.000000071511, places=12, msg="6/49, 6 Richtig")
         self.assertAlmostEqual(hypergeometric_pmf(49, 6, (6, ), (3, )), 0.017650, places=6, msg="6/49, 3 Richtig")
         self.assertAlmostEqual(hypergeometric_pmf(7, 5, [2,2], [3,1]), 0.0, msg="k_features[0] > n_features[0]")
@@ -36,17 +36,17 @@ class TestHypergeometricFunctions(unittest.TestCase):
             hypergeometric_pmf(7, 5, (8,), (2,))
 
     def test_hypergeometric_cdf(self):
-        self.assertAlmostEqual(hypergeometric_cdf(7, 5, [3], [2]), 0.7142857142857143, msg="Pärchen in 5 Handkarten")
-        self.assertAlmostEqual(hypergeometric_cdf(20, 5, (8, 5), (2, 1)), 0.3738390092879257, msg="8 rote und 5 grüne Kugeln")
-        self.assertAlmostEqual(hypergeometric_cdf(7, 5, [2, 2], [3, 1]), 0.5238095238095237, msg="k_features[0] > n_features[0]")
+        self.assertAlmostEqual(hypergeometric_cdf(7, 5, [3], [2]), 0.7142857142857142, places=16, msg="Pärchen in 5 Handkarten")
+        self.assertAlmostEqual(hypergeometric_cdf(20, 5, (8, 5), (2, 1)), 0.3738390092879257, places=16, msg="8 rote und 5 grüne Kugeln")
+        self.assertAlmostEqual(hypergeometric_cdf(7, 5, [2, 2], [3, 1]), 0.5238095238095237, places=16, msg="k_features[0] > n_features[0]")
         with self.assertRaises(AssertionError, msg="k > n"):
             hypergeometric_cdf(7, 8, (3,), (2,))
         with self.assertRaises(AssertionError, msg="n < sum(n_features)"):
             hypergeometric_cdf(7, 5, (8,), (2,))
 
     def test_hypergeometric_ucdf(self):
-        self.assertAlmostEqual(hypergeometric_ucdf(7, 5, [3], [2]), 0.8571428571428571, msg="Pärchen in 5 Handkarten")
-        self.assertAlmostEqual(hypergeometric_ucdf(20, 5, (8, 5), (2, 1)), 0.5192208462332302, msg="8 rote und 5 grüne Kugeln")
+        self.assertAlmostEqual(hypergeometric_ucdf(7, 5, [3], [2]), 0.8571428571428571, places=16, msg="Pärchen in 5 Handkarten")
+        self.assertAlmostEqual(hypergeometric_ucdf(20, 5, (8, 5), (2, 1)), 0.5192208462332302, places=16, msg="8 rote und 5 grüne Kugeln")
         self.assertAlmostEqual(hypergeometric_ucdf(7, 5, [2, 2], [3, 1]), 0.0, msg="k_features[0] > n_features[0]")
         with self.assertRaises(AssertionError, msg="k > n"):
             hypergeometric_ucdf(7, 8, (3,), (2,))
@@ -80,7 +80,7 @@ class TestHypergeometricFunctions(unittest.TestCase):
             (True,  ('g2', 'g3', 'r2', 'r3', 'r4')),
             (False, ('g2', 'r1', 'r2', 'r3', 'r4')),
             (False, ('g3', 'r1', 'r2', 'r3', 'r4'))], list(zip(matches, samples)))
-        self.assertAlmostEqual(sum(matches) / len(samples), 0.5714285714285714)
+        self.assertAlmostEqual(sum(matches) / len(samples), 0.5714285714285714, places=16)
         # k_features[0] > n_features[0]
         matches, samples = hypergeometric_pmf_samples(["g1", "g2", "g3", "r1", "r2", "r3", "r4"], 5, {"g": 4, "r": 2})
         self.assertEqual(21, len(samples))
@@ -113,7 +113,7 @@ class TestHypergeometricFunctions(unittest.TestCase):
             (True, ('g2', 'g3', 'r2', 'r3', 'r4')),
             (True, ('g2', 'r1', 'r2', 'r3', 'r4')),
             (True, ('g3', 'r1', 'r2', 'r3', 'r4'))], list(zip(matches, samples)))
-        self.assertAlmostEqual(sum(matches) / len(samples), 0.7142857142857142)
+        self.assertAlmostEqual(sum(matches) / len(samples), 0.7142857142857143, places=16)
         # k_features[0] > n_features[0]
         matches, samples = hypergeometric_cdf_samples(["g1", "g2", "g3", "r1", "r2", "r3", "r4"], 5, {"g": 4, "r": 2})
         self.assertEqual(21, len(samples))
@@ -146,7 +146,7 @@ class TestHypergeometricFunctions(unittest.TestCase):
             (True, ('g2', 'g3', 'r2', 'r3', 'r4')),
             (False, ('g2', 'r1', 'r2', 'r3', 'r4')),
             (False, ('g3', 'r1', 'r2', 'r3', 'r4'))], list(zip(matches, samples)))
-        self.assertAlmostEqual(sum(matches) / len(samples), 0.8571428571428571)
+        self.assertAlmostEqual(sum(matches) / len(samples), 0.8571428571428571, places=16)
         # k_features[0] > n_features[0]
         matches, samples = hypergeometric_ucdf_samples(["g1", "g2", "g3", "r1", "r2", "r3", "r4"], 5, {"g": 4, "r": 2})
         self.assertEqual(21, len(samples))

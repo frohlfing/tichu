@@ -1,5 +1,7 @@
 import math
 import itertools
+from src.lib.cards import parse_cards, stringify_cards
+
 
 # Binomialkoeffizient (n über k)
 # Berechnet die Anzahl der möglichen Stichproben (ohne Zurücklegen und ohne Beachtung der Reihenfolge).
@@ -93,7 +95,45 @@ def hypergeometric_ucdf(n, k, n_features: list|tuple, k_min_features: list|tuple
     return p
 
 
+# # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination hat
+# #
+# # cards: Ungespielte Karten [(Wert, Farbe)]
+# # k: Anzahl Handkarten
+# # figure: Typ, Länge, Rang der Kombination
+# def hypergeometric_combinations(cards: list[tuple], k: int, figure: tuple) -> float:
+#     # Anzahl der ungespielten Karten (die eigenen Handkarten werden hier nicht mitgezählt)
+#     #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
+#     c = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+#     for value, _color in cards:
+#         c[value] += 1
+#     t, n, v = figure
+#     if t == PAIR:  # Paar
+#         features = [{v: 2}]
+#     elif t == TRIPLE:  # Drilling
+#         features = [{v: 3}]
+#     elif t == STAIR:  # Treppe
+#         features = [{v - i: 2 for i in range(int(n / 2))}]
+#     elif t == FULLHOUSE:  # Full House
+#         features = [{v: 3, i: 2} for i in range(2, 15) if i != v]
+#     elif t == STREET:  # Straße
+#         features = [{v - i: 1 for i in range(int(n))}]
+#     elif t == BOMB:  # Bombe
+#         if n == 4:
+#             features = [{v: 4}]
+#         else:
+#             features = [{v - i: 1 for i in range(int(n))}]
+#     else:
+#         assert t == SINGLE  # Einzelkarte
+#         features = [{v: 1}]
+#     return 0.0
+
+
 # Listet die Stichproben auf, die exakt die gegebene Anzahl Merkmale hat
+#
+# Beispiel:
+# matches, samples = hypergeometric_pmf_samples(["g1", "g2", "g3", "r1", "r2", "r3", "r4"], 5, {"g": 2})
+# print(list(zip(matches, samples)))
+# print(f"p = {sum(matches) / len(samples)}")
 #
 # elements: Liste der Elemente
 # k: Stichprobengröße
@@ -132,5 +172,5 @@ def hypergeometric_ucdf_samples(elements: list|tuple, k: int, features: dict) ->
     return matches, samples
 
 
-if __name__ == "__main__":  # pragma: no cover
-    pass
+#if __name__ == "__main__":  # pragma: no cover
+#    pass
