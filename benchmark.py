@@ -1,3 +1,4 @@
+import itertools
 import math
 from src.lib.cards import *
 from src.lib.combinations import *
@@ -195,8 +196,14 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     # manual: 0.002328 Sekunden
 
 
+def possible_hands_benchmark():
+    t = timeit(lambda: list(itertools.combinations(range(8), 6)), number=100)
+    print(f"math: {t:.6f} Sekunden")
+
+
 if __name__ == '__main__':
-    binomial_benchmark(n=56, k=14)
-    binomial_benchmark(n=1000, k=500)
-    hypergeometric_benchmark(N=56, n=14, M=4, k=3)
-    hypergeometric_benchmark(N=1000, n=500, M=100, k=50)
+    possible_hands_benchmark()
+    #binomial_benchmark(n=56, k=14)
+    #binomial_benchmark(n=1000, k=500)
+    #hypergeometric_benchmark(N=56, n=14, M=4, k=3)
+    #hypergeometric_benchmark(N=1000, n=500, M=100, k=50)

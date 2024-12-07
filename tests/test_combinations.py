@@ -387,12 +387,12 @@ class TestCombinations(unittest.TestCase):
             ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 11), 1, 21, 0.047619047619047616, "Straßenbombe" ),
         ]
         for t in test:
-            matches, samples = possible_hands(parse_cards(t[0]), t[1], t[2])
-            #for match, sample in zip(matches, samples):
-            #    print(stringify_cards(sample), match)
+            matches, hands = possible_hands(parse_cards(t[0]), t[1], t[2])
+            #for match, hand in zip(matches, hands):
+            #    print(stringify_cards(hand), match)
             self.assertEqual(t[3], sum(matches))
-            self.assertEqual(t[4], len(samples))
-            self.assertAlmostEqual(t[5], sum(matches) / len(samples), places=16, msg=t[6])
+            self.assertEqual(t[4], len(hands))
+            self.assertAlmostEqual(t[5], sum(matches) / len(hands), places=16, msg=t[6])
 
 
 if __name__ == "__main__":

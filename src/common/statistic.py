@@ -1,6 +1,5 @@
 import math
 import itertools
-from src.lib.cards import parse_cards, stringify_cards
 
 
 # Binomialkoeffizient (n über k)
@@ -18,7 +17,7 @@ def binomial_coefficient(n: int, k: int) -> int:
     return math.comb(n, k)
 
 
-# Listet alle möglichen Stichproben auf (ohne Zurücklegen und ohne Beachtung der Reihenfolge)
+# Listet die möglichen Stichproben auf (ohne Zurücklegen und ohne Beachtung der Reihenfolge)
 # elements: Liste der Elemente
 # k: Stichprobengröße
 def possible_samples(elements: list|tuple , k: int) -> list:
@@ -93,39 +92,6 @@ def hypergeometric_ucdf(n, k, n_features: list|tuple, k_min_features: list|tuple
         if sum(k_features) <= k:
             p += hypergeometric_pmf(n, k, n_features, k_features)
     return p
-
-
-# # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination hat
-# #
-# # cards: Ungespielte Karten [(Wert, Farbe)]
-# # k: Anzahl Handkarten
-# # figure: Typ, Länge, Rang der Kombination
-# def hypergeometric_combinations(cards: list[tuple], k: int, figure: tuple) -> float:
-#     # Anzahl der ungespielten Karten (die eigenen Handkarten werden hier nicht mitgezählt)
-#     #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
-#     c = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-#     for value, _color in cards:
-#         c[value] += 1
-#     t, n, v = figure
-#     if t == PAIR:  # Paar
-#         features = [{v: 2}]
-#     elif t == TRIPLE:  # Drilling
-#         features = [{v: 3}]
-#     elif t == STAIR:  # Treppe
-#         features = [{v - i: 2 for i in range(int(n / 2))}]
-#     elif t == FULLHOUSE:  # Full House
-#         features = [{v: 3, i: 2} for i in range(2, 15) if i != v]
-#     elif t == STREET:  # Straße
-#         features = [{v - i: 1 for i in range(int(n))}]
-#     elif t == BOMB:  # Bombe
-#         if n == 4:
-#             features = [{v: 4}]
-#         else:
-#             features = [{v - i: 1 for i in range(int(n))}]
-#     else:
-#         assert t == SINGLE  # Einzelkarte
-#         features = [{v: 1}]
-#     return 0.0
 
 
 # Listet die Stichproben auf, die exakt die gegebene Anzahl Merkmale hat
