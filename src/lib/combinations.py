@@ -1,9 +1,12 @@
 __all__ = "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "BOMB", \
     "FIGURE_PASS", "FIGURE_DOG", "FIGURE_MAH", "FIGURE_DRA", "FIGURE_PHO", \
     "figures_index", "figurelabels", "parse_figure", "stringify_figure", "print_figure", "get_figure", \
-    "build_combinations", "remove_combinations", "build_action_space", "calc_statistic", "possible_hands"
+    "build_combinations", "remove_combinations", "build_action_space", "calc_statistic", "possible_hands", \
+    "probability_of_hands",
 
-from src.common.statistic import hypergeometric_ucdf
+import math
+
+from src.common.statistic import hypergeometric_ucdf, hypergeometric_pmf
 from src.lib.cards import CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO, is_wish_in, parse_cards, stringify_cards
 import itertools
 
@@ -772,6 +775,8 @@ def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_
 #     print(match, stringify_cards(hand))
 # print(f"Wahrscheinlichkeit für ein Bubenpärchen: {sum(matches) / len(hands)}")  # 18/21 = 0.8571428571428571
 #
+# Bei einer Straße als Kombination werden auch Straßenbomben als normale Straßen gezählt.
+#
 # unplayed_cards: Ungespielte Karten
 # k: Anzahl Handkarten
 # figure: Typ, Länge, Rang der Kombination
@@ -779,18 +784,20 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
     hands = list(itertools.combinations(unplayed_cards, k))
     matches = []
     t, m, r = figure  # type, length, rank
+
     if t == STAIR:  # Treppe
         steps = int(m / 2)
         for hand in hands:
             if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                 b = False
-                for j in range(int(m / 2)):
+                for j in range(steps):
                     b = all(sum(1 for v, _ in hand if v == r - i) >= (1 if i == j else 2) for i in range(steps))
                     if b:
                         break
             else:
                 b = all(sum(1 for v, _ in hand if v == r - i) >= 2 for i in range(steps))
             matches.append(b)
+
     elif t == FULLHOUSE:  # Full House
         for hand in hands:
             if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
@@ -804,32 +811,36 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
                 b = (sum(1 for v, _ in hand if v == r) >= 3
                      and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != r))
             matches.append(b)
-    elif t == STREET:  # Straße
+
+    elif t == STREET:  # Straße (oder Straßenbombe; Farbe wird hier nicht berücksichtigt)
         for hand in hands:
-            color = next((c for v, c in hand if v == r), 0)
-            if (any(c != color for i in range(m) for v, c in hand if v == r - i)  # mind. eine Karte von unterschiedlicher Farbe
-                    or any(sum(1 for v, _ in hand if v == r - i) == 0 for i in range(m))):  # oder Phönix muss Lücke schließen
-                # potentielle Straße ist keine Bombe!  # todo testen!
-                if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
-                    b = False
-                    for j in range(int(m)):
-                        b = all(sum(1 for v, _ in hand if v == r - i) >= (0 if i == j else 1) for i in range(m))
-                        if b:
-                            break
-                else:
-                    b = all(sum(1 for v, _ in hand if v == r - i) >= 1 for i in range(m))
-                matches.append(b)
+            if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
+                b = False
+                for j in range(int(m)):
+                    b = all(sum(1 for v, _ in hand if v == r - i) >= (0 if i == j else 1) for i in range(m))
+                    if b:
+                        break
+            else:
+                b = all(sum(1 for v, _ in hand if v == r - i) >= 1 for i in range(m))
+            matches.append(b)
+
     elif t == BOMB and m >= 5:  # Straßenbombe
         for hand in hands:
             color = next((c for v, c in hand if v == r), 0)
             matches.append(all(sum(1 for v, c in hand if v == r - i and c == color) >= 1 for i in range(m)))
+
     elif t == BOMB and m == 4:  # 4er-Bombe
         for hand in hands:
             matches.append(sum(1 for v, _ in hand if v == r) >= 4)
-    else:
-        assert t in [SINGLE, PAIR, TRIPLE]  # Einzelkarte, Paar, Drilling
+
+    elif t in [PAIR, TRIPLE]:  # Paar, Drilling
         for hand in hands:
             matches.append(sum(1 for v, _ in hand if v in [r, 16]) >= m)
+    else:
+        assert t == SINGLE  # Einzelkarte
+        for hand in hands:
+            matches.append(sum(1 for v, _ in hand if v == r) >= 1)
+
     return matches, hands
 
 
@@ -839,35 +850,72 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
 # matches, total = number_of_possible_hands(parse_cards("Dr RK GK BB SB RB R2"), 5, (2, 2, 11))
 # print(f"Wahrscheinlichkeit für ein Bubenpärchen: {matches / total}")  # 18/21 = 0.8571428571428571
 #
+# Bei einer Straße als Kombination werden auch Straßenbomben als normale Straßen gezählt.
+#
 # unplayed_cards: Ungespielte Karten
 # k: Anzahl Handkarten
 # figure: Typ, Länge, Rang der Kombination
 def probability_of_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> float:
     # Anzahl der ungespielten Karten
+
+    # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
+    # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
+    u = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
+    ]
+
     #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
     h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    for v, _ in unplayed_cards:
+
+    for v, c in unplayed_cards:
+        if c > 0:
+            u[c-1][v-2] = 1
         h[v] += 1
+
     n = len(unplayed_cards)
     assert n == sum(h)
 
     # Hypergeometrische Verteilung
+
     t, m, r = figure  # type, length, rank
     if t == STAIR:  # Treppe
         steps = int(m / 2)
-        p = hypergeometric_ucdf(n, k, h[r-steps+1:r+1], [2 for _ in range(steps)])
+        p = hypergeometric_ucdf(n, k, h[r-steps+1:r+1], [2 for _ in range(steps)])  # Treppe ohne Phönix
+        if h[16]:  # Phönix vorhanden?
+            for j in range(steps):  # Treppe mit Phönix an Stelle j
+                #p += hypergeometric_ucdf(n, k, [h[r-i] + (1 if i == j else 0) for i in range(steps)], [2 for _ in range(steps)])
+                p += hypergeometric_ucdf(n, k, [h[r-i] for i in range(steps) if i != j] + [h[r-j], 1], [2 for _ in range(steps - 1)] + [1, 1])  # Pärchen + Einzelkarte + Phönix
+
     elif t == FULLHOUSE:  # Full House
-        p = (hypergeometric_ucdf(n, k, [h[r]], [3])
-             * sum(hypergeometric_ucdf(n, k, [h[r2]], [2]) for r2 in range(2, 15) if r2 != r))
-    elif t == STREET:  # Straße
-        p = hypergeometric_ucdf(n, k, h[r-m+1:r+1], [1 for _ in range(m)])
+        p = sum(hypergeometric_ucdf(n, k, [h[r], h[r2]], [3, 2]) for r2 in range(2, 15) if r2 != r)  # Fullhouse ohne Phönix
+        if h[16]:  # Phönix vorhanden?
+            p += sum(hypergeometric_ucdf(n, k, [h[r], h[r2], 1], [2, 2, 1]) for r2 in range(2, 15) if r2 != r)  # Pärchen + Pärchen + Phönix
+            p += hypergeometric_ucdf(n, k, [h[r], sum(h[2:15])-h[r], 1], [3, 1, 1])  # Drilling + Einzelkarte + Phönix
+
+    elif t == STREET:  # Straße (oder Straßenbombe; Farbe wird hier nicht berücksichtigt)
+        p = hypergeometric_ucdf(n, k, h[r-m+1:r+1], [1 for _ in range(m)])  # Straße ohne Phönix
+        if h[16]:  # Phönix vorhanden?
+            print("Phönix vorhanden")
+            for j in range(int(m)):  # Straße mit Phönix an Stelle j
+                #p += hypergeometric_ucdf(n, k, [(1 if i == j else h[r-i]) for i in range(m)], [1 for _ in range(m)])
+                p += hypergeometric_ucdf(n, k, [h[r-i] for i in range(m) if i != j] + [1], [1 for _ in range(m - 1)] + [1])  # Einzelkarten + Phönix
+
     elif t == BOMB and m >= 5:  # Straßenbombe
-        p = 0.0  # todo
+        #p = sum(hypergeometric_ucdf(n, k, u[c][r-m-1:r-1], [1 for _ in range(m)]) for c in range(4))
+        p = sum(hypergeometric_ucdf(n, k, [m], [m]) for c in range(4) if sum(u[c][r-m-1:r-1]) == m)
+
     elif t == BOMB and m == 4:  # 4er-Bombe
         p = hypergeometric_ucdf(n, k, [h[r]], [4])
-    else:
-        assert t in [SINGLE, PAIR, TRIPLE]  # Einzelkarte, Paar, Drilling
+
+    elif t in [PAIR, TRIPLE]:  # Paar, Drilling
         p = hypergeometric_ucdf(n, k, [h[r] + h[16]], [m])
+
+    else:
+        assert t == SINGLE  # Einzelkarte
+        p = hypergeometric_ucdf(n, k, [h[r]], [1])
 
     return p
 
@@ -877,10 +925,14 @@ def probability_of_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> 
 # -----------------------------------------------------------------------------
 
 def test_possible_hands():  # pragma: no cover
-    matches, samples = possible_hands(parse_cards("Dr RK GK BB SB RB R2"), 5, (2, 2, 11))
+    # ("BK SD BD BB BZ B9 R3", 6, (6, 5, 13), 2, 7, 0.2857142857142857, "Straße, mit Bombe"),
+    matches, samples = possible_hands(parse_cards("Ph GK BD SB RB BB S2"), 6, (5, 5, 11))
     for match, sample in zip(matches, samples):
         print(stringify_cards(sample), match)
     print(f"p = {sum(matches)}/{len(samples)} = {sum(matches) / len(samples)}")
+
+    p = probability_of_hands(parse_cards("Ph GK BD SB RB BB S2"), 6, (5, 5, 11))
+    print(f"p = {p}, n = {len(samples)*p}")
 
 
 if __name__ == "__main__":  # pragma: no cover

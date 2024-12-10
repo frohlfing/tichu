@@ -138,5 +138,6 @@ def hypergeometric_ucdf_samples(elements: list|tuple, k: int, features: dict) ->
     return matches, samples
 
 
-#if __name__ == "__main__":  # pragma: no cover
-#    pass
+if __name__ == "__main__":  # pragma: no cover
+    print(hypergeometric_ucdf(20, 7, [3], [1]))
+    print(hypergeometric_ucdf(20, 7, [4], [2]))
