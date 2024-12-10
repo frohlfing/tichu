@@ -25,15 +25,15 @@ class TestHypergeometricFunctions(unittest.TestCase):
         self.assertEqual(possible_samples([], 10), [], "Randbedingung k > n")
 
     def test_hypergeometric_pmf(self):
-        self.assertAlmostEqual(hypergeometric_pmf(7, 5, [3], [2]), 0.5714285714285714, places=16, msg="Pärchen in 5 Handkarten")
-        self.assertAlmostEqual(hypergeometric_pmf(20, 5, (8, 5), (2, 1)), 0.18962848297213622, places=16, msg="8 rote und 5 grüne Kugeln")
-        self.assertAlmostEqual(hypergeometric_pmf(49, 6, (6, ), (6, )), 0.000000071511, places=12, msg="6/49, 6 Richtig")
-        self.assertAlmostEqual(hypergeometric_pmf(49, 6, (6, ), (3, )), 0.017650, places=6, msg="6/49, 3 Richtig")
-        self.assertAlmostEqual(hypergeometric_pmf(7, 5, [2,2], [3,1]), 0.0, msg="k_features[0] > n_features[0]")
+        self.assertAlmostEqual(hypergeometric_pmf(7, 5, [3], [[2]]), 0.5714285714285714, places=16, msg="Pärchen in 5 Handkarten")
+        self.assertAlmostEqual(hypergeometric_pmf(20, 5, (8, 5), [(2, 1)]), 0.18962848297213622, places=16, msg="8 rote und 5 grüne Kugeln")
+        self.assertAlmostEqual(hypergeometric_pmf(49, 6, (6, ), [(6, )]), 0.000000071511, places=12, msg="6/49, 6 Richtig")
+        self.assertAlmostEqual(hypergeometric_pmf(49, 6, (6, ), [(3, )]), 0.017650, places=6, msg="6/49, 3 Richtig")
+        self.assertAlmostEqual(hypergeometric_pmf(7, 5, [2,2], [[3, 1]]), 0.0, msg="k_features[0] > n_features[0]")
         with self.assertRaises(AssertionError, msg="k > n"):
-            hypergeometric_pmf(7, 8, (3,), (2,))
+            hypergeometric_pmf(7, 8, (3,), [(2,)])
         with self.assertRaises(AssertionError, msg="n < sum(n_features)"):
-            hypergeometric_pmf(7, 5, (8,), (2,))
+            hypergeometric_pmf(7, 5, (8,), [(2,)])
 
     def test_hypergeometric_cdf(self):
         self.assertAlmostEqual(hypergeometric_cdf(7, 5, [3], [2]), 0.7142857142857142, places=16, msg="Pärchen in 5 Handkarten")
@@ -161,7 +161,7 @@ class TestHypergeometricFunctions(unittest.TestCase):
                 for nf in range(3):
                     for kf in range(3):
                         try:
-                            hy1 = hypergeometric_pmf(n, k, [nf], [kf])
+                            hy1 = hypergeometric_pmf(n, k, [nf], [[kf]])
                         except AssertionError as _e:
                             hy1 = ""
                         if k <= n and nf <= n:

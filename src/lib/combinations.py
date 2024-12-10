@@ -4,11 +4,11 @@ __all__ = "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "B
     "build_combinations", "remove_combinations", "build_action_space", "calc_statistic", "possible_hands", \
     "probability_of_hands",
 
-import math
 
+import itertools
+import math
 from src.common.statistic import hypergeometric_ucdf, hypergeometric_pmf
 from src.lib.cards import CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO, is_wish_in, parse_cards, stringify_cards
-import itertools
 
 
 # -----------------------------------------------------------------------------
@@ -897,11 +897,13 @@ def probability_of_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> 
 
     elif t == STREET:  # Straße (oder Straßenbombe; Farbe wird hier nicht berücksichtigt)
         p = hypergeometric_ucdf(n, k, h[r-m+1:r+1], [1 for _ in range(m)])  # Straße ohne Phönix
+        print(p)
         if h[16]:  # Phönix vorhanden?
             print("Phönix vorhanden")
             for j in range(int(m)):  # Straße mit Phönix an Stelle j
-                #p += hypergeometric_ucdf(n, k, [(1 if i == j else h[r-i]) for i in range(m)], [1 for _ in range(m)])
-                p += hypergeometric_ucdf(n, k, [h[r-i] for i in range(m) if i != j] + [1], [1 for _ in range(m - 1)] + [1])  # Einzelkarten + Phönix
+                #p += hypergeometric_ucdf(n, k, [h[r-i] + (1 if i == j else 0) for i in range(m)], [1 for _ in range(m)])
+                p += hypergeometric_ucdf(n, k, [(1 if i == j else h[r-i]) for i in range(m)], [1 for _ in range(m)])
+                #p += hypergeometric_ucdf(n, k, [h[r-i] for i in range(m) if i != j] + [1], [1 for _ in range(m)])  # Einzelkarten + Phönix
 
     elif t == BOMB and m >= 5:  # Straßenbombe
         #p = sum(hypergeometric_ucdf(n, k, u[c][r-m-1:r-1], [1 for _ in range(m)]) for c in range(4))
