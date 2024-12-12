@@ -1,5 +1,7 @@
 import itertools
 import math
+
+from src.common.statistic import probability_of_sample, hypergeometric_pmf
 from src.lib.cards import *
 from src.lib.combinations import *
 from scipy.special import comb
@@ -142,12 +144,6 @@ def binomial_benchmark(n=56, k=14):
 def hypergeometric_math(N, n, M, k):
     return math.comb(M, k) * math.comb(N - M, n - k) / math.comb(N, n)
 
-def hypergeometric_math2(n, k, n_features: list|tuple, k_features: list|tuple) -> float:
-    p = math.comb(n - sum(n_features), k - sum(k_features)) / math.comb(n, k)
-    for n_, k_ in zip(n_features, k_features):
-        p *= math.comb(n_, k_)
-    return p
-
 # noinspection PyPep8Naming
 def hypergeometric_scipy(N, n, M, k):
     return hypergeom.pmf(k, N, M, n)
@@ -169,25 +165,28 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     number = 1000  # Anzahl der Wiederholungen
     print(f"\nN={N}, n={n}, M={M}, k={k}")
     print("math", hypergeometric_math(N, n, M, k))
-    print("math2", hypergeometric_math2(N, n,(M, N-M), (k, n-k)))
     print("scipy", hypergeometric_scipy(N, n, M, k))
     print("scipy comb", hypergeometric_scipy_comb(N, n, M, k))
     print("scipy exact", hypergeometric_scipy_exact(N, n, M, k))
     print("manual", hypergeometric_manual(N, n, M, k))
+    print("final1", hypergeometric_pmf(N, n, (M,), (k,)))
+    print("final2", probability_of_sample(N, n, (M,), [(k,)]))
 
     time_math = timeit(lambda: hypergeometric_math(N, n, M, k), number=number)
-    time_math2 = timeit(lambda: hypergeometric_math2(N, n,(M, N-M), (k, n-k)), number=number)
     time_scipy = timeit(lambda: hypergeometric_scipy(N, n, M, k), number=number)
     time_scipy_comb = timeit(lambda: hypergeometric_scipy_comb(N, n, M, k), number=number)
     time_scipy_exact = timeit(lambda: hypergeometric_scipy_exact(N, n, M, k), number=number)
     time_manual = timeit(lambda: hypergeometric_manual(N, n, M, k), number=number)
+    time_final1 = timeit(lambda: hypergeometric_pmf(N, n, (M,), (k,)), number=number)
+    time_final2 = timeit(lambda: probability_of_sample(N, n, (M,), [(k,)]), number=number)
 
     print(f"math: {time_math:.6f} Sekunden")
-    print(f"math2: {time_math2:.6f} Sekunden")
     print(f"scipy: {time_scipy:.6f} Sekunden")
     print(f"scipy comb: {time_scipy_comb:.6f} Sekunden")
     print(f"scipy exact: {time_scipy_exact:.6f} Sekunden")
     print(f"manual: {time_manual:.6f} Sekunden")
+    print(f"final1: {time_final1:.6f} Sekunden")
+    print(f"final2: {time_final2:.6f} Sekunden")
 
     # math: 0.000233 Sekunden
     # scipy: 0.058888 Sekunden
@@ -202,8 +201,8 @@ def possible_hands_benchmark():
 
 
 if __name__ == '__main__':
-    possible_hands_benchmark()
+    #possible_hands_benchmark()
     #binomial_benchmark(n=56, k=14)
     #binomial_benchmark(n=1000, k=500)
-    #hypergeometric_benchmark(N=56, n=14, M=4, k=3)
-    #hypergeometric_benchmark(N=1000, n=500, M=100, k=50)
+    hypergeometric_benchmark(N=56, n=14, M=4, k=3)
+    hypergeometric_benchmark(N=1000, n=500, M=100, k=50)
