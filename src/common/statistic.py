@@ -70,8 +70,8 @@ def probability_of_sample(n, k, features: list | tuple, conditions: list[list | 
     assert sum(features) <= n, "the sum of features must be less than or equal to n"
 
     # ermittelt die Bedingung für eine Schnittmenge
-    def union(subset: tuple) -> Optional[list]:
-        cond = []
+    def union(subset: tuple) -> Optional[tuple[list, list]]:
+        condition = []
         for values_of_feature in zip(*subset):
             k_ = None
             for v in values_of_feature:
@@ -80,42 +80,38 @@ def probability_of_sample(n, k, features: list | tuple, conditions: list[list | 
                         k_ = v
                     elif k_ != v:
                         return None
-            cond.append(k_)
-        return cond
+            condition.append(k_)
+        # Merkmale filtern, die für die Schnittmenge relevant sind
+        return ([features[i] for i in range(len(features)) if condition[i] is not None],
+                [k_ for k_ in condition if k_ is not None])
 
     # Formel für multivariaten hypergeometrische Verteilung
-    def hypergeom(nf, kf, condition):
+    def hypergeom(features_, condition):
+        kf = sum(condition)
         if kf > k:
             return 0.0
+        nf = sum(features_)
         prob = math.comb(n - nf, k - kf) / math.comb(n, k)
-        for n_, k_ in zip(features, condition):
+        for n_, k_ in zip(features_, condition):
             if k_ is not None:
                 prob *= math.comb(n_, k_)
         return prob
 
     number_of_conditions = len(conditions)
     if number_of_conditions == 1:
-        return hypergeom(sum(features), sum(conditions[0]), conditions[0])
+        return hypergeom(features, conditions[0])
 
     # alle Teilmengen und alle Schnittmengen durchlaufen... (jede Bedingung erzeugt eine Teilmenge)
     p = 0.0
     for length in range(1, number_of_conditions + 1):  # Schnittmenge mit length Überlappungen
         for subset_of_conditions in itertools.combinations(conditions, length):  # Bedingungen der Überlappungen in der Schnittmenge
             # Bedingung der Schnittmenge
-            condition = union(subset_of_conditions)
-            if not condition:
+            result = union(subset_of_conditions)
+            if result is None:
                 continue
-
-            # Summe der für die Schnittmenge relevanten Features in der Stichprobe
-            c_total = sum(k_ for k_ in condition if k_ is not None)
-            if c_total > k:
-                continue
-
-            # Summe der für die Schnittmenge relevanten Features gesamt
-            f_total = sum(features[i] for i in range(len(features)) if condition[i] is not None)
 
             # Wahrscheinlichkeit für die Schnittmenge
-            p_subset = hypergeom(f_total, c_total, condition)
+            p_subset = hypergeom(*result)
 
             # um Schnittmengen nicht mehrfach zu zählen, wird das Prinzip der Inklusion und Exklusion angewendet
             if length % 2 == 1:  # ungerade Anzahl Mengen in der Schnittmenge?
