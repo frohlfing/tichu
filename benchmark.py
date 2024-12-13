@@ -170,7 +170,7 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     print("scipy exact", hypergeometric_scipy_exact(N, n, M, k))
     print("manual", hypergeometric_manual(N, n, M, k))
     print("final1", hypergeometric_pmf(N, n, (M,), (k,)))
-    print("final2", probability_of_sample(N, n, (M,), [(k,)]))
+    print("final2", probability_of_sample(N, n, (M,), [(k,)], "=="))
 
     time_math = timeit(lambda: hypergeometric_math(N, n, M, k), number=number)
     time_scipy = timeit(lambda: hypergeometric_scipy(N, n, M, k), number=number)
@@ -178,7 +178,7 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     time_scipy_exact = timeit(lambda: hypergeometric_scipy_exact(N, n, M, k), number=number)
     time_manual = timeit(lambda: hypergeometric_manual(N, n, M, k), number=number)
     time_final1 = timeit(lambda: hypergeometric_pmf(N, n, (M,), (k,)), number=number)
-    time_final2 = timeit(lambda: probability_of_sample(N, n, (M,), [(k,)]), number=number)
+    time_final2 = timeit(lambda: probability_of_sample(N, n, (M,), [(k,)], "=="), number=number)
 
     print(f"math: {time_math:.6f} Sekunden")
     print(f"scipy: {time_scipy:.6f} Sekunden")

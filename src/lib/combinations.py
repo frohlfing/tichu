@@ -6,8 +6,7 @@ __all__ = "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "B
 
 
 import itertools
-import math
-from src.common.statistic import hypergeometric_ucdf, hypergeometric_pmf
+from src.common.statistic import probability_of_sample
 from src.lib.cards import CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO, is_wish_in, parse_cards, stringify_cards
 
 
@@ -883,41 +882,41 @@ def probability_of_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> 
     t, m, r = figure  # type, length, rank
     if t == STAIR:  # Treppe
         steps = int(m / 2)
-        p = hypergeometric_ucdf(n, k, h[r-steps+1:r+1], [2 for _ in range(steps)])  # Treppe ohne Phönix
+        p = probability_of_sample(n, k, h[r-steps+1:r+1], [[2 for _ in range(steps)]],">=")  # Treppe ohne Phönix
         if h[16]:  # Phönix vorhanden?
             for j in range(steps):  # Treppe mit Phönix an Stelle j
-                #p += hypergeometric_ucdf(n, k, [h[r-i] + (1 if i == j else 0) for i in range(steps)], [2 for _ in range(steps)])
-                p += hypergeometric_ucdf(n, k, [h[r-i] for i in range(steps) if i != j] + [h[r-j], 1], [2 for _ in range(steps - 1)] + [1, 1])  # Pärchen + Einzelkarte + Phönix
+                #p += probability_of_sample(n, k, [h[r-i] + (1 if i == j else 0) for i in range(steps)], [2 for _ in range(steps)], ">=")
+                p += probability_of_sample(n, k, [h[r-i] for i in range(steps) if i != j] + [h[r-j], 1], [[2 for _ in range(steps - 1)] + [1, 1]], ">=")  # Pärchen + Einzelkarte + Phönix
 
     elif t == FULLHOUSE:  # Full House
-        p = sum(hypergeometric_ucdf(n, k, [h[r], h[r2]], [3, 2]) for r2 in range(2, 15) if r2 != r)  # Fullhouse ohne Phönix
+        p = sum(probability_of_sample(n, k, [h[r], h[r2]], [[3, 2]], ">=") for r2 in range(2, 15) if r2 != r)  # Fullhouse ohne Phönix
         if h[16]:  # Phönix vorhanden?
-            p += sum(hypergeometric_ucdf(n, k, [h[r], h[r2], 1], [2, 2, 1]) for r2 in range(2, 15) if r2 != r)  # Pärchen + Pärchen + Phönix
-            p += hypergeometric_ucdf(n, k, [h[r], sum(h[2:15])-h[r], 1], [3, 1, 1])  # Drilling + Einzelkarte + Phönix
+            p += sum(probability_of_sample(n, k, [h[r], h[r2], 1], [[2, 2, 1]], ">=") for r2 in range(2, 15) if r2 != r)  # Pärchen + Pärchen + Phönix
+            p += probability_of_sample(n, k, [h[r], sum(h[2:15])-h[r], 1], [[3, 1, 1]], ">=")  # Drilling + Einzelkarte + Phönix
 
     elif t == STREET:  # Straße (oder Straßenbombe; Farbe wird hier nicht berücksichtigt)
-        p = hypergeometric_ucdf(n, k, h[r-m+1:r+1], [1 for _ in range(m)])  # Straße ohne Phönix
+        p = probability_of_sample(n, k, h[r-m+1:r+1], [[1 for _ in range(m)]], ">=")  # Straße ohne Phönix
         print(p)
         if h[16]:  # Phönix vorhanden?
             print("Phönix vorhanden")
             for j in range(int(m)):  # Straße mit Phönix an Stelle j
-                #p += hypergeometric_ucdf(n, k, [h[r-i] + (1 if i == j else 0) for i in range(m)], [1 for _ in range(m)])
-                p += hypergeometric_ucdf(n, k, [(1 if i == j else h[r-i]) for i in range(m)], [1 for _ in range(m)])
-                #p += hypergeometric_ucdf(n, k, [h[r-i] for i in range(m) if i != j] + [1], [1 for _ in range(m)])  # Einzelkarten + Phönix
+                #p += probability_of_sample(n, k, [h[r-i] + (1 if i == j else 0) for i in range(m)], [[1 for _ in range(m)]], ">=")
+                p += probability_of_sample(n, k, [(1 if i == j else h[r-i]) for i in range(m)], [[1 for _ in range(m)]], ">=")
+                #p += probability_of_sample(n, k, [h[r-i] for i in range(m) if i != j] + [1], [[1 for _ in range(m)]], ">=")  # Einzelkarten + Phönix
 
     elif t == BOMB and m >= 5:  # Straßenbombe
-        #p = sum(hypergeometric_ucdf(n, k, u[c][r-m-1:r-1], [1 for _ in range(m)]) for c in range(4))
-        p = sum(hypergeometric_ucdf(n, k, [m], [m]) for c in range(4) if sum(u[c][r-m-1:r-1]) == m)
+        #p = sum(probability_of_sample(n, k, u[c][r-m-1:r-1], [[1 for _ in range(m)]]) for c in range(4), ">=")
+        p = sum(probability_of_sample(n, k, [m], [[m]], ">=") for c in range(4) if sum(u[c][r-m-1:r-1]) == m)
 
     elif t == BOMB and m == 4:  # 4er-Bombe
-        p = hypergeometric_ucdf(n, k, [h[r]], [4])
+        p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
 
     elif t in [PAIR, TRIPLE]:  # Paar, Drilling
-        p = hypergeometric_ucdf(n, k, [h[r] + h[16]], [m])
+        p = probability_of_sample(n, k, [h[r] + h[16]], [[m]], ">=")
 
     else:
         assert t == SINGLE  # Einzelkarte
-        p = hypergeometric_ucdf(n, k, [h[r]], [1])
+        p = probability_of_sample(n, k, [h[r]], [[1]], ">=")
 
     return p
 
