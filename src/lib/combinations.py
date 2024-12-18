@@ -763,7 +763,7 @@ def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_
     return statistic
 
 
-# Listet die möglichen Handkarten auf, die die gegebene Kombination beinhalten
+# Listet die möglichen Hände auf und markiert, welche die gegebene Kombination hat
 #
 # Beispiel:
 # matches, hands = possible_hands(parse_cards("Dr RK GK BB SB RB R2"), 5, (2, 2, 11))
@@ -875,50 +875,100 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
     return matches, hands
 
 
+# Ermittelt die Anzahl der möglichen Hände mit dem gegebenen Fullhouse
+#
+# h: Anzahl der ungespielten Karten pro Rang
+# n: Anzahl der ungespielten Karten gesamt (== sum(h))
+# k: Anzahl Handkarten
+# r: Rang des Fullhouses
 def number_of_fullhouses(h: list[int], n: int, k: int, r: int) -> int:
 
-    # n_remain: Anzahl der übrigen ungespielten Karten
-    # k_remain: Anzahl der übrigen Handkarten
-    # r2: Rang des Pärchens
-    # pho: 1 wenn Phönix verfügbar, sonst 0
-    def number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
+    def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
         if n_remain < 2 or k_remain < 2:
             return 0
-
         if r2 == r:
-            return number_of_pairs(n_remain, k_remain, r2 + 1, pho) if r2 < 14 else 0
-
-        result = 0
-
-        # Pärchen mit dem gegebenen Rang (oder Einzelkarte mit dem gegebenen Rang + Phönix)
-        a = h[r2] + pho  # Anzahl Karten mit gegebenen Rang inkl. Phönix
-        if a >= 2:
-            pairs_ = 10 if a == 5 else 6 if a == 4 else 3 if a == 3 else 1  # Anzahl Möglichkeiten für ein Pärchen
-            assert pairs_ == math.comb(a, 2)
-            remaining = math.comb(n_remain - 2, k_remain - 2)  # Anzahl Möglichkeiten, die Hand mit den übrigen Karten aufzufüllen
-            result = pairs_ * remaining
-
-        if r2 < 14:
-            # Einzelkarte mit dem gegebenen Rang und ohne Phönix
+            return _number_of_pairs(n_remain, k_remain, r2 + 1, pho) if r2 < 14 else 0
+        # Pärchen (oder Einzelkarte + Phönix)
+        a = h[r2] + pho
+        matches_ = sum(math.comb(a, i) * math.comb(n_remain - a, k_remain - i) for i in range(2, a + 1))
+        # kein Pärchen → wir probieren ein höherwertiges Pärchen
+        if r2 < 14:  # Rang des Pärchens ist kleiner als Ass
             if h[r2] > 0 and pho == 0:
-                result += h[r2] * number_of_pairs(n_remain - h[r2], k_remain - 1, r2 + 1, 0)
-
+                # Einzelkarte ohne Phönix
+                matches_ += h[r2] * _number_of_pairs(n_remain - h[r2], k_remain - 1, r2 + 1, 0)
             # keine Karte mit dem gegebenen Rang
-            result += number_of_pairs(n_remain - h[r2], k_remain, r2 + 1, pho)
+            matches_ += _number_of_pairs(n_remain - h[r2], k_remain, r2 + 1, pho)
+        return matches_
 
-        return result
+    if n < 5 or k < 5:
+        return 0
+    # Drilling ohne Phönix
+    matches = sum(math.comb(h[r], i) * _number_of_pairs(n - h[r], k - i, 2, h[16]) for i in range(3, h[r] + 1))
+    # Drilling mit Phönix
+    if h[r] == 2 and h[16] == 1:
+        matches += _number_of_pairs(n - 3, k - 3, 2, 0)
+    return matches
 
-    # Drilling mit dem gegebenen Rang ohne Phönix
-    tripples_without_pho = 4 if h[r] == 4 else 1 if h[r] == 3 else 0  # Anzahl Möglichkeiten für einen Drilling
-    assert tripples_without_pho == math.comb(h[r], 3)
-    pairs = number_of_pairs(n - 3, k - 3, 2, h[16]) if tripples_without_pho > 0 else 0  # Anzahl Möglichkeiten, ein Pärchen mit den übrigen Karten zu bilden
 
-    # Drilling aus Phönix und Pärchen mit dem gegebenen Rang
-    tripples_with_pho = 1 if h[16] and h[r] == 2 else 0
-    pairs_without_pho = number_of_pairs(n - 3, k - 3, 2, 0) if tripples_with_pho > 0 else 0  # Anzahl Möglichkeiten, ein Pärchen mit den übrigen Karten zu bilden
+# Ermittelt die Anzahl der möglichen Hände mit der gegebenen Bombe
+#
+# h: Anzahl der ungespielten Karten pro Rang
+# h: Anzahl der ungespielten Karten von 2 bis Ass pro Farbe und pro Rang
+# n: Anzahl der ungespielten Karten gesamt (== sum(h))
+# k: Anzahl Handkarten
+# m: Länge der Bombe
+# r: Rang der Bombe
+def number_of_bombs(h: list[int], u: list[list[int]], n: int, k: int, m: int, r: int) -> int:
+    if n < m or k < m:
+        return 0
+    if m == 4:  # 4er-Bombe?
+        matches = math.comb(n - 4, k - 4) if h[r] == 4 else 0
+    else:  # Straßenbombe
+        b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Bomben
+        matches = b * math.comb(n - m, k - m) if b >= 1 else 0
+        if b >= 2 and k >= m * 2: # Hände mit 2 Bomben wurden doppelt gezählt und müssen wieder abgezogen werden
+            matches -= math.comb(b, 2) * math.comb(n - m * 2, k - m * 2)
+    return matches
 
-    # alle Möglichkeiten, ein Fullhouse zu bilden
-    matches = tripples_without_pho * pairs + tripples_with_pho * pairs_without_pho
+
+# Ermittelt die Anzahl der möglichen Hände mit dem gegebenen Drilling
+#
+# h: Anzahl der ungespielten Karten pro Rang
+# n: Anzahl der ungespielten Karten gesamt (== sum(h))
+# k: Anzahl Handkarten
+# r: Rang des Drillings
+def number_of_tripples(h: list[int], n: int, k: int, r: int) -> int:
+    if n < 3 or k < 3:
+        return 0
+    a = h[r] + h[16]
+    matches = sum(math.comb(a, i) * math.comb(n - a, k - i) for i in range(3, a + 1))
+    return matches
+
+
+# Ermittelt die Anzahl der möglichen Hände mit dem gegebenen Pärchen
+#
+# h: Anzahl der ungespielten Karten pro Rang
+# n: Anzahl der ungespielten Karten gesamt (== sum(h))
+# k: Anzahl Handkarten
+# r: Rang des Pärchens
+def number_of_pairs(h: list[int], n: int, k: int, r: int) -> int:
+    if n < 2 or k < 2:
+        return 0
+    a = h[r] + h[16]
+    matches = sum(math.comb(a, i) * math.comb(n - a, k - i) for i in range(2, a + 1))
+    return matches
+
+
+# Ermittelt die Anzahl der möglichen Hände mit der gegebenen Einzelkarte
+#
+# h: Anzahl der ungespielten Karten pro Rang
+# n: Anzahl der ungespielten Karten gesamt (== sum(h))
+# k: Anzahl Handkarten
+# r: Rang der Einzelkarte
+def number_of_singles(h: list[int], n: int, k: int, r: int) -> int:
+    if n < 1 or k < 1:
+        return 0
+    matches = sum(math.comb(h[r], i) * math.comb(n - h[r], k - i) for i in range(1, h[r] + 1))
     return matches
 
 
@@ -940,26 +990,11 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
     # Anzahl Möglichkeiten gesamt
     samples = math.comb(n, k)
 
-    # die ungespielten Karten je Rang zählen
-
+    # die ungespielten Karten je Rang
     #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
     h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-    # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
-    # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
-    u = [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
-    ]
-
     for v, c in unplayed_cards:
         h[v] += 1
-        if c > 0:
-            u[c-1][v-2] = 1
-
-    # Hypergeometrische Verteilung
 
     t, m, r = figure  # type, length, rank
     if t == STAIR:  # Treppe
@@ -971,17 +1006,6 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
         else:  # ohne Phönix
             conditions = [[2 for _ in range(steps)]]
         p = probability_of_sample(n, k, features, conditions, ">=")
-
-    # elif t == FULLHOUSE:  # Full House (korrekt, aber dauert viel zu lang)
-    #     features = h[2:15]
-    #     if h[16]:  # mit Phönix
-    #         features += [1]
-    #         conditions  = [[3 if i == r else 1 if i == r2 else None for i in range(2, 15)] + [1] for r2 in range(2, 15) if r2 != r]  # Drilling + (Einzelkarte + Phönix)
-    #         conditions += [[2 if i == r else 2 if i == r2 else None for i in range(2, 15)] + [1] for r2 in range(2, 15) if r2 != r]  # (Pärchen + Phönix) + Pärchen
-    #     else:  # ohne Phönix
-    #          conditions = [[3 if i == r else 2 if i == r2 else None for i in range(2, 15)] for r2 in range(2, 15) if r2 != r]
-    #     assert all(len(cond) == len(features) for cond in conditions)
-    #     p = probability_of_sample(n, k, features, conditions, ">=")
 
     elif t == FULLHOUSE:  # Full House
         p = number_of_fullhouses(h, n, k, r) / samples
@@ -997,20 +1021,30 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
                 p += probability_of_sample(n, k, [(1 if i == j else h[r-i]) for i in range(m)], [[1 for _ in range(m)]], ">=")
                 #p += probability_of_sample(n, k, [h[r-i] for i in range(m) if i != j] + [1], [[1 for _ in range(m)]], ">=")  # Einzelkarten + Phönix
 
-    elif t == BOMB and m >= 5:  # Straßenbombe
-        features = [sum(u[color][r-m-1:r-1]) for color in range(4)]
-        conditions = [[m if i == color else None for i in range(4)] for color in range(4)]
-        p = probability_of_sample(n, k, features, conditions, ">=")
+    elif t == BOMB:  # Bombe
+        #p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
+        # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
+        # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
+        u = [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
+        ]
+        for v, c in unplayed_cards:
+            if c > 0:
+                u[c - 1][v - 2] = 1
+        p = number_of_bombs(h, u, n, k, m, r) / samples
 
-    elif t == BOMB and m == 4:  # 4er-Bombe
-        p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
+    elif t == TRIPLE:  # Paar, Drilling
+        p = number_of_tripples(h, n, k, r) / samples
 
-    elif t in [PAIR, TRIPLE]:  # Paar, Drilling
-        p = probability_of_sample(n, k, [h[r] + h[16]], [[m]], ">=")
+    elif t == PAIR:  # Paar, Drilling
+        p = number_of_pairs(h, n, k, r) / samples
 
     else:
         assert t == SINGLE  # Einzelkarte
-        p = probability_of_sample(n, k, [h[r]], [[1]], ">=")
+        p = number_of_singles(h, n, k, r) / samples
 
     return p
 
@@ -1020,19 +1054,12 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 # -----------------------------------------------------------------------------
 
 def test_possible_hands():  # pragma: no cover
-    # ("BK SD BD BB BZ B9 R3", 6, (6, 5, 13), 2, 7, 0.2857142857142857, "Straße, mit Bombe"),
-
-    #("RK GK BD SB RB BZ Ph", 6, (5, 5, 11), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
-
-    #Fullhouse mit Phönix für Paar
-    matches, hands = possible_hands(parse_cards("Ph GK BD SB RB BB S2"), 6, (5, 5, 11))
-    #matches, hands = possible_hands(parse_cards("SB RB BB S2 R2 S3 R3 R4"), 7, (5, 5, 11))
+    matches, hands = possible_hands(parse_cards("BK RK SK G9 R9 S9 RB S2"), 7, (5, 5, 13))
     for match, sample in zip(matches, hands):
         print(stringify_cards(sample), match)
     print(f"p = {sum(matches)}/{len(hands)} = {sum(matches) / len(hands)}")
 
-    p = probability_of_hand(parse_cards("Ph GK BD SB RB BB S2"), 6, (5, 5, 11))
-    #p = probability_of_hand(parse_cards("SB RB BB S2 R2 S3 R3 R4"), 7, (5, 5, 11))
+    p = probability_of_hand(parse_cards("BK RK SK G9 R9 S9 RB S2"), 7, (5, 5, 13))
     print(f"p = {p}, n = {len(hands)*p}")
 
 

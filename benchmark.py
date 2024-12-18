@@ -195,23 +195,33 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     # manual: 0.002328 Sekunden
 
 
-def possible_hands_benchmark(n):
-    t = timeit(lambda: math.comb(n, 2), number=1000)
+def comb_math(a, i):
+    return math.comb(a, i)
+
+def comb_manuel(a, i):
+    if i == 2:
+        b = 10 if a == 5 else 6 if a == 4 else 3 if a == 3 else 1 if a == 2 else 0  # Anzahl Möglichkeiten für ein Pärchen
+    elif i == 3:
+        b = 10 if a == 5 else 4 if a == 4 else 1 if a == 3 else 0  # Anzahl Möglichkeiten für einen Drilling
+    elif i == 4:
+        b = 5 if a == 5 else 1 if a == 4 else 0  # Anzahl Möglichkeiten für einen Vierling
+    else:
+        b = 1 if a == 5 else 0  # Anzahl Möglichkeiten für einen Fünfling
+    return b
+
+def possible_hands_benchmark(n, k):
+    t = timeit(lambda: comb_math(n, k), number=1000)
     print(f"math.comb: {t:.6f} Sekunden")
 
-    t = timeit(lambda: 6 if n == 4 else 3 if n == 3 else 1 if n == 2 else 0, number=100)
+    t = timeit(lambda: comb_manuel(n, k), number=1000)
     print(f"manuel: {t:.6f} Sekunden")
-
-    h = [n]
-    t = timeit(lambda: 6 if h[0] == 4 else 3 if h[0] == 3 else 1 if h[0] == 2 else 0, number=100)
-    print(f"manuel2: {t:.6f} Sekunden")
 
 
 if __name__ == '__main__':
-    possible_hands_benchmark(4)
-    possible_hands_benchmark(3)
-    possible_hands_benchmark(2)
-    possible_hands_benchmark(1)
+    possible_hands_benchmark(5, 3)
+    possible_hands_benchmark(5, 5)
+    possible_hands_benchmark(4, 2)
+    possible_hands_benchmark(3, 2)
     #binomial_benchmark(n=56, k=14)
     #binomial_benchmark(n=1000, k=500)
     #hypergeometric_benchmark(N=56, n=14, M=4, k=3)
