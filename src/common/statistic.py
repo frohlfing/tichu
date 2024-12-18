@@ -92,15 +92,18 @@ def probability_of_sample(n, k, features: list|tuple, conditions: list[list|tupl
                         elif k_ != v:
                             return None
             condition.append(k_)
-        return ([features[i] for i in range(len(features)) if condition[i] is not None],
-                [k_ for k_ in condition if k_ is not None])
+        features_ = [features[i] for i in range(len(features)) if condition[i] is not None]
+        condition_ = [k_ for k_ in condition if k_ is not None]
+        if any(f < c for f, c in zip(features_, condition_)):
+            return None
+        return features_, condition_
 
     def hypergeom_pmf(features_: list|tuple, condition: list|tuple) -> float:
         # Probability Mass Function für (multivariaten) hypergeometrische Verteilung, P(X = k)
-        kf = sum(condition)
+        kf = sum(v for v in condition if v is not None)
         if kf > k:
             return 0.0
-        nf = sum(features_)
+        nf = sum(features_[i] for i in range(len(features_)) if condition[i] is not None)
         prob = math.comb(n - nf, k - kf) / math.comb(n, k)
         for n_, k_ in zip(features_, condition):
             if k_ is not None:
@@ -117,7 +120,7 @@ def probability_of_sample(n, k, features: list|tuple, conditions: list[list|tupl
     def hypergeom_ucdf(features_: list|tuple, condition_min: list|tuple) -> float:
         # Upper Cumulative Distribution Function für hypergeometrische Verteilung, P(X ≥ k)
         prob = 0.0
-        for condition in itertools.product(*[range(v_min, v_max + 1) for v_min, v_max in zip(condition_min, features) if v_min is not None]):
+        for condition in itertools.product(*[range(v_min, v_max + 1) for v_min, v_max in zip(condition_min, features_) if v_min is not None]):
             prob += hypergeom_pmf(features_, condition)
         return prob
 
@@ -132,6 +135,8 @@ def probability_of_sample(n, k, features: list|tuple, conditions: list[list|tupl
     # alle Teilmengen und alle Schnittmengen durchlaufen... (jede Bedingung erzeugt eine Teilmenge)
     p = 0.0
     for length in range(1, number_of_conditions + 1):  # Schnittmenge mit length Überlappungen
+        #print("number_of_conditions", number_of_conditions)
+        #print("itertools.combinations", len(list((itertools.combinations(conditions, length)))))
         for subset_of_conditions in itertools.combinations(conditions, length):  # Bedingungen der Überlappungen in der Schnittmenge
             # Bedingung der Schnittmenge
             result = union(subset_of_conditions)
@@ -149,8 +154,16 @@ def probability_of_sample(n, k, features: list|tuple, conditions: list[list|tupl
             # um Schnittmengen nicht mehrfach zu zählen, wird das Prinzip der Inklusion und Exklusion angewendet
             if length % 2 == 1:  # ungerade Anzahl Mengen in der Schnittmenge?
                 p += p_subset  # Inklusion
+                if p_subset:
+                    print("subset_of_conditions", subset_of_conditions)
+                    print("result", result)
+                    print("+p_subset",p_subset)
             else:
                 p -= p_subset  # Exklusion
+                if p_subset:
+                    print("subset_of_conditions", subset_of_conditions)
+                    print("result", result)
+                    print("-p_subset", p_subset)
     return p
 
 
@@ -160,7 +173,8 @@ def probability_of_sample(n, k, features: list|tuple, conditions: list[list|tupl
 #
 # Beispiel:
 # matches, samples = match_samples(["g1", "g2", "g3", "r1", "r2", "r3", "r4"], 5, [{"g": 2}], "==")
-# print(list(zip(matches, samples)))
+# for s in zip(samples, matches):
+#    print(s)
 # print(f"p = {sum(matches) / len(samples)}")
 #
 # elements: Liste der Elemente
@@ -195,9 +209,9 @@ def match_samples(elements: list | tuple, k: int, features: dict | list, operato
 
 
 def test():  # pragma: no cover
-    #print(hypergeometric_pmf(7, 5, (2, 2, 2), (2, 1, None)))
-    #print(hypergeometric_pmf_ext(7, 5, (2, 2, 2), [(2, 1, None)]))
-    print(probability_of_sample(7, 5, (2, 2, 2), [(2, 1, None), (2, None, 2)], "=="))
+    matches, samples = match_samples(["g1", "g2", "g3", "r1", "r2", "r3", "r4"], 5, [{"g": 2}], "==")
+    for s in zip(samples, matches):
+       print(s)
 
 
 if __name__ == "__main__":  # pragma: no cover

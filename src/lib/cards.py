@@ -1,5 +1,5 @@
 __all__ = "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
-    "deck", "cardlabels", "cardlabels_index", "parse_cards", "stringify_cards", "print_cards", "is_wish_in", \
+    "deck", "cardlabels", "cardlabels_index", "parse_cards", "stringify_cards", "is_wish_in", \
     "sum_card_points", "other_cards",
 
 # -----------------------------------------------------------------------------
@@ -135,12 +135,6 @@ def parse_cards(s: str) -> list[tuple]:
 # cards: Karten, z.B. [(8,3),(2,4),(0,1)]
 def stringify_cards(cards: list[tuple]) -> str:
     return " ".join([cardlabels[deck_index[c]] for c in cards])
-
-
-# Karten anzeigen
-# cards: Karten, z.B. [(8,3),(2,4),(0,1)]
-def print_cards(cards: list[tuple]):  # pragma: no cover
-    print(stringify_cards(cards))
 
 
 # Ist der gewünschte Wert unter den Karten?

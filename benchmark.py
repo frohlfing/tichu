@@ -195,14 +195,24 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     # manual: 0.002328 Sekunden
 
 
-def possible_hands_benchmark():
-    t = timeit(lambda: list(itertools.combinations(range(8), 6)), number=100)
-    print(f"math: {t:.6f} Sekunden")
+def possible_hands_benchmark(n):
+    t = timeit(lambda: math.comb(n, 2), number=1000)
+    print(f"math.comb: {t:.6f} Sekunden")
+
+    t = timeit(lambda: 6 if n == 4 else 3 if n == 3 else 1 if n == 2 else 0, number=100)
+    print(f"manuel: {t:.6f} Sekunden")
+
+    h = [n]
+    t = timeit(lambda: 6 if h[0] == 4 else 3 if h[0] == 3 else 1 if h[0] == 2 else 0, number=100)
+    print(f"manuel2: {t:.6f} Sekunden")
 
 
 if __name__ == '__main__':
-    #possible_hands_benchmark()
+    possible_hands_benchmark(4)
+    possible_hands_benchmark(3)
+    possible_hands_benchmark(2)
+    possible_hands_benchmark(1)
     #binomial_benchmark(n=56, k=14)
     #binomial_benchmark(n=1000, k=500)
-    hypergeometric_benchmark(N=56, n=14, M=4, k=3)
-    hypergeometric_benchmark(N=1000, n=500, M=100, k=50)
+    #hypergeometric_benchmark(N=56, n=14, M=4, k=3)
+    #hypergeometric_benchmark(N=1000, n=500, M=100, k=50)
