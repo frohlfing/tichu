@@ -371,14 +371,15 @@ class TestCombinations(unittest.TestCase):
     def test_probability_of_possible_hands(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
-            # ("Dr RK GK BD SB R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
-            # ("Dr RK GK BD SB RB R2", 5, (1, 1, 11), 20, 21, 0.9523809523809523, "Einzelkarte mit 2 Buben"),
-            # ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 18, 21, 0.8571428571428571, "Pärchen ohne Phönix"),
-            # ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 18, 21, 0.8571428571428571, "Pärchen mit Phönix"),
-            # ("SK RK GB BB SB R3 R2", 4, (3, 3, 11), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
-            # ("Ph RK GB BB SB R3 R2", 4, (3, 3, 11), 13, 35, 0.37142857142857144, "Drilling mit Phönix"),
-            # ("RK GK BD SD SB RB BB", 6, (4, 6, 13), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
-            # ("Ph GK BD SD SB RB BB", 6, (4, 6, 13), 3, 7, 0.42857142857142855, "3er-Treppe mit Phönix"),
+            ("Dr RK GK BD SB R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
+            ("Dr RK GK BD SB RB R2", 5, (1, 1, 11), 20, 21, 0.9523809523809523, "Einzelkarte mit 2 Buben"),
+            ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 18, 21, 0.8571428571428571, "Pärchen ohne Phönix"),
+            ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 18, 21, 0.8571428571428571, "Pärchen mit Phönix"),
+            ("SK RK GB BB SB R3 R2", 4, (3, 3, 11), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
+            ("Ph RK GB BB SB R3 R2", 4, (3, 3, 11), 13, 35, 0.37142857142857144, "Drilling mit Phönix"),
+            ("RK GK BD SD SB RB BB", 6, (4, 6, 13), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
+            ("Ph GK BD SD SB RB BB", 6, (4, 6, 13), 3, 7, 0.42857142857142855, "3er-Treppe mit Phönix"),
+            ("RK GK BD SD GD R9 B2", 6, (4, 4, 13), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
             ("RK GK BD SB RB BB S2", 6, (5, 5, 11), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
             ("Ph GK BD SB RB BB S2", 6, (5, 5, 11), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
             ("RK GK BD SB RB BZ Ph", 6, (5, 5, 11), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
@@ -392,17 +393,17 @@ class TestCombinations(unittest.TestCase):
             #("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 13), 5, 28, 0.17857142857142858, "Straße ohne Phönix (aus 8 Karten)"),
             #("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 13), 13, 28, 0.4642857142857143, "Straße mit Phönix 2 (aus 8 Karten)"),
             #("SK RK GD BB RZ B9 R8 Ph", 6, (6, 5, 13), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert)"),
-            #("RK GB BB SB RB BZ R2", 5, (7, 4, 11), 3, 21, 0.14285714285714285, "4er-Bombe"),
-            #("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 11), 1, 21, 0.047619047619047616, "Straßenbombe"),
-            #("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 13), 12, 12, 1.0, "2 Straßenbomben in 12 Karten"),
-            #("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 13), 53, 78, 0.6794871794871795, "2 Straßenbomben in 13 Karten"),
+            ("RK GB BB SB RB BZ R2", 5, (7, 4, 11), 3, 21, 0.14285714285714285, "4er-Bombe"),
+            ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 11), 1, 21, 0.047619047619047616, "Straßenbombe"),
+            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 13), 12, 12, 1.0, "2 Straßenbomben in 12 Karten"),
+            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 13), 53, 78, 0.6794871794871795, "2 Straßenbomben in 13 Karten"),
         ]
         for t in test:
             print(t[6])
             # possible_hands
             matches, hands = possible_hands(parse_cards(t[0]), t[1], t[2])
-            for match, hand in zip(matches, hands):
-                print(stringify_cards(hand), match)
+            #for match, hand in zip(matches, hands):
+            #    print(stringify_cards(hand), match)
             self.assertEqual(t[3], sum(matches))
             self.assertEqual(t[4], len(hands))
             self.assertEqual(t[4], len(list(zip(matches, hands))))

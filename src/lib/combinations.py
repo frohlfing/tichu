@@ -875,6 +875,38 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
     return matches, hands
 
 
+# Ermittelt die Anzahl der möglichen Hände mit der gegebenen Treppe
+#
+# h: Anzahl der ungespielten Karten pro Rang
+# n: Anzahl der ungespielten Karten gesamt (== sum(h))
+# k: Anzahl Handkarten
+# m: Länge der Treppe (Anzahl Karten in der Treppe)
+# r: Rang der Treppe
+def number_of_stairs(h: list[int], n: int, k: int, m: int, r: int) -> int:
+    def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
+        if n_remain < 2 or k_remain < 2:
+            return 0
+        if r2 == r:
+            a = h[r2] + pho
+            return sum(math.comb(a, i) * math.comb(n_remain - a, k_remain - i) for i in range(2, a + 1))
+        if h[r2] >= 2:
+            # Pärchen ohne Phönix
+            matches_ = sum(math.comb(h[r2], i) * _number_of_pairs(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(2, h[r2] + 1))
+        elif h[r2] == 1 and pho == 1:
+            # Pärchen mit Phönix
+            matches_ = _number_of_pairs(n_remain - 2, k_remain - 2, r2 + 1, 0)
+        else:
+            # kein Pärchen
+            matches_ = 0
+        return matches_
+
+    if n < m or k < m:
+        return 0
+    steps = int(m / 2)
+    matches = _number_of_pairs(n, k, r - steps + 1, h[16])
+    return matches
+
+
 # Ermittelt die Anzahl der möglichen Hände mit dem gegebenen Fullhouse
 #
 # h: Anzahl der ungespielten Karten pro Rang
@@ -902,11 +934,15 @@ def number_of_fullhouses(h: list[int], n: int, k: int, r: int) -> int:
 
     if n < 5 or k < 5:
         return 0
-    # Drilling ohne Phönix
-    matches = sum(math.comb(h[r], i) * _number_of_pairs(n - h[r], k - i, 2, h[16]) for i in range(3, h[r] + 1))
-    # Drilling mit Phönix
-    if h[r] == 2 and h[16] == 1:
-        matches += _number_of_pairs(n - 3, k - 3, 2, 0)
+    if h[r] >= 3:
+        # Drilling ohne Phönix
+        matches = sum(math.comb(h[r], i) * _number_of_pairs(n - h[r], k - i, 2, h[16]) for i in range(3, h[r] + 1))
+    elif h[r] == 2 and h[16] == 1:
+        # Drilling mit Phönix
+        matches = _number_of_pairs(n - 3, k - 3, 2, 0)
+    else:
+        # kein Drilling
+        matches = 0
     return matches
 
 
@@ -998,14 +1034,7 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 
     t, m, r = figure  # type, length, rank
     if t == STAIR:  # Treppe
-        steps = int(m / 2)
-        features = h[r - steps + 1:r + 1]
-        if h[16]:  # mit Phönix
-            features += [1]
-            conditions = [[1 if i == j else 2 for i in range(steps)] + [1] for j in range(steps)]
-        else:  # ohne Phönix
-            conditions = [[2 for _ in range(steps)]]
-        p = probability_of_sample(n, k, features, conditions, ">=")
+        p = number_of_stairs(h, n, k, m, r) / samples
 
     elif t == FULLHOUSE:  # Full House
         p = number_of_fullhouses(h, n, k, r) / samples
@@ -1054,12 +1083,13 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 # -----------------------------------------------------------------------------
 
 def test_possible_hands():  # pragma: no cover
-    matches, hands = possible_hands(parse_cards("BK RK SK G9 R9 S9 RB S2"), 7, (5, 5, 13))
+    #("RK GK BD SD GD R9 B2", 6, (4, 6, 13), 3, 7, 0.42857142857142855, "2er-Treppe aus Fullhouse"),
+    matches, hands = possible_hands(parse_cards("RK GK BD SD GD R9 B2"), 6, (4, 4, 13))
     for match, sample in zip(matches, hands):
         print(stringify_cards(sample), match)
     print(f"p = {sum(matches)}/{len(hands)} = {sum(matches) / len(hands)}")
 
-    p = probability_of_hand(parse_cards("BK RK SK G9 R9 S9 RB S2"), 7, (5, 5, 13))
+    p = probability_of_hand(parse_cards("RK GK BD SD GD R9 B2"), 6, (4, 4, 13))
     print(f"p = {p}, n = {len(hands)*p}")
 
 
