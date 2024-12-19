@@ -886,9 +886,9 @@ def number_of_stairs(h: list[int], n: int, k: int, m: int, r: int) -> int:
     def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
         if n_remain < 2 or k_remain < 2:
             return 0
-        if r2 == r:
+        if r2 == r:  # todo vermutlich fehlerhaft, wenn der Phönix nicht benötigt wird (Logig wie bei de Straße übernhemen)
             a = h[r2] + pho
-            return sum(math.comb(a, i) * math.comb(n_remain - a, k_remain - i) for i in range(2, a + 1))
+            return sum(math.comb(a, i) * math.comb(n_remain - a, k_remain - i) for i in range(2, a + 1) if k_remain >= i)
         if h[r2] >= 2:
             # Pärchen ohne Phönix
             matches_ = sum(math.comb(h[r2], i) * _number_of_pairs(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(2, h[r2] + 1))
@@ -904,6 +904,31 @@ def number_of_stairs(h: list[int], n: int, k: int, m: int, r: int) -> int:
         return 0
     steps = int(m / 2)
     matches = _number_of_pairs(n, k, r - steps + 1, h[16])
+    return matches
+
+
+# Ermittelt die Anzahl der möglichen Hände mit der gegebenen Straße
+#
+# h: Anzahl der ungespielten Karten pro Rang
+# n: Anzahl der ungespielten Karten gesamt (== sum(h))
+# k: Anzahl Handkarten
+# m: Länge der Straße
+# r: Rang der Straße
+def number_of_streets(h: list[int], n: int, k: int, m: int, r: int) -> int:
+    def _number_of_singles(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
+        if r2 > r:
+            return math.comb(n_remain, k_remain)
+        if n_remain < 1 or k_remain < 1:
+            return 0
+        # Einzelkarte bis Bombe, ohne Phönix
+        matches_ = sum(math.comb(h[r2], i) * _number_of_singles(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(1, h[r2] + 1))
+        if pho == 1:  # Phönix als Karte mit diesem Rang einsetzen
+            matches_ += _number_of_singles(n_remain - h[r2] - 1, k_remain - 1, r2 + 1, 0)
+        return matches_
+
+    if n < m or k < m:
+        return 0
+    matches = _number_of_singles(n, k, r - m + 1, h[16])
     return matches
 
 
@@ -923,9 +948,9 @@ def number_of_fullhouses(h: list[int], n: int, k: int, r: int) -> int:
         # Pärchen (oder Einzelkarte + Phönix)
         a = h[r2] + pho
         matches_ = sum(math.comb(a, i) * math.comb(n_remain - a, k_remain - i) for i in range(2, a + 1))
-        # kein Pärchen → wir probieren ein höherwertiges Pärchen
+        # kein Pärchen → wir probieren ein höherwertiges Pärchen  # todo Kommentar hier verwirrend
         if r2 < 14:  # Rang des Pärchens ist kleiner als Ass
-            if h[r2] > 0 and pho == 0:
+            if h[r2] > 0 and pho == 0:  # todo vermutlich falsch, mit 2 Drillinge und ohne Phönix (muss es nicht h[r2] == 1 sein?)
                 # Einzelkarte ohne Phönix
                 matches_ += h[r2] * _number_of_pairs(n_remain - h[r2], k_remain - 1, r2 + 1, 0)
             # keine Karte mit dem gegebenen Rang
@@ -935,13 +960,13 @@ def number_of_fullhouses(h: list[int], n: int, k: int, r: int) -> int:
     if n < 5 or k < 5:
         return 0
     if h[r] >= 3:
-        # Drilling ohne Phönix
+        # Drilling (ohne Phönix)
         matches = sum(math.comb(h[r], i) * _number_of_pairs(n - h[r], k - i, 2, h[16]) for i in range(3, h[r] + 1))
     elif h[r] == 2 and h[16] == 1:
-        # Drilling mit Phönix
+        # kein Drilling, aber Pärchen mit Phönix
         matches = _number_of_pairs(n - 3, k - 3, 2, 0)
     else:
-        # kein Drilling
+        # kein Drilling vorhanden
         matches = 0
     return matches
 
@@ -1040,15 +1065,7 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
         p = number_of_fullhouses(h, n, k, r) / samples
 
     elif t == STREET:  # Straße (oder Straßenbombe; Farbe wird hier nicht berücksichtigt)
-        p = probability_of_sample(n, k, h[r-m+1:r+1], [[1 for _ in range(m)]], ">=")  # Straße ohne Phönix
-        print(p)
-        if h[16]:  # mit Phönix
-            # todo
-            print("Phönix vorhanden")
-            for j in range(int(m)):  # Straße mit Phönix an Stelle j
-                #p += probability_of_sample(n, k, [h[r-i] + (1 if i == j else 0) for i in range(m)], [[1 for _ in range(m)]], ">=")
-                p += probability_of_sample(n, k, [(1 if i == j else h[r-i]) for i in range(m)], [[1 for _ in range(m)]], ">=")
-                #p += probability_of_sample(n, k, [h[r-i] for i in range(m) if i != j] + [1], [[1 for _ in range(m)]], ">=")  # Einzelkarten + Phönix
+        p = number_of_streets(h, n, k, m, r) / samples
 
     elif t == BOMB:  # Bombe
         #p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
@@ -1083,14 +1100,18 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 # -----------------------------------------------------------------------------
 
 def test_possible_hands():  # pragma: no cover
-    #("RK GK BD SD GD R9 B2", 6, (4, 6, 13), 3, 7, 0.42857142857142855, "2er-Treppe aus Fullhouse"),
-    matches, hands = possible_hands(parse_cards("RK GK BD SD GD R9 B2"), 6, (4, 4, 13))
+    #("SK RK GD BB RZ B9 R8 Ph", 6, (6, 5, 13), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert)"),
+    matches, hands = possible_hands(parse_cards("Ph SK RK GD BB RZ B9 R8"), 6, (6, 5, 13))
     for match, sample in zip(matches, hands):
         print(stringify_cards(sample), match)
     print(f"p = {sum(matches)}/{len(hands)} = {sum(matches) / len(hands)}")
 
-    p = probability_of_hand(parse_cards("RK GK BD SD GD R9 B2"), 6, (4, 4, 13))
+    p = probability_of_hand(parse_cards("Ph SK RK GD BB RZ B9 R8"), 6, (6, 5, 13))
     print(f"p = {p}, n = {len(hands)*p}")
+
+
+def generate_unit_tests():  # pragma: no cover
+
 
 
 if __name__ == "__main__":  # pragma: no cover
