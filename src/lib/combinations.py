@@ -1094,7 +1094,7 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 # -----------------------------------------------------------------------------
 
 def test_possible_hands():  # pragma: no cover
-    cards, k, figure = "Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 10)  #, 12, 210, 0.05714285714285714, "2erTreppeZ, Test 46"),
+    cards, k, figure = "SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 10)  # , 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
 
     matches, hands = possible_hands(parse_cards(cards), k, figure)
     for match, sample in zip(matches, hands):
