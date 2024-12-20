@@ -7,10 +7,7 @@ __all__ = "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "B
 
 import itertools
 import math
-
-from src.common.statistic import probability_of_sample
 from src.lib.cards import CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO, is_wish_in, parse_cards, stringify_cards
-
 
 # -----------------------------------------------------------------------------
 # Kartenkombinationen
@@ -26,7 +23,7 @@ FULLHOUSE = 5  # Full House
 STREET = 6     # Straße
 BOMB = 7       # Bombe
 
-# Sonderkarten einzeln ausgespielt (Typ, Länge, Wert)
+# Sonderkarten einzeln ausgespielt (Typ, Länge, Rang)
 FIGURE_PASS = (0, 0, 0)
 FIGURE_DOG = (1, 1, 0)
 FIGURE_MAH = (1, 1, 1)
@@ -34,7 +31,7 @@ FIGURE_DRA = (1, 1, 15)
 FIGURE_PHO = (1, 1, 16)
 
 # Alle möglichen Figuren
-figures = (  # Index → figure == (Typ, Länge, Wert)
+figures = (  # Index → figure == (Typ, Länge, Rang)
     # Passen - PASS
     (0, 0, 0),
     # Einzelkarten - SINGLE  (1,1,0) == Hund, (1,1,1) == MahJong, (1,1,15) == Drache, (1,1,16) == Phönix
@@ -77,7 +74,7 @@ figures = (  # Index → figure == (Typ, Länge, Wert)
 )
 
 # wie figures.index(figure), aber schneller!
-figures_index = {  # figure == (Typ, Länge, Wert) → Index
+figures_index = {  # figure == (Typ, Länge, Rang) → Index
     # Passen - PASS
     (0, 0, 0): 0,
     # Einzelkarten - SINGLE  (1,1,0) == Hund, (1,1,1) == MahJong, (1,1,15) == Drache, (1,1,16) == Phönix
@@ -205,21 +202,21 @@ figurelabels_index = {
 }
 
 
-# Label einer Kartenkombination in Typ, Länge und Wert umwandeln
+# Label einer Kartenkombination in Typ, Länge und Rang umwandeln
 def parse_figure(lb: str) -> tuple:
     return figures[figurelabels_index[lb]]
 
 
-# Typ, Länge und Wert einer Kombination zum Label umwandeln
+# Typ, Länge und Rang einer Kombination zum Label umwandeln
 def stringify_figure(figure: tuple) -> str:
     return figurelabels[figures_index[figure]]
 
 
-# Typ, Länge und Wert der Kartenkombination ermitteln
+# Typ, Länge und Rang der Kartenkombination ermitteln
 # cards: Karten der Kombination, z.B. [(8,4),(8,2),(8,1)]
-# trick_value: Wert des aktuellen Stichs (0, wenn kein Stich ausgelegt ist)
+# trick_value: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist)
 # shift_phoenix: Wenn True, wird der Phönix eingereiht (kostet etwas Zeit)
-# return: (Typ, Länge, Wert);
+# return: (Typ, Länge, Rang);
 # Parameter cards wird absteigend sortiert. Wenn shift_phoenix gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
 def get_figure(cards: list, trick_value: int, shift_phoenix: bool = False) -> tuple:
     n = len(cards)
@@ -247,7 +244,7 @@ def get_figure(cards: list, trick_value: int, shift_phoenix: bool = False) -> tu
     else:
         t = STREET
 
-    # Wert
+    # Rang
     if t == SINGLE:
         if cards[0] == CARD_PHO:
             assert 0 <= trick_value <= 15
@@ -312,7 +309,7 @@ def get_figure(cards: list, trick_value: int, shift_phoenix: bool = False) -> tu
 
 # Kombinationsmöglichkeiten der Handkarten ermitteln (die besten zu erst)
 # hand: Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)]
-# return: [(Karten, (Typ, Länge, Wert)), ...]
+# return: [(Karten, (Typ, Länge, Rang)), ...]
 def build_combinations(hand: list[tuple]) -> list[tuple]:
     has_phoenix = CARD_PHO in hand
     arr = [[], [], [], [], [], [], [], []]  # pro Type ein Array
@@ -352,7 +349,7 @@ def build_combinations(hand: list[tuple]) -> list[tuple]:
     m = len(temp)
     i = 0
     while i < m:
-        v = temp[i][-2][0]  # Wert der vorletzten Karte in der Treppe
+        v = temp[i][-2][0]  # Rang der vorletzten Karte in der Treppe
         for pair in arr[PAIR]:
             if pair[1] == CARD_PHO and CARD_PHO in temp[i]:
                 continue
@@ -366,7 +363,7 @@ def build_combinations(hand: list[tuple]) -> list[tuple]:
     for triple in arr[TRIPLE]:
         for pair in arr[PAIR]:
             if triple[0][0] == pair[0][0]:
-                # Ausnahmeregel: Der Drilling darf nicht vom gleichen Wert sein wie das Paar (wäre mit Phönix möglich).
+                # Ausnahmeregel: Der Drilling darf nicht vom gleichen Rang sein wie das Paar (wäre mit Phönix möglich).
                 continue
             if triple[2] == CARD_PHO and triple[0][0] < pair[0][0]:
                 # Man würde immer den Phönix zum höherwertigen Pärchen sortieren.
@@ -381,7 +378,7 @@ def build_combinations(hand: list[tuple]) -> list[tuple]:
             continue  # Sonderkarte oder vorherigen Karte gleichwertig
         v1 = hand[i1][0]
         if v1 < (4 if has_phoenix else 5):  # if v1 < 5:
-            break  # eine Straße hat mindestens den Wert 5
+            break  # eine Straße hat mindestens den Rang 5
         temp = [[hand[i1]]]
         for i2 in range(i1 + 1, n):
             if hand[i2] == CARD_DOG:
@@ -435,15 +432,15 @@ def build_combinations(hand: list[tuple]) -> list[tuple]:
                     elif cards[k - 1][0] > 2:
                         arr[STREET].append(cards[0:k] + [CARD_PHO])
 
-    # Type, Wert und Länge der Kombinationen auflisten (zuerst die besten)
+    # Type, Rang und Länge der Kombinationen auflisten (zuerst die besten)
     result = []
     for t in range(7, 0, -1):  # Typ t = 7 (BOMB) .. 1 (SINGLE)
         for cards in arr[t]:
-            # Wert ermitteln
+            # Rang ermitteln
             if t == STREET and cards[0] == CARD_PHO:
-                v = cards[1][0] + 1  # Phönix == Wert der zweiten Karte + 1
+                v = cards[1][0] + 1  # Phönix == Rang der zweiten Karte + 1
             else:
-                v = cards[0][0]  # Wert der ersten Karte
+                v = cards[0][0]  # Rang der ersten Karte
             # Kombination speichern
             result.append((cards, (t, len(cards), v)))
 
@@ -451,16 +448,16 @@ def build_combinations(hand: list[tuple]) -> list[tuple]:
 
 
 # Kombinationsmöglichkeiten entfernen, die aus mind. eine der angegebenen Karten bestehen
-# combis: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Wert)), ...]
+# combis: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...]
 # cards: Karten, die entfernt werden sollen
-# return: [(Karten, (Typ, Länge, Wert)), ...]
+# return: [(Karten, (Typ, Länge, Rang)), ...]
 def remove_combinations(combis: list[tuple], cards: list[tuple]):
     return [combi for combi in combis if not set(cards).intersection(combi[0])]
 
 
 # Spielbare Kartenkombinationen ermitteln
-# combis: Kombinationsmöglichkeiten der Hand, also [(Karten, (Typ, Länge, Wert)), ...]
-# trick_figure: Typ, Länge, Wert des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
+# combis: Kombinationsmöglichkeiten der Hand, also [(Karten, (Typ, Länge, Rang)), ...]
+# trick_figure: Typ, Länge, Rang des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
 # unfulfilled_wish: Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt)
 # return: ([], (0,0,0)) für Passen sofern möglich + mögliche Kombinationen aus combis
 def build_action_space(combis: list[tuple], trick_figure: tuple, unfulfilled_wish: int) -> list[tuple]:
@@ -514,9 +511,9 @@ def build_action_space(combis: list[tuple], trick_figure: tuple, unfulfilled_wis
 # Diese Parameter werden erwartet:
 # player: Meine Spielernummer (zw. 0 und 3)
 # hand: Eigene Handkarten
-# combis: Zu bewertende Kombinationen (gebildet aus den Handkarten) [(Karten, (Typ, Länge, Wert)), ...]
+# combis: Zu bewertende Kombinationen (gebildet aus den Handkarten) [(Karten, (Typ, Länge, Rang)), ...]
 # number_of_cards: Anzahl der Handkarten aller Spieler.
-# trick_figure: Typ, Länge, Wert des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
+# trick_figure: Typ, Länge, Rang des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
 # unplayed_cards: Noch nicht gespielte Karten
 def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_of_cards:  list[int], trick_figure: tuple, unplayed_cards: list[tuple]) -> dict:
     assert hand  # wir haben bereits bzw. noch Karten auf der Hand
@@ -573,9 +570,9 @@ def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_
     d[STAIR] = [None, None, None, None, [], None, [], None, [], None, [], None, [], None, []]
     for k in range(7, 1, -1):  # Anzahl Paare in der Treppe (7 bis 2)
         n = k * 2  # Anzahl Karten in der Treppe
-        # Wert         0  1  2  3  4  5  6  7  8  9 10 11 12 13 14
+        # Rang         0  1  2  3  4  5  6  7  8  9 10 11 12 13 14
         d[STAIR][n] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        for v in range(k + 1, 15):  # höchstes Paar (=Wert der Kombination)
+        for v in range(k + 1, 15):  # höchstes Paar (=Rang der Kombination)
             phoenix_available = phoenix
             counter = 1
             for i in range(k):  # Anzahl Paare
@@ -597,7 +594,7 @@ def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_
         sum_singles = sum(d[SINGLE][1][:16])  # Anzahl Karten ohne Phönix
         for v in range(2, 15):
             # fullhouse = # Drilling + Einzelkarte + Phönix
-            # Ausnahmeregel: Der Drilling darf nicht vom gleichen Wert sein wie die Einzelkarte.
+            # Ausnahmeregel: Der Drilling darf nicht vom gleichen Rang sein wie die Einzelkarte.
             d[FULLHOUSE][5][v] += d[TRIPLE][3][v] * (sum_singles - d[SINGLE][1][v])
             # fullhouse = Paar1 + Phönix + Paar2
             # Bedingung: Paar1 ist größer als Paar2 (man würde immer den Phönix zum höherwertigen Pärchen sortieren)
@@ -613,7 +610,7 @@ def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_
     # Straßenbomben
     for n in range(5, 14):  # Anzahl Karten in der Straßenbombe  (5 bis 13)
         bombs0 = [4 if v > n else 0 for v in range(15)]  # Werte 0 bis As
-        for v in range(n + 1, 15):  # höchste Karte (=Wert der Kombination)
+        for v in range(n + 1, 15):  # höchste Karte (=Rang der Kombination)
             for color in range(4):
                 for i in range(n):
                     if c[color][v - i] == 0:
@@ -624,9 +621,9 @@ def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_
     # Straßen    0     1     2     3     4    5   6   7   8   9  10  11  12  13  14 Karten
     d[STREET] = [None, None, None, None, None, [], [], [], [], [], [], [], [], [], []]
     for n in range(14, 4, -1):  # Anzahl Karten in der Straße (14 bis 5)
-        # Wert        0  1  2  3  4  5  6  7  8  9 10 11 12 13 14
+        # Rang        0  1  2  3  4  5  6  7  8  9 10 11 12 13 14
         d[STREET][n] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        for v in range(n, 15):  # höchste Karte (=Wert der Kombination)
+        for v in range(n, 15):  # höchste Karte (=Rang der Kombination)
             phoenix_available = phoenix
             counter = 1
             for i in range(n):
@@ -734,7 +731,7 @@ def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_
             eq_par = p[partner][n] * w
 
         # Beim Phönix wurden die spielbaren Kombination (außer Drache) doppelt gerechnet. Das liegt daran, dass der
-        # Wert vom ausgelegten Stich abhängt.
+        # Rang vom ausgelegten Stich abhängt.
         w = sum_combis + (sum(d[t][n][(trick_figure[2] + 1):15]) if figure == FIGURE_PHO else 0)
         if w:
             # normalisieren
@@ -886,7 +883,7 @@ def number_of_stairs(h: list[int], n: int, k: int, m: int, r: int) -> int:
     def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
         if n_remain < 2 or k_remain < 2:
             return 0
-        if r2 == r:  # todo vermutlich fehlerhaft, wenn der Phönix nicht benötigt wird (Logig wie bei de Straße übernhemen)
+        if r2 == r:  # todo vermutlich fehlerhaft, wenn der Phönix nicht benötigt wird (Logik wie bei de Straße übernehmen)
             a = h[r2] + pho
             return sum(math.comb(a, i) * math.comb(n_remain - a, k_remain - i) for i in range(2, a + 1) if k_remain >= i)
         if h[r2] >= 2:
@@ -926,6 +923,7 @@ def number_of_streets(h: list[int], n: int, k: int, m: int, r: int) -> int:
             matches_ += _number_of_singles(n_remain - h[r2] - 1, k_remain - 1, r2 + 1, 0)
         return matches_
 
+    # todo Straßenbomben rausrechnen
     if n < m or k < m:
         return 0
     matches = _number_of_singles(n, k, r - m + 1, h[16])
@@ -1082,10 +1080,10 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
                 u[c - 1][v - 2] = 1
         p = number_of_bombs(h, u, n, k, m, r) / samples
 
-    elif t == TRIPLE:  # Paar, Drilling
+    elif t == TRIPLE:  # Drilling
         p = number_of_tripples(h, n, k, r) / samples
 
-    elif t == PAIR:  # Paar, Drilling
+    elif t == PAIR:  # Paar
         p = number_of_pairs(h, n, k, r) / samples
 
     else:
@@ -1100,18 +1098,14 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 # -----------------------------------------------------------------------------
 
 def test_possible_hands():  # pragma: no cover
-    #("SK RK GD BB RZ B9 R8 Ph", 6, (6, 5, 13), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert)"),
-    matches, hands = possible_hands(parse_cards("Ph SK RK GD BB RZ B9 R8"), 6, (6, 5, 13))
+    cards, k, figure = "Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 10)  #, 12, 210, 0.05714285714285714, "2erTreppeZ, Test 46"),
+    matches, hands = possible_hands(parse_cards(cards), k, figure)
     for match, sample in zip(matches, hands):
         print(stringify_cards(sample), match)
     print(f"p = {sum(matches)}/{len(hands)} = {sum(matches) / len(hands)}")
 
-    p = probability_of_hand(parse_cards("Ph SK RK GD BB RZ B9 R8"), 6, (6, 5, 13))
+    p = probability_of_hand(parse_cards(cards), k, figure)
     print(f"p = {p}, n = {len(hands)*p}")
-
-
-def generate_unit_tests():  # pragma: no cover
-
 
 
 if __name__ == "__main__":  # pragma: no cover
