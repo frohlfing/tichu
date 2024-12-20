@@ -881,20 +881,14 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
 # r: Rang der Treppe
 def number_of_stairs(h: list[int], n: int, k: int, m: int, r: int) -> int:
     def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
+        if r2 > r:
+            return math.comb(n_remain, k_remain)
         if n_remain < 2 or k_remain < 2:
             return 0
-        if r2 == r:  # todo vermutlich fehlerhaft, wenn der Phönix nicht benötigt wird (Logik wie bei de Straße übernehmen)
-            a = h[r2] + pho
-            return sum(math.comb(a, i) * math.comb(n_remain - a, k_remain - i) for i in range(2, a + 1) if k_remain >= i)
-        if h[r2] >= 2:
-            # Pärchen ohne Phönix
-            matches_ = sum(math.comb(h[r2], i) * _number_of_pairs(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(2, h[r2] + 1))
-        elif h[r2] == 1 and pho == 1:
-            # Pärchen mit Phönix
-            matches_ = _number_of_pairs(n_remain - 2, k_remain - 2, r2 + 1, 0)
-        else:
-            # kein Pärchen
-            matches_ = 0
+        # Pärchen bis Bombe, ohne Phönix
+        matches_ = sum(math.comb(h[r2], i) * _number_of_pairs(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(2, h[r2] + 1) if k_remain >= i)
+        if h[r2] >= 1 and pho == 1:  # Einzelkarte und Phönix als Karte mit diesem Rang einsetzen
+            matches_ += math.comb(h[r2], 1) * _number_of_pairs(n_remain - h[r2] - pho, k_remain - 2, r2 + 1, 0)
         return matches_
 
     if n < m or k < m:
@@ -918,9 +912,9 @@ def number_of_streets(h: list[int], n: int, k: int, m: int, r: int) -> int:
         if n_remain < 1 or k_remain < 1:
             return 0
         # Einzelkarte bis Bombe, ohne Phönix
-        matches_ = sum(math.comb(h[r2], i) * _number_of_singles(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(1, h[r2] + 1))
+        matches_ = sum(math.comb(h[r2], i) * _number_of_singles(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(1, h[r2] + 1) if k_remain >= i)
         if pho == 1:  # Phönix als Karte mit diesem Rang einsetzen
-            matches_ += _number_of_singles(n_remain - h[r2] - 1, k_remain - 1, r2 + 1, 0)
+            matches_ += _number_of_singles(n_remain - h[r2] - pho, k_remain - 1, r2 + 1, 0)
         return matches_
 
     # todo Straßenbomben rausrechnen
@@ -945,7 +939,7 @@ def number_of_fullhouses(h: list[int], n: int, k: int, r: int) -> int:
             return _number_of_pairs(n_remain, k_remain, r2 + 1, pho) if r2 < 14 else 0
         # Pärchen (oder Einzelkarte + Phönix)
         a = h[r2] + pho
-        matches_ = sum(math.comb(a, i) * math.comb(n_remain - a, k_remain - i) for i in range(2, a + 1))
+        matches_ = sum(math.comb(a, i) * math.comb(n_remain - a, k_remain - i) for i in range(2, a + 1) if k_remain >= i)
         # kein Pärchen → wir probieren ein höherwertiges Pärchen  # todo Kommentar hier verwirrend
         if r2 < 14:  # Rang des Pärchens ist kleiner als Ass
             if h[r2] > 0 and pho == 0:  # todo vermutlich falsch, mit 2 Drillinge und ohne Phönix (muss es nicht h[r2] == 1 sein?)
@@ -959,7 +953,7 @@ def number_of_fullhouses(h: list[int], n: int, k: int, r: int) -> int:
         return 0
     if h[r] >= 3:
         # Drilling (ohne Phönix)
-        matches = sum(math.comb(h[r], i) * _number_of_pairs(n - h[r], k - i, 2, h[16]) for i in range(3, h[r] + 1))
+        matches = sum(math.comb(h[r], i) * _number_of_pairs(n - h[r], k - i, 2, h[16]) for i in range(3, h[r] + 1) if k >= i)
     elif h[r] == 2 and h[16] == 1:
         # kein Drilling, aber Pärchen mit Phönix
         matches = _number_of_pairs(n - 3, k - 3, 2, 0)
@@ -1000,7 +994,7 @@ def number_of_tripples(h: list[int], n: int, k: int, r: int) -> int:
     if n < 3 or k < 3:
         return 0
     a = h[r] + h[16]
-    matches = sum(math.comb(a, i) * math.comb(n - a, k - i) for i in range(3, a + 1))
+    matches = sum(math.comb(a, i) * math.comb(n - a, k - i) for i in range(3, a + 1) if k >= i)
     return matches
 
 
@@ -1014,7 +1008,7 @@ def number_of_pairs(h: list[int], n: int, k: int, r: int) -> int:
     if n < 2 or k < 2:
         return 0
     a = h[r] + h[16]
-    matches = sum(math.comb(a, i) * math.comb(n - a, k - i) for i in range(2, a + 1))
+    matches = sum(math.comb(a, i) * math.comb(n - a, k - i) for i in range(2, a + 1) if k >= i)
     return matches
 
 
@@ -1027,7 +1021,7 @@ def number_of_pairs(h: list[int], n: int, k: int, r: int) -> int:
 def number_of_singles(h: list[int], n: int, k: int, r: int) -> int:
     if n < 1 or k < 1:
         return 0
-    matches = sum(math.comb(h[r], i) * math.comb(n - h[r], k - i) for i in range(1, h[r] + 1))
+    matches = sum(math.comb(h[r], i) * math.comb(n - h[r], k - i) for i in range(1, h[r] + 1) if k >= i)
     return matches
 
 
@@ -1048,6 +1042,8 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 
     # Anzahl Möglichkeiten gesamt
     samples = math.comb(n, k)
+    if samples == 0:
+        return 0.0
 
     # die ungespielten Karten je Rang
     #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
@@ -1099,6 +1095,7 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 
 def test_possible_hands():  # pragma: no cover
     cards, k, figure = "Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 10)  #, 12, 210, 0.05714285714285714, "2erTreppeZ, Test 46"),
+
     matches, hands = possible_hands(parse_cards(cards), k, figure)
     for match, sample in zip(matches, hands):
         print(stringify_cards(sample), match)

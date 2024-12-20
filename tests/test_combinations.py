@@ -373,13 +373,16 @@ class TestCombinations(unittest.TestCase):
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
             ("Dr RK GK BD SB R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
             ("Dr RK GK BD SB RB R2", 5, (1, 1, 11), 20, 21, 0.9523809523809523, "Einzelkarte mit 2 Buben"),
+            ("SB RZ GZ BZ SZ R9 G9 R8 G8 B4", 3, (1, 1, 10), 100, 120, 0.8333333333333334, "Einzelkarte aus einer 4er-Bombe"),
             ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 18, 21, 0.8571428571428571, "Pärchen ohne Phönix"),
             ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 18, 21, 0.8571428571428571, "Pärchen mit Phönix"),
             ("SK RK GB BB SB R3 R2", 4, (3, 3, 11), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
             ("Ph RK GB BB SB R3 R2", 4, (3, 3, 11), 13, 35, 0.37142857142857144, "Drilling mit Phönix"),
             ("RK GK BD SD SB RB BB", 6, (4, 6, 13), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
             ("Ph GK BD SD SB RB BB", 6, (4, 6, 13), 3, 7, 0.42857142857142855, "3er-Treppe mit Phönix"),
+            ("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 10), 0, 0, 0.0, "2er-Treppe nicht möglich"),
             ("RK GK BD SD GD R9 B2", 6, (4, 4, 13), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
+            ("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 10), 12, 210, 0.05714285714285714, "2er-Treppe, Phönix übrig"),
             ("RK GK BD SB RB BB S2", 6, (5, 5, 11), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
             ("Ph GK BD SB RB BB S2", 6, (5, 5, 11), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
             ("RK GK BD SB RB BZ Ph", 6, (5, 5, 11), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
@@ -401,6 +404,7 @@ class TestCombinations(unittest.TestCase):
         ]
         for t in test:
             print(t[6])
+
             # possible_hands
             matches, hands = possible_hands(parse_cards(t[0]), t[1], t[2])
             #for match, hand in zip(matches, hands):
@@ -408,7 +412,8 @@ class TestCombinations(unittest.TestCase):
             self.assertEqual(t[3], sum(matches))
             self.assertEqual(t[4], len(hands))
             self.assertEqual(t[4], len(list(zip(matches, hands))))
-            self.assertAlmostEqual(t[5], sum(matches) / len(hands), places=15, msg=t[6])
+            self.assertAlmostEqual(t[5], sum(matches) / len(hands) if len(hands) else 0.0, places=15, msg=t[6])
+
             # probability_of_hands
             p = probability_of_hand(parse_cards(t[0]), t[1], t[2])
             self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
