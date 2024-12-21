@@ -626,6 +626,7 @@ class TestProbabilityOfHands(unittest.TestCase):
             ("SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4", 6, (5, 5, 10), 76, 462, 0.1645021645021645, "FullHouseZ, Test 77"),
             ("Ph SB RZ R9 G9 R8 G8 B4", 6, (5, 5, 10), 0, 28, 0.0, "FullHouseZ, Test 78"),
             ("SB RZ Ph R9 G9 R8 G8 B4", 6, (5, 5, 10), 0, 28, 0.0, "FullHouseZ, Test 79"),
+            ("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 10), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
             ("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 10), 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
             ("SB RZ GZ BZ SZ R9 Ph R8 G8 B4", 6, (5, 5, 10), 76, 210, 0.3619047619047619, "FullHouseZ, Test 81"),
             ("SB RZ R9 G9 S9 R8 G8 B4 Ph", 6, (5, 5, 10), 0, 84, 0.0, "FullHouseZ, Test 82"),
@@ -732,7 +733,7 @@ class TestProbabilityOfHands(unittest.TestCase):
             p = probability_of_hand(parse_cards(t[0]), t[1], t[2])
             self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
 
-    def _test_street(self):
+    def test_street(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
             ("RA GK BD SB RZ B9 R3", 6, (6, 5, 13), 2, 7, 0.2857142857142857, "Straße ohne Phönix"),
@@ -998,7 +999,7 @@ class TestProbabilityOfHands(unittest.TestCase):
             p = probability_of_hand(parse_cards(t[0]), t[1], t[2])
             self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
 
-    def _test_bomb_strasse(self):
+    def test_bomb_strasse(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
             ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 11), 1, 21, 0.047619047619047616, "Straßenbombe"),
@@ -1117,7 +1118,7 @@ class TestProbabilityOfHands(unittest.TestCase):
             p = probability_of_hand(parse_cards(t[0]), t[1], t[2])
             self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
 
-    def _test_bomb_4er(self):
+    def test_bomb_4er(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
             ("RK GB BB SB RB BZ R2", 5, (7, 4, 11), 3, 21, 0.14285714285714285, "4er-Bombe"),
@@ -1246,7 +1247,7 @@ class TestProbabilityOfHands(unittest.TestCase):
             p = probability_of_hand(parse_cards(t[0]), t[1], t[2])
             self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
 
-    def _test_tripple(self):
+    def test_tripple(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
             ("SK RK GB BB SB R3 R2", 4, (3, 3, 11), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
@@ -1424,7 +1425,7 @@ class TestProbabilityOfHands(unittest.TestCase):
             p = probability_of_hand(parse_cards(t[0]), t[1], t[2])
             self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
 
-    def _test_pair(self):
+    def test_pair(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
             ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 18, 21, 0.8571428571428571, "Pärchen ohne Phönix"),
@@ -1604,7 +1605,7 @@ class TestProbabilityOfHands(unittest.TestCase):
             p = probability_of_hand(parse_cards(t[0]), t[1], t[2])
             self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
 
-    def _test_single(self):
+    def test_single(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
             ("Dr RK GK BD SB R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),

@@ -390,6 +390,8 @@ class TestCombinations(unittest.TestCase):
             ("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 13), 6, 8, 0.75, "Fullhouse aus Bombe"),
             ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 13), 5, 8, 0.625, "Fullhouse aus 2 Drillinge"),
             ("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 10), 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
+            ("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 10), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
+            ("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 10), 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
             ("RA GK BD SB RZ B9 R3", 6, (6, 5, 13), 2, 7, 0.2857142857142857, "Straße ohne Phönix"),
             ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 13), 2, 7, 0.2857142857142857, "Straße mit Phönix (Lücke gefüllt)"),
             ("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 13), 5, 28, 0.17857142857142858, "Straße ohne Phönix (aus 8 Karten)"),
