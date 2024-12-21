@@ -135,8 +135,6 @@ def probability_of_sample(n, k, features: list|tuple, conditions: list[list|tupl
     # alle Teilmengen und alle Schnittmengen durchlaufen... (jede Bedingung erzeugt eine Teilmenge)
     p = 0.0
     for length in range(1, number_of_conditions + 1):  # Schnittmenge mit length Überlappungen
-        #print("number_of_conditions", number_of_conditions)
-        #print("itertools.combinations", len(list((itertools.combinations(conditions, length)))))
         for subset_of_conditions in itertools.combinations(conditions, length):  # Bedingungen der Überlappungen in der Schnittmenge
             # Bedingung der Schnittmenge
             result = union(subset_of_conditions)
@@ -154,16 +152,8 @@ def probability_of_sample(n, k, features: list|tuple, conditions: list[list|tupl
             # um Schnittmengen nicht mehrfach zu zählen, wird das Prinzip der Inklusion und Exklusion angewendet
             if length % 2 == 1:  # ungerade Anzahl Mengen in der Schnittmenge?
                 p += p_subset  # Inklusion
-                if p_subset:
-                    print("subset_of_conditions", subset_of_conditions)
-                    print("result", result)
-                    print("+p_subset",p_subset)
             else:
                 p -= p_subset  # Exklusion
-                if p_subset:
-                    print("subset_of_conditions", subset_of_conditions)
-                    print("result", result)
-                    print("-p_subset", p_subset)
     return p
 
 

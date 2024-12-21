@@ -931,6 +931,51 @@ def number_of_streets(h: list[int], n: int, k: int, m: int, r: int) -> int:
 # k: Anzahl Handkarten
 # r: Rang des Fullhouses
 def number_of_fullhouses(h: list[int], n: int, k: int, r: int) -> int:
+    def _number_of_pairs(n_remain: int, k_remain: int, pho: int) -> int:
+        if n_remain < 2 or k_remain < 2:
+            return 0
+
+        matches_ = 0
+        subsets = []
+        for r2 in range(2, 15):  # alle Pärchen von Rang 2 bis 14 suchen (außer Rang des Drillings)
+            if r2 == r:  # das Pärchen darf nicht mit dem Drilling gleichwertig sein
+                continue
+            # Pärchen bis Bombe, ohne Phönix
+            matches_ += sum(math.comb(h[r2], i) * math.comb(n_remain - h[r2], k_remain - i) for i in range(2, h[r2] + 1) if k_remain >= i)
+            if h[r2] >= 1 and pho == 1:  # Einzelkarte und Phönix als Karte mit diesem Rang einsetzen
+                matches_ += math.comb(h[r2], 1) * math.comb(n_remain - h[r2] - pho, k_remain - 2)
+
+            # Jeder Rang bildet eine separate Teilmenge. Um diese zu vereinen, müssen die Schnittmengen mit dem
+            # Prinzip von Inklusion und Exklusion zusammengeführt werden.
+            # todo
+            # Alle Kombinationen der Teilmengen durchlaufen und die Matches jeder Teilmenge berechnen.
+            for length in range(1, len(subsets) + 1):  # length = Anzahl der Teilmengen in der Schnittmenge
+                for combi_of_subsets in itertools.combinations(subsets, length):
+                    print("combi_of_subsets", combi_of_subsets)
+                    matches_subset = 0  # todo
+                    # Wenn eine ungerade Anzahl Teilmengen sich überlappen, die Matches der Schnittmenge zum Gesamt addieren, ansonsten abziehen.
+                    if length % 2 == 1:  # ungerade Anzahl Mengen in der Schnittmenge?
+                        matches_ += matches_subset  # Inklusion
+                    else:
+                        matches_ -= matches_subset  # Exklusion
+
+        return matches_
+
+    if n < 5 or k < 5:
+        return 0
+    # Drilling bis Bombe, ohne Phönix
+    matches = sum(math.comb(h[r], i) * _number_of_pairs(n - h[r], k - i, h[16]) for i in range(3, h[r] + 1) if k >= i)
+    if h[r] >= 2 and h[16] == 1:  # Pärchen und Phönix als Karte mit diesem Rang einsetzen
+        matches += math.comb(h[r], 2) * _number_of_pairs(n - h[r] - h[16], k - 3, 0)
+    return matches
+
+# Ermittelt die Anzahl der möglichen Hände mit dem gegebenen Fullhouse
+#
+# h: Anzahl der ungespielten Karten pro Rang
+# n: Anzahl der ungespielten Karten gesamt (== sum(h))
+# k: Anzahl Handkarten
+# r: Rang des Fullhouses
+def number_of_fullhouses_old(h: list[int], n: int, k: int, r: int) -> int:
 
     def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
         if n_remain < 2 or k_remain < 2:
@@ -1094,7 +1139,9 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 # -----------------------------------------------------------------------------
 
 def test_possible_hands():  # pragma: no cover
-    cards, k, figure = "SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 10)  # , 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
+    #cards, k, figure = "SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 10)  # , 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
+    cards, k, figure = "Ph GK BD SB RB BB S2", 6, (5, 5, 11)  # , 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
+    #cards, k, figure = "RK GK BD SB RB BB S2", 6, (5, 5, 11)  #, 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
 
     matches, hands = possible_hands(parse_cards(cards), k, figure)
     for match, sample in zip(matches, hands):
