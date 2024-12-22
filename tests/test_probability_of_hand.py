@@ -41,49 +41,49 @@ class TestGenerateTestData(unittest.TestCase):
         #         for cards in combis:
         #             run(cards, k, (t, m, r))
 
-        t = FULLHOUSE
-        combis = [
-            "SB RZ R9 G9 R8 G8 B4",
-            "SB RZ GZ R9 G9 R8 G8 B4",
-            "SB RZ GZ BZ R9 G9 R8 G8 B4",
-            "SB RZ GZ BZ R9 G9 R9 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
-            "SB RZ R9 G9 S9 R8 G8 B4",
-            "SB RZ GZ R9 G9 S9 R8 G8 B4",
-            "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
-            "Ph SB RZ R9 G9 R8 G8 B4",
-            "SB RZ Ph R9 G9 R8 G8 B4",
-            "SB RZ GZ BZ Ph G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
-            "SB RZ R9 G9 S9 R8 G8 B4 Ph",
-            "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
-            "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
-        ]
-        m = 5
-        r = 10
-        for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
-            for cards in combis:
-                run(cards, k, (t, m, r))
-
-        # t = STREET
+        # t = FULLHOUSE
         # combis = [
-        #     "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
-        #     "GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph",
-        #     "GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2",
-        #     "GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2",
-        #     "GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2",
-        #     "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
-        #     "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
-        #     "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph",
-        #     "Ph GB GZ G8 G7 G4 B2 S2",
+        #     "SB RZ R9 G9 R8 G8 B4",
+        #     "SB RZ GZ R9 G9 R8 G8 B4",
+        #     "SB RZ GZ BZ R9 G9 R8 G8 B4",
+        #     "SB RZ GZ BZ R9 G9 R9 G8 B4",
+        #     "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+        #     "SB RZ R9 G9 S9 R8 G8 B4",
+        #     "SB RZ GZ R9 G9 S9 R8 G8 B4",
+        #     "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+        #     "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+        #     "Ph SB RZ R9 G9 R8 G8 B4",
+        #     "SB RZ Ph R9 G9 R8 G8 B4",
+        #     "SB RZ GZ BZ Ph G9 R8 G8 B4",
+        #     "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+        #     "SB RZ R9 G9 S9 R8 G8 B4 Ph",
+        #     "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
+        #     "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+        #     "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
         # ]
-        # for m in [5, 9, 10]:
-        #     r = 11
-        #     for k in [0, 4, 5, 6, 7, 9, 10, 13, 14]:
-        #         for cards in combis:
-        #             run(cards, k, (t, m, r))
+        # m = 5
+        # r = 10
+        # for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
+        #     for cards in combis:
+        #         run(cards, k, (t, m, r))
+
+        t = STREET
+        combis = [
+            "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
+            "GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph",
+            "GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2",
+            "GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2",
+            "GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2",
+            "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
+            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
+            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph",
+            "Ph GB GZ G8 G7 G4 B2 S2",
+        ]
+        for m in [5, 9, 10]:
+            r = 11
+            for k in [0, 4, 5, 6, 7, 9, 10, 13, 14]:
+                for cards in combis:
+                    run(cards, k, (t, m, r))
 
         # t = BOMB  # Straßenbombe
         # combis = [
@@ -197,7 +197,7 @@ class TestGenerateTestData(unittest.TestCase):
 # noinspection DuplicatedCode
 class TestProbabilityOfHands(unittest.TestCase):
 
-    def _test_stair(self):
+    def test_stair(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
             ("RK GK BD SD SB RB BB", 6, (4, 6, 13), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
@@ -743,7 +743,10 @@ class TestProbabilityOfHands(unittest.TestCase):
             ("SK RK GD BB RZ B9 R8 Ph", 6, (6, 5, 13), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert)"),
             ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 13), 13, 28, 0.4642857142857143, "Straße mit Phönix (verlängert, 2)"),
             ("BK SD BD RB BZ B9 R3", 6, (6, 5, 13), 3, 7, 0.42857142857142855, "Straße, keine Bombe"),
-            ("BK SD BD BB BZ B9 R3", 6, (6, 5, 13), 3, 7, 0.42857142857142855, "Straße, mit Bombe"),
+            ("BK SD BD BB BZ B9 R3", 6, (6, 5, 13), 2, 7, 0.2857142857142857, "Straße, mit Straßenbombe"),
+            ("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 13), 73, 78, 0.9358974358974359, "Straße, mit 2 Straßenbomben (1)"),
+            ("BK SD BD BB BZ B9 RK RD RB RZ R9 G2 G3", 11, (6, 5, 13), 74, 78, 0.9487179487179487, "Straße, mit 2 Straßenbomben (2)"),
+            ("BK SD BD BB BZ B9 RK RD RB SB RZ R9 G2", 11, (6, 5, 13), 75, 78, 0.9615384615384616, "Straße, mit 2 Straßenbomben (3)"),
             ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 0, (6, 5, 11), 0, 1, 0.0, "5erStraßeB, Test 1"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 0, (6, 5, 11), 0, 1, 0.0, "5erStraßeB, Test 2"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 0, (6, 5, 11), 0, 1, 0.0, "5erStraßeB, Test 3"),
@@ -762,57 +765,57 @@ class TestProbabilityOfHands(unittest.TestCase):
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 4, (6, 5, 11), 0, 3060, 0.0, "5erStraßeB, Test 16"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 4, (6, 5, 11), 0, 715, 0.0, "5erStraßeB, Test 17"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 4, (6, 5, 11), 0, 70, 0.0, "5erStraßeB, Test 18"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 11), 1, 1287, 0.000777000777000777, "5erStraßeB, Test 19"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 11), 0, 1287, 0.0, "5erStraßeB, Test 19"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 11), 6, 1287, 0.004662004662004662, "5erStraßeB, Test 20"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 11), 1, 1287, 0.000777000777000777, "5erStraßeB, Test 21"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 5, (6, 5, 11), 1, 1287, 0.000777000777000777, "5erStraßeB, Test 22"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 11), 1, 1287, 0.000777000777000777, "5erStraßeB, Test 23"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 11), 1, 1287, 0.000777000777000777, "5erStraßeB, Test 24"),
-            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 5, (6, 5, 11), 243, 8568, 0.028361344537815126, "5erStraßeB, Test 25"),
-            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 5, (6, 5, 11), 112, 1287, 0.08702408702408702, "5erStraßeB, Test 26"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 11), 0, 1287, 0.0, "5erStraßeB, Test 24"),
+            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 5, (6, 5, 11), 240, 8568, 0.028011204481792718, "5erStraßeB, Test 25"),
+            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 5, (6, 5, 11), 110, 1287, 0.08547008547008547, "5erStraßeB, Test 26"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 5, (6, 5, 11), 1, 56, 0.017857142857142856, "5erStraßeB, Test 27"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 6, (6, 5, 11), 8, 1716, 0.004662004662004662, "5erStraßeB, Test 28"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 6, (6, 5, 11), 0, 1716, 0.0, "5erStraßeB, Test 28"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 6, (6, 5, 11), 43, 1716, 0.02505827505827506, "5erStraßeB, Test 29"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 6, (6, 5, 11), 8, 1716, 0.004662004662004662, "5erStraßeB, Test 30"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 6, (6, 5, 11), 8, 1716, 0.004662004662004662, "5erStraßeB, Test 31"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 6, (6, 5, 11), 8, 1716, 0.004662004662004662, "5erStraßeB, Test 32"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 6, (6, 5, 11), 8, 1716, 0.004662004662004662, "5erStraßeB, Test 33"),
-            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 6, (6, 5, 11), 1944, 18564, 0.10471881060116355, "5erStraßeB, Test 34"),
-            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 11), 496, 1716, 0.289044289044289, "5erStraßeB, Test 35"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 6, (6, 5, 11), 0, 1716, 0.0, "5erStraßeB, Test 33"),
+            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 6, (6, 5, 11), 1935, 18564, 0.10423400129282483, "5erStraßeB, Test 34"),
+            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 11), 492, 1716, 0.2867132867132867, "5erStraßeB, Test 35"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 6, (6, 5, 11), 3, 28, 0.10714285714285714, "5erStraßeB, Test 36"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 7, (6, 5, 11), 28, 1716, 0.016317016317016316, "5erStraßeB, Test 37"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 7, (6, 5, 11), 0, 1716, 0.0, "5erStraßeB, Test 37"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 7, (6, 5, 11), 133, 1716, 0.0775058275058275, "5erStraßeB, Test 38"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 7, (6, 5, 11), 28, 1716, 0.016317016317016316, "5erStraßeB, Test 39"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 7, (6, 5, 11), 28, 1716, 0.016317016317016316, "5erStraßeB, Test 40"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 7, (6, 5, 11), 28, 1716, 0.016317016317016316, "5erStraßeB, Test 41"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 7, (6, 5, 11), 28, 1716, 0.016317016317016316, "5erStraßeB, Test 42"),
-            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 7, (6, 5, 11), 7209, 31824, 0.22652714932126697, "5erStraßeB, Test 43"),
-            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 7, (6, 5, 11), 936, 1716, 0.5454545454545454, "5erStraßeB, Test 44"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 7, (6, 5, 11), 0, 1716, 0.0, "5erStraßeB, Test 42"),
+            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 7, (6, 5, 11), 7200, 31824, 0.22624434389140272, "5erStraßeB, Test 43"),
+            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 7, (6, 5, 11), 934, 1716, 0.5442890442890443, "5erStraßeB, Test 44"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 7, (6, 5, 11), 3, 8, 0.375, "5erStraßeB, Test 45"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 5, 11), 70, 715, 0.0979020979020979, "5erStraßeB, Test 46"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 5, 11), 0, 715, 0.0, "5erStraßeB, Test 46"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 9, (6, 5, 11), 245, 715, 0.34265734265734266, "5erStraßeB, Test 47"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 9, (6, 5, 11), 70, 715, 0.0979020979020979, "5erStraßeB, Test 48"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 9, (6, 5, 11), 70, 715, 0.0979020979020979, "5erStraßeB, Test 49"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 5, 11), 70, 715, 0.0979020979020979, "5erStraßeB, Test 50"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 5, 11), 70, 715, 0.0979020979020979, "5erStraßeB, Test 51"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 5, 11), 0, 715, 0.0, "5erStraßeB, Test 51"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 9, (6, 5, 11), 25785, 48620, 0.5303373097490744, "5erStraßeB, Test 52"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 9, (6, 5, 11), 655, 715, 0.916083916083916, "5erStraßeB, Test 53"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 9, (6, 5, 11), 0, 0, 0.0, "5erStraßeB, Test 54"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 5, 11), 56, 286, 0.1958041958041958, "5erStraßeB, Test 55"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 5, 11), 0, 286, 0.0, "5erStraßeB, Test 55"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 10, (6, 5, 11), 161, 286, 0.5629370629370629, "5erStraßeB, Test 56"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 10, (6, 5, 11), 56, 286, 0.1958041958041958, "5erStraßeB, Test 57"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 10, (6, 5, 11), 56, 286, 0.1958041958041958, "5erStraßeB, Test 58"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 5, 11), 56, 286, 0.1958041958041958, "5erStraßeB, Test 59"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 5, 11), 56, 286, 0.1958041958041958, "5erStraßeB, Test 60"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 5, 11), 0, 286, 0.0, "5erStraßeB, Test 60"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 10, (6, 5, 11), 29403, 43758, 0.6719457013574661, "5erStraßeB, Test 61"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 10, (6, 5, 11), 281, 286, 0.9825174825174825, "5erStraßeB, Test 62"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 10, (6, 5, 11), 0, 0, 0.0, "5erStraßeB, Test 63"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 5, 11), 1, 1, 1.0, "5erStraßeB, Test 64"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 5, 11), 0, 1, 0.0, "5erStraßeB, Test 64"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 13, (6, 5, 11), 1, 1, 1.0, "5erStraßeB, Test 65"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 13, (6, 5, 11), 1, 1, 1.0, "5erStraßeB, Test 66"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 13, (6, 5, 11), 1, 1, 1.0, "5erStraßeB, Test 67"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 5, 11), 1, 1, 1.0, "5erStraßeB, Test 68"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 5, 11), 1, 1, 1.0, "5erStraßeB, Test 69"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 5, 11), 0, 1, 0.0, "5erStraßeB, Test 69"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 13, (6, 5, 11), 8043, 8568, 0.9387254901960784, "5erStraßeB, Test 70"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 13, (6, 5, 11), 1, 1, 1.0, "5erStraßeB, Test 71"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 13, (6, 5, 11), 0, 0, 0.0, "5erStraßeB, Test 72"),
@@ -870,30 +873,30 @@ class TestProbabilityOfHands(unittest.TestCase):
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 7, (6, 9, 11), 0, 31824, 0.0, "9erStraßeB, Test 124"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 7, (6, 9, 11), 0, 1716, 0.0, "9erStraßeB, Test 125"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 7, (6, 9, 11), 0, 8, 0.0, "9erStraßeB, Test 126"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 9, 11), 1, 715, 0.0013986013986013986, "9erStraßeB, Test 127"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 9, 11), 0, 715, 0.0, "9erStraßeB, Test 127"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 9, (6, 9, 11), 10, 715, 0.013986013986013986, "9erStraßeB, Test 128"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 9, (6, 9, 11), 1, 715, 0.0013986013986013986, "9erStraßeB, Test 129"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 9, (6, 9, 11), 1, 715, 0.0013986013986013986, "9erStraßeB, Test 130"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 9, 11), 1, 715, 0.0013986013986013986, "9erStraßeB, Test 131"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 9, 11), 1, 715, 0.0013986013986013986, "9erStraßeB, Test 132"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 9, (6, 9, 11), 0, 715, 0.0, "9erStraßeB, Test 132"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 9, (6, 9, 11), 0, 48620, 0.0, "9erStraßeB, Test 133"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 9, (6, 9, 11), 0, 715, 0.0, "9erStraßeB, Test 134"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 9, (6, 9, 11), 0, 0, 0.0, "9erStraßeB, Test 135"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 9, 11), 4, 286, 0.013986013986013986, "9erStraßeB, Test 136"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 9, 11), 0, 286, 0.0, "9erStraßeB, Test 136"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 10, (6, 9, 11), 31, 286, 0.10839160839160839, "9erStraßeB, Test 137"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 10, (6, 9, 11), 4, 286, 0.013986013986013986, "9erStraßeB, Test 138"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 10, (6, 9, 11), 4, 286, 0.013986013986013986, "9erStraßeB, Test 139"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 9, 11), 4, 286, 0.013986013986013986, "9erStraßeB, Test 140"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 9, 11), 4, 286, 0.013986013986013986, "9erStraßeB, Test 141"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 9, 11), 0, 286, 0.0, "9erStraßeB, Test 141"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 10, (6, 9, 11), 0, 43758, 0.0, "9erStraßeB, Test 142"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 10, (6, 9, 11), 0, 286, 0.0, "9erStraßeB, Test 143"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 10, (6, 9, 11), 0, 0, 0.0, "9erStraßeB, Test 144"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 9, 11), 1, 1, 1.0, "9erStraßeB, Test 145"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 9, 11), 0, 1, 0.0, "9erStraßeB, Test 145"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 13, (6, 9, 11), 1, 1, 1.0, "9erStraßeB, Test 146"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 13, (6, 9, 11), 1, 1, 1.0, "9erStraßeB, Test 147"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 13, (6, 9, 11), 1, 1, 1.0, "9erStraßeB, Test 148"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 9, 11), 1, 1, 1.0, "9erStraßeB, Test 149"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 9, 11), 1, 1, 1.0, "9erStraßeB, Test 150"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 9, 11), 0, 1, 0.0, "9erStraßeB, Test 150"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 13, (6, 9, 11), 0, 8568, 0.0, "9erStraßeB, Test 151"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 13, (6, 9, 11), 0, 1, 0.0, "9erStraßeB, Test 152"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 13, (6, 9, 11), 0, 0, 0.0, "9erStraßeB, Test 153"),
@@ -960,21 +963,21 @@ class TestProbabilityOfHands(unittest.TestCase):
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 9, (6, 10, 11), 0, 48620, 0.0, "10erStraßeB, Test 214"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 9, (6, 10, 11), 0, 715, 0.0, "10erStraßeB, Test 215"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 9, (6, 10, 11), 0, 0, 0.0, "10erStraßeB, Test 216"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 10, 11), 1, 286, 0.0034965034965034965, "10erStraßeB, Test 217"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 10, 11), 0, 286, 0.0, "10erStraßeB, Test 217"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 10, (6, 10, 11), 1, 286, 0.0034965034965034965, "10erStraßeB, Test 218"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 10, (6, 10, 11), 1, 286, 0.0034965034965034965, "10erStraßeB, Test 219"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 10, (6, 10, 11), 1, 286, 0.0034965034965034965, "10erStraßeB, Test 220"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 10, 11), 1, 286, 0.0034965034965034965, "10erStraßeB, Test 221"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 10, 11), 1, 286, 0.0034965034965034965, "10erStraßeB, Test 222"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 10, (6, 10, 11), 0, 286, 0.0, "10erStraßeB, Test 222"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 10, (6, 10, 11), 0, 43758, 0.0, "10erStraßeB, Test 223"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 10, (6, 10, 11), 0, 286, 0.0, "10erStraßeB, Test 224"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 10, (6, 10, 11), 0, 0, 0.0, "10erStraßeB, Test 225"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 10, 11), 1, 1, 1.0, "10erStraßeB, Test 226"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 10, 11), 0, 1, 0.0, "10erStraßeB, Test 226"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 13, (6, 10, 11), 1, 1, 1.0, "10erStraßeB, Test 227"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 13, (6, 10, 11), 1, 1, 1.0, "10erStraßeB, Test 228"),
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 13, (6, 10, 11), 1, 1, 1.0, "10erStraßeB, Test 229"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 10, 11), 1, 1, 1.0, "10erStraßeB, Test 230"),
-            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 10, 11), 1, 1, 1.0, "10erStraßeB, Test 231"),
+            ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 13, (6, 10, 11), 0, 1, 0.0, "10erStraßeB, Test 231"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 13, (6, 10, 11), 0, 8568, 0.0, "10erStraßeB, Test 232"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 13, (6, 10, 11), 0, 1, 0.0, "10erStraßeB, Test 233"),
             ("Ph GB GZ G8 G7 G4 B2 S2", 13, (6, 10, 11), 0, 0, 0.0, "10erStraßeB, Test 234"),
@@ -984,6 +987,9 @@ class TestProbabilityOfHands(unittest.TestCase):
             ("GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2", 14, (6, 10, 11), 0, 0, 0.0, "10erStraßeB, Test 238"),
             ("GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2", 14, (6, 10, 11), 0, 0, 0.0, "10erStraßeB, Test 239"),
             ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 14, (6, 10, 11), 0, 0, 0.0, "10erStraßeB, Test 240"),
+            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 14, (6, 10, 11), 0, 3060, 0.0, "10erStraßeB, Test 241"),
+            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 14, (6, 10, 11), 0, 0, 0.0, "10erStraßeB, Test 242"),
+            ("Ph GB GZ G8 G7 G4 B2 S2", 14, (6, 10, 11), 0, 0, 0.0, "10erStraßeB, Test 243"),
         ]
         for t in test:
             print(t[6])

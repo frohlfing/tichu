@@ -807,45 +807,17 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
                      and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != r))
             matches.append(b)
 
-    # elif t == STREET:  # Straße  (alt, so gehts vermutlich nicht immer)
-    #     for hand in hands:
-    #         b = False
-    #         color = next((c for v, c in hand if v == r), 0)
-    #         if (any(c != color for i in range(m) for v, c in hand if v == r - i)  # mind. eine Karte von unterschiedlicher Farbe
-    #                 or any(sum(1 for v, _ in hand if v == r - i) == 0 for i in range(m))):  # oder Phönix muss Lücke schließen
-    #             if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
-    #                 for j in range(int(m)):
-    #                     b = all(sum(1 for v, _ in hand if v == r - i) >= (0 if i == j else 1) for i in range(m))
-    #                     if b:
-    #                         break
-    #             else:
-    #                 b = all(sum(1 for v, _ in hand if v == r - i) >= 1 for i in range(m))
-    #         matches.append(b)
-
-    # elif t == STREET:  # Straße (neu, aber ungetestet)
-    #     for hand in hands:
-    #         colors = set([c for i in range(m) for v, c in hand if v == r - i])  # Auswahl an Farben in der Straße
-    #         if len(colors) == 1:
-    #             # es kann "nur" eine Straßenbombe gebildet werden
-    #             b = False
-    #         elif any(v == 16 for v, _ in hand):  # Phönix vorhanden?
-    #             b = False
-    #             for j in range(int(m)):
-    #                 b = all(sum(1 for v, _ in hand if v == r - i) >= (0 if i == j else 1) for i in range(m))
-    #                 if b:
-    #                     break
-    #         else:
-    #             b = all(sum(1 for v, _ in hand if v == r - i) >= 1 for i in range(m))
-    #         matches.append(b)
-
-    elif t == STREET:  # Straße (oder Straßenbombe; Farbe wird hier nicht berücksichtigt)
+    elif t == STREET:  # Straße
         for hand in hands:
+            colors = set([c for i in range(m) for v, c in hand if v == r - i])  # Auswahl an Farben in der Straße
             if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                 b = False
                 for j in range(int(m)):
                     b = all(sum(1 for v, _ in hand if v == r - i) >= (0 if i == j else 1) for i in range(m))
                     if b:
                         break
+            elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Straßenbombe
+                b = False
             else:
                 b = all(sum(1 for v, _ in hand if v == r - i) >= 1 for i in range(m))
             matches.append(b)
@@ -903,11 +875,12 @@ def number_of_stairs(h: list[int], n: int, k: int, m: int, r: int) -> int:
 # Ermittelt die Anzahl der möglichen Hände mit der gegebenen Straße
 #
 # h: Anzahl der ungespielten Karten pro Rang
+# u: Anzahl der ungespielten Karten von 2 bis Ass pro Farbe und pro Rang
 # n: Anzahl der ungespielten Karten gesamt (== sum(h))
 # k: Anzahl Handkarten
 # m: Länge der Straße
 # r: Rang der Straße
-def number_of_streets(h: list[int], n: int, k: int, m: int, r: int) -> int:
+def number_of_streets(h: list[int], u: list[list[int]], n: int, k: int, m: int, r: int) -> int:
     def _number_of_singles(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
         if r2 > r:
             return math.comb(n_remain, k_remain)
@@ -919,10 +892,12 @@ def number_of_streets(h: list[int], n: int, k: int, m: int, r: int) -> int:
         matches_ += _number_of_singles(n_remain - h[r2] - pho, k_remain - 1, r2 + 1, 0) if pho == 1 else 0
         return matches_
 
-    # todo Straßenbomben rausrechnen
     if n < m or k < m:
         return 0
     matches = _number_of_singles(n, k, r - m + 1, h[16])
+    # Straßenbomben rausrechnen (nur Hände mit exakt 1 Straßenbombe sind betroffen, bei 2 Bomben sind immer normale Straßen dabei)
+    b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Bomben
+    matches -= b * math.comb(n - sum(h[r - m + 1:r + 1]) - h[16], k - m * 1) if b > 0 else 0
     return matches
 
 
@@ -961,7 +936,7 @@ def number_of_fullhouses(h: list[int], n: int, k: int, r: int) -> int:
 # Ermittelt die Anzahl der möglichen Hände mit der gegebenen Bombe
 #
 # h: Anzahl der ungespielten Karten pro Rang
-# h: Anzahl der ungespielten Karten von 2 bis Ass pro Farbe und pro Rang
+# u: Anzahl der ungespielten Karten von 2 bis Ass pro Farbe und pro Rang
 # n: Anzahl der ungespielten Karten gesamt (== sum(h))
 # k: Anzahl Handkarten
 # m: Länge der Bombe
@@ -1054,7 +1029,19 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
         p = number_of_fullhouses(h, n, k, r) / samples
 
     elif t == STREET:  # Straße (oder Straßenbombe; Farbe wird hier nicht berücksichtigt)
-        p = number_of_streets(h, n, k, m, r) / samples
+        #p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
+        # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
+        # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
+        u = [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
+        ]
+        for v, c in unplayed_cards:
+            if c > 0:
+                u[c - 1][v - 2] = 1
+        p = number_of_streets(h, u, n, k, m, r) / samples
 
     elif t == BOMB:  # Bombe
         #p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
@@ -1089,15 +1076,16 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 # -----------------------------------------------------------------------------
 
 def test_possible_hands():  # pragma: no cover
-    #cards, k, figure = "SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 10)  # , 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
-    #cards, k, figure = "Ph GK BD SB RB BB S2", 6, (5, 5, 11)  # , 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
-    #cards, k, figure = "SB RB BB S2 BD RK GK", 6, (5, 5, 11)  #, 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
-    cards, k, figure = "Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 10)  #, 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
+    #cards, k, figure = "BK SD BD BB BZ B9 R3", 6, (6, 5, 13)  #, 3, 7, 0.42857142857142855, "Straße, mit Bombe"),
+    #cards, k, figure = "BK BD BB BZ B9 RK RD RB RZ R9 G2", 10, (6, 5, 13)  # , 74, 78, 0.9487179487179487, "Straße, mit 2 Straßenbomben (2)"),
+    #cards, k, figure = "GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 11)  #, 5, 1287, 0.003885003885003885, "5erStraßeB, Test 20"),
+    cards, k, figure = "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 11)  #, 492, 1716, 0.2867132867132867, "5erStraßeB, Test 35"),
 
     matches, hands = possible_hands(parse_cards(cards), k, figure)
     for match, sample in zip(matches, hands):
         print(stringify_cards(sample), match)
-    print(f"p = {sum(matches)}/{len(hands)} = {sum(matches) / len(hands)}")
+    if hands:
+        print(f"p = {sum(matches)}/{len(hands)} = {sum(matches) / len(hands)}")
 
     p = probability_of_hand(parse_cards(cards), k, figure)
     print(f"p = {p}, n = {len(hands)*p}")
