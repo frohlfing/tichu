@@ -242,7 +242,7 @@ def get_figure(cards: list, trick_value: int, shift_phoenix: bool = False) -> tu
     elif cards[1][0] == cards[2][0] or cards[2][0] == cards[3][0]:  # Straße ausschließen
         t = STAIR  # Treppe: 332211 *32211 *33211 *33221
     elif len([card for card in cards if card[1] == cards[0][1]]) == n:  # Einfarbig?
-        t = BOMB  # Straßenbombe
+        t = BOMB  # Farbbombe
     else:
         t = STREET
 
@@ -609,8 +609,8 @@ def calc_statistic(player: int, hand:  list[tuple], combis: list[tuple], number_
     d[BOMB] = [None, None, None, None, [], [], [], [], [], [], [], [], [], []]
     # 4er-Bomben
     d[BOMB][4] = [1 if d[SINGLE][1][v] == 4 else 0 for v in range(15)]
-    # Straßenbomben
-    for n in range(5, 14):  # Anzahl Karten in der Straßenbombe  (5 bis 13)
+    # Farbbomben
+    for n in range(5, 14):  # Anzahl Karten in der Farbbombe  (5 bis 13)
         bombs0 = [4 if v > n else 0 for v in range(15)]  # Werte 0 bis As
         for v in range(n + 1, 15):  # höchste Karte (=Rang der Kombination)
             for color in range(4):
@@ -816,13 +816,13 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
                     b = all(sum(1 for v, _ in hand if v == r - i) >= (0 if i == j else 1) for i in range(m))
                     if b:
                         break
-            elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Straßenbombe
+            elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Farbbombe
                 b = False
             else:
                 b = all(sum(1 for v, _ in hand if v == r - i) >= 1 for i in range(m))
             matches.append(b)
 
-    elif t == BOMB and m >= 5:  # Straßenbombe
+    elif t == BOMB and m >= 5:  # Farbbombe
         for hand in hands:
             b = False
             for color in range(1, 5):
@@ -831,7 +831,8 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
                     break
             matches.append(b)
 
-    elif t == BOMB and m == 4:  # 4er-Bombe
+    elif t == BOMB:  # 4er-Bombe
+        assert m == 4
         for hand in hands:
             matches.append(sum(1 for v, _ in hand if v == r) >= 4)
 
@@ -895,7 +896,7 @@ def number_of_streets(h: list[int], u: list[list[int]], n: int, k: int, m: int, 
     if n < m or k < m:
         return 0
     matches = _number_of_singles(n, k, r - m + 1, h[16])
-    # Straßenbomben rausrechnen (nur Hände mit exakt 1 Straßenbombe sind betroffen, bei 2 Bomben sind immer normale Straßen dabei)
+    # Farbbomben rausrechnen (nur Hände mit exakt 1 Straßenbombe sind betroffen, bei 2 Bomben sind immer normale Straßen dabei)
     b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Bomben
     matches -= b * math.comb(n - sum(h[r - m + 1:r + 1]) - h[16], k - m * 1) if b > 0 else 0
     return matches
@@ -941,16 +942,20 @@ def number_of_fullhouses(h: list[int], n: int, k: int, r: int) -> int:
 # k: Anzahl Handkarten
 # m: Länge der Bombe
 # r: Rang der Bombe
-def number_of_bombs(h: list[int], u: list[list[int]], n: int, k: int, m: int, r: int) -> int:
+def number_of_bombs(h: list[int], n: int, k: int, m: int, r: int) -> int:
     if n < m or k < m:
         return 0
-    if m == 4:  # 4er-Bombe?
-        matches = math.comb(n - 4, k - 4) if h[r] == 4 else 0
-    else:  # Straßenbombe
-        b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Bomben
-        matches = b * math.comb(n - m, k - m) if b > 0 else 0
-        if b >= 2 and k >= m * 2: # Hände mit 2 Bomben wurden doppelt gezählt und müssen wieder abgezogen werden
-            matches -= math.comb(b, 2) * math.comb(n - m * 2, k - m * 2)
+    matches = math.comb(n - 4, k - 4) if h[r] == 4 else 0
+    return matches
+
+
+def number_of_color_bombs(h: list[int], u: list[list[int]], n: int, k: int, m: int, r: int) -> int:
+    if n < m or k < m:
+        return 0
+    b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Bomben
+    matches = b * math.comb(n - m, k - m) if b > 0 else 0
+    if b >= 2 and k >= m * 2: # Hände mit 2 Bomben wurden doppelt gezählt und müssen wieder abgezogen werden
+        matches -= math.comb(b, 2) * math.comb(n - m * 2, k - m * 2)
     return matches
 
 
@@ -1001,7 +1006,7 @@ def number_of_singles(h: list[int], n: int, k: int, r: int) -> int:
 # matches, total = number_of_possible_hand(parse_cards("Dr RK GK BB SB RB R2"), 5, (2, 2, 11))
 # print(f"Wahrscheinlichkeit für ein Bubenpärchen: {matches / total}")  # 18/21 = 0.8571428571428571
 #
-# Bei einer Straße als Kombination werden auch Straßenbomben als normale Straßen gezählt.
+# Bei einer Straße als Kombination werden auch Farbbomben als normale Straßen gezählt.
 #
 # unplayed_cards: Ungespielte Karten
 # k: Anzahl Handkarten
@@ -1018,45 +1023,39 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
     # die ungespielten Karten je Rang
     #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
     h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    # p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
+    # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
+    # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
+    u = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
+    ]
+
     for v, c in unplayed_cards:
         h[v] += 1
+        if c > 0:
+            u[c - 1][v - 2] = 1
 
     t, m, r = figure  # type, length, rank
+
     if t == STAIR:  # Treppe
         p = number_of_stairs(h, n, k, m, r) / samples
 
     elif t == FULLHOUSE:  # Full House
         p = number_of_fullhouses(h, n, k, r) / samples
 
-    elif t == STREET:  # Straße (oder Straßenbombe; Farbe wird hier nicht berücksichtigt)
-        #p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
-        # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
-        # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
-        u = [
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
-        ]
-        for v, c in unplayed_cards:
-            if c > 0:
-                u[c - 1][v - 2] = 1
+    elif t == STREET:  # Straße
         p = number_of_streets(h, u, n, k, m, r) / samples
 
-    elif t == BOMB:  # Bombe
-        #p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
-        # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
-        # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
-        u = [
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
-        ]
-        for v, c in unplayed_cards:
-            if c > 0:
-                u[c - 1][v - 2] = 1
-        p = number_of_bombs(h, u, n, k, m, r) / samples
+    elif t == BOMB and m >= 5:  # Farbbombe
+        p = number_of_color_bombs(h, u, n, k, m, r) / samples
+
+    elif t == BOMB:  # 4er-Bombe
+        assert m == 4
+        p = number_of_bombs(h, n, k, m, r) / samples
 
     elif t == TRIPLE:  # Drilling
         p = number_of_tripples(h, n, k, r) / samples
@@ -1077,7 +1076,7 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 
 def test_possible_hands():  # pragma: no cover
     #cards, k, figure = "BK SD BD BB BZ B9 R3", 6, (6, 5, 13)  #, 3, 7, 0.42857142857142855, "Straße, mit Bombe"),
-    #cards, k, figure = "BK BD BB BZ B9 RK RD RB RZ R9 G2", 10, (6, 5, 13)  # , 74, 78, 0.9487179487179487, "Straße, mit 2 Straßenbomben (2)"),
+    #cards, k, figure = "BK BD BB BZ B9 RK RD RB RZ R9 G2", 10, (6, 5, 13)  # , 74, 78, 0.9487179487179487, "Straße, mit 2 Farbbomben (2)"),
     #cards, k, figure = "GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 11)  #, 5, 1287, 0.003885003885003885, "5erStraßeB, Test 20"),
     cards, k, figure = "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 11)  #, 492, 1716, 0.2867132867132867, "5erStraßeB, Test 35"),
 

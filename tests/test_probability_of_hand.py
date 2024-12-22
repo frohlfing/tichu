@@ -85,7 +85,7 @@ class TestGenerateTestData(unittest.TestCase):
                 for cards in combis:
                     run(cards, k, (t, m, r))
 
-        # t = BOMB  # Straßenbombe
+        # t = BOMB  # Farbbombe
         # combis = [
         #     "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
         #     "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 B2 S2",
@@ -743,10 +743,10 @@ class TestProbabilityOfHands(unittest.TestCase):
             ("SK RK GD BB RZ B9 R8 Ph", 6, (6, 5, 13), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert)"),
             ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 13), 13, 28, 0.4642857142857143, "Straße mit Phönix (verlängert, 2)"),
             ("BK SD BD RB BZ B9 R3", 6, (6, 5, 13), 3, 7, 0.42857142857142855, "Straße, keine Bombe"),
-            ("BK SD BD BB BZ B9 R3", 6, (6, 5, 13), 2, 7, 0.2857142857142857, "Straße, mit Straßenbombe"),
-            ("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 13), 73, 78, 0.9358974358974359, "Straße, mit 2 Straßenbomben (1)"),
-            ("BK SD BD BB BZ B9 RK RD RB RZ R9 G2 G3", 11, (6, 5, 13), 74, 78, 0.9487179487179487, "Straße, mit 2 Straßenbomben (2)"),
-            ("BK SD BD BB BZ B9 RK RD RB SB RZ R9 G2", 11, (6, 5, 13), 75, 78, 0.9615384615384616, "Straße, mit 2 Straßenbomben (3)"),
+            ("BK SD BD BB BZ B9 R3", 6, (6, 5, 13), 2, 7, 0.2857142857142857, "Straße, mit Farbbombe"),
+            ("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 13), 73, 78, 0.9358974358974359, "Straße, mit 2 Farbbomben (1)"),
+            ("BK SD BD BB BZ B9 RK RD RB RZ R9 G2 G3", 11, (6, 5, 13), 74, 78, 0.9487179487179487, "Straße, mit 2 Farbbomben (2)"),
+            ("BK SD BD BB BZ B9 RK RD RB SB RZ R9 G2", 11, (6, 5, 13), 75, 78, 0.9615384615384616, "Straße, mit 2 Farbbomben (3)"),
             ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 0, (6, 5, 11), 0, 1, 0.0, "5erStraßeB, Test 1"),
             ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 0, (6, 5, 11), 0, 1, 0.0, "5erStraßeB, Test 2"),
             ("GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2", 0, (6, 5, 11), 0, 1, 0.0, "5erStraßeB, Test 3"),
@@ -1008,9 +1008,9 @@ class TestProbabilityOfHands(unittest.TestCase):
     def test_bomb_strasse(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
-            ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 11), 1, 21, 0.047619047619047616, "Straßenbombe"),
-            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 13), 12, 12, 1.0, "2 Straßenbomben in 12 Karten"),
-            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 13), 53, 78, 0.6794871794871795, "2 Straßenbomben in 13 Karten"),
+            ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 11), 1, 21, 0.047619047619047616, "Farbbombe"),
+            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 13), 12, 12, 1.0, "2 Farbbomben in 12 Karten"),
+            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 13), 53, 78, 0.6794871794871795, "2 Farbbomben in 13 Karten"),
             ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 0, (7, 5, 10), 0, 1, 0.0, "5erBombeZ, Test 1"),
             ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 B2 S2", 0, (7, 5, 10), 0, 1, 0.0, "5erBombeZ, Test 2"),
             ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2", 0, (7, 5, 10), 0, 1, 0.0, "5erBombeZ, Test 3"),
