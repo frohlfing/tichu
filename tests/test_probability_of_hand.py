@@ -1614,7 +1614,7 @@ class TestProbabilityOfHands(unittest.TestCase):
     def test_single(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
-            ("Dr RK GK BD SB R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
+            ("Dr RB G6 B5 S4 R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
             ("Dr RK GK BD SB RB R2", 5, (1, 1, 11), 20, 21, 0.9523809523809523, "Einzelkarte mit 2 Buben"),
             ("SB RZ R9 G9 R8 G8 B4", 0, (1, 1, 10), 0, 1, 0.0, "Zehn, Test 1"),
             ("SB RZ GZ R9 G9 R8 G8 B4", 0, (1, 1, 10), 0, 1, 0.0, "Zehn, Test 2"),

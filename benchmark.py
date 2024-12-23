@@ -195,33 +195,78 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     # manual: 0.002328 Sekunden
 
 
-def comb_math(a, i):
-    return math.comb(a, i)
+def possible_hands_benchmark():
+    cards = parse_cards("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7 G6 G4 G3 Ph Hu Dr Ma")
+    number = 10
+    t = timeit(lambda: possible_hands(cards, 9, (SINGLE, 1, 10)), number=number) * 1000 / number
+    print(f"possible_hands SINGLE: {t:.6f} ms")
+    t = timeit(lambda: possible_hands(cards, 9, (PAIR, 2, 10)), number=number) * 1000 / number
+    print(f"possible_hands PAIR: {t:.6f} ms")
+    t = timeit(lambda: possible_hands(cards, 9, (TRIPLE, 3, 10)), number=number) * 1000 / number
+    print(f"possible_hands TRIPLE: {t:.6f} ms")
+    t = timeit(lambda: possible_hands(cards, 9, (STAIR, 6, 10)), number=number) * 1000 / number
+    print(f"possible_hands STAIR: {t:.6f} ms")
+    t = timeit(lambda: possible_hands(cards, 9, (FULLHOUSE, 5, 10)), number=number) * 1000 / number
+    print(f"possible_hands FULLHOUSE: {t:.6f} ms")
+    t = timeit(lambda: possible_hands(cards, 9, (STREET, 6, 10)), number=number) * 1000 / number
+    print(f"possible_hands STREET: {t:.6f} ms")
+    t = timeit(lambda: possible_hands(cards, 9, (BOMB, 4, 10)), number=number) * 1000 / number
+    print(f"possible_hands BOMB: {t:.6f} ms")
+    t = timeit(lambda: possible_hands(cards, 9, (BOMB, 6, 10)), number=number) * 1000 / number
+    print(f"possible_hands Color BOMB: {t:.6f} ms")
+    # possible_hands SINGLE: 95.057590 ms
+    # possible_hands PAIR: 143.110650 ms
+    # possible_hands TRIPLE: 138.049920 ms
+    # possible_hands STAIR: 463.120050 ms
+    # possible_hands FULLHOUSE: 766.137180 ms
+    # possible_hands STREET: 1428.695620 ms
+    # possible_hands BOMB: 92.035310 ms
+    # possible_hands Color BOMB: 736.242620 ms
 
-def comb_manuel(a, i):
-    if i == 2:
-        b = 10 if a == 5 else 6 if a == 4 else 3 if a == 3 else 1 if a == 2 else 0  # Anzahl Möglichkeiten für ein Pärchen
-    elif i == 3:
-        b = 10 if a == 5 else 4 if a == 4 else 1 if a == 3 else 0  # Anzahl Möglichkeiten für einen Drilling
-    elif i == 4:
-        b = 5 if a == 5 else 1 if a == 4 else 0  # Anzahl Möglichkeiten für einen Vierling
-    else:
-        b = 1 if a == 5 else 0  # Anzahl Möglichkeiten für einen Fünfling
-    return b
+def probability_of_hand_benchmark():
+    cards = parse_cards("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7 G6 G4 G3 Ph Hu Dr Ma")
+    number = 1000
+    t = timeit(lambda: probability_of_hand(cards, 9, (SINGLE, 1, 10)), number=number) * 1000 / number
+    print(f"probability_of_hand SINGLE: {t:.6f} ms")
+    t = timeit(lambda: probability_of_hand(cards, 9, (PAIR, 2, 10)), number=number) * 1000 / number
+    print(f"probability_of_hand PAIR: {t:.6f} ms")
+    t = timeit(lambda: probability_of_hand(cards, 9, (TRIPLE, 3, 10)), number=number) * 1000 / number
+    print(f"probability_of_hand TRIPLE: {t:.6f} ms")
+    t = timeit(lambda: probability_of_hand(cards, 9, (STAIR, 6, 10)), number=number) * 1000 / number
+    print(f"probability_of_hand STAIR: {t:.6f} ms")
+    t = timeit(lambda: probability_of_hand(cards, 9, (FULLHOUSE, 5, 10)), number=number) * 1000 / number
+    print(f"probability_of_hand FULLHOUSE: {t:.6f} ms")
+    t = timeit(lambda: probability_of_hand(cards, 9, (STREET, 6, 10)), number=number) * 1000 / number
+    print(f"probability_of_hand STREET: {t:.6f} ms")
+    t = timeit(lambda: probability_of_hand(cards, 9, (BOMB, 4, 10)), number=number) * 1000 / number
+    print(f"probability_of_hand BOMB: {t:.6f} ms")
+    t = timeit(lambda: probability_of_hand(cards, 9, (BOMB, 6, 10)), number=number) * 1000 / number
+    print(f"probability_of_hand Color BOMB: {t:.6f} ms")
+    # probability_of_hand SINGLE: 0.003127 ms
+    # probability_of_hand PAIR: 0.003207 ms
+    # probability_of_hand TRIPLE: 0.002966 ms
+    # probability_of_hand STAIR: 0.002860 ms
+    # probability_of_hand FULLHOUSE: 0.397888 ms
+    # probability_of_hand STREET: 0.005616 ms
+    # probability_of_hand BOMB: 0.002504 ms
+    # probability_of_hand Color BOMB: 0.003605 ms
 
-def possible_hands_benchmark(n, k):
-    t = timeit(lambda: comb_math(n, k), number=1000)
-    print(f"math.comb: {t:.6f} Sekunden")
-
-    t = timeit(lambda: comb_manuel(n, k), number=1000)
-    print(f"manuel: {t:.6f} Sekunden")
+def calc_statistic_benchmark():
+    number = 10
+    hand = parse_cards("S7 G7 R7 G4 G4 R4 Ph Dr Ma")
+    hidden = parse_cards("BK BD BB BZ B9 RK RD RB RZ R9 S2")
+    combis = build_combinations(hand)
+    number_of_cards = [len(hand), len(hidden), 0, 0]
+    unplayed_cards = hand + hidden
+    t = timeit(lambda: calc_statistic(0, hand, combis, number_of_cards, (0, 0, 0), unplayed_cards), number=number) * 1000 / number
+    print(f"calc_statistic: {t:.6f} ms")
+    #calc_statistic: 0.198650 ms
 
 
 if __name__ == '__main__':
-    possible_hands_benchmark(5, 3)
-    possible_hands_benchmark(5, 5)
-    possible_hands_benchmark(4, 2)
-    possible_hands_benchmark(3, 2)
+    #possible_hands_benchmark()
+    #probability_of_hand_benchmark()
+    calc_statistic_benchmark()
     #binomial_benchmark(n=56, k=14)
     #binomial_benchmark(n=1000, k=500)
     #hypergeometric_benchmark(N=56, n=14, M=4, k=3)
