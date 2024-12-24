@@ -374,6 +374,10 @@ class TestCombinations(unittest.TestCase):
             ("Dr RB G6 B5 S4 R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
             ("Dr RK GK BD SB RB R2", 5, (1, 1, 11), 20, 21, 0.9523809523809523, "Einzelkarte mit 2 Buben"),
             ("SB RZ GZ BZ SZ R9 G9 R8 G8 B4", 3, (1, 1, 10), 100, 120, 0.8333333333333334, "Einzelkarte aus einer 4er-Bombe"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 1, 7, 0.14285714285714285, "Einzelkarte Hund"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 1, 7, 0.14285714285714285, "Einzelkarte Mahjong"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 1, 7, 0.14285714285714285, "Einzelkarte Drache"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 1, 7, 0.14285714285714285, "Einzelkarte Phönix"),
             ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 18, 21, 0.8571428571428571, "Pärchen ohne Phönix"),
             ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 18, 21, 0.8571428571428571, "Pärchen mit Phönix"),
             ("SK RK GB BB SB R3 R2", 4, (3, 3, 11), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
@@ -433,6 +437,10 @@ class TestCombinations(unittest.TestCase):
             ("Dr RB SB B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, 0.7142857142857143, "Einzelkarte mit 2 Buben"),
             ("Ph RB G6 B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, 0.7142857142857143, "Einzelkarte mit Phönix"),
             ("SB RZ GZ BZ SZ R9 G9 R8 G8 B4", 3, (1, 1, 9), 110, 120, 0.9166666666666666, "Einzelkarte aus einer 4er-Bombe"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 6, 7, 0.8571428571428571, "Einzelkarte Hund"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 5, 7, 0.7142857142857143, "Einzelkarte Mahjong"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0, 7, 0.0, "Einzelkarte Drache"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 5, 7, 0.7142857142857143, "Einzelkarte Phönix"),
             ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 10, 21, 0.47619047619047616, "Pärchen ohne Phönix"),
             ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 19, 21, 0.9047619047619048, "Pärchen mit Phönix"),
             ("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
@@ -446,7 +454,7 @@ class TestCombinations(unittest.TestCase):
             ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
             ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
             ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse und zusätzliches Pärchen"),
-            ("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 6, 8, 0.75, "Fullhouse aus Bombe"),
+            ("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 8, 8, 1.0, "Fullhouse aus Bombe"),
             ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse aus 2 Drillinge"),
             ("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 9), 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
             ("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 9), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
@@ -458,12 +466,12 @@ class TestCombinations(unittest.TestCase):
             ("SK RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert)"),
             ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert, 2)"),
             ("BK SD BD RB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße, keine Bombe"),
-            ("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 2, 7, 0.2857142857142857, "Straße, mit Farbbombe"),
+            ("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße, mit Farbbombe"),
             ("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, 0.9358974358974359, "Straße, mit 2 Farbbomben (1)"),
             ("BK SD BD BB BZ B9 RK RD RB RZ R9 G2 G3", 11, (6, 5, 12), 74, 78, 0.9487179487179487, "Straße, mit 2 Farbbomben (2)"),
             ("BK SD BD BB BZ B9 RK RD RB SB RZ R9 G2", 11, (6, 5, 12), 75, 78, 0.9615384615384616, "Straße, mit 2 Farbbomben (3)"),
-            ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 19, 1287, 0.014763014763014764, "5erStraßeB, Test 20"),
-            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 512, 1716, 0.29836829836829837, "5erStraßeB, Test 35"),
+            ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 22, 1287, 0.017094017094017096, "5erStraßeB, Test 20"),
+            ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 516, 1716, 0.3006993006993007, "5erStraßeB, Test 35"),
             ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
             ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, 0.047619047619047616, "Farbbombe"),
             ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, 1.0, "2 Farbbomben in 12 Karten"),
@@ -482,8 +490,8 @@ class TestCombinations(unittest.TestCase):
             self.assertAlmostEqual(t[5], sum(matches) / len(hands) if len(hands) else 0.0, places=15, msg=t[6])
 
             # probability_of_hands
-            #p = probability_of_hand_hi(parse_cards(t[0]), t[1], t[2])
-            #self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
+            p = probability_of_hand_hi(parse_cards(t[0]), t[1], t[2])
+            self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
 
 
 if __name__ == "__main__":
