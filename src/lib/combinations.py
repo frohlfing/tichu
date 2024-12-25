@@ -837,80 +837,81 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
 def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[list, list]:
     hands = list(itertools.combinations(unplayed_cards, k))
     matches = []
-    t, m, r_ = figure  # type, length, rank
+    t, m, r = figure  # type, length, rank
     for hand in hands:
         b = False
         if t == SINGLE:  # Einzelkarte
-            if r_ < 15:
-                b = any(v > r_ for v, _ in hand)
-            elif r_ == 15:  # Drache
+            if r == 15:  # Drache
                 b = False
-            else:
-                assert r_ == 16  # Phönix
-                b = any(v > 1 for v, _ in hand)
+            elif r < 15:  # bis zum Ass
+                b = any(v > r for v, _ in hand)
+            else:  # Phönix
+                assert r == 16
+                b = any(1 < v < 16 for v, _ in hand)
         else:
-            for r in range(r_ + 1, 15):
+            for rhi in range(r + 1, 15):
                 if t in [PAIR, TRIPLE]:  # Paar oder Drilling
-                    b = sum(1 for v, _ in hand if v in [r, 16]) >= m
+                    b = sum(1 for v, _ in hand if v in [rhi, 16]) >= m
 
                 elif t == STAIR:  # Treppe
                     steps = int(m / 2)
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(steps):
-                            b = all(sum(1 for v, _ in hand if v == r - i) >= (1 if i == j else 2) for i in range(steps))
+                            b = all(sum(1 for v, _ in hand if v == rhi - i) >= (1 if i == j else 2) for i in range(steps))
                             if b:
                                 break
                     else:
-                        b = all(sum(1 for v, _ in hand if v == r - i) >= 2 for i in range(steps))
+                        b = all(sum(1 for v, _ in hand if v == rhi - i) >= 2 for i in range(steps))
 
                 elif t == FULLHOUSE:  # Fullhouse
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(2, 15):
-                            b = (sum(1 for v, _ in hand if v == r) >= (2 if r == j else 3)
-                                 and any(sum(1 for v2, _ in hand if v2 == r2) >= (1 if r2 == j else 2) for r2 in range(2, 15) if r2 != r))
+                            b = (sum(1 for v, _ in hand if v == rhi) >= (2 if rhi == j else 3)
+                                 and any(sum(1 for v2, _ in hand if v2 == r2) >= (1 if r2 == j else 2) for r2 in range(2, 15) if r2 != rhi))
                             if b:
                                 break
                     else:
-                        b = (sum(1 for v, _ in hand if v == r) >= 3
-                             and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != r))
+                        b = (sum(1 for v, _ in hand if v == rhi) >= 3
+                             and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != rhi))
 
                 elif t == STREET:  # Straße
-                    colors = set([c for i in range(m) for v, c in hand if v == r - i])  # Auswahl an Farben in der Straße
+                    colors = set([c for i in range(m) for v, c in hand if v == rhi - i])  # Auswahl an Farben in der Straße
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(int(m)):
-                            b = all(sum(1 for v, _ in hand if v == r - i) >= (0 if i == j else 1) for i in range(m))
+                            b = all(sum(1 for v, _ in hand if v == rhi - i) >= (0 if i == j else 1) for i in range(m))
                             if b:
                                 break
                     elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Farbbombe
                         b = False
                     else:
-                        b = all(sum(1 for v, _ in hand if v == r - i) >= 1 for i in range(m))
+                        b = all(sum(1 for v, _ in hand if v == rhi - i) >= 1 for i in range(m))
 
                 elif t == BOMB and m == 4:  # 4er-Bombe
-                    b = sum(1 for v, _ in hand if v == r) >= 4
+                    b = sum(1 for v, _ in hand if v == rhi) >= 4
 
                 elif t == BOMB and m >= 5:  # Farbbombe
-                    b = any(all(sum(1 for v, c in hand if v == r - i and c == color) >= 1 for i in range(m)) for color in range(1, 5))
+                    b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m)) for color in range(1, 5))
                 else:
                     assert False
 
                 if b:
                     break
 
-        # eine 4er-Bombe schlägt jede Nicht-Bombe
-        if not b and t != BOMB:
-            for r in range(2, 15):
-                b = sum(1 for v, _ in hand if v == r) >= 4
-                if b:
-                    break
-
-        # eine Farbbombe schlägt jede kürzere Farbbombe und jede Nicht-Farbbombe
-        if not b:
-            m2 = m + 1 if t == BOMB and m >= 5 else 5
-            for r in range(m2 + 1, 15):
-                b = any(all(sum(1 for v, c in hand if v == r - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
-                if b:
-                    break
+        # todo wieder einkommentieren
+        # # eine 4er-Bombe schlägt jede Nicht-Bombe
+        # if not b and t != BOMB:
+        #     for rhi in range(2, 15):
+        #         b = sum(1 for v, _ in hand if v == rhi) >= 4
+        #         if b:
+        #             break
+        #
+        # # eine Farbbombe schlägt jede kürzere Farbbombe und jede Nicht-Farbbombe
+        # if not b:
+        #     m2 = m + 1 if t == BOMB and m >= 5 else 5
+        #     for rhi in range(m2 + 1, 15):
+        #         b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
+        #         if b:
+        #             break
 
         matches.append(b)
     return matches, hands
@@ -921,6 +922,33 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
     hands = list(itertools.combinations(unplayed_cards, k))
     matches = []
     return matches, hands
+
+
+def _count_cards(cards: list[tuple]) -> (int, list[int], list[list[int]]):
+    # Anzahl der Karten
+    n = len(cards)
+
+    # Anzahl der Karten je Rang
+    #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
+    h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    # Anzahl der Karten von 2 bis Ass pro Farbe und pro Rang
+    # p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
+    # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
+    # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
+    u = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
+    ]
+
+    for v, c in cards:
+        h[v] += 1
+        if c > 0:
+            u[c - 1][v - 2] = 1
+
+    return n, h, u
 
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination hält
@@ -935,40 +963,20 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
 # k: Anzahl Handkarten
 # figure: Typ, Länge, Rang der Kombination
 def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> float:
-    # Anzahl der ungespielten Karten
-    n = len(unplayed_cards)
+    # Anzahl der ungespielten Karten je Rang
+    n, h, u = _count_cards(unplayed_cards)
 
     # Anzahl Möglichkeiten gesamt
     samples = math.comb(n, k)
     if samples == 0:
         return 0.0
 
-    # Anzahl der ungespielten Karten je Rang
-    #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
-    h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-    # Anzahl der ungespielten Karten von 2 bis Ass pro Farbe und pro Rang
-    # p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
-    # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
-    # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
-    u = [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
-    ]
-
-    for v, c in unplayed_cards:
-        h[v] += 1
-        if c > 0:
-            u[c - 1][v - 2] = 1
-
     t, m, r = figure  # type, length, rank
 
     if n < m or k < m:
-        return 0
+        matches = 0
 
-    if t == SINGLE:  # Einzelkarte
+    elif t == SINGLE:  # Einzelkarte
         matches = sum(math.comb(h[r], i) * math.comb(n - h[r], k - i) for i in range(1, h[r] + 1) if k >= i)
 
     elif t in [PAIR, TRIPLE]:  # Paar oder Drilling
@@ -984,7 +992,7 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
             # Pärchen bis Bombe, ohne Phönix
             matches_ = sum(math.comb(h[r2], i) * _number_of_pairs(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(2, h[r2] + 1) if k_remain >= i) if h[r2] > 0 else 0
             # Einzelkarte mit Phönix
-            matches_ += math.comb(h[r2], 1) * _number_of_pairs(n_remain - h[r2] - pho, k_remain - 2, r2 + 1, 0) if h[r2] >= 1 and pho == 1 else 0
+            matches_ += h[r2] * _number_of_pairs(n_remain - h[r2] - pho, k_remain - 2, r2 + 1, 0) if h[r2] >= 1 and pho == 1 else 0
             return matches_
 
         steps = int(m / 2)
@@ -1000,9 +1008,9 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
             matches_ = _number_of_pairs(n_remain - h[r2], k_remain, r2 + 1, pho) if r2 < 14 else 0
             if h[r2] > 0:
                 # Einzelkarte ohne Phönix
-                matches_ += math.comb(h[r2], 1) * _number_of_pairs(n_remain - h[r2] - pho, k_remain - 1, r2 + 1, 0) if r2 < 14 else 0
+                matches_ += h[r2] * _number_of_pairs(n_remain - h[r2] - pho, k_remain - 1, r2 + 1, 0) if r2 < 14 else 0
                 # Einzelkarte mit Phönix
-                matches_ += math.comb(h[r2], 1) * math.comb(n_remain - h[r2] - pho, k_remain - 2) if pho == 1 else 0
+                matches_ += h[r2] * math.comb(n_remain - h[r2] - pho, k_remain - 2) if pho == 1 else 0
                 # Pärchen bis Bombe, ohne Phönix
                 matches_ += sum(math.comb(h[r2], i) * math.comb(n_remain - h[r2], k_remain - i) for i in range(2, h[r2] + 1) if k_remain >= i)
             return matches_
@@ -1046,76 +1054,121 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 
 
 def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> float:
-    # Anzahl der ungespielten Karten
-    n = len(unplayed_cards)
+    # Anzahl der ungespielten Karten je Rang
+    n, h, u = _count_cards(unplayed_cards)
 
     # Anzahl Möglichkeiten gesamt
     samples = math.comb(n, k)
     if samples == 0:
         return 0.0
 
-    # Anzahl der ungespielten Karten je Rang
-    #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
-    h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-    # Anzahl der ungespielten Karten von 2 bis Ass pro Farbe und pro Rang
-    # p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
-    # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
-    # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
-    u = [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
-    ]
-
-    for v, c in unplayed_cards:
-        h[v] += 1
-        if c > 0:
-            u[c - 1][v - 2] = 1
-
     t, m, r = figure  # type, length, rank
 
     if n < m or k < m:
-        return 0
+        matches = 0
 
-    if t == SINGLE:  # Einzelkarte
-        matches = sum(math.comb(h[r], i) * math.comb(n - h[r], k - i) for i in range(1, h[r] + 1) if k >= i)
+    elif t == SINGLE:  # Einzelkarte
+        def _number_of_singles(n_remain: int, k_remain: int, r_cur: int) -> int:
+            if n_remain < 1 or k_remain < 1:
+                return 0
+            # keine Karte mit diesem Rang
+            matches_ = _number_of_singles(n_remain - h[r_cur], k_remain, r_cur + 1) if r_cur < r_max else 0
+            if h[r_cur] > 0:
+                # Einzelkarte bis Bombe
+                matches_ += sum(math.comb(h[r_cur], i) * math.comb(n_remain - h[r_cur], k_remain - i) for i in range(1, h[r_cur] + 1) if k_remain >= i)
+            return matches_
 
-    elif t in [PAIR, TRIPLE]:  # Paar oder Drilling
-        a = h[r] + h[16]
-        matches = sum(math.comb(a, i) * math.comb(n - a, k - i) for i in range(m, a + 1) if k >= i)
+        if r == 15:  # Drache
+            matches = 0
+        elif r < 15:  # bis zum Ass
+            r_max = 16
+            matches = _number_of_singles(n, k, r + 1)
+        else:  # Phönix
+            assert r == 16
+            r_max = 15
+            matches = _number_of_singles(n, k, 2)
+
+    elif t == PAIR:  # Paar
+        def _number_of_pairs(n_remain: int, k_remain: int, r_cur: int, pho: int) -> int:
+            if n_remain < 2 or k_remain < 2:
+                return 0
+            # keine Karte mit diesem Rang
+            matches_ = _number_of_pairs(n_remain - h[r_cur], k_remain, r_cur + 1, pho) if r_cur < r_max else 0
+            if h[r_cur] > 0:
+                # Einzelkarte ohne Phönix
+                matches_ += h[r_cur] * _number_of_pairs(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0) if r_cur < r_max else 0
+                if pho == 1:
+                    # Einzelkarte mit Phönix
+                    matches_ += h[r_cur] * math.comb(n_remain - h[r_cur] - pho, k_remain - 2)
+                if h[r_cur] > 1:
+                    # Pärchen bis Bombe, ohne Phönix
+                    matches_ += sum(math.comb(h[r_cur], i) * math.comb(n_remain - h[r_cur], k_remain - i) for i in range(2, h[r_cur] + 1) if k_remain >= i)
+            return matches_
+
+        r_max = 14
+        matches = _number_of_pairs(n, k, r + 1, h[16])
+
+    elif t == TRIPLE:  # Drilling
+        def _number_of_tripples(n_remain: int, k_remain: int, r_cur: int, pho: int) -> int:
+            if n_remain < 3 or k_remain < 3:
+                return 0
+            # keine Karte mit diesem Rang
+            matches_ = _number_of_tripples(n_remain - h[r_cur], k_remain, r_cur + 1, pho) if r_cur < r_max else 0
+            if h[r_cur] > 0:
+                # Einzelkarte mit oder ohne Phönix
+                matches_ += h[r_cur] * _number_of_tripples(n_remain - h[r_cur], k_remain - 1, r_cur + 1, pho) if r_cur < r_max else 0
+                if h[r_cur] > 1:
+                    # Pärchen ohne Phönix
+                    matches_ += math.comb(h[r_cur], 2) * _number_of_tripples(n_remain - h[r_cur] - pho, k_remain - 2, r_cur + 1, 0) if r_cur < r_max else 0
+                    if pho == 1:
+                        # Pärchen mit Phönix
+                        matches_ += math.comb(h[r_cur], 2) * math.comb(n_remain - h[r_cur] - pho, k_remain - 3)
+                    if h[r_cur] > 2:
+                        # Drilling bis Bombe, ohne Phönix
+                        matches_ += sum(math.comb(h[r_cur], i) * math.comb(n_remain - h[r_cur], k_remain - i) for i in range(3, h[r_cur] + 1) if k_remain >= i)
+            return matches_
+
+        r_max = 14
+        matches = _number_of_tripples(n, k, r + 1, h[16])
 
     elif t == STAIR:  # Treppe
-        def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
-            if r2 > r:
+        def _number_of_pairs(n_remain: int, k_remain: int, r_cur: int, pho: int, c: int) -> int:
+            if c >= steps:
                 return math.comb(n_remain, k_remain)
             if n_remain < 2 or k_remain < 2:
                 return 0
-            # Pärchen bis Bombe, ohne Phönix
-            matches_ = sum(math.comb(h[r2], i) * _number_of_pairs(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(2, h[r2] + 1) if k_remain >= i) if h[r2] > 0 else 0
-            # Einzelkarte mit Phönix
-            matches_ += math.comb(h[r2], 1) * _number_of_pairs(n_remain - h[r2] - pho, k_remain - 2, r2 + 1, 0) if h[r2] >= 1 and pho == 1 else 0
+            # keine Karte mit diesem Rang
+            matches_ = _number_of_pairs(n_remain - h[r_cur], k_remain, r_cur + 1, pho, 0) if r_cur < r_max else 0
+            if h[r_cur] > 0:
+                # Einzelkarte ohne Phönix
+                matches_ += h[r_cur] * _number_of_pairs(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0, 0) if r_cur < r_max else 0
+                if pho == 1:
+                   # Einzelkarte mit Phönix
+                    matches_ += h[r_cur] * _number_of_pairs(n_remain - h[r_cur] - pho, k_remain - 2, r_cur + 1, 0, c + 1)
+                if h[r_cur] > 1:
+                    # Pärchen bis Bombe, ohne Phönix
+                    matches_ += sum(math.comb(h[r_cur], i) * _number_of_pairs(n_remain - h[r_cur], k_remain - i, r_cur + 1, pho, c + 1) for i in range(2, h[r_cur] + 1) if k_remain >= i)
             return matches_
 
         steps = int(m / 2)
-        matches = _number_of_pairs(n, k, r - steps + 1, h[16])
+        r_max = 14 - steps + 1
+        matches = _number_of_pairs(n, k, r - steps + 2, h[16], 0)
 
     elif t == FULLHOUSE:  # Full House
-        def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
+        def _number_of_pairs(n_remain: int, k_remain: int, r_cur: int, pho: int) -> int:
             if n_remain < 2 or k_remain < 2:
                 return 0
-            if r2 == r:  # das Pärchen darf nicht mit dem Drilling gleichwertig sein
-                return _number_of_pairs(n_remain, k_remain, r2 + 1, pho) if r2 < 14 else 0
+            if r_cur == r:  # das Pärchen darf nicht mit dem Drilling gleichwertig sein
+                return _number_of_pairs(n_remain, k_remain, r_cur + 1, pho) if r_cur < 14 else 0
             # keine Karte mit diesem Rang
-            matches_ = _number_of_pairs(n_remain - h[r2], k_remain, r2 + 1, pho) if r2 < 14 else 0
-            if h[r2] > 0:
+            matches_ = _number_of_pairs(n_remain - h[r_cur], k_remain, r_cur + 1, pho) if r_cur < 14 else 0
+            if h[r_cur] > 0:
                 # Einzelkarte ohne Phönix
-                matches_ += math.comb(h[r2], 1) * _number_of_pairs(n_remain - h[r2] - pho, k_remain - 1, r2 + 1, 0) if r2 < 14 else 0
+                matches_ += h[r_cur] * _number_of_pairs(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0) if r_cur < 14 else 0
                 # Einzelkarte mit Phönix
-                matches_ += math.comb(h[r2], 1) * math.comb(n_remain - h[r2] - pho, k_remain - 2) if pho == 1 else 0
+                matches_ += h[r_cur] * math.comb(n_remain - h[r_cur] - pho, k_remain - 2) if pho == 1 else 0
                 # Pärchen bis Bombe, ohne Phönix
-                matches_ += sum(math.comb(h[r2], i) * math.comb(n_remain - h[r2], k_remain - i) for i in range(2, h[r2] + 1) if k_remain >= i)
+                matches_ += sum(math.comb(h[r_cur], i) * math.comb(n_remain - h[r_cur], k_remain - i) for i in range(2, h[r_cur] + 1) if k_remain >= i)
             return matches_
 
         # Drilling bis Bombe, ohne Phönix
@@ -1124,15 +1177,15 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
         matches += math.comb(h[r], 2) * _number_of_pairs(n - h[r] - h[16], k - 3, 2, 0) if h[r] >= 2 and h[16] == 1 else 0
 
     elif t == STREET:  # Straße
-        def _number_of_singles(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
-            if r2 > r:
+        def _number_of_singles(n_remain: int, k_remain: int, r_cur: int, pho: int) -> int:
+            if r_cur > r:
                 return math.comb(n_remain, k_remain)
             if n_remain < 1 or k_remain < 1:
                 return 0
             # Einzelkarte bis Bombe, ohne Phönix
-            matches_ = sum(math.comb(h[r2], i) * _number_of_singles(n_remain - h[r2], k_remain - i, r2 + 1, pho) for i in range(1, h[r2] + 1) if k_remain >= i) if h[r2] > 0 else 0
+            matches_ = sum(math.comb(h[r_cur], i) * _number_of_singles(n_remain - h[r_cur], k_remain - i, r_cur + 1, pho) for i in range(1, h[r_cur] + 1) if k_remain >= i) if h[r_cur] > 0 else 0
             # Phönix
-            matches_ += _number_of_singles(n_remain - h[r2] - pho, k_remain - 1, r2 + 1, 0) if pho == 1 else 0
+            matches_ += _number_of_singles(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0) if pho == 1 else 0
             return matches_
 
         matches = _number_of_singles(n, k, r - m + 1, h[16])
@@ -1169,13 +1222,13 @@ def test_possible_hands():  # pragma: no cover
     test = [
         # unplayed cards, k, figure, sum(matches), len(hands), p, msg
         #("Dr RB G6 B5 S4 R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
-        ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 6, 7, 0.8571428571428571, "Einzelkarte Hund"),
-        ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 5, 7, 0.7142857142857143, "Einzelkarte Mahjong"),
-        ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0, 7, 0.0, "Einzelkarte Drache"),
-        ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 5, 7, 0.7142857142857143, "Einzelkarte Phönix"),
         #("Dr RB SB B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, 0.7142857142857143, "Einzelkarte mit 2 Buben"),
         #("Ph RB G6 B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, 0.7142857142857143, "Einzelkarte mit Phönix"),
         #("SB RZ GZ BZ SZ R9 G9 R8 G8 B4", 3, (1, 1, 9), 110, 120, 0.9166666666666666, "Einzelkarte aus einer 4er-Bombe"),
+        # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 6, 7, 0.8571428571428571, "Einzelkarte Hund"),
+        # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 5, 7, 0.7142857142857143, "Einzelkarte Mahjong"),
+        # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0, 7, 0.0, "Einzelkarte Drache"),
+        #("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 4, 7, 0.5714285714285714, "Einzelkarte Phönix"),
         #("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 10, 21, 0.47619047619047616, "Pärchen ohne Phönix"),
         #("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 19, 21, 0.9047619047619048, "Pärchen mit Phönix"),
         #("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
@@ -1185,7 +1238,7 @@ def test_possible_hands():  # pragma: no cover
         #("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, 0.0, "2er-Treppe nicht möglich"),
         #("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
         #("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
-        # ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
+        ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
         # ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
         # ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
         # ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse und zusätzliches Pärchen"),
@@ -1215,14 +1268,14 @@ def test_possible_hands():  # pragma: no cover
     for t in test:
         cards, k, figure, _sum_matches, _len_hands, _p, _msg = t
         # possible_hands
-        matches, hands = possible_hands(parse_cards(cards), k, figure)
+        matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
         for match, sample in zip(matches, hands):
             print(stringify_cards(sample), match)
         if hands:
             print(f"p = {sum(matches)}/{len(hands)} = {sum(matches) / len(hands)}")
         # probability_of_hand
-        #p = probability_of_hand_hi(parse_cards(cards), k, figure)
-        #print(f"p = {p}, n = {len(hands)*p}")
+        p = probability_of_hand_hi(parse_cards(cards), k, figure)
+        print(f"p = {p}, n = {len(hands)*p}")
 
 
 if __name__ == "__main__":  # pragma: no cover

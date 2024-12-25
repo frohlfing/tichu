@@ -440,7 +440,7 @@ class TestCombinations(unittest.TestCase):
             ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 6, 7, 0.8571428571428571, "Einzelkarte Hund"),
             ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 5, 7, 0.7142857142857143, "Einzelkarte Mahjong"),
             ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0, 7, 0.0, "Einzelkarte Drache"),
-            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 5, 7, 0.7142857142857143, "Einzelkarte Phönix"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 4, 7, 0.5714285714285714, "Einzelkarte Phönix"),
             ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 10, 21, 0.47619047619047616, "Pärchen ohne Phönix"),
             ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 19, 21, 0.9047619047619048, "Pärchen mit Phönix"),
             ("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
