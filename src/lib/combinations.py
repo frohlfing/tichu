@@ -1155,43 +1155,77 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
         matches = _number_of_pairs(n, k, r - steps + 2, h[16], 0)
 
     elif t == FULLHOUSE:  # Full House
-        def _number_of_pairs(n_remain: int, k_remain: int, r_cur: int, pho: int) -> int:
+        def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int, r_cur: int) -> int:
             if n_remain < 2 or k_remain < 2:
                 return 0
-            if r_cur == r:  # das Pärchen darf nicht mit dem Drilling gleichwertig sein
-                return _number_of_pairs(n_remain, k_remain, r_cur + 1, pho) if r_cur < 14 else 0
+            if r2 == r_cur:  # das Pärchen darf nicht mit dem Drilling gleichwertig sein
+                return _number_of_pairs(n_remain, k_remain, r2 + 1, pho, r_cur) if r2 < 14 else 0
             # keine Karte mit diesem Rang
-            matches_ = _number_of_pairs(n_remain - h[r_cur], k_remain, r_cur + 1, pho) if r_cur < 14 else 0
-            if h[r_cur] > 0:
+            matches_ = _number_of_pairs(n_remain - h[r2], k_remain, r2 + 1, pho, r_cur) if r2 < 14 else 0
+            if h[r2] > 0:
                 # Einzelkarte ohne Phönix
-                matches_ += h[r_cur] * _number_of_pairs(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0) if r_cur < 14 else 0
-                # Einzelkarte mit Phönix
-                matches_ += h[r_cur] * math.comb(n_remain - h[r_cur] - pho, k_remain - 2) if pho == 1 else 0
-                # Pärchen bis Bombe, ohne Phönix
-                matches_ += sum(math.comb(h[r_cur], i) * math.comb(n_remain - h[r_cur], k_remain - i) for i in range(2, h[r_cur] + 1) if k_remain >= i)
+                matches_ += h[r2] * _number_of_pairs(n_remain - h[r2] - pho, k_remain - 1, r2 + 1, 0, r_cur) if r2 < 14 else 0
+                if pho == 1:
+                    # Einzelkarte mit Phönix
+                    matches_ += h[r2] * math.comb(n_remain - h[r2] - pho, k_remain - 2)
+                if h[r2] > 1:
+                    # Pärchen bis Bombe, ohne Phönix
+                    matches_ += sum(math.comb(h[r2], i) * math.comb(n_remain - h[r2], k_remain - i) for i in range(2, h[r2] + 1) if k_remain >= i)
             return matches_
 
-        # Drilling bis Bombe, ohne Phönix
-        matches = sum(math.comb(h[r], i) * _number_of_pairs(n - h[r], k - i, 2, h[16]) for i in range(3, h[r] + 1) if k >= i) if h[r] > 0 else 0
-        # Pärchen mit Phönix
-        matches += math.comb(h[r], 2) * _number_of_pairs(n - h[r] - h[16], k - 3, 2, 0) if h[r] >= 2 and h[16] == 1 else 0
+        def _number_of_tripples(n_remain: int, k_remain: int, r_cur: int, pho: int) -> int:
+            if n_remain < 5 or k_remain < 5:
+                return 0
+            # keine Karte mit diesem Rang
+            matches_ = _number_of_tripples(n_remain - h[r_cur], k_remain, r_cur + 1, pho) if r_cur < r_max else 0
+            if h[r_cur] > 0:
+                # Einzelkarte mit oder ohne Phönix
+                matches_ += h[r_cur] * _number_of_tripples(n_remain - h[r_cur], k_remain - 1, r_cur + 1, pho) if r_cur < r_max else 0
+                if h[r_cur] > 1:
+                    # Pärchen ohne Phönix
+                    matches_ += math.comb(h[r_cur], 2) * _number_of_tripples(n_remain - h[r_cur] - pho, k_remain - 2, r_cur + 1, 0) if r_cur < r_max else 0
+                    if pho == 1:
+                        # Pärchen mit Phönix
+                        matches_ += math.comb(h[r_cur], 2) * _number_of_pairs(n_remain - h[r_cur] - pho, k_remain - 3, 2, 0, r_cur)
+                    if h[r_cur] > 2:
+                        # Drilling bis Bombe, ohne Phönix
+                        matches_ += sum(math.comb(h[r_cur], i) * _number_of_pairs(n_remain - h[r_cur], k_remain - i, 2, pho, r_cur) for i in range(3, h[r_cur] + 1) if k_remain >= i)
+            return matches_
+
+        r_max = 14
+        matches = _number_of_tripples(n, k, r + 1, h[16])
 
     elif t == STREET:  # Straße
-        def _number_of_singles(n_remain: int, k_remain: int, r_cur: int, pho: int) -> int:
-            if r_cur > r:
+        def _number_of_singles(n_remain: int, k_remain: int, r_cur: int, pho: int, c: int) -> int:
+            #print(r_cur)
+            if c >= m:
+                #print("a", r_cur, math.comb(n_remain, k_remain))
                 return math.comb(n_remain, k_remain)
-            if n_remain < 1 or k_remain < 1:
+            if n_remain < m - c or k_remain < m - c:
+                #print("b", r_cur, 0)
                 return 0
-            # Einzelkarte bis Bombe, ohne Phönix
-            matches_ = sum(math.comb(h[r_cur], i) * _number_of_singles(n_remain - h[r_cur], k_remain - i, r_cur + 1, pho) for i in range(1, h[r_cur] + 1) if k_remain >= i) if h[r_cur] > 0 else 0
-            # Phönix
-            matches_ += _number_of_singles(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0) if pho == 1 else 0
+            # keine Karte mit diesem Rang und keine Phönix
+            #print("c", r_cur)
+            matches_ = _number_of_singles(n_remain - h[r_cur], k_remain, r_cur + 1, pho, 0) if r_cur < r_max else 0
+            if pho == 1:
+                # Phönix
+                #print("d", r_cur)
+                matches_ += _number_of_singles(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0, c + 1)
+            if h[r_cur] > 0:
+                # Einzelkarte bis Bombe, ohne Phönix
+                #print("e", r_cur)
+                matches_ += sum(math.comb(h[r_cur], i) * _number_of_singles(n_remain - h[r_cur], k_remain - i, r_cur + 1, pho, c + 1) for i in range(1, h[r_cur] + 1) if k_remain >= i)
+            #print("f", r_cur, matches_)
             return matches_
 
-        matches = _number_of_singles(n, k, r - m + 1, h[16])
+        r_max = 14 - m + 1
+        matches = _number_of_singles(n, k, r - m + 2, h[16], 0)
+
         # Farbbomben rausrechnen (nur Hände mit exakt 1 Straßenbombe sind betroffen, bei 2 Bomben sind immer normale Straßen dabei)
-        b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Farbbomben
-        matches -= b * math.comb(n - sum(h[r - m + 1:r + 1]) - h[16], k - m * 1) if b > 0 else 0
+        for r_cur in range(r - m + 2, 14 - m + 1):
+            b = sum(1 for color in range(4) if sum(u[color][r_cur - m - 1:r_cur - 1]) == m)  # Anzahl Farbbomben
+            if b > 0:
+                matches -= b * math.comb(n - sum(h[r_cur - m + 1:r_cur + 1]) - h[16], k - m)
 
     elif t == BOMB and m == 4:  # 4er-Bombe
         matches = math.comb(n - 4, k - 4) if h[r] == 4 else 0
@@ -1238,28 +1272,29 @@ def test_possible_hands():  # pragma: no cover
         #("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, 0.0, "2er-Treppe nicht möglich"),
         #("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
         #("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
-        ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
-        # ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
-        # ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
-        # ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse und zusätzliches Pärchen"),
-        # ("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 8, 8, 1.0, "Fullhouse aus Bombe"),
-        # ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse aus 2 Drillinge"),
-        # ("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 9), 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
-        # ("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 9), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
-        # ("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 9), 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
-        # ("RA GK BD SB RZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße ohne Phönix"),
-        # ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße mit Phönix (Lücke gefüllt)"),
-        # ("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 5, 28, 0.17857142857142858, "Straße ohne Phönix (aus 8 Karten)"),
-        # ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, 0.4642857142857143, "Straße mit Phönix 2 (aus 8 Karten)"),
+        #("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
+        #("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
+        #("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
+        #("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse und zusätzliches Pärchen"),
+        #("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 6, 8, 0.75, "Fullhouse aus Bombe"),
+        #("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse aus 2 Drillinge"),
+        #("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 9), 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
+        #("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 9), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
+        #("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 9), 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
+        #("RA GK BD SB RZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße ohne Phönix"),
+        #("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße mit Phönix (Lücke gefüllt)"),
+        #("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 5, 28, 0.17857142857142858, "Straße ohne Phönix (aus 8 Karten)"),
+        ("Ph RK GD BB RZ B9 R2", 6, (6, 5, 12), 7, 7, 1.0, "Straße mit Phönix 3 (aus 8 Karten)"),
+        #("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, 0.4642857142857143, "Straße mit Phönix 2 (aus 8 Karten)"),
         # ("SK RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert)"),
         # ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert, 2)"),
-        # ("BK SD BD RB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße, keine Bombe"),
-        # ("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.2857142857142857, "Straße, mit Farbbombe"),
-        # ("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, 0.9358974358974359, "Straße, mit 2 Farbbomben (1)"),
-        # ("BK SD BD BB BZ B9 RK RD RB RZ R9 G2 G3", 11, (6, 5, 12), 74, 78, 0.9487179487179487, "Straße, mit 2 Farbbomben (2)"),
+        #("BK SD BD RB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße, keine Bombe"),
+        ###("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.2857142857142857, "Straße, mit Farbbombe"),
+        #("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, 0.9358974358974359, "Straße, mit 2 Farbbomben (1)"),
+        #("BK SD BD BB BZ B9 RK RD RB RZ R9 G2 G3", 11, (6, 5, 12), 74, 78, 0.9487179487179487, "Straße, mit 2 Farbbomben (2)"),
         #("BK SD BD BB BZ B9 RK RD RB SB RZ R9 G2", 11, (6, 5, 12), 75, 78, 0.9615384615384616, "Straße, mit 2 Farbbomben (3)"),
-        #("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 22, 1287, 0.017094017094017096, "5erStraßeB, Test 20"),
-        #("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 516, 1716, 0.3006993006993007, "5erStraßeB, Test 35"),
+        ###("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 22, 1287, 0.017094017094017096, "5erStraßeB, Test 20"),
+        ###("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 516, 1716, 0.3006993006993007, "5erStraßeB, Test 35"),
         # ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
         # ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, 0.047619047619047616, "Farbbombe"),
         # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, 1.0, "2 Farbbomben in 12 Karten"),
