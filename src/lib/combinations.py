@@ -1138,10 +1138,10 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
             if n_remain < 2 or k_remain < 2:
                 return 0
             # keine Karte mit diesem Rang
-            matches_ = _number_of_pairs(n_remain - h[r_cur], k_remain, r_cur + 1, pho, 0) if r_cur < r_max else 0
+            matches_ = _number_of_pairs(n_remain - h[r_cur], k_remain, r_cur + 1, pho, 0) if r_cur < r_max_first else 0
             if h[r_cur] > 0:
                 # Einzelkarte ohne Phönix
-                matches_ += h[r_cur] * _number_of_pairs(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0, 0) if r_cur < r_max else 0
+                matches_ += h[r_cur] * _number_of_pairs(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0, 0) if r_cur < r_max_first else 0
                 if pho == 1:
                    # Einzelkarte mit Phönix
                     matches_ += h[r_cur] * _number_of_pairs(n_remain - h[r_cur] - pho, k_remain - 2, r_cur + 1, 0, c + 1)
@@ -1151,7 +1151,7 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
             return matches_
 
         steps = int(m / 2)
-        r_max = 14 - steps + 1
+        r_max_first = 14 - steps + 1
         matches = _number_of_pairs(n, k, r - steps + 2, h[16], 0)
 
     elif t == FULLHOUSE:  # Full House
@@ -1199,10 +1199,12 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
         def _number_of_singles(n_remain: int, k_remain: int, r_cur: int, pho: int, c: int) -> int:
             if c >= m:
                 return math.comb(n_remain, k_remain)
+            #if pho == 1 and c + 1 == m:
+            #    return math.comb(n_remain-1, k_remain-1)
             if n_remain < m - c or k_remain < m - c:
                 return 0
             # keine Karte mit diesem Rang und keine Phönix
-            matches_ = _number_of_singles(n_remain - h[r_cur], k_remain, r_cur + 1, pho, 0) if r_cur < r_max else 0
+            matches_ = _number_of_singles(n_remain - h[r_cur], k_remain, r_cur + 1, pho, 0) if r_cur < r_max_first else 0
             if pho == 1:
                 if c > 0 or r_cur + m - c - 1 == 14:  # Phönix (am Anfang der Straße nur, wenn am Ende ein Ass liegt)
                     # Phönix
@@ -1212,17 +1214,31 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
                 matches_ += sum(math.comb(h[r_cur], i) * _number_of_singles(n_remain - h[r_cur], k_remain - i, r_cur + 1, pho, c + 1) for i in range(1, h[r_cur] + 1) if k_remain >= i)
             return matches_
 
-        r_max = 14 - m + 1
+        r_max_first = 14 - m + 1
         matches = _number_of_singles(n, k, r - m + 2, h[16], 0)
 
         # Farbbomben rausrechnen (nur Hände mit exakt 1 Straßenbombe sind betroffen, bei 2 Bomben sind immer normale Straßen dabei)
-        for r_cur in range(r - m + 2, 14 - m + 1):
-            b = sum(1 for color in range(4) if sum(u[color][r_cur - m - 1:r_cur - 1]) == m)  # Anzahl Farbbomben
+        for r_first in range(r - m + 2, 14 - m + 1):
+            b = sum(1 for color in range(4) if sum(u[color][r_first - 2:r_first + m]) == m)  # Anzahl Farbbomben
             if b > 0:
-                matches -= b * math.comb(n - sum(h[r_cur - m + 1:r_cur + 1]) - h[16], k - m)
+                matches -= b * math.comb(n - sum(h[r_first:r_first + m]) - h[16], k - m)
 
     elif t == BOMB and m == 4:  # 4er-Bombe
-        matches = math.comb(n - 4, k - 4) if h[r] == 4 else 0
+        def _number_of_bombs(n_remain: int, k_remain: int, r_cur: int) -> int:
+            if n_remain < 2 or k_remain < 2:
+                return 0
+            # keine Karte mit diesem Rang
+            matches_ = _number_of_bombs(n_remain - h[r_cur], k_remain, r_cur + 1) if r_cur < r_max else 0
+            if h[r_cur] > 0:
+                # Einzelkarte bis Drilling
+                matches_ += sum(math.comb(h[r_cur], i) * _number_of_bombs(n_remain - h[r_cur], k_remain - i, r_cur + 1) for i in range(1, h[r_cur]) if k_remain >= i) if r_cur < r_max else 0
+                if h[r_cur] == 4:
+                    # Bombe
+                    matches_ += math.comb(n_remain - 4, k_remain - 4)
+            return matches_
+
+        r_max = 14
+        matches = _number_of_bombs(n, k, r + 1)
 
     elif t == BOMB and m >= 5:  # Farbbombe
         b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Farbbomben
@@ -1290,7 +1306,12 @@ def test_possible_hands():  # pragma: no cover
         #("BK SD BD BB BZ B9 RK RD RB SB RZ R9 G2", 11, (6, 5, 12), 75, 78, 0.9615384615384616, "Straße, mit 2 Farbbomben (3)"),
         #("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 22, 1287, 0.017094017094017096, "5erStraßeB, Test 20"),
         #("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 516, 1716, 0.3006993006993007, "5erStraßeB, Test 35"),
-        ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
+        #("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 10), 0, 1287, 0.0, "5erStraßeZ, Test 19"),
+        #("GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 1, 0.0, "5erStraßeZ, Test 19, vereinfacht"),
+        ###("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 1, 0.0, "5erStraßeZ ist Bombe"),
+        ("GD SB GZ S9 R8 B7 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 37 vereinfacht"),
+        ##("GD SB GZ S9 R8 B7 G2 Ph", 6, (6, 5, 10), 13, 28, 0.07634032634032634, "5erStraßeZ, Test 37"),
+        #("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
         # ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, 0.047619047619047616, "Farbbombe"),
         # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, 1.0, "2 Farbbomben in 12 Karten"),
         # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 12), 53, 78, 0.6794871794871795, "2 Farbbomben in 13 Karten"),

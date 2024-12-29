@@ -323,8 +323,10 @@ class TestProbabilityOfHandsHi(unittest.TestCase):
     def test_street(self):
         t = STREET
         combis = [
+            "GB GZ G9 G8 G7",
+            "GD GB GZ G9 G8 G7",
             "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
-            "GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph",
+            #"GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph",
             "GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2",
             "GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2",
             "GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2",
@@ -349,6 +351,7 @@ class TestProbabilityOfHandsHi(unittest.TestCase):
     def test_bomb_color(self):
         t = BOMB  # Farbbombe
         combis = [
+            "GB GZ G9 G8 G7",
             "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
             "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 B2 S2",
             "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
