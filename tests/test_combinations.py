@@ -467,13 +467,14 @@ class TestCombinations(unittest.TestCase):
             # ("RA GK BD SB RZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße bis zum Ass ohne Phönix"),
 
             # Straße mit Phönix, ohne Bomben
-            # ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße mit Phönix (Lücke gefüllt)"),
-            # ("SA RK GD BB RZ Ph", 6, (6, 5, 11), 1, 1, 1.0, "Straße mit Phönix aus 6 Karten (verlängert)"),
-            # ("SA RK GD BB RZ B9 Ph", 6, (6, 5, 11), 7, 7, 1.0, "Straße mit Phönix aus 7 Karten (verlängert)"),
-            # ("B9 RZ BB GD RK Ph R2", 6, (6, 5, 12), 7, 7, 1.0, "Straße mit Phönix 3 aus 7 Karten"),
-            # ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, 0.4642857142857143, "Straße mit Phönix aus 8 Karten"),
-            # ("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Ende"),
-            # ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Anfang"),
+            ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße mit Phönix (Lücke gefüllt)"),
+            ("SA RK GD BB RZ Ph", 6, (6, 5, 11), 1, 1, 1.0, "Straße mit Phönix aus 6 Karten (verlängert)"),
+            ("SA RK GD BB RZ B9 Ph", 6, (6, 5, 11), 7, 7, 1.0, "Straße mit Phönix aus 7 Karten (verlängert)"),
+            ("B9 RZ BB GD RK Ph R2", 6, (6, 5, 12), 7, 7, 1.0, "Straße mit Phönix 3 aus 7 Karten"),
+            ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, 0.4642857142857143, "Straße mit Phönix aus 8 Karten"),
+            ("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Ende"),
+            ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Anfang"),
+            ("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 6, (6, 5, 10), 131, 1716, 0.07634032634032634, "5erStraßeZ mit Phönix aus 13 Karten"),
 
             # Straße ohne Phönix, mit Bomben
             # ("GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 1, 0.0, "5erStraßeZ ist Bombe aus 5 Karten"),
@@ -482,7 +483,7 @@ class TestCombinations(unittest.TestCase):
             # ("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, 0.9358974358974359, "Straße, mit 2 Farbbomben (1)"),
             # ("BK SD BD BB BZ B9 RK RD RB RZ R9 G2 G3", 11, (6, 5, 12), 74, 78, 0.9487179487179487, "Straße, mit 2 Farbbomben (2)"),
             # ("BK SD BD BB BZ B9 RK RD RB SB RZ R9 G2", 11, (6, 5, 12), 75, 78, 0.9615384615384616, "Straße, mit 2 Farbbomben (3)"),
-            #("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 10), 0, 1287, 0.0, "5erStraßeZ aus lange Farbbombe"),
+            # ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 10), 0, 1287, 0.0, "5erStraßeZ aus lange Farbbombe"),
 
             # Straße mit Phönix, mit Bomben
             # ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 22, 1287, 0.017094017094017096, "5erStraßeB, Test 20"),

@@ -326,8 +326,8 @@ class TestProbabilityOfHandsHi(unittest.TestCase):
             "GB RZ G9 R8 G7",
             "GD RB GZ R9 G8 R7",
             "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 S2",
-            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 S2",
-            "GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 BB SZ G9 S8 G7 R4 R2",
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 S2 Ma",
+            "GK BB SB GB RZ BZ GZ R9 S9 B9 R8 S8 G8 R7 S7 G7 R4 R2",
         ]
         for m in [5, 9, 10]:
             r = 10
@@ -349,7 +349,9 @@ class TestProbabilityOfHandsHi(unittest.TestCase):
             "GA RK GD Ph GZ R9 S8 B7 S6 B5 S4 B3 S2",
             "GA RK GD RB GZ R9 S8 Ph S6 B5 S4 B3 S2",
             "GA RK GD RB Ph R9 S8 B7 S6 B5 S4 B3 S2",
+            "GK RK GD RB Ph R9 S8 B7 S6 B5 S4 B3 S2",
             "GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 B4 Ph",
+            "Ph R7 G6 R5 G4 R3 S2 B1 Ma",
             "Ph RB GZ R8 G7 R4 S2 B2",
         ]
         for m in [5, 9, 10]:

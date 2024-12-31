@@ -1243,7 +1243,11 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
 
         # Farbbomben rausrechnen (nur Hände mit exakt 1 Straßenbombe sind betroffen, bei 2 Bomben sind immer normale Straßen dabei)
         for r_first in range(r - m + 2, 14 - m + 1):
-            b = sum(1 for color in range(4) if sum(u[color][r_first - 2:r_first + m]) == m)  # Anzahl Farbbomben
+            b = sum(1 for color in range(4) if sum(u[color][r_first - 2:r_first - 2 + m]) == m)  # Anzahl Farbbomben
+            # b0 = sum(u[0][r_first - 2:r_first - 2 + m]) == m  # Anzahl Farbbomben
+            # b1 = sum(u[1][r_first - 2:r_first - 2 + m]) == m  # Anzahl Farbbomben
+            # b2 = sum(u[2][r_first - 2:r_first - 2 + m]) == m  # Anzahl Farbbomben
+            # b3 = sum(u[3][r_first - 2:r_first - 2 + m]) == m  # Anzahl Farbbomben
             if b > 0:
                 matches -= b * math.comb(n - sum(h[r_first:r_first + m]) - h[16], k - m)
 
@@ -1316,11 +1320,12 @@ def test_possible_hands():  # pragma: no cover
         #("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 9), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
         #("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 9), 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
 
-        # test_street_ohne_pho_ohne_bombe
-        ("GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 BB SZ G9 S8 G7 R4 R2", 5, (6, 5, 10), 242, 8568, 0.028244631185807657, "5erStraßeZ, Test 15"),
+        # Straße ohne Phönix, ohne Bomben ok!
 
-        # test_street_mit_pho_ohne_bombe
-        #("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 6, (6, 5, 10), 131, 1716, 0.07634032634032634, "5erStraßeZ, Test 19"),
+        # Straße mit Phönix, ohne Bomben
+        ("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 6, (6, 5, 10), 131, 1716, 0.07634032634032634, "5erStraßeZ, Test 19"),
+        #("GA RK GD RB GZ R9 S8 Ph S6 B5 S4 B3 S2", 6, (6, 5, 10), 102, 1716, 0.05944055944055944, "5erStraßeZ, Test 17"),
+        #("GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 B4 Ph", 6, (6, 5, 10), 516, 1716, 0.3006993006993007, "5erStraßeZ, Test 15"),
 
         #("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
         # ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, 0.047619047619047616, "Farbbombe"),
