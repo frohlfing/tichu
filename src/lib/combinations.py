@@ -1195,12 +1195,36 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
         r_max = 14
         matches = _number_of_tripples(n, k, r + 1, h[16])
 
+    # elif t == STREET:  # Straße
+    #     def _number_of_singles(n_remain: int, k_remain: int, r_cur: int, pho: int, c: int, flag: bool) -> int:
+    #         if c >= m:
+    #             if pho == 1 and flag:
+    #                 return math.comb(n_remain - pho, k_remain)
+    #             else:
+    #                 return math.comb(n_remain, k_remain)
+    #         #if pho == 1 and c + 1 == m:
+    #         #    return math.comb(n_remain-1, k_remain-1)
+    #         if n_remain < m - c or k_remain < m - c:
+    #             return 0
+    #         # keine Karte mit diesem Rang und keine Phönix
+    #         matches_ = _number_of_singles(n_remain - h[r_cur], k_remain, r_cur + 1, pho, 0, h[r_cur] > 0) if r_cur < r_max_first else 0
+    #         if pho == 1:
+    #             if c > 0 or r_cur + m - c - 1 == 14:  # Phönix (am Anfang der Straße nur, wenn am Ende ein Ass liegt)
+    #                 # Phönix
+    #                 matches_ += _number_of_singles(n_remain - h[r_cur] - pho, k_remain - 1, r_cur + 1, 0, c + 1, flag)
+    #         if h[r_cur] > 0:
+    #             # Einzelkarte bis Bombe, ohne Phönix
+    #             matches_ += sum(math.comb(h[r_cur], i) * _number_of_singles(n_remain - h[r_cur], k_remain - i, r_cur + 1, pho, c + 1, flag) for i in range(1, h[r_cur] + 1) if k_remain >= i)
+    #         return matches_
+    #
+    #     r_max_first = 14 - m + 1
+    #     matches = _number_of_singles(n, k, r - m + 2, h[16], 0, False)
+
     elif t == STREET:  # Straße
+
         def _number_of_singles(n_remain: int, k_remain: int, r_cur: int, pho: int, c: int) -> int:
             if c >= m:
                 return math.comb(n_remain, k_remain)
-            #if pho == 1 and c + 1 == m:
-            #    return math.comb(n_remain-1, k_remain-1)
             if n_remain < m - c or k_remain < m - c:
                 return 0
             # keine Karte mit diesem Rang und keine Phönix
@@ -1291,26 +1315,13 @@ def test_possible_hands():  # pragma: no cover
         #("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 9), 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
         #("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 9), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
         #("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 9), 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
-        #("RA GK BD SB RZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße ohne Phönix"),
-        #("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße mit Phönix (Lücke gefüllt)"),
-        #("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 5, 28, 0.17857142857142858, "Straße ohne Phönix (aus 8 Karten)"),
-        #("RA RK GD BB RZ B9 R2", 6, (6, 5, 12), 7, 7, 1.0, "Straße ohne Phönix 2 (aus 8 Karten)"),
-        #("B9 RZ BB GD RK Ph R2", 6, (6, 5, 12), 7, 7, 1.0, "Straße mit Phönix 3 (aus 8 Karten)"),
-        #("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, 0.4642857142857143, "Straße mit Phönix 2 (aus 8 Karten)"),
-        #("SK RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert)"),
-        #("SA RK GD BB RZ B9 R2 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix (verlängert, 2)"),
-        #("BK SD BD RB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße, keine Bombe"),
-        #("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.2857142857142857, "Straße, mit Farbbombe"),
-        #("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, 0.9358974358974359, "Straße, mit 2 Farbbomben (1)"),
-        #("BK SD BD BB BZ B9 RK RD RB RZ R9 G2 G3", 11, (6, 5, 12), 74, 78, 0.9487179487179487, "Straße, mit 2 Farbbomben (2)"),
-        #("BK SD BD BB BZ B9 RK RD RB SB RZ R9 G2", 11, (6, 5, 12), 75, 78, 0.9615384615384616, "Straße, mit 2 Farbbomben (3)"),
-        #("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 22, 1287, 0.017094017094017096, "5erStraßeB, Test 20"),
-        #("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 516, 1716, 0.3006993006993007, "5erStraßeB, Test 35"),
-        #("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 10), 0, 1287, 0.0, "5erStraßeZ, Test 19"),
-        #("GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 1, 0.0, "5erStraßeZ, Test 19, vereinfacht"),
-        ###("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 1, 0.0, "5erStraßeZ ist Bombe"),
-        ("GD SB GZ S9 R8 B7 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 37 vereinfacht"),
-        ##("GD SB GZ S9 R8 B7 G2 Ph", 6, (6, 5, 10), 13, 28, 0.07634032634032634, "5erStraßeZ, Test 37"),
+
+        # test_street_ohne_pho_ohne_bombe
+        ("GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 BB SZ G9 S8 G7 R4 R2", 5, (6, 5, 10), 242, 8568, 0.028244631185807657, "5erStraßeZ, Test 15"),
+
+        # test_street_mit_pho_ohne_bombe
+        #("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 6, (6, 5, 10), 131, 1716, 0.07634032634032634, "5erStraßeZ, Test 19"),
+
         #("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
         # ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, 0.047619047619047616, "Farbbombe"),
         # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, 1.0, "2 Farbbomben in 12 Karten"),

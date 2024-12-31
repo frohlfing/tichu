@@ -320,20 +320,81 @@ class TestProbabilityOfHandsHi(unittest.TestCase):
                 p_actual = probability_of_hand_hi(parse_cards(cards), k, figure)
                 self.assertAlmostEqual(p_expect, p_actual, places=15, msg=msg)
 
-    def test_street(self):
+    def test_street_ohne_pho_ohne_bombe(self):
+        t = STREET
+        combis = [
+            "GB RZ G9 R8 G7",
+            "GD RB GZ R9 G8 R7",
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 S2",
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 S2",
+            "GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 BB SZ G9 S8 G7 R4 R2",
+        ]
+        for m in [5, 9, 10]:
+            r = 10
+            for k in [0, 4, 5, 6, 7, 9, 10, 13, 14]:
+                for cards in combis:
+                    self.c += 1
+                    figure = (t, m, r)
+                    matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
+                    p_expect = sum(matches) / len(hands) if hands else 0.0
+                    msg = stringify_figure(figure)
+                    print(f'("{cards}", {k}, ({figure[0]}, {figure[1]}, {figure[2]}), {sum(matches)}, {len(hands)}, {p_expect}, "{msg}, Test {self.c}"),'),
+                    p_actual = probability_of_hand_hi(parse_cards(cards), k, figure)
+                    self.assertAlmostEqual(p_expect, p_actual, places=15, msg=msg)
+
+    def test_street_mit_pho_ohne_bombe(self):
+        t = STREET
+        combis = [
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph",
+            "GA RK GD Ph GZ R9 S8 B7 S6 B5 S4 B3 S2",
+            "GA RK GD RB GZ R9 S8 Ph S6 B5 S4 B3 S2",
+            "GA RK GD RB Ph R9 S8 B7 S6 B5 S4 B3 S2",
+            "GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 B4 Ph",
+            "Ph RB GZ R8 G7 R4 S2 B2",
+        ]
+        for m in [5, 9, 10]:
+            r = 10
+            for k in [0, 4, 5, 6, 7, 9, 10, 13, 14]:
+                for cards in combis:
+                    self.c += 1
+                    figure = (t, m, r)
+                    matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
+                    p_expect = sum(matches) / len(hands) if hands else 0.0
+                    msg = stringify_figure(figure)
+                    print(f'("{cards}", {k}, ({figure[0]}, {figure[1]}, {figure[2]}), {sum(matches)}, {len(hands)}, {p_expect}, "{msg}, Test {self.c}"),'),
+                    p_actual = probability_of_hand_hi(parse_cards(cards), k, figure)
+                    self.assertAlmostEqual(p_expect, p_actual, places=15, msg=msg)
+
+    def test_street_ohne_pho_mit_bombe(self):
         t = STREET
         combis = [
             "GB GZ G9 G8 G7",
             "GD GB GZ G9 G8 G7",
             "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
-            #"GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph",
+            "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
+            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
+        ]
+        for m in [5, 9, 10]:
+            r = 10
+            for k in [0, 4, 5, 6, 7, 9, 10, 13, 14]:
+                for cards in combis:
+                    self.c += 1
+                    figure = (t, m, r)
+                    matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
+                    p_expect = sum(matches) / len(hands) if hands else 0.0
+                    msg = stringify_figure(figure)
+                    print(f'("{cards}", {k}, ({figure[0]}, {figure[1]}, {figure[2]}), {sum(matches)}, {len(hands)}, {p_expect}, "{msg}, Test {self.c}"),'),
+                    p_actual = probability_of_hand_hi(parse_cards(cards), k, figure)
+                    self.assertAlmostEqual(p_expect, p_actual, places=15, msg=msg)
+
+    def test_street_mit_pho_mit_bombe(self):
+        t = STREET
+        combis = [
+            "GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph",
             "GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2",
             "GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2",
             "GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2",
-            "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
-            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
             "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph",
-            "Ph GB GZ G8 G7 G4 B2 S2",
         ]
         for m in [5, 9, 10]:
             r = 10
