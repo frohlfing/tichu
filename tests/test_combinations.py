@@ -467,6 +467,7 @@ class TestCombinations(unittest.TestCase):
             # ("RA GK BD SB RZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße bis zum Ass ohne Phönix"),
 
             # Straße mit Phönix, ohne Bomben
+            ("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1, 1, 1.0, "Straße mit Phönix (vollständig)"),
             ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße mit Phönix (Lücke gefüllt)"),
             ("SA RK GD BB RZ Ph", 6, (6, 5, 11), 1, 1, 1.0, "Straße mit Phönix aus 6 Karten (verlängert)"),
             ("SA RK GD BB RZ B9 Ph", 6, (6, 5, 11), 7, 7, 1.0, "Straße mit Phönix aus 7 Karten (verlängert)"),

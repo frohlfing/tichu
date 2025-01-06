@@ -78,15 +78,32 @@ class TestProbabilityOfHands(unittest.TestCase):
     def test_street(self):
         t = STREET
         combis = [
+            "GB RZ G9 R8 G7",
+            "GD RB GZ R9 G8 R7",
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 S2",
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 S2 Ma",
+            "GK BB SB GB RZ BZ GZ R9 S9 B9 R8 S8 G8 R7 S7 G7 R4 R2",
+            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
+
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph",
+            "GA RK GD Ph GZ R9 S8 B7 S6 B5 S4 B3 S2",
+            "GA RK GD RB GZ R9 S8 Ph S6 B5 S4 B3 S2",
+            "GA RK GD RB Ph R9 S8 B7 S6 B5 S4 B3 S2",
+            "GK RK GD RB Ph R9 S8 B7 S6 B5 S4 B3 S2",
+            "GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 B4 Ph",
+            "Ph R7 G6 R5 G4 R3 S2 B2 Ma",
+            "Ph RB GZ R8 G7 R4 S2 B2",
+
+            "GB GZ G9 G8 G7",
+            "GD GB GZ G9 G8 G7",
             "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
+            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
+
             "GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph",
             "GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2",
             "GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2",
             "GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2",
-            "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
-            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
             "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph",
-            "Ph GB GZ G8 G7 G4 B2 S2",
         ]
         for m in [5, 9, 10]:
             r = 11
@@ -351,7 +368,7 @@ class TestProbabilityOfHandsHi(unittest.TestCase):
             "GA RK GD RB Ph R9 S8 B7 S6 B5 S4 B3 S2",
             "GK RK GD RB Ph R9 S8 B7 S6 B5 S4 B3 S2",
             "GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 B4 Ph",
-            "Ph R7 G6 R5 G4 R3 S2 B1 Ma",
+            "Ph R7 G6 R5 G4 R3 S2 B2 Ma",
             "Ph RB GZ R8 G7 R4 S2 B2",
         ]
         for m in [5, 9, 10]:
@@ -372,7 +389,6 @@ class TestProbabilityOfHandsHi(unittest.TestCase):
         combis = [
             "GB GZ G9 G8 G7",
             "GD GB GZ G9 G8 G7",
-            "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
             "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
             "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
         ]

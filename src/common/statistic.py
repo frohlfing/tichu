@@ -24,36 +24,6 @@ def possible_samples(elements: list|tuple , k: int) -> list:
     return list(itertools.combinations(elements, k))
 
 
-# todo raus
-# Berechnet die Wahrscheinlichkeit, dass die Elemente einer Stichprobe wie angegeben verteilt sind (ohne Zurücklegen)
-#
-# Beispiel: In einer Urne befinden sich 20 Kugeln. Davon sind 8 rot und 5 grün. Wir ziehen 5 Kugeln.
-# Wie groß ist die Wahrscheinlichkeit, dass wir 2 rote und 1 grüne ziehen?
-# hypergeometric_pmf(20, 5, (8, 5), (2, 1))  # 0.18962848297213622
-#
-# n: Anzahl der Elemente gesamt
-# k: Stichprobengröße
-# features: Anzahl der einzelnen Merkmale gesamt
-# condition: Anzahl der einzelnen Merkmale in der Stichprobe
-def hypergeometric_pmf(n, k, features: list|tuple, condition: list|tuple) -> float:
-    assert n >= 0 and k >= 0 and all(n_ >= 0 for n_ in features) and all(k_ >= 0 for k_ in condition if k_ is not None), "the numbers must be non-negative integers"
-    assert k <= n, "k must be less than or equal to n"
-    assert sum(features) <= n, "the sum of features must be less than or equal to n"
-
-    kf = sum(k_ for k_ in condition if k_ is not None)
-    if kf > k:
-        return 0.0
-    nf = sum(features[i] for i in range(len(features)) if condition[i] is not None)
-
-    # Formel für multivariaten hypergeometrische Verteilung (Probability Mass Function, exakt, P(X = k))
-    p = math.comb(n - nf, k - kf) / math.comb(n, k)
-    for n_, k_ in zip(features, condition):
-        if k_ is not None:
-            p *= math.comb(n_, k_)
-
-    return p
-
-
 # Berechnet die Wahrscheinlichkeit, dass die Elemente einer Stichprobe wie angegeben verteilt sind (ohne Zurücklegen)
 #
 # Beispiel: In einer Urne befinden sich 20 Kugeln. Davon sind 8 rot, 5 grün und 3 blau. Wir ziehen 5 Kugeln.
