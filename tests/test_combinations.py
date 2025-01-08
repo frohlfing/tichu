@@ -445,17 +445,28 @@ class TestCombinations(unittest.TestCase):
             # ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 19, 21, 0.9047619047619048, "Pärchen mit Phönix"),
             # ("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
             # ("Ph RK GB BB SB R3 R2", 4, (3, 3, 10), 13, 35, 0.37142857142857144, "Drilling mit Phönix"),
-            # ("RK GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
-            # ("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe mit Phönix"),
-            # ("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, 0.0, "2er-Treppe nicht möglich"),
-            # ("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
-            # ("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
+
+            # Treppe ohne Phönix
+            ("RK GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
+            ("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, 0.0, "2er-Treppe nicht möglich"),
+            ("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
+
+            # Treppe mit Phönix
+            ("Ph GK BK SD SB RB BZ R9", 6, (4, 4, 10), 14, 28, 0.5, "2er-Treppe mit Phönix"),
+            ("Ph GK BK SD SB RB R9", 6, (4, 4, 10), 5, 7, 0.7142857142857143, "2er-Treppe mit Phönix (vereinfacht)"),
+            ("Ph GK BK SD SB R9 S4", 6, (4, 4, 10), 3, 7, 0.42857142857142855, "2er-Treppe mit Phönix (vereinfacht 2)"),
+            ("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe mit Phönix"),
+            ("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
+
+            # Fullhouse
             # ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
-            # ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
-            # ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
             # ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse und zusätzliches Pärchen"),
             # #("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 8, 8, 1.0, "Fullhouse aus Bombe"),
             # ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse aus 2 Drillinge"),
+
+            # Fullhouse ohne Phönix
+            # ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
+            # ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
             # ("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 9), 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
             # ("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 9), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
             # ("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 9), 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
@@ -465,17 +476,18 @@ class TestCombinations(unittest.TestCase):
             # ("RA RK GD BB RZ B9 R2", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße bis Ass ohne Phönix aus 7 Karten"),
             # ("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 5, 28, 0.17857142857142858, "Straße ohne Phönix aus 8 Karten"),
             # ("RA GK BD SB RZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße bis zum Ass ohne Phönix"),
+            # ("GK BB SB GB RZ BZ GZ R9 S9 B9 R8 S8 G8 R7 S7 G7 R4 R2", 7, (6, 5, 10), 7209, 31824, 0.22652714932126697, "Straße ohne Phönix und viele Drillinge"),
 
             # Straße mit Phönix, ohne Bomben
-            ("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1, 1, 1.0, "Straße mit Phönix (vollständig)"),
-            ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße mit Phönix (Lücke gefüllt)"),
-            ("SA RK GD BB RZ Ph", 6, (6, 5, 11), 1, 1, 1.0, "Straße mit Phönix aus 6 Karten (verlängert)"),
-            ("SA RK GD BB RZ B9 Ph", 6, (6, 5, 11), 7, 7, 1.0, "Straße mit Phönix aus 7 Karten (verlängert)"),
-            ("B9 RZ BB GD RK Ph R2", 6, (6, 5, 12), 7, 7, 1.0, "Straße mit Phönix 3 aus 7 Karten"),
-            ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, 0.4642857142857143, "Straße mit Phönix aus 8 Karten"),
-            ("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Ende"),
-            ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Anfang"),
-            ("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 6, (6, 5, 10), 131, 1716, 0.07634032634032634, "5erStraßeZ mit Phönix aus 13 Karten"),
+            # ("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1, 1, 1.0, "Straße mit Phönix (vollständig)"),
+            # ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße mit Phönix (Lücke gefüllt)"),
+            # ("SA RK GD BB RZ Ph", 6, (6, 5, 11), 1, 1, 1.0, "Straße mit Phönix aus 6 Karten (verlängert)"),
+            # ("SA RK GD BB RZ B9 Ph", 6, (6, 5, 11), 7, 7, 1.0, "Straße mit Phönix aus 7 Karten (verlängert)"),
+            # ("B9 RZ BB GD RK Ph R2", 6, (6, 5, 12), 7, 7, 1.0, "Straße mit Phönix 3 aus 7 Karten"),
+            # ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, 0.4642857142857143, "Straße mit Phönix aus 8 Karten"),
+            # ("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Ende"),
+            # ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Anfang"),
+            # ("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 6, (6, 5, 10), 131, 1716, 0.07634032634032634, "5erStraßeZ mit Phönix aus 13 Karten"),
 
             # Straße ohne Phönix, mit Bomben
             # ("GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 1, 0.0, "5erStraßeZ ist Bombe aus 5 Karten"),

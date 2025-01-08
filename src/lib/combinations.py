@@ -1265,37 +1265,12 @@ def probability_of_hand_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -
 # -----------------------------------------------------------------------------
 
 def test_possible_hands():  # pragma: no cover
-    test = [
-        # unplayed cards, k, figure, sum(matches), len(hands), p, msg
-        #("Dr RB G6 B5 S4 R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
-        #("Dr RB SB B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, 0.7142857142857143, "Einzelkarte mit 2 Buben"),
-        #("Ph RB G6 B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, 0.7142857142857143, "Einzelkarte mit Phönix"),
-        #("SB RZ GZ BZ SZ R9 G9 R8 G8 B4", 3, (1, 1, 9), 110, 120, 0.9166666666666666, "Einzelkarte aus einer 4er-Bombe"),
-        # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 6, 7, 0.8571428571428571, "Einzelkarte Hund"),
-        # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 5, 7, 0.7142857142857143, "Einzelkarte Mahjong"),
-        # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0, 7, 0.0, "Einzelkarte Drache"),
-        #("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 4, 7, 0.5714285714285714, "Einzelkarte Phönix"),
-        #("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 10, 21, 0.47619047619047616, "Pärchen ohne Phönix"),
-        #("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 19, 21, 0.9047619047619048, "Pärchen mit Phönix"),
-        #("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
-        #("Ph RK GB BB SB R3 R2", 4, (3, 3, 10), 13, 35, 0.37142857142857144, "Drilling mit Phönix"),
-        #("RK GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
-        #("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe mit Phönix"),
-        #("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, 0.0, "2er-Treppe nicht möglich"),
-        #("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
+    test_cases = [
+        # Treppe mit Phönix, ohne Bomben
+        #("Ph GK BK SD SB RB BZ R9", 6, (4, 4, 10), 14, 28, 0.5, "2er-Treppe mit Phönix"),
+        #("Ph GK BK SD SB RB R9", 6, (4, 4, 10), 5, 7, 0.7142857142857143, "2er-Treppe mit Phönix (vereinfacht)"),
+        #("Ph GK BK SD SB R9 S4", 6, (4, 4, 10), 3, 7, 0.42857142857142855, "2er-Treppe mit Phönix (vereinfacht 2)"),
         #("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
-        #("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
-        #("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
-        #("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
-        #("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse und zusätzliches Pärchen"),
-        #("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 6, 8, 0.75, "Fullhouse aus Bombe"),
-        #("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse aus 2 Drillinge"),
-        #("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 9), 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
-        #("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 9), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
-        #("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 9), 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
-
-        # Straße ohne Phönix, ohne Bomben ok!
-        #("GK BB SB GB RZ BZ GZ R9 S9 B9 R8 S8 G8 R7 S7 G7 R4 R2", 7, (6, 5, 10), 7209, 31824, 0.22652714932126697, "5erStraßeZ, Test 25"),
 
         # Straße mit Phönix, ohne Bomben
         #("GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 19"),
@@ -1305,23 +1280,25 @@ def test_possible_hands():  # pragma: no cover
         # ("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1, 1, 1.0, "5erStraßeZ, Test 25"),
         #("GA RK GD RB GZ R9 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 25"),
         ("GA RK GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 47, 84, 0.5595238095238095, "5erStraßeZ, Test 25"),
-
-        #("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
-        # ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, 0.047619047619047616, "Farbbombe"),
-        # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, 1.0, "2 Farbbomben in 12 Karten"),
-        # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 12), 53, 78, 0.6794871794871795, "2 Farbbomben in 13 Karten"),
     ]
-    for t in test:
-        cards, k, figure, _sum_matches, _len_hands, _p, _msg = t
+    for test_case in test_cases:
+        cards, k, figure, _sum_matches, _len_hands, p, msg = test_case
+        print(f"\n{msg}")
+        print(f"Kartenauswahl: {cards}")
+        print(f"Anzahl Handkarten: {k}")
+        print(f"Kombination: {stringify_figure(figure)}")
         # possible_hands
+        print("Mögliche Handkarten:")
         matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
         for match, sample in zip(matches, hands):
-            print(stringify_cards(sample), match)
+            print("  ", stringify_cards(sample), match)
         if hands:
-            print(f"p = {sum(matches)}/{len(hands)} = {sum(matches) / len(hands)}")
+            print(f"Gezählt:   p = {sum(matches)}/{len(hands)} = {sum(matches) / len(hands)}")
+        else:
+            print("keine")
         # probability_of_hand
         p = probability_of_hand_hi(parse_cards(cards), k, figure)
-        print(f"p = {p}, n = {len(hands)*p}")
+        print(f"Berechnet: p = {(len(hands) * p):.0f}/{len(hands)} = {p}")
 
 
 if __name__ == "__main__":  # pragma: no cover

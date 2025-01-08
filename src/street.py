@@ -66,3 +66,25 @@ print(f"{calc([1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.55
 print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.42857142857142855  Testfall 1")
 print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 0], 6, 5, 10):<20} 0.21428571428571427  Testfall 2")
 print(f"{calc([0, 0, 1, 0, 1, 0, 0, 3, 3, 3, 3, 3, 0, 1, 0], 7, 5, 10):<20} 0.22652714932126697  Testfall 3")
+
+
+# Straße (Phönix am Ende der Straße
+# Kartenauswahl: GD RB GZ R9 S8 B7 Ph
+# Anzahl Handkarten: 6
+# Straßenlänge: 5, Rang: 10
+# Mögliche Handkarten:
+#    GD RB GZ R9 S8 B7 True
+#    GD RB GZ R9 S8 Ph True
+#    GD RB GZ R9 B7 Ph True
+#    GD RB GZ S8 B7 Ph True
+#    GD RB R9 S8 B7 Ph True
+#    GD GZ R9 S8 B7 Ph True
+#    RB GZ R9 S8 B7 Ph True
+# Expected: 7
+# Calculated: 8
+#
+# Rang 8 übersprungen, Phönix für König:
+# Ph GD RB GZ R9 (B7)
+#
+# Phönix für 8:
+# (GD) RB GZ R9 Ph B7

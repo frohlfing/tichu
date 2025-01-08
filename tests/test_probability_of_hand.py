@@ -289,19 +289,22 @@ class TestProbabilityOfHandsHi(unittest.TestCase):
             "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
             "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
             "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            "Ph GK BK SD SB RB BZ R9",
+            "Ph GK BK SD SB RB R9",
+            "Ph GK BK SD SB R9 S4",
         ]
         for m in [4, 6]:
-            r = 9
-            for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
-                for cards in combis:
-                    self.c += 1
-                    figure = (t, m, r)
-                    matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
-                    p_expect = sum(matches) / len(hands) if hands else 0.0
-                    msg = stringify_figure(figure)
-                    print(f'("{cards}", {k}, ({figure[0]}, {figure[1]}, {figure[2]}), {sum(matches)}, {len(hands)}, {p_expect}, "{msg}, Test {self.c}"),'),
-                    p_actual = probability_of_hand_hi(parse_cards(cards), k, figure)
-                    self.assertAlmostEqual(p_expect, p_actual, places=15, msg=msg)
+            for r in [9, 10]:
+                for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
+                    for cards in combis:
+                        self.c += 1
+                        figure = (t, m, r)
+                        matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
+                        p_expect = sum(matches) / len(hands) if hands else 0.0
+                        msg = stringify_figure(figure)
+                        print(f'("{cards}", {k}, ({figure[0]}, {figure[1]}, {figure[2]}), {sum(matches)}, {len(hands)}, {p_expect}, "{msg}, Test {self.c}"),'),
+                        p_actual = probability_of_hand_hi(parse_cards(cards), k, figure)
+                        self.assertAlmostEqual(p_expect, p_actual, places=15, msg=msg)
 
     def test_fullhouse(self):
         t = FULLHOUSE
