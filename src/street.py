@@ -16,7 +16,7 @@ def calc(h: list[int], k: int, m: int, r: int) -> float:
         return 0
 
     # Rekursive Hilfsfunktion zur Berechnung der günstigen Kombinationen (inkl. Joker)
-    def _number_of_singles(n_remain: int, k_remain: int, r_cur: int, joker: int, c: int) -> int:
+    def _number_of_singles(n_remain: int, k_remain: int, r_cur: int, joker: int, c: int, c_joker: int) -> int:
         # n_remain: Anzahl der verbleibenden Kugeln
         # k_remain: Anzahl der noch zu ziehenden Kugeln
         # r_cur: Aktuelle Zahl, die in die Reihe aufgenommen werden soll
@@ -27,24 +27,29 @@ def calc(h: list[int], k: int, m: int, r: int) -> float:
         if c >= m:
             return math.comb(n_remain, k_remain)
 
-        # Abbruchbedingung: Nicht genügend Kugeln oder Ziehungen verbleiben
+        if joker and c_joker >= m:
+                                        return math.comb(n_remain - 1, k_remain - 1)
+
+        if r_cur > 14:
+            return 0
+
+        # Abbruchbedingung: Nicht genügend Kugeln
         if n_remain < m - c or k_remain < m - c:
             return 0
 
-        # Prüfe ohne Joker
+        # Prüfe ohne Gebrauch des Jokers
         matches_ = 0
         if h[r_cur] > 0:
             for i in range(1, h[r_cur] + 1):  # 1 bis 4 Kugeln
                 if k_remain >= i:
-                    matches_ += math.comb(h[r_cur], i) * _number_of_singles(n_remain - h[r_cur], k_remain - i, r_cur + 1, joker, c + 1)
+                    matches_ += math.comb(h[r_cur], i) * _number_of_singles(n_remain - h[r_cur], k_remain - i, r_cur + 1, joker, c + 1, c_joker + 1)
 
-        # Prüfe mit Joker an beliebiger Position
-        if joker and c > 0:
-            matches_ += _number_of_singles(n_remain - h[r_cur] - joker, k_remain - 1, r_cur + 1, 0, c + 1)
+        # Prüfe mit Joker beliebiger Position
+        #if joker and c > 0:
+        #    matches_ += _number_of_singles(n_remain - h[r_cur] - joker, k_remain - 1, r_cur + 1, 0, c + 1, c_joker + 1)
 
-        if r_cur < r_max_first:  # kann eine neue Reihe begonnen werden?
-            # Prüfe Rekursion zur nächsten Zahl ohne aktuelle Auswahl
-            matches_ += _number_of_singles(n_remain - h[r_cur], k_remain, r_cur + 1, joker, 0)
+        # Prüfe Rekursion zur nächsten Zahl ohne aktuelle Auswahl
+        matches_ += _number_of_singles(n_remain - h[r_cur], k_remain, r_cur + 1, joker, 0, c + 1 if joker else 0)
 
         return matches_
 
@@ -52,7 +57,7 @@ def calc(h: list[int], k: int, m: int, r: int) -> float:
     r_max_first = 14 - m + 1
 
     # Anzahl günstiger Kombinationen berechnen
-    matches = _number_of_singles(n, k, r - m + 2, h[0], 0)
+    matches = _number_of_singles(n, k, r - m + 2, h[0], 0, 0)
 
     # Gesamtanzahl der möglichen Kombinationen
     total_combinations = math.comb(n, k)

@@ -1277,9 +1277,11 @@ def test_possible_hands():  # pragma: no cover
         #("RK GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 22, 28, 0.7857142857142857, "5erStraßeZ, Test 25"),
         # ("RK GD RB GZ R9 S8 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 17"),
         # ("GK RB GZ R9 G8 R7 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 15"),
-        # ("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1, 1, 1.0, "5erStraßeZ, Test 25"),
-        #("GA RK GD RB GZ R9 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 25"),
-        ("GA RK GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 47, 84, 0.5595238095238095, "5erStraßeZ, Test 25"),
+        ("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1, 1, 1.0, "5erStraßeZ, Test 25"),
+        ##("GA RK GD RB GZ R9 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 25"),
+        #("GA RK GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 47, 84, 0.5595238095238095, "5erStraßeZ, Test 25"),
+        #("GA RK GD RB GZ RZ S9 S7", 6, (6, 5, 10), 47, 84, 0.5595238095238095, "5erStraßeZ, Test 25"),
+        #("GK GB SB RB BZ SZ GZ R9 B9 S9 G8 B8 R8 G7 B7 R7 S4 S2", 6, (6, 5, 10), 3, 7, 0.10471881060116355, "5erStraßeZ, Test 25"),
     ]
     for test_case in test_cases:
         cards, k, figure, _sum_matches, _len_hands, p, msg = test_case
