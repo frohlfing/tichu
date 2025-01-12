@@ -1,5 +1,6 @@
 import itertools
 import math
+from collections import defaultdict, Counter
 
 from src.common.statistic import probability_of_sample
 from src.lib.cards import *
@@ -261,10 +262,70 @@ def calc_statistic_benchmark():
     #calc_statistic: 0.198650 ms
 
 
+
+# def combine_and_count1(subsets, k):
+#     union_count = defaultdict(int)
+#     for subsets in itertools.combinations(subsets, 2):
+#         union = frozenset(subsets[0]).union(subsets[1])
+#         if len(union) <= k:
+#             union_count[union] += 1
+#     return union_count
+#
+# def combine_and_count2(subsets, k):
+#     union_count = defaultdict(int)
+#     for i in range(len(subsets)):
+#         for j in range(i + 1, len(subsets)):
+#             union = frozenset(subsets[i]).union(subsets[j])
+#             if len(union) <= k:
+#                 union_count[union] += 1
+#     return union_count
+#
+# def combine_and_count3(subsets, k):
+#     union_count = {}
+#     for subsets in itertools.combinations(subsets, 2):
+#         union = frozenset(subsets[0]).union(subsets[1])
+#         if len(union) <= k:
+#             if union not in union_count:
+#                 union_count[union] = 1
+#             else:
+#                 union_count[union] += 1
+#     return union_count
+
+def build_unions1(subsets, k):
+    union_count = {}
+    for i in range(len(subsets)):
+        for j in range(i + 1, len(subsets)):
+            union = frozenset(subsets[i]).union(subsets[j])
+            if len(union) <= k:
+                if union not in union_count:
+                    union_count[union] = 1
+                else:
+                    union_count[union] += 1
+    return union_count
+
+def build_unions2(subsets, k):
+    union_count = Counter()
+    for i in range(len(subsets)):
+        for j in range(i + 1, len(subsets)):
+            union = frozenset(subsets[i]).union(subsets[j])
+            if len(union) <= k:
+                union_count[union] += 1
+    return union_count
+
+
+
 if __name__ == '__main__':
+    number = 100
+    subset = [{7, 8, 9, 10, 11}, {0, 8, 9, 10, 11}, {0, 7, 9, 10, 11}, {0, 7, 8, 10, 11}, {0, 7, 8, 9, 11}, {0, 7, 8, 9, 10}, {8, 9, 10, 11, 12}, {0, 9, 10, 11, 12}, {0, 8, 10, 11, 12}, {0, 8, 9, 11, 12}, {0, 8, 9, 10, 12}, {9, 10, 11, 12, 13}, {0, 10, 11, 12, 13}, {0, 9, 11, 12, 13}, {0, 9, 10, 12, 13}, {0, 9, 10, 11, 13}, {10, 11, 12, 13, 14}, {0, 11, 12, 13, 14}, {0, 10, 12, 13, 14}, {0, 10, 11, 13, 14}, {0, 10, 11, 12, 14}]
+    t = timeit(lambda: build_unions1(subset, 6), number=number) * 1000 / number
+    print(f"combine_and_count1: {t:.6f} ms")
+    t = timeit(lambda: build_unions2(subset, 6), number=number) * 1000 / number
+    print(f"combine_and_count2: {t:.6f} ms")
+
+
     #possible_hands_benchmark()
     #probability_of_hand_benchmark()
-    calc_statistic_benchmark()
+    #calc_statistic_benchmark()
     #binomial_benchmark(n=56, k=14)
     #binomial_benchmark(n=1000, k=500)
     #hypergeometric_benchmark(N=56, n=14, M=4, k=3)

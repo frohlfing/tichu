@@ -23,41 +23,104 @@
 # Programmiere mit Python eine Methode, die die Wahrscheinlichkeit berechnet, dass man aus den gezogenen Kugeln eine Reihe bilden kann,
 # die höher ist als eine vorgegebene Reihe Länge m und Rang r.
 
-
-import itertools
+#import itertools
 import math
+import time
+from timeit import timeit
 
 
-def list_favorable_unions(h, k, m, r):
-    # günstige Teilmengen finden
-    favorable_subsets = []
+# Findet günstige Teilmengen (Straßen)
+def build_favorable_sets(h: list, m: int, r: int) -> list:
+    subsets = []
     for r_start in range((r + 1) - m + 1, 15 - m + 1):
         r_end = r_start + m  # exklusiv
 
         # ohne Joker
         if all(h[i] > 0 for i in range(r_start, r_end)):
-            favorable_subsets.append(set(range(r_start, r_end)))
+            subsets.append(set(range(r_start, r_end)))
 
         # mit Joker
         if h[0]:  # Joker vorhanden?
             for r_joker in range(max(r_start, 2), r_end):  # max(r_start, 2) berücksichtigt die Ausnahmeregel, dass der Joker die 1 nicht ersetzen kann
                 if all(h[i] + (1 if r_joker == i else 0) > 0 for i in range(r_start, r_end)):
                     subset = {i if r_joker != i else 0 for i in range(r_start, r_end)}
-                    if subset not in favorable_subsets:
-                        favorable_subsets.append(subset)
+                    if subset not in subsets:
+                        subsets.append(subset)
 
-    # Vereinigungsmengen aus zwei oder mehr Teilmengen bilden
-    favorable_unions: list[list] = [favorable_subsets]
-    #for number_of_subsets_in_union in range(len(favorable_subsets) + 1, -1):  # len(fav)..2; Anzahl der Teilmengen, die die Vereinigungsmenge umfasst
-    for number_of_subsets_in_union in range(2, len(favorable_subsets) + 1):  # Anzahl der Teilmengen, die die Vereinigungsmenge umfasst
-        unions = []
-        for subsets in itertools.combinations(favorable_subsets, number_of_subsets_in_union):  # zu vereinigenden Teilmengen, z.B. [7, 0, 9, 10, 11], [0, 9, 10, 11, 12]
-            union = set(itertools.chain.from_iterable(subsets))  # Vereinigungsmenge, z.B. {0, 7, 9, 10, 11, 12}
+    return subsets
+
+
+# Bildet Vereinigungsmengen aus zwei oder mehr Teilmengen
+#
+# Der erste Eintrag der zurückgegebenen Liste listet die gegebenen Teilmengen auf.
+# Der zweite Eintrag listet die Vereinigungsmengen auf, die aus zwei Teilmengen bestehen.
+# Der dritte Eintrag listet die auf, die aus drei Teilmengen bestehen, usw.
+#
+# subsets: Liste von Teilmengen
+# k: maximale Länge der Vereinigungsmenge
+# return: Vereinigungsmengen unterteilt nach Anzahl Teilmengen, die die Vereinigungsmengen umschließen
+def build_unions(subsets: list, k: int) -> list[list]:
+    length = len(subsets)
+    unions = [subsets] + [[] for _ in range(length - 1)]
+
+    def _build_unions(subset: set, start: int, c: int):
+        # subset: Vereinigungsmenge, zu der eine weitere Teilmenge hinzugefügt werden soll
+        # start: subsets[start] ist die hinzuzufügende Teilmenge
+        # c: Anzahl Teilmengen, die bereits in der Vereinigungsmenge sind
+        for j in range(start, length):
+            union = set(subset).union(subsets[j])
             if len(union) <= k:
-                #if union not in unions
-                unions.append(union)
-        favorable_unions.append(unions)
-    return favorable_unions
+                unions[c - 1].append(union)
+                _build_unions(union, j + 1, c + 1)
+        return unions
+
+    for i in range(length):
+        _build_unions(subsets[i], i + 1, 2)
+
+    return unions
+
+
+# sehr langsam!
+# def build_unions_slowly(subsets: list, k: int) -> list[list]:
+#     unions = [subsets]
+#
+#     for number_of_subsets_in_union in range(2, len(subsets) + 1):  # Anzahl der Teilmengen, die die Vereinigungsmenge umfasst
+#         unions_ = []
+#         for subsets_ in itertools.combinations(subsets, number_of_subsets_in_union):  # zu vereinigenden Teilmengen, z.B. [7, 0, 9, 10, 11], [0, 9, 10, 11, 12]
+#             union = set().union(*subsets_)  # Vereinigungsmenge, z.B. {0, 7, 9, 10, 11, 12}
+#             if len(union) <= k:
+#                 unions_.append(union)
+#         unions.append(unions_)
+#
+#     return unions
+
+
+# Hypergeometrische Verteilung
+#
+# Zurückgegeben wird die Anzahl der möglichen Kombinationen, die die gegebene Vereinigungsmenge beinhalten.
+#
+# union: Vereinigungsmenge
+# h: Liste mit der Anzahl der Kugeln für jede Zahl (Index entspricht der Zahl, h[0] = Joker)
+# n: Gesamtanzahl der Kugeln in der Urne
+# k: Anzahl der zu ziehenden Kugeln
+def hypergeom(union: list, h: list, n: int, k: int) -> int:
+    def _hypergeom(index: int, n_remain, k_remain) -> int:
+        # index: union[index] ist die aktuelle Zahl, die untersucht wird
+        # n_remain: Verbleibende Kugeln
+        # k_remain: Verbleibende zu ziehende Kugeln
+        result = 0
+        r_cur = union[index]
+        for c in range(1, h[r_cur] + 1):
+            if k_remain < c:
+                break
+            if index + 1 < length:
+                result += math.comb(h[r_cur], c) * _hypergeom(index + 1, n_remain - h[r_cur], k_remain - c)
+            else:
+                result += math.comb(h[r_cur], c) * math.comb(n_remain - h[r_cur], k_remain - c)
+        return result
+
+    length = len(union)
+    return _hypergeom(0, n, k)
 
 
 # Berechnet die Wahrscheinlichkeit, aus den gezogenen Kugeln eine gültige Reihe zu bilden.
@@ -79,43 +142,25 @@ def calc(h: list[int], k: int, m: int, r: int) -> float:
     if n < m or k < m:
         return 0
 
-    # günstige Vereinigungsmengen
-    favorable_unions = list_favorable_unions(h, k, m, r)
+    # günstige Teilmengen finden
+    favorable_subsets = build_favorable_sets(h, m, r)
+
+    # Vereinigungsmengen aus zwei oder mehr Teilmengen bilden
+    favorable_unions = build_unions(favorable_subsets, k)
 
     # für jede Vereinigungsmengen die möglichen Kombinationen zählen
     matches = 0
     for j, unions in enumerate(favorable_unions):
         number_of_subsets_in_union = j + 1  # Anzahl der Teilmengen, die jede der aktuellen Vereinigungsmengen umfassen
-        print(f"Anzahl Teilmengen in Vereinigungsmengen: {number_of_subsets_in_union}")
         for union in unions:
             union = sorted(union)
-            def hypergeom(a: int, b: int, n_remain, k_remain) -> int:
-                # a: Start-Indes
-                # b: End-Index (exklusiv)
-                # n_remain: Verbleibende Kugeln
-                # k_remain: Verbleibende zu ziehende Kugeln
-                result = 0
-                r_cur = union[a]
-                for c in range(1, h[r_cur] + 1):
-                    if k_remain < c:
-                        break
-                    if a + 1 < b:
-                        result += math.comb(h[r_cur], c) * hypergeom(a + 1, b, n_remain - h[r_cur], k_remain - c)
-                    else:
-                        result += math.comb(h[r_cur], c) * math.comb(n_remain - h[r_cur], k_remain - c)
-                return result
-
             # Hypergeometrische Verteilung
-            matches_part = hypergeom(0, len(union), n, k)
-
+            matches_part = hypergeom(union, h, n, k)
             # Prinzip der Inklusion und Exklusion
             if number_of_subsets_in_union % 2 == 1:
                 matches += matches_part  # inklusion bei ungerade Anzahl an Teilmengen
-                print(union, +matches_part)
             else:
                 matches -= matches_part  # exklusion bei gerade Anzahl an Teilmengen
-                print(union, -matches_part)
-        print("matches=", matches)
 
     # Gesamtanzahl der möglichen Kombinationen
     total = math.comb(n, k)
@@ -128,47 +173,19 @@ def calc(h: list[int], k: int, m: int, r: int) -> float:
 # Test
 # -----------------------------------------------------------------------------
 
+def test(v):
+    print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.42857142857142855  Testfall 1 ohne Joker")
+    print(f"{calc([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.15476190476190477  Testfall 2 ohne Joker")
+    print(f"{calc([0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0], 6, 5, 10):<20} 0.17857142857142858  Testfall 3 ohne Joker")
+    print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 0], 6, 5, 10):<20} 0.21428571428571427  Testfall 4 ohne Joker")
+    print(f"{calc([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 0], 6, 5, 10):<20} 1.0                  Testfall 5 ohne Joker")
+    print(f"{calc([0, 0, 1, 0, 1, 0, 0, 3, 3, 3, 3, 3, 0, 1, 0], 6, 5, 10):<20} 0.10471881060116355  Testfall 6 ohne Joker")
+    print(f"{calc([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1], 6, 5, 10):<20} 1.0                  Testfall 1 mit Joker")
+    print(f"{calc([1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 1.0                  Testfall 2 mit Joker")
+    print(f"{calc([1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.5595238095238095   Testfall 3 mit Joker (Version 1)")
+
 # noinspection DuplicatedCode
 if __name__ == "__main__":  # pragma: no cover
-    # Ok
-    #print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.42857142857142855  Testfall 1 ohne Joker")
-    #print(f"{calc([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.15476190476190477  Testfall 2 ohne Joker")
-    #print(f"{calc([0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0], 6, 5, 10):<20} 0.17857142857142858  Testfall 3 ohne Joker")
-
-    # Failed (actual: 0.25; expected: 0.21428571428571427)
-    #print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 0], 6, 5, 10):<20} 0.21428571428571427  Testfall 4 ohne Joker")
-
-    # Kartenauswahl: RK SK GD RB RZ S9
-    # Anzahl Handkarten: 6
-    # Kombination: 5erStraßeZ
-    # Mögliche Handkarten:
-    #    RK SK GD RB RZ S9 True
-    # Gezählt:   p = 1/1 = 1.0
-    #print(f"{calc([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 0], 6, 5, 10):<20} 1.0  Testfall 5 ohne Joker")
-
-    # Failed (actual: 0.5955882352941176; expected: 0.22652714932126697)
-    print(f"{calc([0, 0, 1, 0, 1, 0, 0, 3, 3, 3, 3, 3, 0, 1, 0], 6, 5, 10):<20} 0.10471881060116355  Testfall 6 ohne Joker")
-
-    # Kartenauswahl: GA RK GD RB GZ Ph
-    # Anzahl Handkarten: 6
-    # Mögliche Handkarten:
-    #    GA RK GD RB GZ Ph True
-    # Gezählt:   p = 1/1 = 1.0
-    #print(f"{calc([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1], 6, 5, 10):<20} 1.0                  Testfall 1 mit Joker")
-
-    # Kartenauswahl: GA RK GD RB GZ R9 Ph
-    # Anzahl Handkarten: 6
-    # Mögliche Handkarten:
-    #    GA RK GD RB GZ R9 True
-    #    GA RK GD RB GZ Ph True
-    #    GA RK GD RB R9 Ph True
-    #    GA RK GD GZ R9 Ph True
-    #    GA RK RB GZ R9 Ph True *
-    #    GA GD RB GZ R9 Ph True
-    #    RK GD RB GZ R9 Ph True *
-    # Gezählt:   p = 7/7 = 1.0
-    # Berechnet: p = 7/7 = 1.0
-    #print(f"{calc([1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 1.0                  Testfall 2 mit Joker")
-
-    #print(f"{calc([1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.5595238095238095   Testfall 3 mit Joker")
-
+    number = 1
+    print(f"Gesamtzeit: {timeit(lambda: test(1), number=number)*1000/number:.6f} ms")
+    print(f"Gesamtzeit: {timeit(lambda: test(2), number=number)*1000/number:.6f} ms")
