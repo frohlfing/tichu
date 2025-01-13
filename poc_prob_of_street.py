@@ -1,30 +1,4 @@
-# Aufgabenbeschreibung
-#
-# In einer Urne befinden sich Kugeln. Auf jeder Kugel steht eine Zahl zw. 1 und 14. Jeder Zahl kann bis zu 4-mal vorkommen.
-# Die Anzahl der Kugeln in der Urne ist in eine Liste h mit 15 Integer gespeichert
-# Beispiel: In der Urne befinden sich noch 10 Kugeln: 3 Kugeln mit der Zahl 5, 2 mit der Zahl 6 und 1 mit der Zahl 7
-# Index: 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14
-#   h = [0, 0, 0, 0, 0, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0]
-#
-# Als Besonderheit befindet sich eine Kugel mit einem Stern (*) statt einer Ziffer in der Urne. Das ist ein Joker und kann eine
-# beliebige Zahl zw. 2 und 14 ersetzen.
-# Zum Beispiel lässt sich aus den Kugeln 5, 6, 7, 8 mit dem Joker die Reihe *(Joker für 4), 5, 6, 7, 8 sowie 5, 6, 7, 8, *(Joker für 9) bilden.
-# Ob ein Joker verfügbar ist, steht im ersten Element von h.
-#
-# Definition Reihe:
-# - Eine Reihe sind mehrere Kugeln (mindestens 5) mit Zahlen jeweils um 1 aufsteigend, also z.B. 6, 7, 8, 9, 10
-# - Eine Reihe kann angegeben werden mit der Länge m (Anzahl Kugeln) und dem Rang r (die höchste Zahl).
-#   Zum Beispiel bilden die Kugeln 3, 4, 5, 6, 7 eine Reihe der Länge m = 5 und dem Rang r = 7
-# - Eine höherwertige Reihe ist eine Reihe mit höherem Rang, aber gleicher Länge. Reihen mit unterschiedlicher Längen sind nicht vergleichbar.
-#   Zum Beispiel ist Reihe 6, 7, 8, 9, 10 höher als 3, 4, 5, 6, 7.
-#
-# Es wird eine bestimmte Anzahl (k) Kugeln blind aus der Urne gezogen.
-#
-# Programmiere mit Python eine Methode, die die Wahrscheinlichkeit berechnet, dass man aus den gezogenen Kugeln eine Reihe bilden kann,
-# die höher ist als eine vorgegebene Reihe Länge m und Rang r.
-
 import math
-from collections import Counter
 from timeit import timeit
 
 
@@ -43,14 +17,14 @@ def build_favorable_sets(h: list, m: int, r: int) -> list:
         r_end = r_start + m  # exklusiv
 
         # ohne Phönix
-        if all(h[i] > 0 for i in range(r_start, r_end)):
+        if all(h[i] >= 1 for i in range(r_start, r_end)):
             subsets.append(set(range(r_start, r_end)))
 
         # mit Phönix
         if h[0]:  # Phönix vorhanden?
             for r_joker in range(max(r_start, 2), r_end):  # max(r_start, 2) berücksichtigt die Ausnahmeregel, dass der Phönix die 1 nicht ersetzen kann
-                if all(h[i] + (1 if r_joker == i else 0) > 0 for i in range(r_start, r_end)):
-                    subset = {i if r_joker != i else 0 for i in range(r_start, r_end)}
+                if all(h[i] + (1 if i == r_joker else 0) >= 1 for i in range(r_start, r_end)):
+                    subset = {i if i != r_joker else 0 for i in range(r_start, r_end)}
                     if subset not in subsets:
                         subsets.append(subset)
 
@@ -176,15 +150,15 @@ def calc(h: list[int], k: int, m: int, r: int) -> float:
 # -----------------------------------------------------------------------------
 
 def test():
-    # print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.42857142857142855  Testfall 1 ohne Joker")
-    # print(f"{calc([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.15476190476190477  Testfall 2 ohne Joker")
-    # print(f"{calc([0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0], 6, 5, 10):<20} 0.17857142857142858  Testfall 3 ohne Joker")
-    # print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 0], 6, 5, 10):<20} 0.21428571428571427  Testfall 4 ohne Joker")
-    # print(f"{calc([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 0], 6, 5, 10):<20} 1.0                  Testfall 5 ohne Joker")
-    # print(f"{calc([0, 0, 1, 0, 1, 0, 0, 3, 3, 3, 3, 3, 0, 1, 0], 6, 5, 10):<20} 0.10471881060116355  Testfall 6 ohne Joker")
-    # print(f"{calc([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1], 6, 5, 10):<20} 1.0                  Testfall 1 mit Joker")
-    # print(f"{calc([1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 1.0                  Testfall 2 mit Joker")
-    print(f"{calc([1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.5595238095238095   Testfall 3 mit Joker (Version 1)")
+    print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.42857142857142855  Testfall 1 ohne Joker")
+    print(f"{calc([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.15476190476190477  Testfall 2 ohne Joker")
+    print(f"{calc([0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0], 6, 5, 10):<20} 0.17857142857142858  Testfall 3 ohne Joker")
+    print(f"{calc([0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 0], 6, 5, 10):<20} 0.21428571428571427  Testfall 4 ohne Joker")
+    print(f"{calc([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 0], 6, 5, 10):<20} 1.0                  Testfall 5 ohne Joker")
+    print(f"{calc([0, 0, 1, 0, 1, 0, 0, 3, 3, 3, 3, 3, 0, 1, 0], 6, 5, 10):<20} 0.10471881060116355  Testfall 6 ohne Joker")
+    print(f"{calc([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1], 6, 5, 10):<20} 1.0                  Testfall 1 mit Joker")
+    print(f"{calc([1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 1.0                  Testfall 2 mit Joker")
+    print(f"{calc([1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1], 6, 5, 10):<20} 0.5595238095238095   Testfall 3 mit Joker")
 
 
 # noinspection DuplicatedCode
