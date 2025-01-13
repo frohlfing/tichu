@@ -74,7 +74,7 @@ def _get_subsets_of_streets(h: list, m: int, r: int) -> list:
 #
 # h: Liste mit der Anzahl der verfügbaren Karten für jeden Rang (Index entspricht den Rang)
 # figure: Typ, Länge und Rang der gegebenen Kombination
-def _get_subsets(h: list, figure: tuple) -> list:
+def get_subsets(h: list, figure: tuple) -> list:
     t, m, r = figure
 
     if t == SINGLE:  # Einzelkarte
@@ -116,7 +116,7 @@ def _get_subsets(h: list, figure: tuple) -> list:
 # sets: Liste von Mengen (Ursprungsmengen)
 # minimums: Erforderliche Mindestanzahl der Karten
 # k: Maximal erlaubte Länge der Vereinigungsmenge
-def _union_sets(sets: list, k: int) -> list[list]:
+def union_sets(sets: list, k: int) -> list[list]:
     length = len(sets)
     result = [sets] + [[] for _ in range(length - 1)]
 
@@ -140,7 +140,7 @@ def _union_sets(sets: list, k: int) -> list[list]:
 
 # Zählt die Anzahl jeder eindeutigen Menge
 # Zurückgegeben wird eine Liste mit Tupeln, wobei jedes Tupel eine eindeutige Menge und dessen Anzahl enthält
-def _count_sets(sets: list) -> list:
+def count_sets(sets: list) -> list:
     unique_sets = []
     counts = []
     for s in sets:
@@ -159,7 +159,7 @@ def _count_sets(sets: list) -> list:
 # subset: Teilmenge
 # h: Liste mit der Anzahl der verfügbaren Karten für jeden Rang (Index entspricht den Rang)
 # k: Anzahl der Handkarten
-def _hypergeom(subset: dict, h: list, k: int) -> int:
+def hypergeom(subset: dict, h: list, k: int) -> int:
     def _comb(index: int, n_remain, k_remain) -> int:
         r = keys[index]  # der aktuell zu untersuchende Kartenrang
         n_fav = h[r]  # Anzahl der verfügbaren Karten mit diesem Rang
@@ -198,20 +198,20 @@ def prob_of_hand(h: list[int], k: int, figure: tuple) -> float:
         return 0
 
     # Teilmengen finden, die die gegebene Kombination überstechen
-    favorable_subsets = _get_subsets(h, figure)
+    favorable_subsets = get_subsets(h, figure)
     if len(favorable_subsets) == 0:
         return 0
 
     # Vereinigungsmengen aus zwei oder mehr Teilmengen bilden
-    favorable_unions = _union_sets(favorable_subsets, k)
+    favorable_unions = union_sets(favorable_subsets, k)
 
     # für jede Vereinigungsmengen die möglichen Kombinationen zählen
     matches = 0
     for j, unions in enumerate(favorable_unions):
         number_of_subsets_in_union = j + 1  # Anzahl der Teilmengen, die jede der aktuellen Vereinigungsmengen umfassen
-        for union, c in _count_sets(unions):
+        for union, c in count_sets(unions):
             # Hypergeometrische Verteilung
-            matches_part = _hypergeom(union, h, k) * c
+            matches_part = hypergeom(union, h, k) * c
             # Prinzip der Inklusion und Exklusion
             if number_of_subsets_in_union % 2 == 1:
                 matches += matches_part  # inklusion bei ungerade Anzahl an Teilmengen
