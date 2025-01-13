@@ -1,6 +1,7 @@
 __all__ = "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
-    "deck", "cardlabels", "cardlabels_index", "parse_cards", "stringify_cards", "is_wish_in", \
-    "sum_card_points", "other_cards",
+    "deck", \
+    "parse_cards", "stringify_cards", \
+    "is_wish_in", "sum_card_points", "other_cards",
 
 # -----------------------------------------------------------------------------
 # Spielkarten
@@ -38,7 +39,7 @@ deck = (  # const
 )
 
 # wie deck.index(card), aber 6 mal schneller!
-deck_index = {  # const
+_deck_index = {  # const
     #  rot        grün        blau     schwarz
     (0, 0): 0,                                           # Hund
     (1, 0): 1,                                           # MahJong
@@ -60,7 +61,7 @@ deck_index = {  # const
 }
 
 # Kartenlabel
-cardlabels = (
+_cardlabels = (
     # rt   gr    bl    sw
     "Hu",                    # Hund
     "Ma",                    # MahJong
@@ -82,7 +83,7 @@ cardlabels = (
 )
 
 # wie cardlabels.index(label), aber 6 mal schneller
-cardlabels_index = {
+_cardlabels_index = {
     # rot      grün     blau      schwarz
     "Hu": 0,                                 # Hund
     "Ma": 1,                                 # MahJong
@@ -104,7 +105,7 @@ cardlabels_index = {
 }
 
 # Kartenwert → Punkte
-card_points = (
+_card_points = (
     0,    # Hund
     0,    # MahJong
     0,    # 2
@@ -125,19 +126,19 @@ card_points = (
 )
 
 
-# Karten aus String parsen
+# Parst die Karten aus dem String
 # s: z.B. "R6 B5 G4"
 def parse_cards(s: str) -> list[tuple]:
-    return [deck[cardlabels_index[c]] for c in s.split(" ")]
+    return [deck[_cardlabels_index[c]] for c in s.split(" ")]
 
 
-# Karten als lesbaren String formatieren
+# Formatiert Karten als lesbaren String
 # cards: Karten, z.B. [(8,3),(2,4),(0,1)]
 def stringify_cards(cards: list[tuple]) -> str:
-    return " ".join([cardlabels[deck_index[c]] for c in cards])
+    return " ".join([_cardlabels[_deck_index[c]] for c in cards])
 
 
-# Ist der gewünschte Wert unter den Karten?
+# Ermittelt, ob der gewünschte Kartenwert unter den Karten ist
 def is_wish_in(wish: int, cards: list[tuple]) -> bool:
     assert 2 <= wish <= 14
     for card in cards:
@@ -146,12 +147,13 @@ def is_wish_in(wish: int, cards: list[tuple]) -> bool:
     return False
 
 
-# Punkte der Karten zählen
+# Zählt die Punkte der Karten
 # cards: Karten, z.B. [(8,3),(2,4),(0,1)]
 def sum_card_points(cards: list[tuple]) -> int:
-    return sum([card_points[card[0]] for card in cards])
+    return sum([_card_points[card[0]] for card in cards])
 
 
-# Alle übrigen Karten auflisten. Die Reihenfolge entspricht dem Kartendeck (also aufsteigend).
+# Listet die übrigen Karten auf
+# Die Reihenfolge entspricht dem Kartendeck (also aufsteigend).
 def other_cards(cards: list[tuple]) -> list[tuple]:
     return [card for card in deck if card not in cards]

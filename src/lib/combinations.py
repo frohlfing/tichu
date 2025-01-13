@@ -1,10 +1,10 @@
 __all__ = "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "BOMB", \
     "FIGURE_PASS", "FIGURE_DOG", "FIGURE_MAH", "FIGURE_DRA", "FIGURE_PHO", \
-    "figures_index", "figurelabels", "parse_figure", "stringify_figure", "get_figure", \
-    "build_combinations", "remove_combinations", "build_action_space", "calc_statistic", \
+    "parse_figure", "stringify_figure", "get_figure", \
+    "build_combinations", "remove_combinations", \
+    "build_action_space", "calc_statistic", \
     "possible_hands", "possible_hands_hi", "possible_hands_lo", \
     "probability_of_hand", "probability_of_hand_hi", "probability_of_hand_lo",
-
 
 import itertools
 import math
@@ -32,7 +32,7 @@ FIGURE_DRA = (1, 1, 15)
 FIGURE_PHO = (1, 1, 16)
 
 # Alle möglichen Figuren
-figures = (  # Index → figure == (Typ, Länge, Rang)
+_figures = (  # Index → figure == (Typ, Länge, Rang)
     # Passen - PASS
     (0, 0, 0),
     # Einzelkarten - SINGLE  (1,1,0) == Hund, (1,1,1) == MahJong, (1,1,15) == Drache, (1,1,16) == Phönix
@@ -75,7 +75,7 @@ figures = (  # Index → figure == (Typ, Länge, Rang)
 )
 
 # wie figures.index(figure), aber schneller!
-figures_index = {  # figure == (Typ, Länge, Rang) → Index
+_figures_index = {  # figure == (Typ, Länge, Rang) → Index
     # Passen - PASS
     (0, 0, 0): 0,
     # Einzelkarten - SINGLE  (1,1,0) == Hund, (1,1,1) == MahJong, (1,1,15) == Drache, (1,1,16) == Phönix
@@ -117,7 +117,7 @@ figures_index = {  # figure == (Typ, Länge, Rang) → Index
     (7, 13, 14): 226,
 }
 
-figurelabels = (
+_figurelabels = (
     # PASS
     "Passen",
     # SINGLE
@@ -160,7 +160,7 @@ figurelabels = (
 )
 
 # wie figurelabels.index(label), aber schneller
-figurelabels_index = {
+_figurelabels_index = {
     # PASS
     "Passen": 0,
     # SINGLE
@@ -203,22 +203,25 @@ figurelabels_index = {
 }
 
 
-# Label einer Kartenkombination in Typ, Länge und Rang umwandeln
+# Wandelt das Label einer Kartenkombination in Typ, Länge und Rang umw
 def parse_figure(lb: str) -> tuple:
-    return figures[figurelabels_index[lb]]
+    return _figures[_figurelabels_index[lb]]
 
 
-# Typ, Länge und Rang einer Kombination zum Label umwandeln
+# Wandelt Typ, Länge und Rang einer Kombination in ein Label um
 def stringify_figure(figure: tuple) -> str:
-    return figurelabels[figures_index[figure]]
+    return _figurelabels[_figures_index[figure]]
 
 
-# Typ, Länge und Rang der Kartenkombination ermitteln
+# Ermittelt Typ, Länge und Rang der gegebenen Kartenkombination
+#
+# Es wird vorausgesetzt, das cards eine gültige Kombination ist.
+# Parameter cards wird absteigend sortiert. Wenn shift_phoenix gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
+#
 # cards: Karten der Kombination, z.B. [(8,4),(8,2),(8,1)]
 # trick_value: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist)
 # shift_phoenix: Wenn True, wird der Phönix eingereiht (kostet etwas Zeit)
 # return: (Typ, Länge, Rang);
-# Parameter cards wird absteigend sortiert. Wenn shift_phoenix gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
 def get_figure(cards: list, trick_value: int, shift_phoenix: bool = False) -> tuple:
     n = len(cards)
     if n == 0:
@@ -308,7 +311,8 @@ def get_figure(cards: list, trick_value: int, shift_phoenix: bool = False) -> tu
     return t, n, v
 
 
-# Kombinationsmöglichkeiten der Handkarten ermitteln (die besten zu erst)
+# Ermittelt die Kombinationsmöglichkeiten der Handkarten (die besten zu erst)
+#
 # hand: Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)]
 # return: [(Karten, (Typ, Länge, Rang)), ...]
 def build_combinations(hand: list[tuple]) -> list[tuple]:
@@ -448,7 +452,8 @@ def build_combinations(hand: list[tuple]) -> list[tuple]:
     return result
 
 
-# Kombinationsmöglichkeiten entfernen, die aus mind. eine der angegebenen Karten bestehen
+# Entfernt die Kombinationsmöglichkeiten, die aus mindestens eine der angegebenen Karten bestehen
+#
 # combis: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...]
 # cards: Karten, die entfernt werden sollen
 # return: [(Karten, (Typ, Länge, Rang)), ...]
@@ -456,7 +461,8 @@ def remove_combinations(combis: list[tuple], cards: list[tuple]):
     return [combi for combi in combis if not set(cards).intersection(combi[0])]
 
 
-# Spielbare Kartenkombinationen ermitteln
+# Ermittelt spielbare Kartenkombinationen
+#
 # combis: Kombinationsmöglichkeiten der Hand, also [(Karten, (Typ, Länge, Rang)), ...]
 # trick_figure: Typ, Länge, Rang des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
 # unfulfilled_wish: Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt)
@@ -498,7 +504,8 @@ def build_action_space(combis: list[tuple], trick_figure: tuple, unfulfilled_wis
     return result
 
 
-# Wahrscheinlichkeit berechnen, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können
+# Berechnet die Wahrscheinlichkeit, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können
+#
 # Für jede eigene Kombination liefert die Funktion folgende Werte:
 # lo_opp: Wahrscheinlichkeit, das der Gegner eine Kombination hat, die ich stechen kann und somit das Anspiel gewinne
 # lo_par: Wahrscheinlichkeit, das der Partner eine Kombination hat, die ich stechen kann und somit das Anspiel gewinne
@@ -509,7 +516,7 @@ def build_action_space(combis: list[tuple], trick_figure: tuple, unfulfilled_wis
 # Daraus folgt:
 # 1 - lo_opp - hi_opp - eq_opp: Wahrscheinlichkeit, dass der Gegner nicht die die Kombi vom gleichen Typ und Länge hat
 # 1 - lo_par - hi_par - eq_par: Wahrscheinlichkeit, dass der Partner nicht die die Kombi vom gleichen Typ und Länge hat
-# Diese Parameter werden erwartet:
+#
 # player: Meine Spielernummer (zw. 0 und 3)
 # hand: Eigene Handkarten
 # combis: Zu bewertende Kombinationen (gebildet aus den Handkarten) [(Karten, (Typ, Länge, Rang)), ...]
@@ -917,7 +924,7 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
     return matches, hands
 
 
-def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[list, list]:
+def possible_hands_lo(unplayed_cards: list[tuple], k: int, _figure: tuple) -> tuple[list, list]:
     # todo
     hands = list(itertools.combinations(unplayed_cards, k))
     matches = []
@@ -998,7 +1005,7 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
         steps = int(m / 2)
         matches = _number_of_pairs(n, k, r - steps + 1, h[16])
 
-    elif t == FULLHOUSE:  # Full House
+    elif t == FULLHOUSE:  # Fullhouse
         def _number_of_pairs(n_remain: int, k_remain: int, r2: int, pho: int) -> int:
             if n_remain < 2 or k_remain < 2:
                 return 0
@@ -1256,7 +1263,7 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
 
 
 
-def probability_of_hand_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> float:
+def probability_of_hand_lo(_unplayed_cards: list[tuple], _k: int, _figure: tuple) -> float:
     return 0.0
 
 
@@ -1267,21 +1274,22 @@ def probability_of_hand_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -
 def test_possible_hands():  # pragma: no cover
     test_cases = [
         # Treppe mit Phönix, ohne Bomben
+        ("Dr GA BA GK BK SD BD", 6, (4, 4, 14), 0, 7, 0.0, "2er-Treppe bis zum Ass"),
         ("Ph GK BK SD SB RB BZ R9", 6, (4, 4, 10), 14, 28, 0.5, "2er-Treppe mit Phönix"),
-        #("Ph GK BK SD SB RB R9", 6, (4, 4, 10), 5, 7, 0.7142857142857143, "2er-Treppe mit Phönix (vereinfacht)"),
-        #("Ph GK BK SD SB R9 S4", 6, (4, 4, 10), 3, 7, 0.42857142857142855, "2er-Treppe mit Phönix (vereinfacht 2)"),
-        #("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
+        ("Ph GK BK SD SB RB R9", 6, (4, 4, 10), 5, 7, 0.7142857142857143, "2er-Treppe mit Phönix (vereinfacht)"),
+        ("Ph GK BK SD SB R9 S4", 6, (4, 4, 10), 3, 7, 0.42857142857142855, "2er-Treppe mit Phönix (vereinfacht 2)"),
+        ("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
 
         # Straße mit Phönix, ohne Bomben
-        #("GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 19"),
-        #("RK GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 22, 28, 0.7857142857142857, "5erStraßeZ, Test 25"),
-        #("RK GD RB GZ R9 S8 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 17"),
-        #("GK RB GZ R9 G8 R7 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 15"),
-        #("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1, 1, 1.0, "5erStraßeZ, Test 25"),
-        #("GA RK GD RB GZ R9 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 25"),
-        #("GA RK GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 47, 84, 0.5595238095238095, "5erStraßeZ, Test 25"),
-        #("GA RK GD RB GZ RZ S9 S7", 6, (6, 5, 10), 47, 84, 0.5595238095238095, "5erStraßeZ, Test 25"),
-        #("GK GB SB RB BZ SZ GZ R9 B9 S9 G8 B8 R8 G7 B7 R7 S4 S2", 6, (6, 5, 10), 3, 7, 0.10471881060116355, "5erStraßeZ, Test 25"),
+        ("GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 19"),
+        ("RK GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 22, 28, 0.7857142857142857, "5erStraßeZ, Test 25"),
+        ("RK GD RB GZ R9 S8 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 17"),
+        ("GK RB GZ R9 G8 R7 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 15"),
+        ("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1, 1, 1.0, "5erStraßeZ, Test 25"),
+        ("GA RK GD RB GZ R9 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ, Test 25"),
+        ("GA RK GD RB GZ R9 S8 B7 Ph", 6, (6, 5, 10), 47, 84, 0.5595238095238095, "5erStraßeZ, Test 25"),
+        ("GA RK GD RB GZ RZ S9 S7", 6, (6, 5, 10), 47, 84, 0.5595238095238095, "5erStraßeZ, Test 25"),
+        ("GK GB SB RB BZ SZ GZ R9 B9 S9 G8 B8 R8 G7 B7 R7 S4 S2", 6, (6, 5, 10), 3, 7, 0.10471881060116355, "5erStraßeZ, Test 25"),
     ]
     for test_case in test_cases:
         cards, k, figure, _sum_matches, _len_hands, p, msg = test_case

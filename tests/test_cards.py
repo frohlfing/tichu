@@ -1,12 +1,12 @@
 import unittest
 # noinspection PyProtectedMember
-from src.lib.cards import deck_index
+from src.lib.cards import _deck_index, _cardlabels, _cardlabels_index
 from src.lib.cards import *
 
 
 class TestCards(unittest.TestCase):
     def test_parse_and_stringify_cards(self):
-        self.assertTrue(len(deck) == len(deck_index) == len(cardlabels) == len(cardlabels_index) == 56, "es gibt 56 Karten")
+        self.assertTrue(len(deck) == len(_deck_index) == len(_cardlabels) == len(_cardlabels_index) == 56, "es gibt 56 Karten")
         self.assertEqual(list(deck), parse_cards(stringify_cards(deck)), "Index nicht OK")
 
     def test_is_wish_in(self):

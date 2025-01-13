@@ -1,6 +1,6 @@
 import unittest
 # noinspection PyProtectedMember
-from src.lib.combinations import figures, figurelabels_index, possible_hands_hi
+from src.lib.combinations import _figures, _figures_index, _figurelabels, _figurelabels_index
 from src.lib.combinations import *
 from src.lib.cards import *
 
@@ -8,9 +8,9 @@ from src.lib.cards import *
 # noinspection DuplicatedCode
 class TestCombinations(unittest.TestCase):
     def test_parse_and_stringify_figure(self):
-        self.assertTrue(len(figures) == len(figures_index) == len(figurelabels) == len(figurelabels_index) == 227, "es gibt 227 Kombinationsarten (inklusiv Passen)")
+        self.assertTrue(len(_figures) == len(_figures_index) == len(_figurelabels) == len(_figurelabels_index) == 227, "es gibt 227 Kombinationsarten (inklusiv Passen)")
         for i in range(0, 227):
-            figure = figures[i]
+            figure = _figures[i]
             lb = stringify_figure(figure)
             self.assertEqual(figure, parse_figure(lb), f"Index nicht OK: {i}, {figure}, {lb}")
 

@@ -1,8 +1,8 @@
-import itertools
 import math
-from collections import defaultdict, Counter
-
+from collections import Counter
 from src.common.statistic import probability_of_sample
+# noinspection PyProtectedMember
+from src.lib.cards import _cardlabels, _cardlabels_index
 from src.lib.cards import *
 from src.lib.combinations import *
 from scipy.special import comb
@@ -20,10 +20,10 @@ def benchmark_list_index():
     s = 'Ph GK BD RB RZ R9 R8 R7 R6 B5 G4 G3 B2 Ma'
     ar = s.split(' ')
 
-    print(f'cardlabels.index(): {timeit(lambda: [cardlabels.index(c) for c in ar], number=1000000):5.3f} µs per loop')
+    print(f'cardlabels.index(): {timeit(lambda: [_cardlabels.index(c) for c in ar], number=1000000):5.3f} µs per loop')
     # 4.654µs per loop
 
-    print(f'cardlabels_index[]: {timeit(lambda: [cardlabels_index[c] for c in ar], number=1000000):5.3f} µs per loop')
+    print(f'cardlabels_index[]: {timeit(lambda: [_cardlabels_index[c] for c in ar], number=1000000):5.3f} µs per loop')
     # 0.728µs per loop
 
 
@@ -184,7 +184,6 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     print(f"scipy comb: {time_scipy_comb:.6f} Sekunden")
     print(f"scipy exact: {time_scipy_exact:.6f} Sekunden")
     print(f"manual: {time_manual:.6f} Sekunden")
-    print(f"final1: {time_final1:.6f} Sekunden")
     print(f"final2: {time_final2:.6f} Sekunden")
 
     # math: 0.000233 Sekunden
@@ -262,35 +261,6 @@ def calc_statistic_benchmark():
     #calc_statistic: 0.198650 ms
 
 
-
-# def combine_and_count1(subsets, k):
-#     union_count = defaultdict(int)
-#     for subsets in itertools.combinations(subsets, 2):
-#         union = frozenset(subsets[0]).union(subsets[1])
-#         if len(union) <= k:
-#             union_count[union] += 1
-#     return union_count
-#
-# def combine_and_count2(subsets, k):
-#     union_count = defaultdict(int)
-#     for i in range(len(subsets)):
-#         for j in range(i + 1, len(subsets)):
-#             union = frozenset(subsets[i]).union(subsets[j])
-#             if len(union) <= k:
-#                 union_count[union] += 1
-#     return union_count
-#
-# def combine_and_count3(subsets, k):
-#     union_count = {}
-#     for subsets in itertools.combinations(subsets, 2):
-#         union = frozenset(subsets[0]).union(subsets[1])
-#         if len(union) <= k:
-#             if union not in union_count:
-#                 union_count[union] = 1
-#             else:
-#                 union_count[union] += 1
-#     return union_count
-
 def build_unions1(subsets, k):
     union_count = {}
     for i in range(len(subsets)):
@@ -312,9 +282,7 @@ def build_unions2(subsets, k):
                 union_count[union] += 1
     return union_count
 
-
-
-if __name__ == '__main__':
+def test_unions():
     number = 100
     subset = [{7, 8, 9, 10, 11}, {0, 8, 9, 10, 11}, {0, 7, 9, 10, 11}, {0, 7, 8, 10, 11}, {0, 7, 8, 9, 11}, {0, 7, 8, 9, 10}, {8, 9, 10, 11, 12}, {0, 9, 10, 11, 12}, {0, 8, 10, 11, 12}, {0, 8, 9, 11, 12}, {0, 8, 9, 10, 12}, {9, 10, 11, 12, 13}, {0, 10, 11, 12, 13}, {0, 9, 11, 12, 13}, {0, 9, 10, 12, 13}, {0, 9, 10, 11, 13}, {10, 11, 12, 13, 14}, {0, 11, 12, 13, 14}, {0, 10, 12, 13, 14}, {0, 10, 11, 13, 14}, {0, 10, 11, 12, 14}]
     t = timeit(lambda: build_unions1(subset, 6), number=number) * 1000 / number
@@ -323,6 +291,8 @@ if __name__ == '__main__':
     print(f"combine_and_count2: {t:.6f} ms")
 
 
+if __name__ == '__main__':
+    test_unions()
     #possible_hands_benchmark()
     #probability_of_hand_benchmark()
     #calc_statistic_benchmark()

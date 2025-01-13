@@ -1,19 +1,20 @@
-__all__ = "build_partitions", "remove_partitions", "filter_playable_partitions", "filter_playable_combinations", \
-    "stringify_partition", "print_partition", "partition_quality",
+__all__ = "build_partitions", "remove_partitions", \
+    "filter_playable_partitions", "filter_playable_combinations", \
+    "stringify_partition", \
+    "partition_quality",
 
 import config
 import math
 from src.lib.combinations import stringify_figure, remove_combinations
 
-
 # -----------------------------------------------------------------------------
 # Partitionen
 # -----------------------------------------------------------------------------
 
-# Partitionen berechnen, die mit den verfügbaren Kombinationen gebildet werden können.
-# Da die offensichtlich guten Kombis zuerst aufgelistet sind, werden auch die offensichtlich besseren Partitionen
-# zuerst gebildet.
-# Diese Funktion wird rekursiv aufgerufen.
+# Berechnet die Partitionen, die mit den verfügbaren Kombinationen gebildet werden können.
+#
+# Da die offensichtlich guten Kombis zuerst aufgelistet sind, werden auch die offensichtlich besseren Partitionen zuerst gebildet.
+#
 # partitions: Diese Liste wird während der Berechnung gefüllt.
 # combis: Die möglichen Kombinationen der Handkarten
 # counter: Anzahl Handkarten
@@ -45,7 +46,8 @@ def build_partitions(partitions: list[list[tuple]], combis: list[tuple], counter
     return completed
 
 
-# Karten aus den Partitionen entfernen
+# Entfernt Karten aus den Partitionen
+
 # partitions: Partitionen
 # cards: Karten, die entfernt werden sollen
 # return: [(Karten, (Typ, Länge, Wert)), ...]
@@ -68,7 +70,7 @@ def remove_partitions(partitions: list[list[tuple]], cards: list[tuple]) -> list
     return new_partitions
 
 
-# Partitionen ermitteln, die mindestens eine spielbare Kombination haben
+# Ermittelt Partitionen, die mindestens eine spielbare Kombination haben
 def filter_playable_partitions(partitions: list[list[tuple]], action_space: list[tuple]) -> list[list[tuple]]:
     new_partitions = []
     for partition in partitions:
@@ -79,7 +81,7 @@ def filter_playable_partitions(partitions: list[list[tuple]], action_space: list
     return new_partitions
 
 
-# Spielbare Kartenkombinationen ermitteln
+# Ermittelt die spielbaren Kartenkombinationen
 def filter_playable_combinations(partition: list[tuple], action_space: list[tuple]) -> list[tuple]:
     combis = []
     for combi in partition:
@@ -88,23 +90,20 @@ def filter_playable_combinations(partition: list[tuple], action_space: list[tupl
     return combis
 
 
-# Partition zu Labels umwandeln
+# Wandelt die Partition in ein Label um
 def stringify_partition(partition: list[tuple]) -> str:
     return " ".join([stringify_figure(combi[1]) for combi in partition])
 
 
-# Labels der Partition anzeigen
-def print_partition(partition: list[tuple]):  # pragma: no cover
-    print(stringify_partition(partition))
-
-
-# Güte der gegebener Partition schätzen
+# Schätzt die Güte der gegebener Partition
+#
 # Die Güte ist ein Maß für die Qualität der Partition. Je häufiger wir das Anspielrecht erhalten, desto größer ist
 # der Wert. Je häufiger wir das Anspielrecht verlieren, desto kleiner ist der Wert. Kombinationen, mir der wir
 # statistisch gesehen weder das Anspielrecht gewinnen noch verlieren, beeinflussen die Güte nicht.
 # Ein Wert von -1 bedeutet, dass man immer verliert (der Letzte ist).
 # Ein Wert von 1 würde heißen, dass man immer gewinnt (als erstes fertig wird).
 # Der Wert 0 heißt, dass man im Durchschnitt genauso häufig verliert wie man gewinnt.
+#
 # partition: Partition
 # action_space: spielbare Aktionen (leer, wenn die Partition jetzt nicht gespielt werden darf)
 # statistic: Ergebnis von combinations.calc_statistic()

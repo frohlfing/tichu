@@ -41,7 +41,7 @@ Eine Partie besteht aus mehreren Runden und endet, wenn ein Team mindestens 1000
   
 - hand = Handkarten = cards = [card, card, ...]
  
-- figure = Figur einer Kombination = (Typ, Länge, Rang)
+- figure = Merkmale einer Kombination = (Typ, Länge, Rang)
     - type: Typ der Kombination, z.B. SINGLE für Einzelkarte
     - length: Länge der Kombination, z.B. 1 bei Single
     - rank: Der Rang der Kombination bestimmt, ob eine Kombination eine andere stechen kann.
