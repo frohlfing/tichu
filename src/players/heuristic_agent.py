@@ -1,8 +1,9 @@
 import config
 import math
 from src.common.rand import Random
+from src.deprecated.calc_statistic import calc_statistic
 from src.lib.cards import CARD_DOG, CARD_MAH
-from src.lib.combinations import build_action_space, remove_combinations, calc_statistic, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, SINGLE, STREET, BOMB
+from src.lib.combinations import build_action_space, remove_combinations, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, SINGLE, STREET, BOMB
 from src.lib.partitions import partition_quality, filter_playable_combinations, filter_playable_partitions
 from src.players.agent import Agent
 from src.private_state import PrivateState

@@ -1,6 +1,7 @@
 import math
 from collections import Counter
-from src.common.statistic import probability_of_sample
+from src.deprecated.calc_statistic import calc_statistic
+from src.deprecated.statistic import probability_of_sample
 # noinspection PyProtectedMember
 from src.lib.cards import _cardlabels, _cardlabels_index
 from src.lib.cards import *

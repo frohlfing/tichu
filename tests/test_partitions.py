@@ -1,4 +1,5 @@
 import unittest
+from src.deprecated.calc_statistic import calc_statistic
 # noinspection PyProtectedMember
 from src.lib.cards import *
 from src.lib.combinations import *

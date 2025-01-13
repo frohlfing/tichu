@@ -1,5 +1,5 @@
 import unittest
-from src.common.statistic import *
+from src.deprecated.statistic import *
 
 
 class TestHypergeometricFunctions(unittest.TestCase):
