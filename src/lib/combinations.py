@@ -8,7 +8,7 @@ __all__ = "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "B
 
 import itertools
 import math
-from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in, parse_cards, stringify_cards
+from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in, parse_cards, stringify_cards, cards_to_vector, ranks_to_vector
 
 # -----------------------------------------------------------------------------
 # Kartenkombinationen
@@ -664,33 +664,6 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, _figure: tuple) -> tu
     return matches, hands
 
 
-def _count_cards(cards: list[tuple]) -> (int, list[int], list[list[int]]):
-    # Anzahl der Karten
-    n = len(cards)
-
-    # Anzahl der Karten je Rang
-    #  Dog Mah 2  3  4  5  6  7  8  9 10 Bu Da Kö As Dra Pho
-    h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-    # Anzahl der Karten von 2 bis Ass pro Farbe und pro Rang
-    # p = probability_of_sample(n, k, [h[r]], [[4]], ">=")
-    # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
-    # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
-    u = [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
-    ]
-
-    for v, c in cards:
-        h[v] += 1
-        if c > 0:
-            u[c - 1][v - 2] = 1
-
-    return n, h, u
-
-
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination hält
 #
 # Beispiel:
@@ -703,8 +676,11 @@ def _count_cards(cards: list[tuple]) -> (int, list[int], list[list[int]]):
 # k: Anzahl Handkarten
 # figure: Typ, Länge, Rang der Kombination
 def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> float:
+    # Anzahl der ungespielten Karten
+    n = len(unplayed_cards)
+
     # Anzahl der ungespielten Karten je Rang
-    n, h, u = _count_cards(unplayed_cards)
+    h = ranks_to_vector(unplayed_cards)
 
     # Anzahl Möglichkeiten gesamt
     samples = math.comb(n, k)
@@ -774,14 +750,16 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 
         matches = _number_of_singles(n, k, r - m + 1, h[16])
         # Farbbomben rausrechnen (nur Hände mit exakt 1 Straßenbombe sind betroffen, bei 2 Bomben sind immer normale Straßen dabei)
-        b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Farbbomben
+        u = cards_to_vector(unplayed_cards)  # Zugriff auf eine Karte: u[r + 13 * (c - 1)])
+        b = sum(1 for color in range(4) if sum(u[(r + 13 - m + 1) * color:(r + 13) * color]) == m)  # Anzahl Farbbomben  # todo testen
         matches -= b * math.comb(n - sum(h[r - m + 1:r + 1]) - h[16], k - m * 1) if b > 0 else 0
 
     elif t == BOMB and m == 4:  # 4er-Bombe
         matches = math.comb(n - 4, k - 4) if h[r] == 4 else 0
 
     elif t == BOMB and m >= 5:  # Farbbombe
-        b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Farbbomben
+        u = cards_to_vector(unplayed_cards)  # Zugriff auf eine Karte: u[r + 13 * (c - 1)])
+        b = sum(1 for color in range(4) if sum(u[(r + 13 - m + 1) * color:(r + 13) * color]) == m)  # Anzahl Farbbomben  # todo testen
         matches = b * math.comb(n - m, k - m) if b > 0 else 0
         if b >= 2 and k >= m * 2:  # Hände mit 2 Bomben wurden doppelt gezählt und müssen wieder abgezogen werden
             matches -= math.comb(b, 2) * math.comb(n - m * 2, k - m * 2)
@@ -794,8 +772,11 @@ def probability_of_hand(unplayed_cards: list[tuple], k: int, figure: tuple) -> f
 
 
 def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> float:
+    # Anzahl der ungespielten Karten
+    n = len(unplayed_cards)
+
     # Anzahl der ungespielten Karten je Rang
-    n, h, u = _count_cards(unplayed_cards)
+    h = ranks_to_vector(unplayed_cards)
 
     # Anzahl Möglichkeiten gesamt
     samples = math.comb(n, k)
@@ -956,8 +937,9 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
         matches = _number_of_singles(n, k, r - m + 2, h[16], 0)
 
         # Farbbomben rausrechnen (nur Hände mit exakt 1 Straßenbombe sind betroffen, bei 2 Bomben sind immer normale Straßen dabei)
+        u = cards_to_vector(unplayed_cards)  # Zugriff auf eine Karte: u[r + 13 * (c - 1)])
         for r_first in range(r - m + 2, 14 - m + 1):
-            b = sum(1 for color in range(4) if sum(u[color][r_first - 2:r_first - 2 + m]) == m)  # Anzahl Farbbomben
+            b = sum(1 for color in range(4) if sum(u[(r_first + 13) * color:(r_first + 13 + m - 1) * color]) == m)  # Anzahl Farbbomben  # todo testen
             if b > 0:
                 matches -= b * math.comb(n - sum(h[r_first:r_first + m]) - h[16], k - m)
 
@@ -979,7 +961,8 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
         matches = _number_of_bombs(n, k, r + 1)
 
     elif t == BOMB and m >= 5:  # Farbbombe
-        b = sum(1 for color in range(4) if sum(u[color][r - m - 1:r - 1]) == m)  # Anzahl Farbbomben
+        u = cards_to_vector(unplayed_cards)  # Zugriff auf eine Karte: u[r + 13 * (c - 1)])
+        b = sum(1 for color in range(4) if sum(u[((r + 1) + 13 - m + 1) * color:((r + 1) + 13) * color]) == m)  # Anzahl Farbbomben  # todo testen
         matches = b * math.comb(n - m, k - m) if b > 0 else 0
         if b >= 2 and k >= m * 2:  # Hände mit 2 Bomben wurden doppelt gezählt und müssen wieder abgezogen werden
             matches -= math.comb(b, 2) * math.comb(n - m * 2, k - m * 2)
@@ -993,7 +976,6 @@ def probability_of_hand_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -
 
     p = matches / samples
     return p
-
 
 
 def probability_of_hand_lo(_unplayed_cards: list[tuple], _k: int, _figure: tuple) -> float:

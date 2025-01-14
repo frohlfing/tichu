@@ -1,7 +1,8 @@
 __all__ = "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
     "deck", \
     "parse_cards", "stringify_cards", \
-    "is_wish_in", "sum_card_points", "other_cards",
+    "is_wish_in", "sum_card_points", "other_cards", \
+    "cards_to_vector", "ranks_to_vector"
 
 # -----------------------------------------------------------------------------
 # Spielkarten
@@ -18,7 +19,7 @@ CARD_PHO = (16, 0)  # Dragon
 # Werte:  14 (As), 13 (König), 12 (Dame), 11 (Bube), 10 bis 2
 # Farben: 0 (Sonderkarte), 1 (Schwarz/Schwert), 2 (Blau/Pagode), 3 (Grün/Jade), 4 (Rot/Stern)
 deck = (  # const
-    # rot    grün    blau    schwarz
+    # schwarz blau  grün    rot
     (0, 0),                              # Hund
     (1, 0),                              # MahJong
     (2, 1), (2, 2), (2, 3), (2, 4),      # 2
@@ -157,3 +158,51 @@ def sum_card_points(cards: list[tuple]) -> int:
 # Die Reihenfolge entspricht dem Kartendeck (also aufsteigend).
 def other_cards(cards: list[tuple]) -> list[tuple]:
     return [card for card in deck if card not in cards]
+
+
+# # Stellt die Karten von 2 bis Ass (ohne Sonderkarten) als zweidimensionale Liste dar.
+# # Die erste Dimension ist die Farbe, die zweite der Rang.
+# def cards_to_matrix(cards: list[tuple]) -> list[list[int]]:
+#     # v= 2  3  4  5  6  7  8  9 10 Bu Da Kö As
+#     # i= 0  1  2  3  4  5  6  7  8  9 10 11 12
+#     h = [
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # schwarz
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # blau
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # grün
+#         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # rot
+#     ]
+#     for r, c in cards:
+#         if c > 0:
+#             h[c - 1][r - 2] = 1
+#     return h
+
+
+# Stellt die Karten als Liste dar.
+def cards_to_vector(cards: list[tuple]) -> list[list[int]]:
+    vector = [
+    #  Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As
+    # i=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    #   2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
+    #  28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]
+    for r, c in cards:
+        if c > 0:
+            vector[r + 13 * (c - 1)] = 1
+        else:
+            vector[r if r < 2 else r + 39] = 1
+    return vector
+
+
+# Zählt die Anzahl der Karten je Rang
+#
+# Zurückgegeben wird eine Liste mit 17 Integer, wobei der Index den Rang entspricht
+# und der Wert die Anzahl der Karten mit diesem Rang.
+def ranks_to_vector(cards: list[tuple]) -> list[int]:
+    #        Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
+    # index = 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+    vector = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for v, _ in cards:
+        vector[v] += 1
+    return vector

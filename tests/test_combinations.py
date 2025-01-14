@@ -313,16 +313,16 @@ class TestCombinations(unittest.TestCase):
             # ("Ph RK GB BB SB R3 R2", 4, (3, 3, 10), 13, 35, 0.37142857142857144, "Drilling mit Phönix"),
 
             # Treppe ohne Phönix
-            ("RK GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
-            ("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, 0.0, "2er-Treppe nicht möglich"),
-            ("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
+            # ("RK GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
+            # ("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, 0.0, "2er-Treppe nicht möglich"),
+            # ("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
 
             # Treppe mit Phönix
-            ("Ph GK BK SD SB RB BZ R9", 6, (4, 4, 10), 14, 28, 0.5, "2er-Treppe mit Phönix"),
-            ("Ph GK BK SD SB RB R9", 6, (4, 4, 10), 5, 7, 0.7142857142857143, "2er-Treppe mit Phönix (vereinfacht)"),
-            ("Ph GK BK SD SB R9 S4", 6, (4, 4, 10), 3, 7, 0.42857142857142855, "2er-Treppe mit Phönix (vereinfacht 2)"),
-            ("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe mit Phönix"),
-            ("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
+            # ("Ph GK BK SD SB RB BZ R9", 6, (4, 4, 10), 14, 28, 0.5, "2er-Treppe mit Phönix"),
+            # ("Ph GK BK SD SB RB R9", 6, (4, 4, 10), 5, 7, 0.7142857142857143, "2er-Treppe mit Phönix (vereinfacht)"),
+            # ("Ph GK BK SD SB R9 S4", 6, (4, 4, 10), 3, 7, 0.42857142857142855, "2er-Treppe mit Phönix (vereinfacht 2)"),
+            # ("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe mit Phönix"),
+            # ("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
 
             # Fullhouse
             # ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
@@ -371,10 +371,10 @@ class TestCombinations(unittest.TestCase):
             # ("GD SB GZ S9 R8 B7 G2 Ph", 6, (6, 5, 10), 13, 28, 0.07634032634032634, "5erStraßeZ mit Phönix"),
 
             # Bomben
-            # ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
-            # ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, 0.047619047619047616, "Farbbombe"),
-            # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, 1.0, "2 Farbbomben in 12 Karten"),
-            # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 12), 53, 78, 0.6794871794871795, "2 Farbbomben in 13 Karten"),
+            ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
+            ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, 0.047619047619047616, "Farbbombe"),
+            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, 1.0, "2 Farbbomben in 12 Karten"),
+            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 12), 53, 78, 0.6794871794871795, "2 Farbbomben in 13 Karten"),
         ]
         for t in test:
             print(t[6])

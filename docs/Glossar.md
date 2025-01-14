@@ -37,7 +37,7 @@ Eine Partie besteht aus mehreren Runden und endet, wenn ein Team mindestens 1000
 
 - card = (Kartenwert, Farbe)
     - value: Kartenwert: (0 (Dog, 1 (Mah Jong), 2 bis 10, 11 (Jack), 12 (Queen), 13 (King), 14 (Ace), 15 (Dragon), 16 (Phoenix)
-    - suit: Farbe der Karte: Sonderkarte, sword (a, schwarz), pagode (b, blau), jade (c, grün), star (d, rot).
+    - suit: Farbe der Karte: 0=Sonderkarte, 1=sword (a, schwarz, Schwert), 2=pagode (b, blau), 3=jade (c, grün), 4=star (d, rot, Stern).
   
 - hand = Handkarten = cards = [card, card, ...]
  

@@ -72,6 +72,9 @@ def _get_subsets_of_streets(h: list, m: int, r: int) -> list:
 
 # Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Kombination überstechen
 #
+# Zurückgegeben wird ein Dictionary, wobei der Key der Rang und der Wert die erforderliche Mindestanzahl
+# von Karten mit diesen Rang ist.
+#
 # h: Liste mit der Anzahl der verfügbaren Karten für jeden Rang (Index entspricht den Rang)
 # figure: Typ, Länge und Rang der gegebenen Kombination
 def get_subsets(h: list, figure: tuple) -> list:
