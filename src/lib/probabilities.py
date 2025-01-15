@@ -21,12 +21,21 @@ def _get_subsets_of_single(h: list, r: int) -> list:
         for i in range(2, 16):  # Phönix (im Anspiel) zählt 1.5; jede Karte zw. 2 und Drache ist höher
             if h[i] >= 1:
                 subsets.append({i: 1})
-    elif r <= 14:  # bis Ass
-        for i in range(r + 1, 17):  # Drache und Phönix sind höher
+
+    elif r == 15:  # Drache
+        # 4er-Bombe
+        for i in range(2, 15):
+            if h[i] == 4:
+                subsets.append({i: 4})
+
+    else:  # Hund, Mahjong, 2 bis Ass
+        for i in range(r + 1, 17):
             if h[i] >= 1:
                 subsets.append({i: 1})
-    else:
-        assert r == 15  # Drache kann nicht überstochen werden
+        # 4er-Bombe
+        for i in range(2, r + 1):
+            if h[i] == 4:
+                subsets.append({i: 4})
 
     return subsets
 
@@ -51,6 +60,11 @@ def _get_subsets_of_pair(h: list, r: int) -> list:
             # if subset not in subsets:
             #     subsets.append(subset)
 
+    # 4er-Bombe
+    for i in range(2, r + 1):
+        if h[i] == 4:
+            subsets.append({i: 4})
+
     return subsets
 
 
@@ -73,6 +87,11 @@ def _get_subsets_of_triple(h: list, r: int) -> list:
             # subset = {i: 2, 16: 1}
             # if subset not in subsets:
             #     subsets.append(subset)
+
+    # 4er-Bombe
+    for i in range(2, r + 1):
+        if h[i] == 4:
+            subsets.append({i: 4})
 
     return subsets
 
@@ -105,6 +124,11 @@ def _get_subsets_of_stairs(h: list, m: int, r: int) -> list:
                     if subset not in subsets:  # todo notwendig?
                         subsets.append(subset)
 
+    # 4er-Bombe
+    for i in range(2, r + 1):
+        if h[i] == 4:
+            subsets.append({i: 4})
+
     return subsets
 
 
@@ -116,7 +140,6 @@ def _get_subsets_of_fullhouse(h: list, r: int) -> list:
     assert 2 <= r <= 14
 
     subsets = []
-
     for i in range(r + 1, 15):
         # ohne Phönix
         if h[i] >= 3:
@@ -137,6 +160,11 @@ def _get_subsets_of_fullhouse(h: list, r: int) -> list:
                 if i != j and h[j] >= 2:
                     subsets.append({i: 2, j: 2, 16: 1})
 
+    # 4er-Bombe
+    for i in range(2, r + 1):
+        if h[i] == 4:
+            subsets.append({i: 4})
+
     return subsets
 
 
@@ -150,7 +178,7 @@ def _get_subsets_of_streets(h: list, m: int, r: int) -> list:
     assert m <= r <= 14
 
     subsets = []
-    for r_start in range((r + 1) - m + 1, 15 - m + 1):
+    for r_start in range((r + 1) - m + 1, 14 - m + 2):
         r_end = r_start + m  # exklusiv
 
         # ohne Phönix
@@ -166,45 +194,56 @@ def _get_subsets_of_streets(h: list, m: int, r: int) -> list:
                     if subset not in subsets:  # todo notwendig?
                         subsets.append(subset)
 
+    # 4er-Bombe
+    for i in range(2, r + 1):
+        if h[i] == 4:
+            subsets.append({i: 4})
+
     return subsets
 
-# Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Bombe überstechen
+
+# Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene 4er-Bombe überstechen
 #
-# todo: Die Regel, dass längere Farbbomben kürzere überstechen, wird hier ignoriert.
+# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
+# r: Rang der gegebenen Kombination
+def _get_subsets_of_4_bomb(h: list, r: int) -> list:
+    assert 2 <= r <= 14
+
+    subsets = []
+    for i in range(r + 1, 15):
+        if h[i] == 4:
+            subsets.append({i: 4})
+
+    return subsets
+
+
+# Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Farbbombe überstechen
 #
-# h: Liste der verfügbaren Karten als Vektor
+# h: Verfügbaren Karten als Vektor (listet alle 56 Karten auf - nicht nur den Rang!)
 # m: Länge der gegebenen Kombination
 # r: Rang der gegebenen Kombination
-def _get_subsets_of_bomb(h: list, m: int, r: int) -> list:
+def _get_subsets_of_color_bomb(h: list, m: int, r: int) -> list:
+    assert 5 <= m <= 13
+    assert m + 1 <= r <= 14
+
     subsets = []
+    for r_start in range((r + 1) - m + 1, 14 - m + 2):
+        r_end = r_start + m  # exklusiv
+        for color in range(4):
+            offset = 13 * color
+            if all(h[i] == 1 for i in range(r_start + offset, r_end + offset)):
+                subsets.append({i: 1 for i in range(r_start + offset, r_end + offset)})
 
-    # 4er-Bombe (h listet nur die Ränge der Karten auf)
-    if m == 4:
-        assert 2 <= r <= 14
-        for i in range(r + 1, 15):
-            if h[i] == 4:
-                subsets.append({i: 4})
-
-    # Farbbombe (h listet alle 56 Karten auf)
-    else:
-        assert 5 <= m <= 13
-        assert m + 1 <= r <= 14
-        for r_start in range((r + 1) - m + 1, 15 - m + 1):
-            r_end = r_start + m  # exklusiv
-            for color in range(4):
-                offset = 13 * color
-                if all(h[i] >= 1 for i in range(r_start + offset, r_end + offset)):
-                    subsets.append({i: 1 for i in range(r_start + offset, r_end + offset)})
-
-    # # längere Farbbombe
-    # for m2 in range(m + 1, 14):
-    #     for r_start in range(m2 + 1, 15 - m2 + 1):
-    #         r_end = r_start + m2  # exklusiv
-    #         if all(h[i] >= 1 for i in range(r_start, r_end)):
-    #             subsets.append({i: 1 for i in range(r_start, r_end)})
+    # eine Farbbombe schlägt jede kürzere Farbbombe
+    m2 = m + 1
+    for r_start in range(2, r - m2 + 2):
+        r_end = r_start + m2  # exklusiv
+        for color in range(4):
+            offset = 13 * color
+            if all(h[i] == 1 for i in range(r_start + offset, r_end + offset)):
+                subsets.append({i: 1 for i in range(r_start + offset, r_end + offset)})
 
     return subsets
-
 
 
 # Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Kombination überstechen
@@ -236,7 +275,10 @@ def get_subsets(h: list, figure: tuple) -> list:
         subsets = _get_subsets_of_streets(h, m, r)
 
     elif t == BOMB:  # Bombe
-        subsets = _get_subsets_of_bomb(h, m, r)
+        if m == 4:
+            subsets = _get_subsets_of_4_bomb(h, r)
+        else:
+            subsets = _get_subsets_of_color_bomb(h, m, r)
 
     else:
         assert False
@@ -344,8 +386,7 @@ def cards_to_vector(cards: list[tuple]) -> list[int]:
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann
 #
-# todo: Die Regel, dass längere Bomben kürzere überstechen, wird hier ignoriert.
-# todo: Es wird auch ignoriert, das eine Bombe eine "normale" Kombination überstechen kann.
+# todo: Noch nicht berücksichtigt: eine Farbbombe schlägt jede andere Kombination (einschließlich 4er-Bombe).
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
@@ -436,25 +477,37 @@ def test_single():  # pragma: no cover
     test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0.0, "Einzelkarte Drache")
     test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 0.5714285714285714, "Einzelkarte Phönix")
 
+    # Einzelkarte mit 4er-Bombe
+    test("SB RZ GZ BZ SZ R9", 5, (1, 1, 11), 0.3333333333333333, "Einzelkarte Bube mit 4er-Bombe")
+    test("Hu Ma RZ GZ BZ SZ", 4, (1, 1, 15), 0.06666666666666667, "Einzelkarte Drache mit 4er-Bombe")
+
     # todo
-    # Einzelkarte mit Bombe
-    # test("SB RZ GZ BZ SZ R9 G9 R8 G8 B4", 3, (1, 1, 9), 0.9166666666666666, "Einzelkarte mit 4er-Bombe")
+    # Einzelkarte mit Farbbombe
+    #test("SB RZ R9 R8 R7 R6", 5, (1, 1, 11), 0.16666666666666667, "Einzelkarte Bube mit Farbbombe")
 
 def test_pair():  # pragma: no cover
     # Pärchen
     test("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 0.47619047619047616, "Pärchen ohne Phönix")
     test("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 0.9047619047619048, "Pärchen mit Phönix")
 
+    # Pärchen mit 4er-Bombe
+    test("SB RZ GZ BZ SZ R9", 5, (2, 2, 11), 0.3333333333333333, "Pärchen mit 4er-Bombe")
+
     # todo
-    # Pärchen mit Bombe
+    # Pärchen mit Farbbombe
+    #test("SB RZ R9 R8 R7 R6", 5, (2, 2, 11), 0.16666666666666667, "Pärchen mit Farbbombe")
 
 def test_triple():  # pragma: no cover
     # Drilling
     test("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 0.11428571428571428, "Drilling ohne Phönix")
     test("Ph RK GB BB SB R3 R2", 4, (3, 3, 10), 0.37142857142857144, "Drilling mit Phönix")
 
+    # Drilling mit 4er-Bombe
+    test("SB RZ GZ BZ SZ R9", 5, (3, 3, 11), 0.3333333333333333, "Drilling mit 4er-Bombe")
+
     # todo
-    # Drilling mir Bombe
+    # Drilling mit Farbbombe
+    #test("SB RZ R9 R8 R7 R6", 5, (3, 3, 11), 0.16666666666666667, "Drilling mit Farbbombe")
 
 def test_stair():  # pragma: no cover
     # Treppe ohne Phönix
@@ -470,8 +523,12 @@ def test_stair():  # pragma: no cover
     test("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 0.42857142857142855, "3er-Treppe mit Phönix"),
     test("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 0.06190476190476191, "2er-Treppe, Phönix übrig"),
 
+    # Treppe mit 4er-Bombe
+    test("SB RZ GZ BZ SZ R9", 5, (4, 4, 11), 0.3333333333333333, "Treppe mit 4er-Bombe")
+
     # todo
-    # Treppe mit Bombe
+    # Treppe mit Farbbombe
+    #test("SB RZ R9 R8 R7 R6", 5, (4, 4, 11), 0.16666666666666667, "Treppe mit Farbbombe")
 
 def test_fullhouse():
     # Fullhouse ohne Phönix
@@ -485,9 +542,12 @@ def test_fullhouse():
     test("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 9), 0.07142857142857142, "Fullhouse mit 5 Handkarten mit Phönix")
     test("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 9), 0.2619047619047619, "Fullhouse mit 6 Handkarten mit Phönix")
 
+    # Fullhouse mit 4er-Bombe
+    test("SB RZ GZ BZ SZ R9", 5, (5, 5, 11), 0.3333333333333333, "Fullhouse mit 4er-Bombe")
+
     # todo
-    # Fullhouse mit Bomben
-    # test("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 8, 8, 1.0, "Fullhouse mit 4er-Bombe")
+    # Fullhouse mit Farbbombe
+    # test("SB RZ R9 R8 R7 R6", 5, (5, 5, 11), 0.16666666666666667, "Fullhouse mit Farbbombe")
 
 def test_street():
     # Straße ohne Phönix
@@ -508,8 +568,13 @@ def test_street():
     test("SA RK GD BB RZ B9 S8 R7 Ph", 6, (6, 5, 10), 0.5595238095238095, "9er-Straße mit Phönix (verlängert)")
     test("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 6, (6, 5, 10), 0.07634032634032634, "13er-Straße mit Phönix (verlängert)")
 
+    # Straße mit 4er-Bombe
+    test("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), 0.3333333333333333, "Straße mit 4er-Bombe")
+
     # todo
-    # Straße mit Bomben
+    # Straße mit Farbbombe
+    # test("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), 0.16666666666666667, "Straße mit Farbbombe")
+
     # test("GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 1, 0.0, "5er-Straße ist Farbbombe")
     # test("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 6, 0.0, "6er-Straße ist Farbbombe")
     # test("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "5er-Straße mit 2 Damen und mit Farbbombe")
@@ -519,27 +584,40 @@ def test_street():
     # test("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 516, 1716, 0.3006993006993007, "2 5er-Straßen mit 2 Farbbomben")
 
 def test_bomb():
-    # 4er-Bomben
+    # 4er-Bombe
     test("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 0.14285714285714285, "4er-Bombe")
 
-    # Farbbomben
+    # todo
+    # 4er-Bombe mit Farbbombe
+    #test("SB RZ R9 R8 R7 R6", 5, (7, 4, 11), 0.16666666666666667, "4er-Bombe mit Farbbombe")
+
+    # Farbbombe
     test("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 0.047619047619047616, "Farbbombe")
     test("BK BD BB BZ B9 RK RD RB RZ R9 S3 S2", 11, (7, 5, 12), 1.0, "2 Farbbomben in 12 Karten")
     test("BK BD BB BZ B9 RK RD RB RZ R9 G7 S3 S2", 11, (7, 5, 12), 0.6794871794871795, "2 Farbbomben in 13 Karten")
 
     # todo
-    # längere Bomben
+    # Farbbombe mit längerer Farbbombe
+    test("SD RZ R9 R8 R7 R6 R5", 6, (7, 5, 11), 0.14285714285714285, "Farbbombe mit längerer Farbbombe (1)")
+    test("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11), 0.25, "Farbbombe mit längerer Farbbombe (2)")
 
 
 # noinspection DuplicatedCode
 if __name__ == "__main__":  # pragma: no cover
-    #inspect("BK BD BB BZ B9 RK RD RB RZ R9 G7 S3 S2", 11, (7, 5, 12))
+    # inspect("SB RZ R9 R8 R7 R6", 5, (1, 1, 11))  # Einzelkarte mit Farbbombe
+    # inspect("SB RZ R9 R8 R7 R6", 5, (2, 2, 11))  # Pärchen mit Farbbombe
+    # inspect("SB RZ R9 R8 R7 R6", 5, (3, 3, 11))  # Drilling mit Farbbombe
+    # inspect("SB RZ R9 R8 R7 R6", 5, (4, 4, 11))  # Treppe mit Farbbombe
+    # inspect("SB RZ R9 R8 R7 R6", 5, (5, 5, 11))  # Fullhouse mit Farbbombe
+    # inspect("SB RZ R9 R8 R7 R6", 5, (6, 5, 11))  # Straße mit Farbbombe
+    #inspect("SD RZ R9 R8 R7 R6 R5", 6, (7, 5, 11))  # Farbbombe mit längerer Farbbombe
+    #inspect("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11))  # Farbbombe mit längerer Farbbombe
 
     number = 1
-    print(f"Gesamtzeit: {timeit(lambda: test_single(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_pair(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_triple(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_stair(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_fullhouse(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_street(), number=number) * 1000 / number:.6f} ms")
+    # print(f"Gesamtzeit: {timeit(lambda: test_single(), number=number) * 1000 / number:.6f} ms")
+    # print(f"Gesamtzeit: {timeit(lambda: test_pair(), number=number) * 1000 / number:.6f} ms")
+    # print(f"Gesamtzeit: {timeit(lambda: test_triple(), number=number) * 1000 / number:.6f} ms")
+    # print(f"Gesamtzeit: {timeit(lambda: test_stair(), number=number) * 1000 / number:.6f} ms")
+    # print(f"Gesamtzeit: {timeit(lambda: test_fullhouse(), number=number) * 1000 / number:.6f} ms")
+    # print(f"Gesamtzeit: {timeit(lambda: test_street(), number=number) * 1000 / number:.6f} ms")
     print(f"Gesamtzeit: {timeit(lambda: test_bomb(), number=number) * 1000 / number:.6f} ms")

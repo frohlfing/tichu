@@ -300,26 +300,35 @@ class TestCombinations(unittest.TestCase):
             ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 5, 7, "Einzelkarte Mahjong"),
             ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0, 7, "Einzelkarte Drache"),
             ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 4, 7, "Einzelkarte Phönix"),
-            ("SB RZ GZ BZ SZ R9 G9 R8 G8 B4", 3, (1, 1, 9), 110, 120, "Einzelkarte mit einer 4er-Bombe"),
+            ("SB RZ GZ BZ SZ R9", 5, (1, 1, 11), 2, 6, "Einzelkarte Bube mit 4er-Bombe"),
+            ("Hu Ma RZ GZ BZ SZ", 4, (1, 1, 15), 1, 15, "Einzelkarte Drache mit 4er-Bombe"),
+            #("SB RZ R9 R8 R7 R6", 5, (1, 1, 11), 1, 6, "Einzelkarte mit Farbbombe"),
             # Pärchen
             ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 10, 21, "Pärchen ohne Phönix"),
             ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 19, 21, "Pärchen mit Phönix"),
+            ("SB RZ GZ BZ SZ R9", 5, (2, 2, 11), 2, 6, "Pärchen mit 4er-Bombe"),
+            #("SB RZ R9 R8 R7 R6", 5, (2, 2, 11), 1, 6, "Pärchen mit Farbbombe"),
             # Drilling
             ("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 4, 35, "Drilling ohne Phönix"),
             ("Ph RK GB BB SB R3 R2", 4, (3, 3, 10), 13, 35, "Drilling mit Phönix"),
+            ("SB RZ GZ BZ SZ R9", 5, (3, 3, 11), 2, 6, "Drilling mit 4er-Bombe"),
+            #("SB RZ R9 R8 R7 R6", 5, (3, 3, 11), 1, 6, "Drilling mit Farbbombe"),
             # Treppe
             ("RK GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, "3er-Treppe ohne Phönix"),
             ("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, "2er-Treppe aus Fullhouse"),
             ("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, "3er-Treppe mit Phönix"),
             ("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, "2er-Treppe mit Phönix übrig"),
             ("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, "2er-Treppe nicht möglich"),
+            ("SB RZ GZ BZ SZ R9", 5, (4, 4, 11), 2, 6, "Treppe mit 4er-Bombe"),
+            #("SB RZ R9 R8 R7 R6", 5, (4, 4, 11), 1, 6, "Treppe mit Farbbombe"),
             # Fullhouse
             ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, "Fullhouse ohne Phönix"),
             ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, "Fullhouse und zusätzliches Pärchen"),
             ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, "Fullhouse mit 2 Drillinge"),
             ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, "Fullhouse mit Phönix für Paar"),
             ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, "Fullhouse mit Phönix für Drilling"),
-            #("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 8, 8, "Fullhouse mit Bombe"),
+            ("SB RZ GZ BZ SZ R9", 5, (5, 5, 11), 2, 6, "Fullhouse mit 4er-Bombe"),
+            #("SB RZ R9 R8 R7 R6", 5, (5, 5, 11), 1, 6, "Fullhouse mit Farbbombe"),
             # Straße
             ("BK SD BD RB BZ B9 R3", 6, (6, 5, 12), 3, 7, "5er-Straße ohne Phönix"),
             ("RA GK BD SB RZ B9 R3", 6, (6, 5, 12), 3, 7, "6er-Straße ohne Phönix"),
@@ -328,12 +337,18 @@ class TestCombinations(unittest.TestCase):
             ("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 18, 28, "7er-Straße mit 2 Könige mit Phönix (verlängert)"),
             ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, "8er-Straße mit Phönix (verlängert)"),
             ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, "Straße mit Phönix (verlängert, 2)"),
-            ("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 6, "5er-Straße ist Bombe"),
+            ("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), 2, 6, "Straße mit 4er-Bombe"),
+            # ("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), 1, 6, "Straße mit Farbbombe"),
+            #("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 6, "5er-Straße ist Bombe"),
             #("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, "Straße mit Farbbombe"),
             #("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, "Straße mit 2 Farbbomben (1)"),
-            # Bombe
+            # 4er-Bombe
             ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, "4er-Bombe"),
+            #("SB RZ R9 R8 R7 R6", 5, (7, 4, 11), 0, 6, "4er-Bombe mit Farbbombe"),
+            # Farbbombe
             ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, "Farbbombe"),
+            ("SD RZ R9 R8 R7 R6 R5", 6, (7, 5, 11), 1, 7, "Farbbombe mit längerer Farbbombe (1)"),
+            ("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11), 2, 8, "Farbbombe mit längerer Farbbombe (2)"),
             #("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, "2 Farbbomben in 12 Karten"),
             #("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 12), 53, 78, "2 Farbbomben in 13 Karten"),
         ]

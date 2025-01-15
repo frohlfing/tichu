@@ -565,8 +565,8 @@ def possible_hands(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[
 
 # Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebene überstechen kann
 #
-# todo: Die Regel, dass längere Bomben kürzere überstechen, wird hier ignoriert.
-# todo: Es wird auch ignoriert, das eine Bombe eine "normale" Kombination überstechen kann.
+# todo: Noch nicht berücksichtigt: eine Farbbombe schlägt jede andere Kombination (einschließlich 4er-Bombe).
+#
 # todo: nach probabilities verschieben (und den zugehörigen Unit-Test nach test_probabilities)
 #
 # Beispiel:
@@ -641,18 +641,34 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                 if b:
                     break
 
+        # eine 4er-Bombe schlägt jede Nicht-Bombe
+        if not b and t != BOMB:
+            for rhi in range(2, 15):
+                b = sum(1 for v, _ in hand if v == rhi) >= 4
+                if b:
+                    break
+
+        # eine Farbbombe schlägt jede kürzere Farbbombe
+        if not b and t == BOMB and m >= 5:
+            m2 = m + 1
+            for rhi in range(m2 + 1, r + 1):
+                b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
+                if b:
+                    break
+
         # todo wieder einkommentieren
-        # # eine 4er-Bombe schlägt jede Nicht-Bombe
-        # if not b and t != BOMB:
-        #     for rhi in range(2, 15):
-        #         b = sum(1 for v, _ in hand if v == rhi) >= 4
+        # # eine Farbbombe schlägt jede andere Kombination (einschließlich 4er-Bombe)
+        # if not b and not (t == BOMB and m >= 5):
+        #     m2 = 5
+        #     for rhi in range(m2 + 2, 15):
+        #         b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
         #         if b:
         #             break
-        #
-        # # eine Farbbombe schlägt jede kürzere Farbbombe und jede Nicht-Farbbombe
+
+        # # eine Farbbombe schlägt jede kürzere Bombe und jede Kombination, die keine Bombe ist
         # if not b:
         #     m2 = m + 1 if t == BOMB and m >= 5 else 5
-        #     for rhi in range(m2 + 1, 15):
+        #     for rhi in range(m2 + 2, r + 1 if t == BOMB and m >= 5 else 15):
         #         b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
         #         if b:
         #             break
