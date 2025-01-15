@@ -234,7 +234,7 @@ class TestCombinations(unittest.TestCase):
             self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
             self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
 
-    def test_probability_of_possible_hands(self):
+    def test_possible_hands(self):
         test = [
             # unplayed cards, k, figure, sum(matches), len(hands), p, msg
             ("Dr RB G6 B5 S4 R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
@@ -282,8 +282,6 @@ class TestCombinations(unittest.TestCase):
         ]
         for t in test:
             print(t[6])
-
-            # possible_hands
             matches, hands = possible_hands(parse_cards(t[0]), t[1], t[2])
             #for match, hand in zip(matches, hands):
             #    print(stringify_cards(hand), match)
@@ -292,105 +290,62 @@ class TestCombinations(unittest.TestCase):
             self.assertEqual(t[4], len(list(zip(matches, hands))))
             self.assertAlmostEqual(t[5], sum(matches) / len(hands) if len(hands) else 0.0, places=15, msg=t[6])
 
-            # probability_of_hands
-            p = probability_of_hand(parse_cards(t[0]), t[1], t[2])
-            self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
-
-    def test_probability_of_possible_hands_hi(self):
+    def test_possible_hands_hi(self):
         test = [
-            # unplayed cards, k, figure, sum(matches), len(hands), p, msg
-            # ("Dr RB G6 B5 S4 R3 R2", 4, (1, 1, 11), 20, 35, 0.5714285714285714, "Einzelkarte"),
-            # ("Dr RB SB B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, 0.7142857142857143, "Einzelkarte mit 2 Buben"),
-            # ("Ph RB G6 B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, 0.7142857142857143, "Einzelkarte mit Phönix"),
-            # ("SB RZ GZ BZ SZ R9 G9 R8 G8 B4", 3, (1, 1, 9), 110, 120, 0.9166666666666666, "Einzelkarte aus einer 4er-Bombe"),
-            # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 6, 7, 0.8571428571428571, "Einzelkarte Hund"),
-            # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 5, 7, 0.7142857142857143, "Einzelkarte Mahjong"),
-            # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0, 7, 0.0, "Einzelkarte Drache"),
-            # ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 4, 7, 0.5714285714285714, "Einzelkarte Phönix"),
-            # ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 10, 21, 0.47619047619047616, "Pärchen ohne Phönix"),
-            # ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 19, 21, 0.9047619047619048, "Pärchen mit Phönix"),
-            # ("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 4, 35, 0.11428571428571428, "Drilling ohne Phönix"),
-            # ("Ph RK GB BB SB R3 R2", 4, (3, 3, 10), 13, 35, 0.37142857142857144, "Drilling mit Phönix"),
-
-            # Treppe ohne Phönix
-            # ("RK GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe ohne Phönix"),
-            # ("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, 0.0, "2er-Treppe nicht möglich"),
-            # ("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, 0.7142857142857143, "2er-Treppe aus Fullhouse"),
-
-            # Treppe mit Phönix
-            # ("Ph GK BK SD SB RB BZ R9", 6, (4, 4, 10), 14, 28, 0.5, "2er-Treppe mit Phönix"),
-            # ("Ph GK BK SD SB RB R9", 6, (4, 4, 10), 5, 7, 0.7142857142857143, "2er-Treppe mit Phönix (vereinfacht)"),
-            # ("Ph GK BK SD SB R9 S4", 6, (4, 4, 10), 3, 7, 0.42857142857142855, "2er-Treppe mit Phönix (vereinfacht 2)"),
-            # ("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, 0.42857142857142855, "3er-Treppe mit Phönix"),
-            # ("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, 0.06190476190476191, "2er-Treppe, Phönix übrig"),
-
+            # Einzelkarte
+            ("Dr RB G6 B5 S4 R3 R2", 4, (1, 1, 11), 20, 35, "Einzelkarte"),
+            ("Dr RB SB B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, "Einzelkarte mit 2 Buben"),
+            ("Ph RB G6 B5 S4 R3 R2", 5, (1, 1, 11), 15, 21, "Einzelkarte mit Phönix"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 6, 7, "Einzelkarte Hund"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 5, 7, "Einzelkarte Mahjong"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0, 7, "Einzelkarte Drache"),
+            ("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 4, 7, "Einzelkarte Phönix"),
+            ("SB RZ GZ BZ SZ R9 G9 R8 G8 B4", 3, (1, 1, 9), 110, 120, "Einzelkarte mit einer 4er-Bombe"),
+            # Pärchen
+            ("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 10, 21, "Pärchen ohne Phönix"),
+            ("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 19, 21, "Pärchen mit Phönix"),
+            # Drilling
+            ("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 4, 35, "Drilling ohne Phönix"),
+            ("Ph RK GB BB SB R3 R2", 4, (3, 3, 10), 13, 35, "Drilling mit Phönix"),
+            # Treppe
+            ("RK GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, "3er-Treppe ohne Phönix"),
+            ("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 5, 7, "2er-Treppe aus Fullhouse"),
+            ("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 3, 7, "3er-Treppe mit Phönix"),
+            ("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 13, 210, "2er-Treppe mit Phönix übrig"),
+            ("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, "2er-Treppe nicht möglich"),
             # Fullhouse
-            # ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse ohne Phönix"),
-            # ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse und zusätzliches Pärchen"),
-            # #("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 8, 8, 1.0, "Fullhouse aus Bombe"),
-            # ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, 0.625, "Fullhouse aus 2 Drillinge"),
-
-            # Fullhouse ohne Phönix
-            # ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, 0.42857142857142855, "Fullhouse mit Phönix für Paar"),
-            # ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, 0.2857142857142857, "Fullhouse mit Phönix für Drilling"),
-            # ("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 9), 9, 126, 0.07142857142857142, "FullHouseZ, Test 63"),
-            # ("Ph RZ GZ BZ B4 R8 G8", 6, (5, 5, 9), 7, 7, 1.0, "FullHouseZ, Test 80, vereinfacht"),
-            # ("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 9), 22, 84, 0.2619047619047619, "FullHouseZ, Test 80"),
-
-            # Straße ohne Phönix, ohne Bomben
-            # ("BK SD BD RB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße ohne Phönix aus 7 Karten"),
-            # ("RA RK GD BB RZ B9 R2", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße bis Ass ohne Phönix aus 7 Karten"),
-            # ("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 5, 28, 0.17857142857142858, "Straße ohne Phönix aus 8 Karten"),
-            # ("RA GK BD SB RZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße bis zum Ass ohne Phönix"),
-            # ("GK BB SB GB RZ BZ GZ R9 S9 B9 R8 S8 G8 R7 S7 G7 R4 R2", 7, (6, 5, 10), 7209, 31824, 0.22652714932126697, "Straße ohne Phönix und viele Drillinge"),
-
-            # Straße mit Phönix, ohne Bomben
-            # ("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1, 1, 1.0, "Straße mit Phönix (vollständig)"),
-            # ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße mit Phönix (Lücke gefüllt)"),
-            # ("SA RK GD BB RZ Ph", 6, (6, 5, 11), 1, 1, 1.0, "Straße mit Phönix aus 6 Karten (verlängert)"),
-            # ("SA RK GD BB RZ B9 Ph", 6, (6, 5, 11), 7, 7, 1.0, "Straße mit Phönix aus 7 Karten (verlängert)"),
-            # ("B9 RZ BB GD RK Ph R2", 6, (6, 5, 12), 7, 7, 1.0, "Straße mit Phönix 3 aus 7 Karten"),
-            # ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, 0.4642857142857143, "Straße mit Phönix aus 8 Karten"),
-            # ("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Ende"),
-            # ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, 0.6428571428571429, "Straße mit Phönix am Anfang"),
-            # ("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 6, (6, 5, 10), 131, 1716, 0.07634032634032634, "5erStraßeZ mit Phönix aus 13 Karten"),
-
-            # Straße ohne Phönix, mit Bomben
-            # ("GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 1, 0.0, "5erStraßeZ ist Bombe aus 5 Karten"),
-            # ("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 6, 0.0, "5erStraßeZ ist Bombe aus 6 Karten"),
-            # ("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, 0.42857142857142855, "Straße, mit Farbbombe"),
-            # ("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, 0.9358974358974359, "Straße, mit 2 Farbbomben (1)"),
-            # ("BK SD BD BB BZ B9 RK RD RB RZ R9 G2 G3", 11, (6, 5, 12), 74, 78, 0.9487179487179487, "Straße, mit 2 Farbbomben (2)"),
-            # ("BK SD BD BB BZ B9 RK RD RB SB RZ R9 G2", 11, (6, 5, 12), 75, 78, 0.9615384615384616, "Straße, mit 2 Farbbomben (3)"),
-            # ("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 10), 0, 1287, 0.0, "5erStraßeZ aus lange Farbbombe"),
-
-            # Straße mit Phönix, mit Bomben
-            # ("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 22, 1287, 0.017094017094017096, "5erStraßeB, Test 20"),
-            # ("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 516, 1716, 0.3006993006993007, "5erStraßeB, Test 35"),
-            # ("GD SB GZ S9 R8 B7 Ph", 6, (6, 5, 10), 7, 7, 1.0, "5erStraßeZ mit Phönix vereinfacht"),
-            # ("GD SB GZ S9 R8 B7 G2 Ph", 6, (6, 5, 10), 13, 28, 0.07634032634032634, "5erStraßeZ mit Phönix"),
-
-            # Bomben
-            ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, 0.14285714285714285, "4er-Bombe"),
-            ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, 0.047619047619047616, "Farbbombe"),
-            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, 1.0, "2 Farbbomben in 12 Karten"),
-            ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 12), 53, 78, 0.6794871794871795, "2 Farbbomben in 13 Karten"),
+            ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, "Fullhouse ohne Phönix"),
+            ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, "Fullhouse und zusätzliches Pärchen"),
+            ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, "Fullhouse mit 2 Drillinge"),
+            ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, "Fullhouse mit Phönix für Paar"),
+            ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, "Fullhouse mit Phönix für Drilling"),
+            #("BK RK SK GK R9 S9 RB S2", 7, (5, 5, 12), 8, 8, "Fullhouse mit Bombe"),
+            # Straße
+            ("BK SD BD RB BZ B9 R3", 6, (6, 5, 12), 3, 7, "5er-Straße ohne Phönix"),
+            ("RA GK BD SB RZ B9 R3", 6, (6, 5, 12), 3, 7, "6er-Straße ohne Phönix"),
+            ("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 5, 28, "6er-Straße mit 2 Könige ohne Phönix"),
+            ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, "6er-Straße mit Phönix (Lücke gefüllt)"),
+            ("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 18, 28, "7er-Straße mit 2 Könige mit Phönix (verlängert)"),
+            ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, "8er-Straße mit Phönix (verlängert)"),
+            ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, "Straße mit Phönix (verlängert, 2)"),
+            ("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 0, 6, "5er-Straße ist Bombe"),
+            #("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, "Straße mit Farbbombe"),
+            #("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, "Straße mit 2 Farbbomben (1)"),
+            # Bombe
+            ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, "4er-Bombe"),
+            ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, "Farbbombe"),
+            #("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, "2 Farbbomben in 12 Karten"),
+            #("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 12), 53, 78, "2 Farbbomben in 13 Karten"),
         ]
-        for t in test:
-            print(t[6])
-
-            # possible_hands
-            matches, hands = possible_hands_hi(parse_cards(t[0]), t[1], t[2])
+        for cards, k, figure, matches_expected, total_expected, msg in test:
+            print(msg)
+            matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
             #for match, hand in zip(matches, hands):
             #    print(stringify_cards(hand), match)
-            self.assertEqual(t[3], sum(matches))
-            self.assertEqual(t[4], len(hands))
-            self.assertEqual(t[4], len(list(zip(matches, hands))))
-            self.assertAlmostEqual(t[5], sum(matches) / len(hands) if len(hands) else 0.0, places=15, msg=t[6])
-
-            # probability_of_hands
-            p = probability_of_hand_hi(parse_cards(t[0]), t[1], t[2])
-            self.assertAlmostEqual(t[5], p, places=15, msg=t[6])
+            self.assertEqual(matches_expected, sum(matches))
+            self.assertEqual(total_expected, len(hands))
+            self.assertEqual(total_expected, len(list(zip(matches, hands))))
+            #self.assertAlmostEqual(p_expected, sum(matches) / len(hands) if len(hands) else 0.0, places=15, msg=t[6])
 
 
 if __name__ == "__main__":

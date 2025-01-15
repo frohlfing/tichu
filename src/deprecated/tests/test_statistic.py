@@ -2,7 +2,7 @@ import unittest
 from src.deprecated.statistic import *
 
 
-class TestHypergeometricFunctions(unittest.TestCase):
+class TestStatistic(unittest.TestCase):
 
     def test_binomial_coefficient(self):
         self.assertEqual(binomial_coefficient(3, 2), 3)
