@@ -126,7 +126,7 @@ class TestCalcStatistic(unittest.TestCase):
             for k, (f1, f2) in enumerate(zip(expected[combi], result)):
                 self.assertAlmostEqual(f1, f2, 6, f"Statistik für Beispiel 7.{k} nicht ok")
 
-    # todo Test schlägt fehl. Vermutlich wird nicht berücksichtigt, dass der Gegner spielen kann was auch immer, die Bombe ist besser.
+    #  Test schlägt fehl. Vermutlich wird nicht berücksichtigt, dass der Gegner spielen kann was auch immer, die Bombe ist besser.
     def test_calc_statistic_2(self):
         # die Karten werden gerade verteilt
         hand = parse_cards("RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 Ma")

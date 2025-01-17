@@ -619,14 +619,14 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                              and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != rhi))
 
                 elif t == STREET:  # Straße
-                    colors = set([c for i in range(m) for v, c in hand if v == rhi - i])  # Auswahl an Farben in der Straße
+                    # colors = set([c for i in range(m) for v, c in hand if v == rhi - i])  # Auswahl an Farben in der Straße
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(int(m)):
                             b = all(sum(1 for v, _ in hand if v == rhi - i) >= (0 if i == j else 1) for i in range(m))
                             if b:
                                 break
-                    elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Farbbombe
-                        b = False
+                    # elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Farbbombe
+                    #     b = False
                     else:
                         b = all(sum(1 for v, _ in hand if v == rhi - i) >= 1 for i in range(m))
 
@@ -656,11 +656,11 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                 if b:
                     break
 
-        # todo wieder einkommentieren
+        # todo: Farbbombe berücksichtigen
         # # eine Farbbombe schlägt jede andere Kombination (einschließlich 4er-Bombe)
         # if not b and not (t == BOMB and m >= 5):
         #     m2 = 5
-        #     for rhi in range(m2 + 2, 15):
+        #     for rhi in range(m2 + 1, 15):
         #         b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
         #         if b:
         #             break
@@ -668,7 +668,7 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
         # # eine Farbbombe schlägt jede kürzere Bombe und jede Kombination, die keine Bombe ist
         # if not b:
         #     m2 = m + 1 if t == BOMB and m >= 5 else 5
-        #     for rhi in range(m2 + 2, r + 1 if t == BOMB and m >= 5 else 15):
+        #     for rhi in range(m2 + 1, r + 1 if t == BOMB and m >= 5 else 15):
         #         b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
         #         if b:
         #             break
