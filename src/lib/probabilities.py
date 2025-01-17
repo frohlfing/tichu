@@ -1,14 +1,134 @@
-__all__ = "prob_of_hand",
+__all__ = "possible_hands_hi", "prob_of_hand"
 
+import itertools
 import math
-from timeit import timeit
-
 from src.lib.cards import parse_cards, stringify_cards
-from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, possible_hands_hi
+from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure
 
 # -----------------------------------------------------------------------------
 # Wahrscheinlichkeitsberechnung
 # -----------------------------------------------------------------------------
+
+# Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebene überstechen kann
+#
+# Diese Methode wird nur für Testzwecke verwendet. Je mehr ungespielte Karten es gibt, desto langsamer wird sie.
+# Ab ca. 20 ist sie praktisch unbrauchbar.
+#
+# todo:
+#  Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, was auch berücksichtigt wird.
+#  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
+#  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
+#
+# todo: nach probabilities verschieben (und den zugehörigen Unit-Test nach test_probabilities)
+#
+# Beispiel:
+# matches, hands = possible_hands(parse_cards("Dr RK GK BB SB RB R2"), 5, (2, 2, 11))
+# for match, hand in zip(matches, hands):
+#     print(match, stringify_cards(hand))
+# print(f"Wahrscheinlichkeit für ein Bubenpärchen: {sum(matches) / len(hands)}")
+#
+# unplayed_cards: Ungespielte Karten
+# k: Anzahl Handkarten
+# figure: Typ, Länge, Rang der Kombination
+def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[list, list]:
+    hands = list(itertools.combinations(unplayed_cards, k))
+    matches = []
+    t, m, r = figure  # type, length, rank
+    for hand in hands:
+        b = False
+        if t == SINGLE:  # Einzelkarte
+            if r == 15:  # Drache
+                b = False
+            elif r < 15:  # bis zum Ass
+                b = any(v > r for v, _ in hand)
+            else:  # Phönix
+                assert r == 16
+                b = any(1 < v < 16 for v, _ in hand)
+        else:
+            for rhi in range(r + 1, 15):
+                if t in [PAIR, TRIPLE]:  # Paar oder Drilling
+                    b = sum(1 for v, _ in hand if v in [rhi, 16]) >= m
+
+                elif t == STAIR:  # Treppe
+                    steps = int(m / 2)
+                    if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
+                        for j in range(steps):
+                            b = all(sum(1 for v, _ in hand if v == rhi - i) >= (1 if i == j else 2) for i in range(steps))
+                            if b:
+                                break
+                    else:
+                        b = all(sum(1 for v, _ in hand if v == rhi - i) >= 2 for i in range(steps))
+
+                elif t == FULLHOUSE:  # Fullhouse
+                    if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
+                        for j in range(2, 15):
+                            b = (sum(1 for v, _ in hand if v == rhi) >= (2 if rhi == j else 3)
+                                 and any(sum(1 for v2, _ in hand if v2 == r2) >= (1 if r2 == j else 2) for r2 in range(2, 15) if r2 != rhi))
+                            if b:
+                                break
+                    else:
+                        b = (sum(1 for v, _ in hand if v == rhi) >= 3
+                             and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != rhi))
+
+                elif t == STREET:  # Straße
+                    # colors = set([c for i in range(m) for v, c in hand if v == rhi - i])  # Auswahl an Farben in der Straße
+                    if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
+                        for j in range(int(m)):
+                            b = all(sum(1 for v, _ in hand if v == rhi - i) >= (0 if i == j else 1) for i in range(m))
+                            if b:
+                                break
+                    # elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Farbbombe
+                    #     b = False
+                    else:
+                        b = all(sum(1 for v, _ in hand if v == rhi - i) >= 1 for i in range(m))
+
+                elif t == BOMB and m == 4:  # 4er-Bombe
+                    b = sum(1 for v, _ in hand if v == rhi) >= 4
+
+                elif t == BOMB and m >= 5:  # Farbbombe (hier werden zunächst nur Farbbomben gleicher Länge verglichen)
+                    b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m)) for color in range(1, 5))
+                else:
+                    assert False
+
+                if b:
+                    break
+
+        # falls die gegebene Kombination keine Bombe ist, kann sie von einer 4er-Bombe überstochen werden
+        if not b and t != BOMB:
+            for rhi in range(2, 15):
+                b = sum(1 for v, _ in hand if v == rhi) >= 4
+                if b:
+                    break
+
+        # falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden
+        if not b and t == BOMB and m >= 5:
+            m2 = m + 1
+            for rhi in range(m2 + 1, r + 1):
+                b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
+                if b:
+                    break
+
+        # todo: Farbbombe berücksichtigen
+        # # falls die gegebene Kombination keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden
+        # if not b and not (t == BOMB and m >= 5):
+        #     m2 = 5
+        #     for rhi in range(m2 + 1, 15):
+        #         b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
+        #         if b:
+        #             break
+
+        # oder beide Fälle zusammengefasst:
+        # # falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, ansonsten von einer beliebigen
+        # if not b:
+        #     m2 = m + 1 if t == BOMB and m >= 5 else 5
+        #     for rhi in range(m2 + 1, r + 1 if t == BOMB and m >= 5 else 15):
+        #         b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
+        #         if b:
+        #             break
+
+        matches.append(b)
+    return matches, hands
+
 
 # Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Einzelkarte überstechen
 #
@@ -458,13 +578,10 @@ def prob_color_bombs(cards: list[tuple], k: int) -> float:
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann
 #
-# todo: Noch nicht berücksichtigt: eine Farbbombe schlägt jede andere Kombination (einschließlich 4er-Bombe).
-# Falls eine Farbbombe die gegebene Kombination überstechen kann, müssten wir für eine exakte Berechnung für alle
-# Kombinationen mit den einzelnen Karten rechnen (statt nur mit dem Rang). Die dadurch erzielte Genauigkeit rechtfertigt
-# aber nicht den dafür erhöhten Rechenaufwand.
-# Mögliche Annäherung:
-# Nur wenn keine mögliche reguläre Kombination gefunden wird, berechnen wir die Wahrscheinlichkeit, dass eine Farbbombe
-# den Stich holen kann.
+# todo:
+#  Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, was auch berücksichtigt wird.
+#  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
+#  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
@@ -528,159 +645,20 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
     print(f"Berechnet: p = {(total_expected * p_actual):.0f}/{total_expected} = {p_actual}")
 
 
-# todo die Test nach test_probabilities verschieben (inspect() aber hier lassen)
-
-def test(cards, k, figure, p_expected, msg):  # pragma: no cover
-    p_actual = prob_of_hand(parse_cards(cards), k, figure)
-    print(f"{p_actual:<20} {p_expected:<20}  {msg}")
-    assert p_actual == p_expected
-
-def test_single():  # pragma: no cover
-    # Einzelkarte
-    test("Dr RB G6 B5 S4 R3 R2", 4, (1, 1, 11), 0.5714285714285714, "Einzelkarte")
-    test("Dr RB SB B5 S4 R3 R2", 5, (1, 1, 11), 0.7142857142857143, "Einzelkarte mit 2 Buben")
-    test("Ph RB G6 B5 S4 R3 R2", 5, (1, 1, 11), 0.7142857142857143, "Einzelkarte mit Phönix")
-
-    # Sonderkarten
-    test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 0.8571428571428571, "Einzelkarte Hund")
-    test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 0.7142857142857143, "Einzelkarte Mahjong")
-    test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0.0, "Einzelkarte Drache")
-    test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 0.5714285714285714, "Einzelkarte Phönix")
-
-    # Einzelkarte mit 4er-Bombe
-    test("SB RZ GZ BZ SZ R9", 5, (1, 1, 11), 0.3333333333333333, "Einzelkarte Bube mit 4er-Bombe")
-    test("Hu Ma RZ GZ BZ SZ", 4, (1, 1, 15), 0.06666666666666667, "Einzelkarte Drache mit 4er-Bombe")
-
-    # todo: Einzelkarte mit Farbbombe
-    #test("SB RZ R9 R8 R7 R6", 5, (1, 1, 11), 0.16666666666666667, "Einzelkarte Bube mit Farbbombe")
-
-def test_pair():  # pragma: no cover
-    # Pärchen
-    test("Dr RK GK BB SB RB R2", 5, (2, 2, 11), 0.47619047619047616, "Pärchen ohne Phönix")
-    test("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 0.9047619047619048, "Pärchen mit Phönix")
-
-    # Pärchen mit 4er-Bombe
-    test("SB RZ GZ BZ SZ R9", 5, (2, 2, 11), 0.3333333333333333, "Pärchen mit 4er-Bombe")
-
-    # todo: Pärchen mit Farbbombe
-    #test("SB RZ R9 R8 R7 R6", 5, (2, 2, 11), 0.16666666666666667, "Pärchen mit Farbbombe")
-
-def test_triple():  # pragma: no cover
-    # Drilling
-    test("SK RK GB BB SB R3 R2", 4, (3, 3, 10), 0.11428571428571428, "Drilling ohne Phönix")
-    test("Ph RK GB BB SB R3 R2", 4, (3, 3, 10), 0.37142857142857144, "Drilling mit Phönix")
-
-    # Drilling mit 4er-Bombe
-    test("SB RZ GZ BZ SZ R9", 5, (3, 3, 11), 0.3333333333333333, "Drilling mit 4er-Bombe")
-
-    # todo: Drilling mit Farbbombe
-    #test("SB RZ R9 R8 R7 R6", 5, (3, 3, 11), 0.16666666666666667, "Drilling mit Farbbombe")
-
-def test_stair():  # pragma: no cover
-    # Treppe ohne Phönix
-    test("RK GK BD SD SB RB BB", 6, (4, 6, 12), 0.42857142857142855, "3er-Treppe ohne Phönix")
-    test("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9),  0.0, "2er-Treppe nicht möglich")
-    test("RK GK BD SD GD R9 B2", 6, (4, 4, 12), 0.7142857142857143, "2er-Treppe aus Fullhouse")
-    test("Dr GA BA GK BK SD BD", 6, (4, 4, 14), 0.0, "2er-Treppe über Ass")
-
-    # Treppe mit Phönix
-    test("Ph GK BK SD SB RB BZ R9", 6, (4, 4, 10), 0.5, "2er-Treppe mit Phönix"),
-    test("Ph GK BK SD SB RB R9", 6, (4, 4, 10), 0.7142857142857143, "2er-Treppe mit Phönix (vereinfacht)"),
-    test("Ph GK BK SD SB R9 S4", 6, (4, 4, 10), 0.42857142857142855, "2er-Treppe mit Phönix (vereinfacht 2)"),
-    test("Ph GK BD SD SB RB BB", 6, (4, 6, 12), 0.42857142857142855, "3er-Treppe mit Phönix"),
-    test("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), 0.06190476190476191, "2er-Treppe, Phönix übrig"),
-
-    # Treppe mit 4er-Bombe
-    test("SB RZ GZ BZ SZ R9", 5, (4, 4, 11), 0.3333333333333333, "Treppe mit 4er-Bombe")
-
-    # todo: Treppe mit Farbbombe
-    # test("SB RZ R9 R8 R7 R6", 5, (4, 4, 11), 0.16666666666666667, "Treppe mit Farbbombe")
-
-def test_fullhouse():
-    # Fullhouse ohne Phönix
-    test("RK GK BD SB RB BB S2", 6, (5, 5, 10), 0.2857142857142857, "Fullhouse ohne Phönix")
-    test("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 0.625, "Fullhouse und zusätzliches Pärchen")
-    test("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 0.625, "Fullhouse mit 2 Drillinge")
-
-    # Fullhouse mit Phönix
-    test("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 0.42857142857142855, "Fullhouse mit Phönix für Paar")
-    test("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 0.2857142857142857, "Fullhouse mit Phönix für Drilling")
-    test("SB RZ GZ BZ Ph G9 R8 G8 B4", 5, (5, 5, 9), 0.07142857142857142, "Fullhouse mit 5 Handkarten mit Phönix")
-    test("SB RZ GZ BZ Ph G9 R8 G8 B4", 6, (5, 5, 9), 0.2619047619047619, "Fullhouse mit 6 Handkarten mit Phönix")
-
-    # Fullhouse mit 4er-Bombe
-    test("SB RZ GZ BZ SZ R9", 5, (5, 5, 11), 0.3333333333333333, "Fullhouse mit 4er-Bombe")
-
-    # todo: Fullhouse mit Farbbombe
-    #test("SB RZ R9 R8 R7 R6", 5, (5, 5, 11), 0.16666666666666667, "Fullhouse mit Farbbombe")
-
-def test_street():
-    # Straße ohne Phönix
-    test("BK SD BD RB BZ B9 R3", 6, (6, 5, 12), 0.42857142857142855, "5er-Straße ohne Phönix")
-    test("RA RK GD BB RZ B9 R2", 6, (6, 5, 10), 0.42857142857142855, "6er-Straße bis Ass ohne Phönix")
-    test("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 0.17857142857142858, "6er-Straße mit 2 Könige ohne Phönix")
-    test("RK GD BB RZ B9 R8 S6 S2", 6, (6, 5, 10), 0.17857142857142858, "6er-Straße bis König ohne Phönix")
-    test("SK RK GD BB RZ B9 R8 S6 S2", 6, (6, 5, 10), 0.10714285714285714, "7er-Straße bis König mit 2 Könige ohne Phönix")
-    test("RA RK GD BB RZ B9 R8 S7 S6", 6, (6, 5, 10), 0.15476190476190477, "8er-Straße bis Ass ohne Phönix")
-    test("GK BB SB GB RZ BZ GZ R9 S9 B9 R8 S8 G8 R7 S7 G7 R4 R2", 7, (6, 5, 10), 0.22652714932126697, "Straße mit Drillinge ohne Phönix")
-
-    # Straße mit Phönix
-    test("GA RK GD RB GZ Ph", 6, (6, 5, 10), 1.0, "5er-Straße mit Phönix (verlängert)")
-    test("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 0.42857142857142855, "6er-Straße mit Phönix (Lücke gefüllt)")
-    test("SA RK GD BB RZ B9 Ph", 6, (6, 5, 11), 1.0, "7er-Straße mit Phönix (verlängert)")
-    test("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 0.6428571428571429, "7er-Straße mit 2 Könige mit Phönix (verlängert)")
-    test("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 0.4642857142857143, "8er-Straße mit Phönix (verlängert)")
-    test("SA RK GD BB RZ B9 S8 R7 Ph", 6, (6, 5, 10), 0.5595238095238095, "9er-Straße mit Phönix (verlängert)")
-    test("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 6, (6, 5, 10), 0.07634032634032634, "13er-Straße mit Phönix (verlängert)")
-
-    # Straße mit 4er-Bombe
-    test("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), 0.3333333333333333, "Straße mit 4er-Bombe")
-
-    # todo: Straße mit Farbbombe
-    #test("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), 0.16666666666666667, "Straße mit Farbbombe")
-    #test("GB GZ G9 G8 G7", 5, (6, 5, 10), 1.0, "5er-Straße ist Farbbombe")
-    #test("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 0.3333333333333333, "6er-Straße ist Farbbombe")
-    #test("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 0.42857142857142855, "5er-Straße mit 2 Damen und mit Farbbombe")
-    #test("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 0.9358974358974359, "5er-Straße mit 2 Farbbomben")
-    #test("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 10), 0.006993006993006993, "13er-Straße mit Farbbombe")
-    #test("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 0.017094017094017096, "13er-Straße mit 2 Farbbomben mit Phönix")
-    #test("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 0.3006993006993007, "2 5er-Straßen mit 2 Farbbomben")
-
-def test_bomb():
-    # 4er-Bombe
-    test("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 0.14285714285714285, "4er-Bombe")
-
-    # todo: 4er-Bombe mit Farbbombe
-    #test("SB RZ R9 R8 R7 R6", 5, (7, 4, 11), 0.16666666666666667, "4er-Bombe mit Farbbombe")
-
-    # Farbbombe
-    test("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 0.047619047619047616, "Farbbombe")
-    test("BK BD BB BZ B9 RK RD RB RZ R9 S3 S2", 11, (7, 5, 12), 1.0, "2 Farbbomben in 12 Karten")
-    test("BK BD BB BZ B9 RK RD RB RZ R9 G7 S3 S2", 11, (7, 5, 12), 0.6794871794871795, "2 Farbbomben in 13 Karten")
-
-    # Farbbombe mit längerer Farbbombe
-    test("SD RZ R9 R8 R7 R6 R5", 6, (7, 5, 11), 0.14285714285714285, "Farbbombe mit längerer Farbbombe (1)")
-    test("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11), 0.25, "Farbbombe mit längerer Farbbombe (2)")
-
-
-# noinspection DuplicatedCode
 if __name__ == "__main__":  # pragma: no cover
-    #for k_ in range(5, 10):
-    #    print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 S4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
 
-    #inspect("GA RK GD RB GZ R9 S8", 6, (6, 5, 10)) #, 1, 1, 1.0, "9erStraßeZ, Test 129"),
-    #inspect("GA RK GD RB GZ Ph", 6, (6, 5, 7))  # , 1, 1, 1.0, "9erStraßeZ, Test 129"),
+    # todo Problem: Je größer k, desto langsamer wird es!
+    # from timeit import timeit
+    # for k_ in range(5, 10):
+    #     print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 S4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
 
-    #inspect("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 10, (6, 5, 10)) #, 1, 1, 1.0, "9erStraßeZ, Test 129"),
-    #inspect("GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph", 13, (6, 9, 10)) #, 1, 1, 1.0, "9erStraßeZ, Test 129"),
-
+    # todo Problem: Farbbomben
     # inspect("SB RZ R9 R8 R7 R6", 5, (1, 1, 11))  # Einzelkarte mit Farbbombe
     # inspect("SB RZ R9 R8 R7 R6", 5, (2, 2, 11))  # Pärchen mit Farbbombe
     # inspect("SB RZ R9 R8 R7 R6", 5, (3, 3, 11))  # Drilling mit Farbbombe
     # inspect("SB RZ R9 R8 R7 R6", 5, (4, 4, 11))  # Treppe mit Farbbombe
     # inspect("SB RZ R9 R8 R7 R6", 5, (5, 5, 11))  # Fullhouse mit Farbbombe
     # inspect("SB RZ R9 R8 R7 R6", 5, (6, 5, 11))  # Straße mit Farbbombe
-
     # inspect("SD RZ R9 R8 R7 R6 R5", 6, (7, 5, 11))  # Farbbombe mit längerer Farbbombe
     # inspect("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11))  # Farbbombe mit längerer Farbbombe
 
@@ -711,12 +689,4 @@ if __name__ == "__main__":  # pragma: no cover
     #Gezählt: p = 516 / 1716 = 0.3006993006993007
     #Berechnet: p = 516/1716 = 0.3006993006993007
     #inspect("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10))  #, 0.3006993006993007, "2 5er-Straßen mit 2 Farbbomben")
-
-    number = 1
-    print(f"Gesamtzeit: {timeit(lambda: test_single(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_pair(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_triple(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_stair(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_fullhouse(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_street(), number=number) * 1000 / number:.6f} ms")
-    print(f"Gesamtzeit: {timeit(lambda: test_bomb(), number=number) * 1000 / number:.6f} ms")
+    pass
