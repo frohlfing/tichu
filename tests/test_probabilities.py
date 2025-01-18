@@ -1,5 +1,6 @@
 import unittest
-from src.lib.cards import parse_cards
+from src.lib.cards import *
+from src.lib.combinations import *
 # noinspection PyProtectedMember
 from src.lib.probabilities import ranks_to_vector, cards_to_vector
 from src.lib.probabilities import *
@@ -109,7 +110,7 @@ class TestProbabilities(unittest.TestCase):
 
 
 # prob_of_hand() testen (explizit ausgesuchte Fälle)
-class TestProbOfHandBasisTest(unittest.TestCase):
+class TestProbOfHandExplicit(unittest.TestCase):
     def _test(self, cards, k, figure, p_expected, msg):  # pragma: no cover
         p_actual = prob_of_hand(parse_cards(cards), k, figure)
         print(f"{p_actual:<20} {p_expected:<20}  {msg}")
@@ -226,21 +227,240 @@ class TestProbOfHandBasisTest(unittest.TestCase):
         # self._test("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), 0.017094017094017096, "13er-Straße mit 2 Farbbomben mit Phönix")
         # self._test("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), 0.3006993006993007, "2 5er-Straßen mit 2 Farbbomben")
 
-    def test_bomb(self):
+    def test_bomb_4(self):
         # 4er-Bombe
         self._test("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 0.14285714285714285, "4er-Bombe")
-
         # todo: 4er-Bombe mit Farbbombe
         # self._test("SB RZ R9 R8 R7 R6", 5, (7, 4, 11), 0.16666666666666667, "4er-Bombe mit Farbbombe")
 
+    def test_bomb_color(self):
         # Farbbombe
         self._test("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 0.047619047619047616, "Farbbombe")
         self._test("BK BD BB BZ B9 RK RD RB RZ R9 S3 S2", 11, (7, 5, 12), 1.0, "2 Farbbomben in 12 Karten")
         self._test("BK BD BB BZ B9 RK RD RB RZ R9 G7 S3 S2", 11, (7, 5, 12), 0.6794871794871795, "2 Farbbomben in 13 Karten")
-
         # Farbbombe mit längerer Farbbombe
         self._test("SD RZ R9 R8 R7 R6 R5", 6, (7, 5, 11), 0.14285714285714285, "Farbbombe mit längerer Farbbombe (1)")
         self._test("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11), 0.25, "Farbbombe mit längerer Farbbombe (2)")
+
+
+# prob_of_hand() testen (Rastersuche)
+class TestProbOfHandRaster(unittest.TestCase):
+    c = 0
+
+    def _test(self, cards, k, figure):  # pragma: no cover
+        self.c += 1
+        matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
+        p_expect = sum(matches) / len(hands) if hands else 0.0
+        msg = stringify_figure(figure)
+        print(f'("{cards}", {k}, ({figure[0]}, {figure[1]}, {figure[2]}), {sum(matches)}, {len(hands)}, {p_expect}, "{msg}, Test {self.c}"),'),
+        p_actual = prob_of_hand(parse_cards(cards), k, figure)
+        self.assertAlmostEqual(p_expect, p_actual, places=15, msg=msg)
+
+    def test_single(self):
+        t = SINGLE
+        combis = [
+            "SB RZ R9 G9 R8 G8 B4",
+            "SB RZ GZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ R9 G9 R8 G8 B4",
+            "SB RZ Ph R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ Ph G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4 Ph",
+            "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+        ]
+        m = 1
+        r = 9
+        for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
+            for cards in combis:
+                self._test(cards, k, (t, m, r))
+
+    def test_pair(self):
+        t = PAIR
+        combis = [
+            "SB RZ R9 G9 R8 G8 B4",
+            "SB RZ GZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ R9 G9 R8 G8 B4",
+            "SB RZ Ph R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ Ph G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4 Ph",
+            "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+        ]
+        m = 2
+        r = 9
+        for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
+            for cards in combis:
+                self._test(cards, k, (t, m, r))
+
+    def test_tripple(self):
+        t = TRIPLE
+        combis = [
+            "SB RZ R9 G9 R8 G8 B4",
+            "SB RZ GZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ R9 G9 R8 G8 B4",
+            "SB RZ Ph R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ Ph G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4 Ph",
+            "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+        ]
+        m = 3
+        r = 9
+        for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
+            for cards in combis:
+                self._test(cards, k, (t, m, r))
+
+    def test_stair(self):
+        t = STAIR
+        combis = [
+            "SB RZ R9 G9 R8 G8 B4",
+            "SB RZ GZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ R9 G9 R8 G8 B4",
+            "SB RZ Ph R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ Ph G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4 Ph",
+            "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            "Ph GK BK SD SB RB BZ R9",
+            "Ph GK BK SD SB RB R9",
+            "Ph GK BK SD SB R9 S4",
+        ]
+        for m in [4, 6]:
+            for r in [9, 10]:
+                for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
+                    for cards in combis:
+                        self._test(cards, k, (t, m, r))
+
+    def test_fullhouse(self):
+        t = FULLHOUSE
+        combis = [
+            "SB RZ R9 G9 R8 G8 B4",
+            "SB RZ GZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 R9 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ R9 G9 R8 G8 B4",
+            "SB RZ Ph R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ Ph G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            "SB RZ R9 G9 S9 R8 G8 B4 Ph",
+            "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+        ]
+        m = 5
+        r = 9
+        for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
+            for cards in combis:
+                self._test(cards, k, (t, m, r))
+
+    def test_street(self):
+        t = STREET
+        combis = [
+            # ohne Phönix
+            "GB RZ G9 R8 G7",
+            "GD RB GZ R9 G8 R7",
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 S2",
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 S2 Ma",
+            "GK BB SB GB RZ BZ GZ R9 S9 B9 R8 S8 G8 R7 S7 G7 R4 R2",
+            # mit Phönix
+            "GA RK GD RB GZ R9 S8 B7 S6 B5 S4 B3 Ph",
+            "GA RK GD Ph GZ R9 S8 B7 S6 B5 S4 B3 S2",
+            "GA RK GD RB GZ R9 S8 Ph S6 B5 S4 B3 S2",
+            "GA RK GD RB Ph R9 S8 B7 S6 B5 S4 B3 S2",
+            "GK RK GD RB Ph R9 S8 B7 S6 B5 S4 B3 S2",
+            "GK RB GZ R9 G8 R7 SB BZ S9 B8 S7 B4 Ph",
+            "Ph R7 G6 R5 G4 R3 S2 B2 Ma",
+            "Ph RB GZ R8 G7 R4 S2 B2",
+            # mit Bombe, ohne Phönix
+            "GB GZ G9 G8 G7",
+            "GD GB GZ G9 G8 G7",
+            "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
+            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
+            # mit Bombe, mit Phönix
+            "GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph",
+            "GA GK GD Ph GZ G9 R8 G7 G6 G5 G4 G3 G2",
+            "GA GK GD GB GZ G9 R8 Ph G6 G5 G4 G3 G2",
+            "GA GK GD GB Ph G9 G8 G7 G6 G5 G4 G3 G2",
+            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph",
+        ]
+        for m in [5]:
+            r = 10
+            for k in [0, 4, 5, 6, 7]:
+                for cards in combis:
+                    self._test(cards, k, (t, m, r))
+
+    def test_bomb_4(self):
+        t = BOMB  # 4er-Bombe
+        combis = [
+            "SB RZ R9 G9 R8 G8 B4",
+            "SB RZ GZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 S9 B9 G8 B4",
+            "Ph SB RZ R9 G9 R8 G8 B4",
+            "SB RZ GZ BZ Ph G9 R8 G8 B4",
+            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RZ GZ BZ SZ R9 G9 S9 B9 G8 B4",
+            "SB RZ GZ BZ SZ R9 G9 S9 B9 R8 G8 S8 B8 B4 B2",
+        ]
+        m = 4
+        r = 9
+        for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
+            for cards in combis:
+                self._test(cards, k, (t, m, r))
+
+    def test_bomb_color(self):
+        t = BOMB  # Farbbombe
+        combis = [
+            "GB GZ G9 G8 G7",
+            "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2",
+            "GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 B2 S2",
+            "SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 BB BZ B9 B8 B7 S4 S2",
+            "Ph GB GZ G8 G7 G4 B2 S2",
+        ]
+        for m in [5]:
+            r = 10
+            for k in [0, 4, 5, 6, 7]:
+                for cards in combis:
+                    self._test(cards, k, (t, m, r))
 
 
 if __name__ == "__main__":

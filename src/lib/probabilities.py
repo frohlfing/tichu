@@ -19,8 +19,6 @@ from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET,
 #  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
 #  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
 #
-# todo: nach probabilities verschieben (und den zugehörigen Unit-Test nach test_probabilities)
-#
 # Beispiel:
 # matches, hands = possible_hands(parse_cards("Dr RK GK BB SB RB R2"), 5, (2, 2, 11))
 # for match, hand in zip(matches, hands):
@@ -141,22 +139,22 @@ def _get_subsets_of_single(h: list[int], r: int) -> list[dict]:
     if r == 16:  # Phönix
         for i in range(2, 16):  # Phönix (im Anspiel) zählt 1.5; jede Karte zw. 2 und Drache ist höher
             if h[i] >= 1:
-                subsets.append({i: 1})
+                subsets.append({i: (1, h[i])})
 
     elif r == 15:  # Drache
         # 4er-Bombe
         for i in range(2, 15):
             if h[i] == 4:
-                subsets.append({i: 4})
+                subsets.append({i: (4, 4)})
 
     else:  # Hund, Mahjong, 2 bis Ass
         for i in range(r + 1, 17):
             if h[i] >= 1:
-                subsets.append({i: 1})
+                subsets.append({i: (1, h[i])})
         # 4er-Bombe
         for i in range(2, r + 1):
             if h[i] == 4:
-                subsets.append({i: 4})
+                subsets.append({i: (4, 4)})
 
     return subsets
 
@@ -172,19 +170,16 @@ def _get_subsets_of_pair(h: list[int], r: int) -> list[dict]:
     for i in range(r + 1, 15):
         # ohne Phönix
         if h[i] >= 2:
-            subsets.append({i: 2})
+            subsets.append({i: (2, h[i])})
 
         # mit Phönix
         if h[16] and h[i] >= 1:
-            subsets.append({i: 1, 16: 1})
-            # subset = {i: 1, 16: 1}
-            # if subset not in subsets:
-            #     subsets.append(subset)
+            subsets.append({i: (1, h[i]), 16: (1, 1)})
 
     # 4er-Bombe
     for i in range(2, r + 1):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
@@ -200,19 +195,16 @@ def _get_subsets_of_triple(h: list[int], r: int) -> list[dict]:
     for i in range(r + 1, 15):
         # ohne Phönix
         if h[i] >= 3:
-            subsets.append({i: 3})
+            subsets.append({i: (3, h[i])})
 
         # mit Phönix
         if h[16] and h[i] >= 2:
-            subsets.append({i: 2, 16: 1})
-            # subset = {i: 2, 16: 1}
-            # if subset not in subsets:
-            #     subsets.append(subset)
+            subsets.append({i: (2, h[i]), 16: (1, 1)})
 
     # 4er-Bombe
     for i in range(2, r + 1):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
@@ -234,21 +226,21 @@ def _get_subsets_of_stairs(h: list[int], m: int, r: int) -> list[dict]:
 
         # ohne Phönix
         if all(h[i] >= 2 for i in range(r_start, r_end)):
-            subsets.append({i: 2 for i in range(r_start, r_end)})
+            subsets.append({i: (2, h[i]) for i in range(r_start, r_end)})
 
         # mit Phönix
         if h[16]:  # Phönix vorhanden?
             for r_pho in range(r_start, r_end):
                 if all(h[i] >= (1 if i == r_pho else 2) for i in range(r_start, r_end)):
-                    subset = {i: 1 if i == r_pho else 2 for i in range(r_start, r_end)}
-                    subset[16] = 1
-                    if subset not in subsets:  # todo notwendig?
-                        subsets.append(subset)
+                    subset = {i: (1, h[i]) if i == r_pho else (2, h[i]) for i in range(r_start, r_end)}
+                    subset[16] = (1, 1)
+                    # if subset not in subsets:  # todo notwendig?
+                    subsets.append(subset)
 
     # 4er-Bombe
     for i in range(2, 15):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
@@ -266,25 +258,25 @@ def _get_subsets_of_fullhouse(h: list[int], r: int) -> list[dict]:
         if h[i] >= 3:
             for j in range(2, 15):
                 if i != j and h[j] >= 2:
-                    subsets.append({i: 3, j: 2})
+                    subsets.append({i: (3, h[i]), j: (2, h[j])})
 
         # mit Phönix im Pärchen
         if h[16] and h[i] >= 3:
             for j in range(2, 15):
                 if i != j and h[j] >= 1:
-                    subsets.append({i: 3, j: 1, 16: 1})
+                    subsets.append({i: (3, h[i]), j: (1, h[j]), 16: (1, 1)})
 
 
         # mit Phönix im Drilling
         if h[16] and h[i] >= 2:
             for j in range(2, 15):
                 if i != j and h[j] >= 2:
-                    subsets.append({i: 2, j: 2, 16: 1})
+                    subsets.append({i: (2, h[i]), j: (2, h[j]), 16: (1, 1)})
 
     # 4er-Bombe
     for i in range(2, 15):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
@@ -304,21 +296,21 @@ def _get_subsets_of_streets(h: list[int], m: int, r: int) -> list[dict]:
 
         # ohne Phönix
         if all(h[i] >= 1 for i in range(r_start, r_end)):
-            subsets.append({i: 1 for i in range(r_start, r_end)})
+            subsets.append({i: (1, h[i]) for i in range(r_start, r_end)})
 
         # mit Phönix
         if h[16]:  # Phönix vorhanden?
             for r_pho in range(max(r_start, 2), r_end):  # max(r_start, 2) berücksichtigt die Ausnahmeregel, dass der Phönix die 1 nicht ersetzen kann
                 if all(h[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
-                    subset = {i: 1 for i in range(r_start, r_end) if i != r_pho}
-                    subset[16] = 1
-                    if subset not in subsets:  # todo notwendig?
-                        subsets.append(subset)
+                    subset = {i: (1, h[i]) for i in range(r_start, r_end) if i != r_pho}
+                    subset[16] = (1, 1)
+                    #if subset not in subsets:  # todo notwendig?
+                    subsets.append(subset)
 
     # 4er-Bombe
     for i in range(2, 15):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
@@ -333,7 +325,7 @@ def _get_subsets_of_4_bomb(h: list[int], r: int) -> list[dict]:
     subsets = []
     for i in range(r + 1, 15):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
@@ -353,7 +345,7 @@ def _get_subsets_of_color_bomb(h: list[int], m: int, r: int) -> list[dict]:
         for color in range(4):
             offset = 13 * color
             if all(h[i] == 1 for i in range(r_start + offset, r_end + offset)):
-                subsets.append({i: 1 for i in range(r_start + offset, r_end + offset)})
+                subsets.append({i: (1, 1) for i in range(r_start + offset, r_end + offset)})
 
     # eine Farbbombe schlägt jede kürzere Farbbombe
     m2 = m + 1
@@ -362,7 +354,7 @@ def _get_subsets_of_color_bomb(h: list[int], m: int, r: int) -> list[dict]:
         for color in range(4):
             offset = 13 * color
             if all(h[i] == 1 for i in range(r_start + offset, r_end + offset)):
-                subsets.append({i: 1 for i in range(r_start + offset, r_end + offset)})
+                subsets.append({i: (1, 1) for i in range(r_start + offset, r_end + offset)})
 
     return subsets
 
@@ -412,7 +404,7 @@ def get_subsets(h: list[int], figure: tuple) -> list[dict]:
 # Der zweite Eintrag listet die Vereinigungsmengen auf, die aus zwei Ursprungsmengen bestehen.
 # Der dritte Eintrag listet die auf, die aus drei Ursprungsmengen bestehen, usw.
 #
-# sets: Liste von Mengen (Ursprungsmengen), z.B. [{6: 2}, {6: 1, 8: 1}] beschreibt die Mengen: [6, 6] und [6, 8]
+# sets: Liste von Mengen (Ursprungsmengen)
 # k: Maximal erlaubte Länge der Vereinigungsmenge
 def union_sets(sets: list[dict], k: int) -> list[list[dict]]:
     length = len(sets)
@@ -423,8 +415,10 @@ def union_sets(sets: list[dict], k: int) -> list[list[dict]]:
         # c: Anzahl Teilmengen, die bereits in der Vereinigungsmenge sind
         for j in range(start, length):
             keys = set(s.keys()).union(sets[j].keys())
-            union = {key: max(s[key] if key in s else 0, sets[j][key] if key in sets[j] else 0) for key in keys}
-            if sum(union.values()) <= k:
+            union = {key: (
+                max(s[key][0] if key in s else 0, sets[j][key][0] if key in sets[j] else 0),
+                min(s[key][1] if key in s else 4, sets[j][key][1] if key in sets[j] else 4)) for key in keys}
+            if sum(c_min for c_min, c_mac in union.values()) <= k:
                 result[c - 1].append(union)
                 _build_unions(union, j + 1, c + 1)
 
@@ -460,16 +454,16 @@ def count_sets(sets: list[dict]) -> list[tuple[dict, int]]:
 def hypergeom(subset: dict, h: list[int], k: int) -> int:
     def _comb(index: int, n_remain, k_remain) -> int:
         r = keys[index]  # der aktuell zu untersuchende Kartenrang
-        n_fav = h[r]  # Anzahl der verfügbaren Karten mit diesem Rang
-        c_min = subset[r]  # erforderliche Anzahl Karten mit diesem Rang
+        c_min, c_max = subset[r]  # erforderliche Anzahl Karten mit diesem Rang
+        assert c_max == h[r]
         result = 0
-        for c in range(c_min, n_fav + 1):
+        for c in range(c_min, c_max + 1):
             if k_remain < c:
                 break
             if index + 1 < length:
-                result += math.comb(n_fav, c) * _comb(index + 1, n_remain - n_fav, k_remain - c)
+                result += math.comb(c_max, c) * _comb(index + 1, n_remain - c_max, k_remain - c)
             else:
-                result += math.comb(n_fav, c) * math.comb(n_remain - n_fav, k_remain - c)
+                result += math.comb(c_max, c) * math.comb(n_remain - c_max, k_remain - c)
         return result
 
     keys = list(subset)
@@ -646,11 +640,10 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 
 
 if __name__ == "__main__":  # pragma: no cover
-
     # todo Problem: Je größer k, desto langsamer wird es!
-    # from timeit import timeit
-    # for k_ in range(5, 10):
-    #     print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 S4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
+    from timeit import timeit
+    for k_ in range(5, 10):
+        print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 S4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
 
     # todo Problem: Farbbomben
     # inspect("SB RZ R9 R8 R7 R6", 5, (1, 1, 11))  # Einzelkarte mit Farbbombe

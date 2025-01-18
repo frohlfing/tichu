@@ -4,6 +4,7 @@
 #
 # Die Teilmenge wird als Dictionary beschrieben, wobei der Key der Rang und der Wert der Bereich zw. Mindestanzahl und
 # Maximalanzahl (einschließlich) von Karten mit diesem Rang ist.
+
 subsets = [
     # 1 - 5
     {1:(1,1), 2:(1,4), 3:(1,4), 4:(1,4), 5:(1,4)},
@@ -166,26 +167,68 @@ def generate_subsets():
     result = []
     for r in range(5, 15):
         # ohne Phönix
-        subset = {key: (0, 0) if key <= r - m else (1, 1) if key == 1 else (1, 4) for key in range(1, r + 1)}
+        subset = {i: (0, 0) if i <= r - m else (1, 1) if i == 1 else (1, 4) for i in range(1, r + 1)}
         result.append(subset)
         # mit Phönix
         for j in range(r - m + (2 if r < 14 else 1), r + 1):
-            subset = {key: (0, 0) if key <= r - m or key == j else (1, 1) if key == 1 else (1, 4) for key in range(1, r + 1)}
+            subset = {i: (0, 0) if i <= r - m or i == j else (1, 1) if i == 1 else (1, 4) for i in range(1, r + 1)}
             subset[16] = (1, 1)
             result.append(subset)
     return result
 
 
+# Listet alle Teilmengen aus den verfügbaren Karten auf, die eine Straße im angegebenen Bereich bilden
+#
+# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
+# m: Länge der Kombination
+# r_min: niedrigster Rang der Kombination
+# r_max: höchster Rang der Kombination
+def _get_subsets_of_streets(h: list[int], m: int, r_min: int, r_max: int) -> list[dict]:
+    assert 5 <= m <= 14
+    assert m <= r_min <= 14
+    assert r_min <= r_max <= 14
+    r_first = r_min - m + 1
+    subsets = []
+    for r in range(r_min, r_max + 1):
+        # ohne Phönix
+        if all(h[i] >= 1 for i in range(r - m + 1, r + 1)):
+            subset = {i: (0, 0) if i <= r - m else (1, h[i]) for i in range(r_first, r + 1)}
+            subsets.append(subset)
+        # mit Phönix
+        for j in range(r - m + (2 if r < 14 else 1), r + 1):
+            if all(h[i] >= 1 for i in range(r - m + 1, r + 1) if i != j):
+                subset = {i: (0, 0) if i <= r - m or i == j else (1, h[i]) for i in range(r_first, r + 1)}
+                subset[16] = (1, 1)
+                subsets.append(subset)
+    return subsets
+
+
+
 if __name__ == "__main__":  # pragma: no cover
-    intersections = count_intersections()
-    print(f"Schnittmengen: {intersections}", "ok" if intersections == 0 else "Mist :-(")
+    # intersections = count_intersections()
+    # print(f"Schnittmengen: {intersections}", "ok" if intersections == 0 else "Mist :-(")
 
-    missing_subsets = count_missing_subsets()
-    print(f"Fehlende Teilmengen: {missing_subsets}", "ok" if missing_subsets == 0 else "Mist :-(")
+    # missing_subsets = count_missing_subsets()
+    # print(f"Fehlende Teilmengen: {missing_subsets}", "ok" if missing_subsets == 0 else "Mist :-(")
 
-    subsets2 = generate_subsets()
-    ok = compare_subsets(subsets, subsets2)
-    if ok:
-        for subset in subsets2:
-            print(subset)
-    print("Liste richtig generiert:", ok)
+    # subsets2 = generate_subsets()
+    # ok = compare_subsets(subsets, subsets2)
+    # if ok:
+    #     for subset in subsets2:
+    #         print(subset)
+    # print("Liste richtig generiert:", ok)
+
+    # # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
+    # h = [0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 1]
+    # subsets2 = _get_subsets_of_streets(h, 5, 5, 14)
+    # ok = compare_subsets(subsets, subsets2)
+    # if ok:
+    #     for subset in subsets2:
+    #         print(subset)
+    # print("Liste richtig generiert:", ok)
+
+    # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
+    h = [0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 1]
+    subsets3 = _get_subsets_of_streets(h, 5, 9, 12)
+    for subset in subsets3:
+        print(subset)
