@@ -234,7 +234,6 @@ def _get_subsets_of_stairs(h: list[int], m: int, r: int) -> list[dict]:
                 if all(h[i] >= (1 if i == r_pho else 2) for i in range(r_start, r_end)):
                     subset = {i: (1, h[i]) if i == r_pho else (2, h[i]) for i in range(r_start, r_end)}
                     subset[16] = (1, 1)
-                    # if subset not in subsets:  # todo notwendig?
                     subsets.append(subset)
 
     # 4er-Bombe
@@ -304,7 +303,6 @@ def _get_subsets_of_streets(h: list[int], m: int, r: int) -> list[dict]:
                 if all(h[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
                     subset = {i: (1, h[i]) for i in range(r_start, r_end) if i != r_pho}
                     subset[16] = (1, 1)
-                    #if subset not in subsets:  # todo notwendig?
                     subsets.append(subset)
 
     # 4er-Bombe
