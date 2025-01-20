@@ -112,9 +112,13 @@ class TestProbabilities(unittest.TestCase):
 # prob_of_hand() testen (explizit ausgesuchte Fälle)
 class TestProbOfHandExplicit(unittest.TestCase):
     def _test(self, cards, k, figure, p_expected, msg):  # pragma: no cover
-        p_actual = prob_of_hand(parse_cards(cards), k, figure)
-        print(f"{p_actual:<20} {p_expected:<20}  {msg}")
-        self.assertEqual(p_expected, p_actual)
+        if k > len(cards.split(" ")):
+            with self.assertRaises(AssertionError, msg="k > n"):
+                prob_of_hand(parse_cards(cards), k, figure)
+        else:
+            p_actual = prob_of_hand(parse_cards(cards), k, figure)
+            print(f"{p_actual:<20} {p_expected:<20}  {msg}")
+            self.assertEqual(p_expected, p_actual)
 
     def test_single(self):  # pragma: no cover
         # Einzelkarte
@@ -248,6 +252,10 @@ class TestProbOfHandRaster(unittest.TestCase):
     c = 0
 
     def _test(self, cards, k, figure):  # pragma: no cover
+        if k > len(cards.split(" ")):
+            with self.assertRaises(AssertionError, msg="k > n"):
+                prob_of_hand(parse_cards(cards), k, figure)
+            return
         self.c += 1
         matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
         p_expect = sum(matches) / len(hands) if hands else 0.0

@@ -2,19 +2,20 @@ import math
 from collections import Counter
 from src.deprecated.calc_statistic import calc_statistic
 from src.deprecated.statistic import probability_of_sample
+from scipy.special import comb
+from scipy.stats import hypergeom
 # noinspection PyProtectedMember
 from src.lib.cards import _cardlabels, _cardlabels_index
 from src.lib.cards import *
 from src.lib.combinations import *
-from scipy.special import comb
-from scipy.stats import hypergeom
+from src.lib.probabilities import *
 from timeit import timeit
 
-from src.lib.probabilities import prob_of_hand
 
-
-# time_start = time.time()
-# delay = time.time() - time_start
+# from time import time
+# time_start = time()
+# delay = time() - time_start
+# print(f"delay={delay * 1000:.6f} ms")
 
 #
 # Cards

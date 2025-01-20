@@ -4,7 +4,6 @@ import itertools
 import math
 from src.lib.cards import parse_cards, stringify_cards
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure
-from time import time
 
 # -----------------------------------------------------------------------------
 # Wahrscheinlichkeitsberechnung
@@ -129,6 +128,7 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
     return matches, hands
 
 
+# todo
 # Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Einzelkarte überstechen
 #
 # h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
@@ -140,26 +140,27 @@ def _get_subsets_of_single(h: list[int], r: int) -> list[dict]:
     if r == 16:  # Phönix
         for i in range(2, 16):  # Phönix (im Anspiel) zählt 1.5; jede Karte zw. 2 und Drache ist höher
             if h[i] >= 1:
-                subsets.append({i: 1})
+                subsets.append({i: (1, h[i])})
 
     elif r == 15:  # Drache
         # 4er-Bombe
         for i in range(2, 15):
             if h[i] == 4:
-                subsets.append({i: 4})
+                subsets.append({i: (4, 4)})
 
     else:  # Hund, Mahjong, 2 bis Ass
         for i in range(r + 1, 17):
             if h[i] >= 1:
-                subsets.append({i: 1})
+                subsets.append({i: (1, h[i])})
         # 4er-Bombe
         for i in range(2, r + 1):
             if h[i] == 4:
-                subsets.append({i: 4})
+                subsets.append({i: (4, 4)})
 
     return subsets
 
 
+# todo
 # Listet alle Teilmengen aus den verfügbaren Karten auf, die das gegebene Pärchen überstechen
 #
 # h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
@@ -171,20 +172,21 @@ def _get_subsets_of_pair(h: list[int], r: int) -> list[dict]:
     for i in range(r + 1, 15):
         # ohne Phönix
         if h[i] >= 2:
-            subsets.append({i: 2})
+            subsets.append({i: (2, h[i])})
 
         # mit Phönix
         if h[16] and h[i] >= 1:
-            subsets.append({i: 1, 16: 1})
+            subsets.append({i: (1, h[i]), 16: (1, 1)})
 
     # 4er-Bombe
     for i in range(2, r + 1):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
 
+# todo
 # Listet alle Teilmengen aus den verfügbaren Karten auf, die das gegebene Drilling überstechen
 #
 # h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
@@ -196,20 +198,21 @@ def _get_subsets_of_triple(h: list[int], r: int) -> list[dict]:
     for i in range(r + 1, 15):
         # ohne Phönix
         if h[i] >= 3:
-            subsets.append({i: 3})
+            subsets.append({i: (3, h[i])})
 
         # mit Phönix
         if h[16] and h[i] >= 2:
-            subsets.append({i: 2, 16: 1})
+            subsets.append({i: (2, h[i]), 16: (1, 1)})
 
     # 4er-Bombe
     for i in range(2, r + 1):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
 
+# todo
 # Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Treppe überstechen
 #
 # h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
@@ -227,24 +230,25 @@ def _get_subsets_of_stairs(h: list[int], m: int, r: int) -> list[dict]:
 
         # ohne Phönix
         if all(h[i] >= 2 for i in range(r_start, r_end)):
-            subsets.append({i: 2 for i in range(r_start, r_end)})
+            subsets.append({i: (2, h[i]) for i in range(r_start, r_end)})
 
         # mit Phönix
         if h[16]:  # Phönix vorhanden?
             for r_pho in range(r_start, r_end):
                 if all(h[i] >= (1 if i == r_pho else 2) for i in range(r_start, r_end)):
-                    subset = {i: 1 if i == r_pho else 2 for i in range(r_start, r_end)}
-                    subset[16] = 1
+                    subset = {i: (1, h[i]) if i == r_pho else (2, h[i]) for i in range(r_start, r_end)}
+                    subset[16] = (1, 1)
                     subsets.append(subset)
 
     # 4er-Bombe
     for i in range(2, 15):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
 
+# todo
 # Listet alle Teilmengen aus den verfügbaren Karten auf, die das gegebene Fullhouse überstechen
 #
 # h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
@@ -258,77 +262,95 @@ def _get_subsets_of_fullhouse(h: list[int], r: int) -> list[dict]:
         if h[i] >= 3:
             for j in range(2, 15):
                 if i != j and h[j] >= 2:
-                    subsets.append({i: 3, j: 2})
+                    subsets.append({i: (3, h[i]), j: (2, h[j])})
 
         # mit Phönix im Pärchen
         if h[16] and h[i] >= 3:
             for j in range(2, 15):
                 if i != j and h[j] >= 1:
-                    subsets.append({i: 3, j: 1, 16: 1})
+                    subsets.append({i: (3, h[i]), j: (1, h[j]), 16: (1, 1)})
 
 
         # mit Phönix im Drilling
         if h[16] and h[i] >= 2:
             for j in range(2, 15):
                 if i != j and h[j] >= 2:
-                    subsets.append({i: 2, j: 2, 16: 1})
+                    subsets.append({i: (2, h[i]), j: (2, h[j]), 16: (1, 1)})
 
     # 4er-Bombe
     for i in range(2, 15):
         if h[i] == 4:
-            subsets.append({i: 4})
+            subsets.append({i: (4, 4)})
 
     return subsets
 
 
-# Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Straße überstechen
+# Listet alle möglichen Bedingungen für eine Straße auf
+#
+# Die Bedingungen schließen sich gegenseitig aus!
+# Eine Bedingung wird als Dictionary beschrieben, wobei der Key der Rang und der Wert die Anzahl (Min, Max) ist.
 #
 # h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# m: Länge der gegebenen Kombination
-# r: Rang der gegebenen Kombination
-def _get_subsets_of_streets(h: list[int], m: int, r: int) -> list[dict]:
+# m: Länge der Kombination
+# r_min: niedrigster Rang der Kombination
+# r_max: höchster Rang der Kombination
+def _get_conditions_for_street(h: list[int], m: int, r_min: int, r_max: int) -> list[dict]:
     assert 5 <= m <= 14
-    assert m <= r <= 14
-
-    subsets = []
-    for r_start in range((r + 1) - m + 1, 14 - m + 2):
-        r_end = r_start + m  # exklusiv
+    assert m <= r_min <= 14
+    assert r_min <= r_max <= 14
+    conditions = []
+    remain = {}
+    for r in range(r_min, r_max + 1):
+        r_start = r - m + 1
+        r_end = r + 1  # exklusiv
 
         # ohne Phönix
-        if all(h[i] >= 1 for i in range(r_start, r_end)):
-            subsets.append({i: 1 for i in range(r_start, r_end)})
+        if all(h[i] >= 1 for i in range(r_start, r_end)):  # Karten für die Kombination verfügbar?
+            cond = remain.copy()
+            for i in range(r_start, r_end):
+                cond[i] = (1, h[i])
+            conditions.append(cond)
+            remain[r_start] = (0, 0)  # ausschließendes Kriterium für die restlichen Bedingungen
 
         # mit Phönix
-        if h[16]:  # Phönix vorhanden?
-            for r_pho in range(max(r_start, 2), r_end):  # max(r_start, 2) berücksichtigt die Ausnahmeregel, dass der Phönix die 1 nicht ersetzen kann
-                if all(h[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
-                    subset = {i: 1 for i in range(r_start, r_end) if i != r_pho}
-                    subset[16] = 1
-                    subsets.append(subset)
+        if h[16]:
+            for j in range(r_start + (1 if r < 14 else 0), r_end):  # Rang, den der Phönix ersetzt
+                if all(h[i] >= 1 for i in range(r_start, r_end) if i != j):  # Karten für die Kombination verfügbar?
+                    cond = remain.copy()
+                    for i in range(r_start, r_end):
+                        cond[i] = (0, 0) if i == j else (1, h[i])
+                    cond[16] = (1, 1)
+                    conditions.append(cond)
+                    remain[r_start] = (0, 0)  # ausschließendes Kriterium für die restlichen Bedingungen
 
-    # 4er-Bombe
-    for i in range(2, 15):
-        if h[i] == 4:
-            subsets.append({i: 4})
-
-    return subsets
+    return conditions
 
 
-# Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene 4er-Bombe überstechen
+# Listet alle möglichen Bedingungen für eine 4er-Bombe auf
+#
+# Die Bedingungen schließen sich gegenseitig aus!
+# Eine Bedingung wird als Dictionary beschrieben, wobei der Key der Rang und der Wert die Anzahl (Min, Max) ist.
 #
 # h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# r: Rang der gegebenen Kombination
-def _get_subsets_of_4_bomb(h: list[int], r: int) -> list[dict]:
-    assert 2 <= r <= 14
+# r_min: niedrigster Rang der Kombination
+# r_max: höchster Rang der Kombination
+def _get_conditions_for_4_bomb(h: list[int], r_min: int, r_max: int) -> list[dict]:
+    assert 2 <= r_min <= 14
+    assert r_min <= r_max <= 14
+    conditions = []
+    remain = {}
 
-    subsets = []
-    for i in range(r + 1, 15):
-        if h[i] == 4:
-            subsets.append({i: 4})
+    for r in range(r_min, r_max + 1):
+        if h[r] == 4:  # Karten für die Kombination verfügbar?
+            cond = remain.copy()
+            cond[r] = (4, 4)
+            conditions.append(cond)
+            remain[r] = (0, 3)  # ausschließendes Kriterium für die restlichen Bedingungen
 
-    return subsets
+    return conditions
 
 
+# todo
 # Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Farbbombe überstechen
 #
 # h: Verfügbaren Karten als Vektor (listet alle 56 Karten auf - nicht nur den Rang!)
@@ -344,7 +366,7 @@ def _get_subsets_of_color_bomb(h: list[int], m: int, r: int) -> list[dict]:
         for color in range(4):
             offset = 13 * color
             if all(h[i] == 1 for i in range(r_start + offset, r_end + offset)):
-                subsets.append({i: 1 for i in range(r_start + offset, r_end + offset)})
+                subsets.append({i: (1, 1) for i in range(r_start + offset, r_end + offset)})
 
     # eine Farbbombe schlägt jede kürzere Farbbombe
     m2 = m + 1
@@ -353,49 +375,94 @@ def _get_subsets_of_color_bomb(h: list[int], m: int, r: int) -> list[dict]:
         for color in range(4):
             offset = 13 * color
             if all(h[i] == 1 for i in range(r_start + offset, r_end + offset)):
-                subsets.append({i: 1 for i in range(r_start + offset, r_end + offset)})
+                subsets.append({i: (1, 1) for i in range(r_start + offset, r_end + offset)})
 
     return subsets
 
 
-# Listet alle Teilmengen aus den verfügbaren Karten auf, die die gegebene Kombination überstechen
+# Listet alle möglichen Bedingungen für eine Kombination auf, die die gegebene übersticht
 #
-# Zurückgegeben wird ein Dictionary, wobei der Key der Rang und der Wert die erforderliche Mindestanzahl
-# von Karten mit diesen Rang ist.
+# Die Bedingungen schließen sich gegenseitig aus!
+# Eine Bedingung wird als Dictionary beschrieben, wobei der Key der Rang und der Wert die Anzahl (Min, Max) ist.
 #
 # h: Verfügbaren Karten als Vektor
 # figure: Typ, Länge und Rang der gegebenen Kombination
-def get_subsets(h: list[int], figure: tuple) -> list[dict]:
+def get_conditions(h: list[int], figure: tuple) -> list[dict]:
     t, m, r = figure
 
     if t == SINGLE:  # Einzelkarte
-        subsets = _get_subsets_of_single(h, r)
+        conditions = _get_subsets_of_single(h, r)
 
     elif t == PAIR:  # Paar
-        subsets = _get_subsets_of_pair(h, r)
+        conditions = _get_subsets_of_pair(h, r)
 
     elif t == TRIPLE:  # Drilling
-        subsets = _get_subsets_of_triple(h, r)
+        conditions = _get_subsets_of_triple(h, r)
 
     elif t == STAIR:  # Treppe
-        subsets = _get_subsets_of_stairs(h, m, r)
+        conditions = _get_subsets_of_stairs(h, m, r)
 
     elif t == FULLHOUSE:  # Fullhouse
-        subsets = _get_subsets_of_fullhouse(h, r)
+        conditions = _get_subsets_of_fullhouse(h, r)
 
     elif t == STREET:  # Straße
-        subsets = _get_subsets_of_streets(h, m, r)
+        conditions = _get_conditions_for_street(h, m, r + 1, 14)
 
     elif t == BOMB:  # Bombe
         if m == 4:
-            subsets = _get_subsets_of_4_bomb(h, r)
+            conditions = _get_conditions_for_4_bomb(h, r + 1, 14)
         else:
-            subsets = _get_subsets_of_color_bomb(h, m, r)
+            conditions = _get_subsets_of_color_bomb(h, m, r)
 
     else:
         assert False
 
-    return subsets
+    return conditions
+
+
+# Erzeugt die Bedingung für die Schnittmenge zweier Teilmengen
+#
+# Falls die Kombinationen dieser Schnittmenge nicht auf der Hand sein können, wird ein leeres Dictionary zurückgegeben.
+#
+# cond1: Bedingung für Teilmenge 1
+# cond2: Bedingung für Teilmenge 2
+# k: Anzahl Handkarten
+def _get_condition_for_intersection(cond1: dict, cond2: dict, k: int) -> dict:
+    keys = set(cond1.keys()).union(cond2.keys())
+    union_set = {}
+    c_min_total = 0
+    for key in keys:
+        v1 = cond1.get(key, (0, 4))
+        v2 = cond2.get(key, (0, 4))
+        c_min = max(v1[0], v2[0])  # Mindestanzahl notwendiger Karten für Schnittmenge
+        c_max = min(v1[1], v2[1])  # Maximalanzahl notwendiger Karten für Schnittmenge
+        if c_min > c_max:
+            return {}  # keine Überschneidung
+        c_min_total += c_min
+        if c_min_total > k:
+            return {}  # zu viele Karten notwendig, um beide Kombinationen gleichzeit auf der Hand zu haben
+        union_set[key] = (c_min, c_max)
+    return union_set
+
+
+# Erzeugt die Bedingung für die Schnittmenge zweier Teilmengen
+#
+# Es werden alle Bedingungen für Teilmenge 1 mit allen Bedingungen für Teilmenge 2 kombiniert und jeweils die
+# Bedingung für die Schnittmenge berechnet. Falls Kombinationen dieser Schnittmenge auf der Hand sein können,
+# wird die kombinierte Bedingung aufgelistet.
+#
+# conditions1: Liste mit Bedingungen für Teilmenge 1
+# conditions2: Liste mit Bedingungen für Teilmenge 2
+# k: Anzahl Handkarten
+def get_conditions_for_intersection(conditions1: list[dict], conditions2: list[dict], k: int) -> list[dict]:
+    conditions = []
+    for cond1 in conditions1:
+        for cond2 in conditions2:
+            cond_intersect = _get_condition_for_intersection(cond1, cond2, k)
+            if cond_intersect:
+                conditions.append(cond_intersect)
+    return conditions
+
 
 # Bildet Vereinigungsmengen aus zwei oder mehr Mengen
 #
@@ -403,37 +470,28 @@ def get_subsets(h: list[int], figure: tuple) -> list[dict]:
 # Der zweite Eintrag listet die Vereinigungsmengen auf, die aus zwei Ursprungsmengen bestehen.
 # Der dritte Eintrag listet die auf, die aus drei Ursprungsmengen bestehen, usw.
 #
-# sets: Liste von Mengen (Ursprungsmengen), z.B. [{6: 2}, {6: 1, 8: 1}] beschreibt die Mengen: [6, 6] und [6, 8]
+# sets: Liste von Mengen (Ursprungsmengen)
 # k: Maximal erlaubte Länge der Vereinigungsmenge
 def union_sets(sets: list[dict], k: int) -> list[list[dict]]:
     length = len(sets)
-    result = [sets]
-    time_start = time()
-    c_max = 0
-
+    result = [sets] + [[] for _ in range(length - 1)]
     def _build_unions(s: dict, start: int, c: int):
         # s: Vereinigungsmenge, zu der eine weitere Ursprungsmenge hinzugefügt werden soll
         # start: sets[start] ist die hinzuzufügende Ursprungsmenge
         # c: Anzahl Teilmengen, die bereits in der Vereinigungsmenge sind
-        nonlocal c_max
-        # if c_max < c:
-        #     c_max = c
-        c_max += 1
         for j in range(start, length):
             keys = set(s.keys()).union(sets[j].keys())
-            union = {key: max(s.get(key, 0), sets[j].get(key, 0)) for key in keys}
-            if sum(union.values()) <= k:
-                if len(result) < c:
-                    result.append([])
+            union = {key: (
+                max(s[key][0] if key in s else 0, sets[j][key][0] if key in sets[j] else 0),
+                min(s[key][1] if key in s else 4, sets[j][key][1] if key in sets[j] else 4)) for key in keys}
+            if sum(c_min for c_min, c_max in union.values()) <= k:
                 result[c - 1].append(union)
                 _build_unions(union, j + 1, c + 1)
 
+        return result
 
     for i in range(length):
         _build_unions(sets[i], i + 1, 2)
-
-    delay = time() - time_start
-    print(f"union_sets: k={k}, len(sets)={len(sets)}, cmax={c_max}, delay={delay * 1000:.6f} ms")
 
     return result
 
@@ -452,30 +510,71 @@ def count_sets(sets: list[dict]) -> list[tuple[dict, int]]:
     return list(zip(unique_sets, counts))
 
 
+# # Hypergeometrische Verteilung
+# #
+# # Zurückgegeben wird die Anzahl der Kombinationen in der gegebenen Teilmenge.
+# #
+# # cond: Bedingung für die Teilmenge
+# # h: Verfügbaren Karten als Vektor
+# # k: Anzahl der Handkarten
+# def hypergeom(cond: dict, h: list[int], k: int) -> int:
+#     keys = list(cond)
+#     length = len(cond)
+#     n = sum(h)
+#
+#     # Tabelle dp[rank][n_remain][k_remain], um Teilergebnisse zu speichern (dynamische Programmierung)
+#     dp = [[[0] * (k + 1) for _ in range(n + 1)] for _ in range(length + 1)]
+#
+#     # Basisfall: Wenn keine Karten übrig sind, ist es genau eine Möglichkeit (leere Menge)
+#     for n_remain in range(n + 1):
+#         dp[length][n_remain][0] = 1
+#
+#     # Iterative Berechnung
+#     for index in range(length - 1, -1, -1):
+#         r = keys[index]
+#         c_min, c_max = cond[r]
+#         assert 0 <= c_min <= h[r]
+#         assert c_min <= c_max <= h[r]
+#
+#         for n_remain in range(n + 1):
+#             for k_remain in range(k + 1):
+#                 result = 0
+#                 for c in range(c_min, c_max + 1):
+#                     if c > h[r] or k_remain < c or n_remain < c:
+#                         continue
+#                     result += math.comb(h[r], c) * dp[index + 1][n_remain - c][k_remain - c]
+#                 dp[index][n_remain][k_remain] = result
+#
+#     return dp[0][n][k]
+
+
 # Hypergeometrische Verteilung
 #
-# Zurückgegeben wird die Anzahl der möglichen Kombinationen, die die gegebene Teilmenge beinhalten.
+# Zurückgegeben wird die Anzahl der Kombinationen in der gegebenen Teilmenge.
 #
-# subset: Teilmenge
+# cond: Bedingung für die Teilmenge
 # h: Verfügbaren Karten als Vektor
 # k: Anzahl der Handkarten
-def hypergeom(subset: dict, h: list[int], k: int) -> int:
+def hypergeom(cond: dict, h: list[int], k: int) -> int:
     def _comb(index: int, n_remain, k_remain) -> int:
         r = keys[index]  # der aktuell zu untersuchende Kartenrang
-        n_fav = h[r]  # Anzahl der verfügbaren Karten mit diesem Rang
-        c_min = subset[r]  # erforderliche Anzahl Karten mit diesem Rang
+        c_min, c_max = cond[r]  # erforderliche Anzahl Karten mit diesem Rang
+        assert 0 <= c_min <= h[r]
+        assert c_min <= c_max <= h[r]
         result = 0
-        for c in range(c_min, n_fav + 1):
+        for c in range(c_min, c_max + 1):
             if k_remain < c:
                 break
             if index + 1 < length:
-                result += math.comb(n_fav, c) * _comb(index + 1, n_remain - n_fav, k_remain - c)
+                #print(math.comb(h[r], c), end=" ")
+                result += math.comb(h[r], c) * _comb(index + 1, n_remain - h[r], k_remain - c)
             else:
-                result += math.comb(n_fav, c) * math.comb(n_remain - n_fav, k_remain - c)
+                #print(math.comb(h[r] * math.comb(n_remain - h[r], k_remain - c), c))
+                result += math.comb(h[r], c) * math.comb(n_remain - h[r], k_remain - c)
         return result
 
-    keys = list(subset)
-    length = len(subset)
+    keys = list(cond)
+    length = len(cond)
     return _comb(0, sum(h), k)
 
 
@@ -601,24 +700,37 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple) -> float:
     else:
         h = ranks_to_vector(cards)  # wenn es keine Farbbombe ist, sind nur die Ränge der Karten von Interesse
 
-    # Teilmengen finden, die die gegebene Kombination überstechen
-    subsets = get_subsets(h, figure)
-    if len(subsets) == 0:
-        return 0.0  # if t == BOMB and m >= 5 else prob_color_bombs(cards, k)
+    #print(h)
 
-    # Vereinigungsmengen aus zwei oder mehr Teilmengen bilden
-    list_of_unions = union_sets(subsets, k)
+    # Bedingungen für eine Kombination auflisten, die die gegebene übersticht
+    conditions = get_conditions(h, figure)
 
-    # für jede Vereinigungsmengen die möglichen Kombinationen zählen und summieren
-    matches = count_combinations(list_of_unions, h, k)
-    if matches > 0:
-        # Gesamtanzahl der möglichen Kombinationen
-        total = math.comb(n, k)
-        # Wahrscheinlichkeit
-        p = matches / total
-    else:
-        p = 0  # if t == BOMB and m >= 5 else prob_color_bombs(cards, k)
+    # Anzahl Kombinationen mittels hypergeometrische Verteilung ermitteln
+    matches = 0
+    for cond in conditions:
+        matches_part = hypergeom(cond, h, k)
+        #print(cond, matches_part)
+        matches += matches_part
 
+    # Anzahl der 4er-Bomben hinzufügen
+    if t != BOMB:
+        conditions_bomb = _get_conditions_for_4_bomb(h, 2, 14)
+        for cond in conditions_bomb:
+            matches += hypergeom(cond, h, k)
+        # die Schnittmenge wieder abziehen (Prinzip der Inklusion und Exklusion)
+        conditions_intersection = get_conditions_for_intersection(conditions, conditions_bomb, k)
+        for cond in conditions_intersection:
+            matches -= hypergeom(cond, h, k)
+        assert matches >= 0
+
+    if matches == 0:
+        return 0
+
+    # Gesamtanzahl der möglichen Kombinationen
+    total = math.comb(n, k)
+
+    # Wahrscheinlichkeit
+    p = matches / total
     return p
 
 
@@ -647,16 +759,12 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 
 if __name__ == "__main__":  # pragma: no cover
 
-    # todo Problem bei Straße mit Phönix aufgrund viele subsets (25 und mehr):
-    #  Ab k == 7, wird es langsam und ab 8 unbrauchbar!
+    #inspect("GA RK GD RB GZ R9 S8", 6, (6, 5, 8))
+
+    # todo Problem: Je größer k, desto langsamer wird es!
     from timeit import timeit
     for k_ in range(5, 10):
-        print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
-        #print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
-        #print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
-        #print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
-    #for k_ in range(5, 14):
-        #print(f"k={k_}: {timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", k_, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+        print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
 
     # todo Problem: Farbbomben
     # inspect("SB RZ R9 R8 R7 R6", 5, (1, 1, 11))  # Einzelkarte mit Farbbombe
