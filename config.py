@@ -1,7 +1,7 @@
 import logging
-import os
 from dotenv import load_dotenv
-
+from os import getenv
+from os.path import dirname
 
 # Lade die Umgebungsvariablen aus der .env-Datei
 load_dotenv()
@@ -43,31 +43,35 @@ def str_to_loglevel(env_value: str):
 VERSION = '0.0.0'
 
 # asyncio im Debug-Mode starten
-DEBUG = _to_bool(os.getenv("DEBUG"))
+DEBUG = _to_bool(getenv("DEBUG"))
 
 # Log Level und maximale Anzahl Log-Dateien (pro Tag wird eine neue Datei angelegt; ältere Dateien werden automatisch gelöscht)
-LOG_LEVEL = str_to_loglevel(os.getenv("LOG_LEVEL", "WARNING"))
-LOG_COUNT = int(os.getenv("LOG_COUNT", 5))
+LOG_LEVEL = str_to_loglevel(getenv("LOG_LEVEL", "WARNING"))
+LOG_COUNT = int(getenv("LOG_COUNT", 5))
+
+# Ordner
+BASE_PATH = getenv("BASE_PATH", dirname(__file__))
+DATA_PATH = getenv("DATA_PATH", f'{BASE_PATH}/data')
 
 # WebSocket-Host und Port
-HOST = os.getenv("HOST", "localhost")
-PORT = int(os.getenv("PORT", 8080))
+HOST = getenv("HOST", "localhost")
+PORT = int(getenv("PORT", 8080))
 
 # Wer das nicht kennt, darf nicht mitspielen
-SECRET_KEY = os.getenv("SECRET_KEY", "secret")
+SECRET_KEY = getenv("SECRET_KEY", "secret")
 
 # Wartezeit nach einem Verbindungsabbruch bis zum Rauswurf in Sekunden
-KICK_OUT_TIME = int(os.getenv("KICK_OUT_TIME", 15))
+KICK_OUT_TIME = int(getenv("KICK_OUT_TIME", 15))
 
 # Anzahl Prozesse für die Arena
-ARENA_WORKER = int(os.getenv("ARENA_WORKER", 1))
+ARENA_WORKER = int(getenv("ARENA_WORKER", 1))
 
 # gewünschte Gewinnquote WIN / (WIN + LOST)
 # wenn erreicht, bricht die Arena den Wettkampf ab (sofern early_stopping gesetzt ist)
 ARENA_WIN_RATE = 0.6
 
 # Denkzeit des Agenten (von/bis) in Sekunden
-AGENT_THINKING_TIME = _to_array(os.getenv("AGENT_THINKING_TIME", [0.5, 3.0]), lambda item: float(item))
+AGENT_THINKING_TIME = _to_array(getenv("AGENT_THINKING_TIME", [0.5, 3.0]), lambda item: float(item))
 
 # Maximale Anzahl mögliche Partitionen, die pro Hand berechnet werden
 PARTITIONS_MAXLEN = 2000
