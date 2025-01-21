@@ -91,12 +91,13 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                 if b:
                     break
 
-        # falls die gegebene Kombination keine Bombe ist, kann sie von einer 4er-Bombe überstochen werden
-        if not b and t != BOMB:
-            for rhi in range(2, 15):
-                b = sum(1 for v, _ in hand if v == rhi) >= 4
-                if b:
-                    break
+        # todo: wieder einblenden
+        # # falls die gegebene Kombination keine Bombe ist, kann sie von einer 4er-Bombe überstochen werden
+        # if not b and t != BOMB:
+        #     for rhi in range(2, 15):
+        #         b = sum(1 for v, _ in hand if v == rhi) >= 4
+        #         if b:
+        #             break
 
         # falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden
         if not b and t == BOMB and m >= 5:

@@ -1,8 +1,11 @@
-import itertools
-import pickle
-from os import path, mkdir
-
 import config
+import itertools
+import math
+import pickle
+#from src.lib.cards import parse_cards, stringify_cards
+#from time import time
+#from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure
+from os import path, mkdir
 
 
 # Ermittelt die höchste Straße im Datensatz
@@ -132,6 +135,197 @@ def generate_table(m: int):  # pragma: no cover
     save_data(data)
     data = load_data()
     print("Datensätze:", len(data))
+
+
+# Listet die Straßen auf, die die gegebene Straße überstechen
+#
+# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
+# m: Länge der gegebenen Kombination
+# r: Rang der gegebenen Kombination
+def get_streets(h: list[int], m: int, r: int) -> list[dict]:
+    assert 5 <= m <= 14
+    assert m <= r <= 14
+
+    data = load_data()
+
+    subsets = []
+    for r_start in range((r + 1) - m + 1, 14 - m + 2):
+        r_end = r_start + m  # exklusiv
+
+        # ohne Phönix
+        if all(h[i] >= 1 for i in range(r_start, r_end)):
+            subsets.append({i: 1 for i in range(r_start, r_end)})
+
+        # mit Phönix
+        if h[16]:  # Phönix vorhanden?
+            for r_pho in range(max(r_start, 2), r_end):  # max(r_start, 2) berücksichtigt die Ausnahmeregel, dass der Phönix die 1 nicht ersetzen kann
+                if all(h[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
+                    subset = {i: 1 for i in range(r_start, r_end) if i != r_pho}
+                    subset[16] = 1
+                    subsets.append(subset)
+
+    return subsets
+
+
+# Listet alle möglichen Bedingungen für eine 4er-Bombe auf
+#
+# Die Bedingungen schließen sich gegenseitig aus!
+# Eine Bedingung wird als Dictionary beschrieben, wobei der Key der Rang und der Wert die Anzahl (Min, Max) ist.
+#
+# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
+# r_min: niedrigster Rang der Kombination
+# r_max: höchster Rang der Kombination
+def _get_conditions_for_4_bomb(h: list[int], r_min: int, r_max: int) -> list[dict]:
+    assert 2 <= r_min <= 14
+    assert r_min <= r_max <= 14
+    conditions = []
+    remain = {}
+
+    for r in range(r_min, r_max + 1):
+        if h[r] == 4:  # Karten für die Kombination verfügbar?
+            cond = remain.copy()
+            cond[r] = (4, 4)
+            conditions.append(cond)
+            remain[r] = (0, 3)  # ausschließendes Kriterium für die restlichen Bedingungen
+
+    return conditions
+
+
+# Erzeugt die Bedingung für die Schnittmenge zweier Teilmengen
+#
+# Falls die Kombinationen dieser Schnittmenge nicht auf der Hand sein können, wird ein leeres Dictionary zurückgegeben.
+#
+# cond1: Bedingung für Teilmenge 1
+# cond2: Bedingung für Teilmenge 2
+# k: Anzahl Handkarten
+def _get_condition_for_intersection(cond1: dict, cond2: dict, k: int) -> dict:
+    keys = set(cond1.keys()).union(cond2.keys())
+    union_set = {}
+    c_min_total = 0
+    for key in keys:
+        v1 = cond1.get(key, (0, 4))
+        v2 = cond2.get(key, (0, 4))
+        c_min = max(v1[0], v2[0])  # Mindestanzahl notwendiger Karten für Schnittmenge
+        c_max = min(v1[1], v2[1])  # Maximalanzahl notwendiger Karten für Schnittmenge
+        if c_min > c_max:
+            return {}  # keine Überschneidung
+        c_min_total += c_min
+        if c_min_total > k:
+            return {}  # zu viele Karten notwendig, um beide Kombinationen gleichzeit auf der Hand zu haben
+        union_set[key] = (c_min, c_max)
+    return union_set
+
+
+# Erzeugt die Bedingung für die Schnittmenge zweier Teilmengen
+#
+# Es werden alle Bedingungen für Teilmenge 1 mit allen Bedingungen für Teilmenge 2 kombiniert und jeweils die
+# Bedingung für die Schnittmenge berechnet. Falls Kombinationen dieser Schnittmenge auf der Hand sein können,
+# wird die kombinierte Bedingung aufgelistet.
+#
+# conditions1: Liste mit Bedingungen für Teilmenge 1
+# conditions2: Liste mit Bedingungen für Teilmenge 2
+# k: Anzahl Handkarten
+def get_conditions_for_intersection(conditions1: list[dict], conditions2: list[dict], k: int) -> list[dict]:
+    conditions = []
+    for cond1 in conditions1:
+        for cond2 in conditions2:
+            cond_intersect = _get_condition_for_intersection(cond1, cond2, k)
+            if cond_intersect:
+                conditions.append(cond_intersect)
+    return conditions
+
+
+# Hypergeometrische Verteilung
+#
+# Zurückgegeben wird die Anzahl der möglichen Kombinationen, die die gegebene Teilmenge beinhalten.
+#
+# subset: Teilmenge
+# h: Verfügbaren Karten als Vektor
+# k: Anzahl der Handkarten
+def hypergeom(subset: dict, h: list[int], k: int) -> int:
+    def _comb(index: int, n_remain, k_remain) -> int:
+        r = keys[index]  # der aktuell zu untersuchende Kartenrang
+        n_fav = h[r]  # Anzahl der verfügbaren Karten mit diesem Rang
+        c_min = subset[r]  # erforderliche Anzahl Karten mit diesem Rang
+        result = 0
+        for c in range(c_min, n_fav + 1):
+            if k_remain < c:
+                break
+            if index + 1 < length:
+                result += math.comb(n_fav, c) * _comb(index + 1, n_remain - n_fav, k_remain - c)
+            else:
+                result += math.comb(n_fav, c) * math.comb(n_remain - n_fav, k_remain - c)
+        return result
+
+    keys = list(subset)
+    length = len(subset)
+    return _comb(0, sum(h), k)
+
+
+# Zählt die Anzahl der Karten je Rang
+#
+# Zurückgegeben wird eine Liste mit 17 Integer, wobei der Index den Rang entspricht und
+# der Wert die Anzahl der Karten mit diesem Rang.
+def ranks_to_vector(cards: list[tuple]) -> list[int]:
+    # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
+    # i= 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+    h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for v, _ in cards:
+        h[v] += 1
+    return h
+
+
+# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann
+#
+# todo:
+#  Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, was auch berücksichtigt wird.
+#  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
+#  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
+#
+# cards: Verfügbare Karten
+# k: Anzahl der Handkarten
+# figure: Typ, Länge und Rang der gegebenen Kombination
+# r: Rang der gegebenen Kombination
+def prob_of_hand(cards: list[tuple], k: int, figure: tuple) -> float:
+    n = len(cards)  # Gesamtanzahl der verfügbaren Karten
+    assert k <= n <= 56
+    assert 0 <= k <= 14
+
+    # die verfügbaren Karten in einen Vektor umwandeln
+    t, m, r = figure
+    h = ranks_to_vector(cards)  # wenn es keine Farbbombe ist, sind nur die Ränge der Karten von Interesse
+
+    # Teilmengen finden, die die gegebene Kombination überstechen
+    subsets = get_streets(h, m, r)
+
+    # Anzahl Kombinationen mittels hypergeometrische Verteilung ermitteln
+    matches = 0
+    for subset in subsets:
+        matches_part = hypergeom(subset, h, k)
+        #print(subset, matches_part)
+        matches += matches_part
+
+    # # Anzahl der 4er-Bomben hinzufügen
+    # if t != BOMB:
+    #     conditions_bomb = _get_conditions_for_4_bomb(h, 2, 14)
+    #     for cond in conditions_bomb:
+    #         matches += hypergeom(cond, h, k)
+    #     # die Schnittmenge wieder abziehen (Prinzip der Inklusion und Exklusion)
+    #     conditions_intersection = get_conditions_for_intersection(subsets, conditions_bomb, k)
+    #     for cond in conditions_intersection:
+    #         matches -= hypergeom(cond, h, k)
+    #     assert matches >= 0
+
+    if matches == 0:
+        return 0.0
+
+    # Gesamtanzahl der möglichen Kombinationen
+    total = math.comb(n, k)
+
+    # Wahrscheinlichkeit
+    p = matches / total
+
+    return p
 
 
 if __name__ == '__main__':  # pragma: no cover
