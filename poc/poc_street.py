@@ -137,34 +137,65 @@ def generate_table(m: int):  # pragma: no cover
     print("Datensätze:", len(data))
 
 
+# Generiert alle möglichen Kombinationen
+# Beispiel: ranges = [(1, 2), (1, 1), (1, 3)]
+# Rückgabe:
+# [(1, 1, 1),
+#  (1, 1, 2),
+#  (1, 1, 3),
+#  (2, 1, 1),
+#  (2, 1, 2),
+#  (2, 1, 3)]
+def generate_subsets(ranges: list) -> list:
+    # Generiere die Tabelle
+    subsets = []
+    for subset in itertools.product(*[range(start, end + 1) for start, end in ranges]):
+        subsets.append(subset)
+        #print(row)
+    return subsets
+
+
 # Listet die Straßen auf, die die gegebene Straße überstechen
 #
 # h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# m: Länge der gegebenen Kombination
-# r: Rang der gegebenen Kombination
-def get_streets(h: list[int], m: int, r: int) -> list[dict]:
+# m: Länge der Kombination
+# r_min: niedrigster Rang der Kombination
+# r_max: höchster Rang der Kombination
+def get_streets(h: list[int], m: int, r_min: int, r_max: int) -> list[dict]:
     assert 5 <= m <= 14
-    assert m <= r <= 14
+    assert m <= r_min <= 14
+    assert r_min <= r_max <= 14
 
     data = load_data()
 
-    subsets = []
-    for r_start in range((r + 1) - m + 1, 14 - m + 2):
-        r_end = r_start + m  # exklusiv
+    result = []
+    for pho, r, top in data:
+        r_start = r - m + 1
+        r_end = r + 1  # exklusiv
+        if pho:
+            # mit Phönix
+            pass
+        else:
+            # ohne Phönix
+            if (all(h[i] >= 1 for i in range(r_start, r_end))
+            and all(h[i] >= 1 for i in range(r_end, 15) if top[i - r_end] >= 1)):
+                ranges_comb = [(1, h[i]) for i in range(r_start, r_end)]
+                sets_comb = tuple(itertools.product(*ranges_comb))
+                ranges_top = [(1, h[i]) for i in range(r_end, 15) if top[i - r_end] >= 1]
+                sets_top = tuple(itertools.product(*ranges_top))
+                result.append((r, sets_comb, sets_top))
 
-        # ohne Phönix
-        if all(h[i] >= 1 for i in range(r_start, r_end)):
-            subsets.append({i: 1 for i in range(r_start, r_end)})
+        # # mit Phönix
+        # if h[16]:
+        #     for j in range(r_start + (1 if r < 14 else 0), r_end):  # Rang, den der Phönix ersetzt
+        #         if all(h[i] >= 1 for i in range(r_start, r_end) if i != j):  # Karten für die Kombination verfügbar?
+        #             cond = remain.copy()
+        #             for i in range(r_start, r_end):
+        #                 cond[i] = (0, 0) if i == j else (1, h[i])
+        #             cond[16] = (1, 1)
+        #             sets.append(cond)
 
-        # mit Phönix
-        if h[16]:  # Phönix vorhanden?
-            for r_pho in range(max(r_start, 2), r_end):  # max(r_start, 2) berücksichtigt die Ausnahmeregel, dass der Phönix die 1 nicht ersetzen kann
-                if all(h[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
-                    subset = {i: 1 for i in range(r_start, r_end) if i != r_pho}
-                    subset[16] = 1
-                    subsets.append(subset)
-
-    return subsets
+    return result
 
 
 # Listet alle möglichen Bedingungen für eine 4er-Bombe auf
@@ -296,7 +327,7 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple) -> float:
     h = ranks_to_vector(cards)  # wenn es keine Farbbombe ist, sind nur die Ränge der Karten von Interesse
 
     # Teilmengen finden, die die gegebene Kombination überstechen
-    subsets = get_streets(h, m, r)
+    subsets = get_streets(h, m, r + 1, 14)
 
     # Anzahl Kombinationen mittels hypergeometrische Verteilung ermitteln
     matches = 0
