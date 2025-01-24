@@ -1,4 +1,4 @@
-__all__ = "possible_hands_hi", "prob_of_hand"
+__all__ = "possible_hands_hi", "ranks_to_vector", "prob_of_hand", "cards_to_vector"
 
 import itertools
 import math
@@ -12,6 +12,8 @@ from time import time
 
 # Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebene überstechen kann
 #
+# Wenn k größer ist als die Anzahl der ungespielten Karten, werden leere Listen zurückgegeben.
+#
 # Diese Methode wird nur für Testzwecke verwendet. Je mehr ungespielte Karten es gibt, desto langsamer wird sie.
 # Ab ca. 20 ist sie praktisch unbrauchbar.
 #
@@ -20,17 +22,11 @@ from time import time
 #  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
 #  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
 #
-# Beispiel:
-# matches, hands = possible_hands(parse_cards("Dr RK GK BB SB RB R2"), 5, (2, 2, 11))
-# for match, hand in zip(matches, hands):
-#     print(match, stringify_cards(hand))
-# print(f"Wahrscheinlichkeit für ein Bubenpärchen: {sum(matches) / len(hands)}")
-#
 # unplayed_cards: Ungespielte Karten
 # k: Anzahl Handkarten
 # figure: Typ, Länge, Rang der Kombination
 def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[list, list]:
-    hands = list(itertools.combinations(unplayed_cards, k))
+    hands = list(itertools.combinations(unplayed_cards, k))  # die Länge der Liste entspricht math.comb(len(unplayed_cards), k)
     matches = []
     t, m, r = figure  # type, length, rank
     for hand in hands:
@@ -502,6 +498,8 @@ def count_combinations(list_of_unions: list[list[dict]], h: list[int], k: int) -
 
     return matches
 
+
+# todo nach cards.py verschieben
 # Zählt die Anzahl der Karten je Rang
 #
 # Zurückgegeben wird eine Liste mit 17 Integer, wobei der Index den Rang entspricht und
@@ -515,6 +513,7 @@ def ranks_to_vector(cards: list[tuple]) -> list[int]:
     return h
 
 
+# todo nach cards.py verschieben, evtl so sortieren wie das Deck: Hu Ma 2 2 2 2 3 3 3 3 4 4 4 4 ... Dr Ph
 # Wandelt die Karten in einen Vektor um
 def cards_to_vector(cards: list[tuple]) -> list[int]:
     # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
@@ -646,12 +645,14 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 
 
 if __name__ == "__main__":  # pragma: no cover
+    from timeit import timeit
+    print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7", 5, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", 9, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
 
     # todo Problem bei Straße mit Phönix aufgrund viele subsets (25 und mehr):
     #  Ab k == 7, wird es langsam und ab 8 unbrauchbar!
-    from timeit import timeit
-    for k_ in range(5, 10):
-        print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
+    # for k_ in range(5, 10):
+    #     print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
         #print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
         #print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
         #print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")

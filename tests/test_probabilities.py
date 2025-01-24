@@ -1,8 +1,6 @@
 import unittest
 from src.lib.cards import *
 from src.lib.combinations import *
-# noinspection PyProtectedMember
-from src.lib.probabilities import ranks_to_vector, cards_to_vector
 from src.lib.probabilities import *
 
 

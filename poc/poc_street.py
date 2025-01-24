@@ -2,10 +2,12 @@ import config
 import itertools
 import math
 import pickle
-#from src.lib.cards import parse_cards, stringify_cards
-#from time import time
-#from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure
+from time import time
+from timeit import timeit
 from os import path, mkdir
+from src.lib.cards import stringify_cards, parse_cards
+from src.lib.combinations import stringify_figure
+from src.lib.probabilities import possible_hands_hi, ranks_to_vector
 
 
 # Ermittelt die höchste Straße im Datensatz
@@ -16,28 +18,19 @@ from os import path, mkdir
 # row: row[0] == Phönix, row[1] bis row[14] == Rang 1 bis 14
 # m: Länge der Straße
 def get_max_rank(row: tuple, m: int):
-    for r in range(14, m - 1, -1):  # [14 ... 5] (höchste Rang zuerst)
+    for r in range(14, m - 1, -1):  # [14 ... 5] (höchster Rang zuerst)
         r_start = r - m + 1
         r_end = r + 1  # exklusiv
         if row[0]:  # mit Phönix
-            for j in range(r_start, r_end):
-                if all(row[i] for i in range(r_start, r_end) if i != j):
-                    return r, j
+            for pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Straße)
+                if all(row[i] for i in range(r_start, r_end) if i != pho):
+                    return r, pho
         else:  # ohne Phönix
             if all(row[i] for i in range(r_start, r_end)):
                 return r, 0
     return False
 
-
-# Prüft, ob der relevante Bereich des Datensatzes bereits in der Tabelle steht
-def is_already_in_table(table: list, row: tuple, m: int, r: int):
-    unique = row[r - m + 1:]
-    for row_ in table:
-        if row_[0] == row[0] and row_[r - m + 1:] == unique:
-            return True
-    return False
-
-
+# todo: nach cache/lib speichern, cache für git ignorieren, data/lib/street5_hi.pkl und .txt aus git löschen
 def get_filename():
     folder = path.join(config.DATA_PATH, "lib")
     if not path.exists(folder):
@@ -55,7 +48,6 @@ def save_data(data):
 
     # zusätzlich als Textdatei speichern (nützlich zum Debuggen)
     with open(file[:-4] + ".txt", "w") as datei:
-        datei.write("pho, r, top\n")
         for row in data:
             datei.write(f"{row}\n")
 
@@ -63,301 +55,245 @@ def save_data(data):
 
 
 # Daten laden
-def load_data():
+def load_data(verbose = False) -> list[list]:
+    time_start = time()
     with open(get_filename(), 'rb') as fp:
         data = pickle.load(fp)
+    if verbose:
+        print(f"Daten geladen ({(time() - time_start) * 1000:.6f} ms)")
     return data
 
 
-# Generiert eine Tabelle mit allen möglichen Straßen der Länge m, höchster Rang zuerst
-#
-# Es werden erst alle Fälle ohne Phönix aufgeführt, dann mit.
-# Die relevanten Informationen werden in eine Datei gespeichert.
-#
-# Beispiel für Straße der Länge 5, Ausschnitt bei r = 11:
-# Generierter Tabelle                              relevante Info
-# r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14     (pho, r  (  top  ))
-# (1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0)    ( 8, 11, (0, 0, 0))
-# (1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1)    ( 8, 11, (0, 0, 1))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0)    ( 9, 11, (0, 0, 0))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1)    ( 9, 11, (0, 0, 1))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0)    ( 9, 11, (0, 1, 0))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0)    (10, 11, (0, 0, 0))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1) -> (10, 11, (0, 0, 1))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0)    (10, 11, (0, 1, 0))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1)    (10, 11, (0, 1, 1))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0)    (11, 11, (0, 0, 0))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1)    (11, 11, (0, 0, 1))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0)    (11, 11, (0, 1, 0))
-# (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1)    (11, 11, (0, 1, 1))
-#  ^  ^---remain-----^  ^----comb---^  ^-top-^
-# pho 1            r-m  r-m+1       r  r+1  14
-#
-# relevante Info:
-# r: höchster Rang
-# pho: Rang des Phönix (0 == ohne Phönix)
-# top: Muster von r+1 bis 14
-#
-# Die Karten von 1 bis r-m sind einzeln nicht relevant.
-# Von r-m+1 bis r befindet sich die Straße. An der Stelle des Phönix ist eine 0 (keine Karte mit
-# diesem Rang), an jeder anderen Stelle der Straße ist eine 1 (mindestens eine Karte erforderlich).
-# Die Karten überhalb der Straße (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
-# Dadurch schließen sich die Teilmengen gegenseitig aus.
+# list1 = [(1, 1, 1), (1, 1, 2), (1, 1, 3)]
+# list2 = [4, 5]
+# combined_list = combine_lists(list1, list2, 9)
+# print(combined_list)  # [(1, 1, 1, 4), (1, 1, 1, 5), (1, 1, 2, 4), (1, 1, 2, 5), (1, 1, 3, 4)]
+def combine_lists(list1, list2, k: int):
+    if not list1:
+        list1 = [()]
+    result = []
+    for subset in list1:
+        for value in list2:
+            if sum(subset) + value <= k:
+                result.append(subset + (value,))
+    return result
+
+
+# Generiert eine Tabelle mit allen möglichen Straßen der Länge m, höhere Straße wird bevorzugt.
+# Diese Informationen werden in eine Datei gespeichert.
 def generate_table(m: int):  # pragma: no cover
+    time_start = time()
+
+    # 1. Schritt:
+    # alle möglichen Kombinationen (reduziert auf Karte verfügbar/fehlt) durchlaufen und Straßen davon auflisten
+
+    # Kombinationen bei Straße der Länge 5, r = 11:
+    # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
+    # (1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0)
+    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1)
+    #  ^  ^----remain----^  ^-------unique-------^
+    #  |  |              |  | <-  m  -> |        |
+    # pho 1            r-m  r-m+1       r       14
+
+    # Die Karten von 1 bis r-m sind einzeln nicht relevant.
+    # Von r-m+1 bis r befindet sich die Straße. An der Stelle des Phönix ist eine 0 (keine Karte mit
+    # diesem Rang), an jeder anderen Stelle der Straße ist eine 1 (mindestens eine Karte erforderlich).
+    # Die Karten überhalb der Straße (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
+    # Dadurch schließen sich die Teilmengen gegenseitig aus.
+
     c_all = 0
     c_matches = 0
     c_unique = 0
-    table = []
     data = []
-    for row in itertools.product(range(2), repeat=15):  # alle möglichen Kombinationen durchlaufen...
+    for row in itertools.product(range(2), repeat=15):
+        # row[0] == Phönix, row[1] bis row[14] == Rang 1 bis 14
         c_all += 1
         res = get_max_rank(row, m)
         if res:
             # im Datensatz ist mindestens eine Straße vorhanden
             r, pho = res
+            unique = row[r - m + 1:]
             c_matches += 1
-            found = is_already_in_table(table, row, m, r)
+            found = (r, 1 if pho > 0 else 0, unique) in data  # zählt 1673 Fälle
             if not found:
-                # die Straße ist noch nicht in der Tabelle aufgeführt
+                # die Straße ist noch nicht gelistet
                 c_unique += 1
-                top = row[r + 1:]
-                table.append(row)  # Datensatz zwischenspeichern
-                data.append((pho, r, top))  # relevante Daten übernehmen
-                print(row, f" -> pho: {pho}, r: {r} (start: {r - m + 1}), top: {top}")
+                data.append((r, 1 if pho > 0 else 0, unique))  # nur relevante Daten übernehmen
+            #     print(row, f" -> r: {r} (start: {r - m + 1}), pho: {pho}, top: {top}")
             # else:
             #     print(row, f"r: {r}")
-
     print("all:", c_all)
     print("matches:", c_matches)
     print("unique:", c_unique)
 
-    # relevante Daten speichern
-    save_data(data)
-    data = load_data()
-    print("Datensätze:", len(data))
+    # data listet nun folgende Daten:
+    # r: Rang der Straße (von 14 bis 5)
+    # pho: 1, wenn der Phönix verwendet wird, sonst 0
+    # unique: Muster von r-m+1 bis 14
+    #
+    # Zuerst werden die Fälle ohne Phönix aufgeführt, sortiert nach Rang (absteigend).
+    # Dann werden die Fälle mit Phönix aufgeführt, wieder sortiert nach Rang (absteigend).
+
+    # Schritt 2:
+    # Karte verfügbar/fehlt expandieren zu Kartenanzahl 0,1,2,3,4
+
+    table = []
+    c = 0
+    for r, pho, unique in data:
+        if r == 5:
+            continue
+        cases = []
+        for v in unique:
+            cases = combine_lists(cases, list(range(1, 5) if v == 1 else [0]), 14)
+        # if r == 10:
+        #     for case in cases:
+        #         print(f"r: {r}, pho: {pho}, case: {unique}", f" -> r: {r}, pho: {pho}, case: {case}")
+        c += len(cases)
+        for case in cases:
+            table.append((r, pho, case))
+    print("Expandiert:", c)
+    print(f"{(time() - time_start) * 1000:.6f} ms")
+
+    # Daten speichern
+    save_data(table)
 
 
-# Generiert alle möglichen Kombinationen
-# Beispiel: ranges = [(1, 2), (1, 1), (1, 3)]
-# Rückgabe:
-# [(1, 1, 1),
-#  (1, 1, 2),
-#  (1, 1, 3),
-#  (2, 1, 1),
-#  (2, 1, 2),
-#  (2, 1, 3)]
-def generate_subsets(ranges: list) -> list:
-    # Generiere die Tabelle
-    subsets = []
-    for subset in itertools.product(*[range(start, end + 1) for start, end in ranges]):
-        subsets.append(subset)
-        #print(row)
-    return subsets
-
-
-# Listet die Straßen auf, die die gegebene Straße überstechen
+# Listet die möglichen Straßen auf, die die gegebene Straße überstechen
 #
 # h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# m: Länge der Kombination
-# r_min: niedrigster Rang der Kombination
-# r_max: höchster Rang der Kombination
-def get_streets(h: list[int], m: int, r_min: int, r_max: int) -> list[dict]:
-    assert 5 <= m <= 14
-    assert m <= r_min <= 14
-    assert r_min <= r_max <= 14
-
-    data = load_data()
-
-    result = []
-    for pho, r, top in data:
-        r_start = r - m + 1
-        r_end = r + 1  # exklusiv
-        if pho:
-            # mit Phönix
-            pass
-        else:
-            # ohne Phönix
-            if (all(h[i] >= 1 for i in range(r_start, r_end))
-            and all(h[i] >= 1 for i in range(r_end, 15) if top[i - r_end] >= 1)):
-                ranges_comb = [(1, h[i]) for i in range(r_start, r_end)]
-                sets_comb = tuple(itertools.product(*ranges_comb))
-                ranges_top = [(1, h[i]) for i in range(r_end, 15) if top[i - r_end] >= 1]
-                sets_top = tuple(itertools.product(*ranges_top))
-                result.append((r, sets_comb, sets_top))
-
-        # # mit Phönix
-        # if h[16]:
-        #     for j in range(r_start + (1 if r < 14 else 0), r_end):  # Rang, den der Phönix ersetzt
-        #         if all(h[i] >= 1 for i in range(r_start, r_end) if i != j):  # Karten für die Kombination verfügbar?
-        #             cond = remain.copy()
-        #             for i in range(r_start, r_end):
-        #                 cond[i] = (0, 0) if i == j else (1, h[i])
-        #             cond[16] = (1, 1)
-        #             sets.append(cond)
-
-    return result
-
-
-# Listet alle möglichen Bedingungen für eine 4er-Bombe auf
-#
-# Die Bedingungen schließen sich gegenseitig aus!
-# Eine Bedingung wird als Dictionary beschrieben, wobei der Key der Rang und der Wert die Anzahl (Min, Max) ist.
-#
-# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# r_min: niedrigster Rang der Kombination
-# r_max: höchster Rang der Kombination
-def _get_conditions_for_4_bomb(h: list[int], r_min: int, r_max: int) -> list[dict]:
-    assert 2 <= r_min <= 14
-    assert r_min <= r_max <= 14
-    conditions = []
-    remain = {}
-
-    for r in range(r_min, r_max + 1):
-        if h[r] == 4:  # Karten für die Kombination verfügbar?
-            cond = remain.copy()
-            cond[r] = (4, 4)
-            conditions.append(cond)
-            remain[r] = (0, 3)  # ausschließendes Kriterium für die restlichen Bedingungen
-
-    return conditions
-
-
-# Erzeugt die Bedingung für die Schnittmenge zweier Teilmengen
-#
-# Falls die Kombinationen dieser Schnittmenge nicht auf der Hand sein können, wird ein leeres Dictionary zurückgegeben.
-#
-# cond1: Bedingung für Teilmenge 1
-# cond2: Bedingung für Teilmenge 2
 # k: Anzahl Handkarten
-def _get_condition_for_intersection(cond1: dict, cond2: dict, k: int) -> dict:
-    keys = set(cond1.keys()).union(cond2.keys())
-    union_set = {}
-    c_min_total = 0
-    for key in keys:
-        v1 = cond1.get(key, (0, 4))
-        v2 = cond2.get(key, (0, 4))
-        c_min = max(v1[0], v2[0])  # Mindestanzahl notwendiger Karten für Schnittmenge
-        c_max = min(v1[1], v2[1])  # Maximalanzahl notwendiger Karten für Schnittmenge
-        if c_min > c_max:
-            return {}  # keine Überschneidung
-        c_min_total += c_min
-        if c_min_total > k:
-            return {}  # zu viele Karten notwendig, um beide Kombinationen gleichzeit auf der Hand zu haben
-        union_set[key] = (c_min, c_max)
-    return union_set
-
-
-# Erzeugt die Bedingung für die Schnittmenge zweier Teilmengen
-#
-# Es werden alle Bedingungen für Teilmenge 1 mit allen Bedingungen für Teilmenge 2 kombiniert und jeweils die
-# Bedingung für die Schnittmenge berechnet. Falls Kombinationen dieser Schnittmenge auf der Hand sein können,
-# wird die kombinierte Bedingung aufgelistet.
-#
-# conditions1: Liste mit Bedingungen für Teilmenge 1
-# conditions2: Liste mit Bedingungen für Teilmenge 2
-# k: Anzahl Handkarten
-def get_conditions_for_intersection(conditions1: list[dict], conditions2: list[dict], k: int) -> list[dict]:
-    conditions = []
-    for cond1 in conditions1:
-        for cond2 in conditions2:
-            cond_intersect = _get_condition_for_intersection(cond1, cond2, k)
-            if cond_intersect:
-                conditions.append(cond_intersect)
-    return conditions
-
-
-# Hypergeometrische Verteilung
-#
-# Zurückgegeben wird die Anzahl der möglichen Kombinationen, die die gegebene Teilmenge beinhalten.
-#
-# subset: Teilmenge
-# h: Verfügbaren Karten als Vektor
-# k: Anzahl der Handkarten
-def hypergeom(subset: dict, h: list[int], k: int) -> int:
-    def _comb(index: int, n_remain, k_remain) -> int:
-        r = keys[index]  # der aktuell zu untersuchende Kartenrang
-        n_fav = h[r]  # Anzahl der verfügbaren Karten mit diesem Rang
-        c_min = subset[r]  # erforderliche Anzahl Karten mit diesem Rang
-        result = 0
-        for c in range(c_min, n_fav + 1):
-            if k_remain < c:
-                break
-            if index + 1 < length:
-                result += math.comb(n_fav, c) * _comb(index + 1, n_remain - n_fav, k_remain - c)
-            else:
-                result += math.comb(n_fav, c) * math.comb(n_remain - n_fav, k_remain - c)
-        return result
-
-    keys = list(subset)
-    length = len(subset)
-    return _comb(0, sum(h), k)
-
-
-# Zählt die Anzahl der Karten je Rang
-#
-# Zurückgegeben wird eine Liste mit 17 Integer, wobei der Index den Rang entspricht und
-# der Wert die Anzahl der Karten mit diesem Rang.
-def ranks_to_vector(cards: list[tuple]) -> list[int]:
-    # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
-    # i= 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
-    h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    for v, _ in cards:
-        h[v] += 1
-    return h
-
-
-# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann
-#
-# todo:
-#  Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, was auch berücksichtigt wird.
-#  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
-#  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
-#
-# cards: Verfügbare Karten
-# k: Anzahl der Handkarten
-# figure: Typ, Länge und Rang der gegebenen Kombination
-# r: Rang der gegebenen Kombination
-def prob_of_hand(cards: list[tuple], k: int, figure: tuple) -> float:
-    n = len(cards)  # Gesamtanzahl der verfügbaren Karten
+# m: Länge der Straße
+# r: Rang der Straße
+def get_streets(h: list[int], k: int, m: int, r, verbose = False) -> list[dict]:
+    n = sum(h)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
+    assert 5 <= m <= 14
+    assert m <= r <= 14
 
-    # die verfügbaren Karten in einen Vektor umwandeln
-    t, m, r = figure
-    h = ranks_to_vector(cards)  # wenn es keine Farbbombe ist, sind nur die Ränge der Karten von Interesse
+    # Muster laden
+    # todo: Daten im Speicher halten, so dass nur einmal geladen werden muss
+    data = load_data(True)
 
-    # Teilmengen finden, die die gegebene Kombination überstechen
-    subsets = get_streets(h, m, r + 1, 14)
+    # alle Muster durchlaufen und mögliche Kombinationen zählen
+    matches  = 0
+    for r_higher, pho, case in data:
+        if h[16] == 0:
+            if r_higher <= r or pho == 1:
+                break
+        elif r_higher <= r:
+            if pho == 0:
+                continue
+            else:
+                break
+        if sum(case) + pho > k:
+            continue
 
-    # Anzahl Kombinationen mittels hypergeometrische Verteilung ermitteln
-    matches = 0
-    for subset in subsets:
-        matches_part = hypergeom(subset, h, k)
-        #print(subset, matches_part)
-        matches += matches_part
+        offset = r_higher - m + 1
+        matches_part = 1
+        n_remain = n - h[16]
+        k_remain = k - pho
+        for i in range(len(case)):
+            matches_part *= math.comb(h[offset + i], case[i])
+            if matches_part == 0:
+                break
+            n_remain -= h[offset + i]
+            k_remain -= case[i]
 
-    # # Anzahl der 4er-Bomben hinzufügen
-    # if t != BOMB:
-    #     conditions_bomb = _get_conditions_for_4_bomb(h, 2, 14)
-    #     for cond in conditions_bomb:
-    #         matches += hypergeom(cond, h, k)
-    #     # die Schnittmenge wieder abziehen (Prinzip der Inklusion und Exklusion)
-    #     conditions_intersection = get_conditions_for_intersection(subsets, conditions_bomb, k)
-    #     for cond in conditions_intersection:
-    #         matches -= hypergeom(cond, h, k)
-    #     assert matches >= 0
+        matches_part *= math.comb(n_remain, k_remain)
+        if matches_part > 0:
+            if verbose:
+                print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
+            matches += matches_part
 
-    if matches == 0:
-        return 0.0
-
-    # Gesamtanzahl der möglichen Kombinationen
-    total = math.comb(n, k)
-
-    # Wahrscheinlichkeit
-    p = matches / total
-
+    total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
+    p = matches / total  # Wahrscheinlichkeit
     return p
 
 
+def inspect(cards, k, figure, verbose=True):  # pragma: no cover
+    print(f"Kartenauswahl: {cards}")
+    print(f"Anzahl Handkarten: {k}")
+    print(f"Kombination: {stringify_figure(figure)}")
+    print("Mögliche Handkarten:")
+
+    time_start = time()
+    matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
+    if verbose:
+        for match, sample in zip(matches, hands):
+            print("  ", stringify_cards(sample), match)
+    matches_expected = sum(matches)
+    total_expected = len(hands)
+    p_expected = (matches_expected / total_expected) if total_expected else "nan"
+    print(f"Gezählt:   p = {matches_expected}/{total_expected} = {p_expected} "
+          f"({(time() - time_start) * 1000:.6f} ms)")
+
+    time_start = time()
+    h = ranks_to_vector(parse_cards(cards))
+    _t, m, r = figure
+    p_actual = get_streets(h, k, m, r, verbose)
+    print(f"Berechnet: p = {(total_expected * p_actual):.0f}/{total_expected} = {p_actual} "
+          f"({(time() - time_start) * 1000:.6f} ms (inkl. Daten laden))")
+
+
 if __name__ == '__main__':  # pragma: no cover
-    generate_table(5)
+    #generate_table(5)
+
+    # Test auf Fehler
+
+    print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 Ph", 9, (6, 5, 6), verbose=True), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 Ph", 9, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7", 5, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", 9, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("GA RK GD BB GB RB GZ R9 S8 B7 B6 S6 S5 G4 B4 R4 S3 S2 Ma Ph", 9, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+
+    # Test auf Geschwindigkeit
+
+    # n = 14, k = 6, figure = (6, 5, 6)
+    # Gezählt:   p = 288/3003 = 0.0959040959040959 (104.385853 ms)
+    # Berechnet: p = 288/3003 = 0.0959040959040959 (720.663309 ms (inkl. Daten laden))
+    # for k_ in range(5, 10):
+    #     print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
+    #     print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
+    #     print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
+    #     print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+
+    # todo: Differenz wegen 4er-Bombe (wird von possible_hands_hi() berücksichtigt, aber noch nicht von get_streets();
+    #  Farbbomben werden von beiden Funktionen noch nicht berücksichtigt)
+
+    # n = 52, k = 5, figure = (6, 5, 6)
+    # Gezählt:   p = 8816/2598960 = 0.0033921260812017117 (42438.135147 ms)
+    # Berechnet: p = 8192/2598960 = 0.0031520300427863453 (662.052393 ms (inkl. Daten laden))
+    # -> Differenz: 0.00024009603841536635
+    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+
+    # n = 52, k = 6, figure = (6, 5, 6)
+    # Gezählt:   p = 309576/20358520 = 0.015206213418264196 (368347.875834 ms)
+    # Berechnet: p = 294912/20358520 = 0.014485925303018097 (670.219183 ms (inkl. Daten laden))
+    # -> Differenz:  0.0007202881152460986   (0.0007202881152460986/0.00024009603841536635 == 3)
+    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 6, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+
+    # n = 52, k = 5, figure = (6, 5, 13)
+    # Gezählt:   p = 1648/2598960 = 0.0006340997937636593 (17087.398767 ms)
+    # Berechnet: p = 1024/2598960 = 0.00039400375534829317 (565.371275 ms (inkl. Daten laden))
+    # -> Differenz: 0.00024009603841536618
+    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 13), verbose=False), number=1) * 1000:.6f} ms")
+
+    # n = 52, k = 5, figure = (6, 5, 14)
+    # Gezählt:   p = 624/2598960 = 0.00024009603841536616 (12652.729511 ms)
+    # Berechnet: p = 0/2598960 = 0.0 (541.404486 ms (inkl. Daten laden))
+    # -> Differenz: 0.00024009603841536616
+    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 14), verbose=False), number=1) * 1000:.6f} ms")
+
+    pass
