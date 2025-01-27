@@ -13,9 +13,8 @@ from time import time
 from timeit import timeit
 
 
-# todo: nach cache/lib speichern, cache für git ignorieren, data/lib/street5_hi.pkl und .txt aus git löschen
 def get_filename(t: int, m: int):
-    folder = path.join(config.DATA_PATH, "lib")
+    folder = path.join(config.DATA_PATH, "cache/prob")
     if not path.exists(folder):
         mkdir(folder)
     name = ['single', 'pair', 'triple', 'stair', 'fullhouse', 'street', 'bomb'][t - 1]
@@ -392,5 +391,5 @@ if __name__ == '__main__':  # pragma: no cover
     generate_street_tables_if_not_exists()
     inspect_street()
 
-    print(f"{timeit(lambda: load_data(STREET, 10), number=10) * 1000 / 10:.6f} ms")  # 420 ms
-    print(f"{timeit(lambda: load_data(STREET, 5), number=10) * 1000 / 10:.6f} ms")  # 420 ms
+    #print(f"{timeit(lambda: load_data(STREET, 10), number=10) * 1000 / 10:.6f} ms")  # 420 ms
+    #print(f"{timeit(lambda: load_data(STREET, 5), number=10) * 1000 / 10:.6f} ms")  # 420 ms
