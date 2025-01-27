@@ -3,6 +3,7 @@
 /.env
 /.idea
 /logs
+/data/cache
 /*.py.lprof
 /*.py.prof
 .DS_Store
