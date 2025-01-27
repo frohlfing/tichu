@@ -20,8 +20,8 @@ def get_filename(t: int, m: int):
     name = ['single', 'pair', 'triple', 'stair', 'fullhouse', 'street', 'bomb'][t - 1]
     if t in (STAIR, STREET, BOMB):
         name += f"{m:02}"
-    file = path.join(folder, f"{name}_hi.pkl")
-    #file = path.join(folder, f"{name}_hi.pkl.gz")
+    #file = path.join(folder, f"{name}_hi.pkl")
+    file = path.join(folder, f"{name}_hi.pkl.gz")
     return file
 
 
@@ -40,7 +40,7 @@ def save_data(t: int, m: int, data: list):
             pickle.dump(data, fp)
 
     # zusätzlich als Textdatei speichern (nützlich zum Debuggen)
-    with open(file[:-7] if file[-7:] == '.pkl.gz' else file[:-4] + ".txt", "w") as datei:
+    with open((file[:-7] if file[-7:] == '.pkl.gz' else file[:-4]) + ".txt", "w") as datei:
         for pho in range(2):
             datei.write(f"Pho={pho}\n")
             for row in data[pho]:
