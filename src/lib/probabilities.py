@@ -645,9 +645,10 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 
 
 if __name__ == "__main__":  # pragma: no cover
-    from timeit import timeit
-    print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7", 5, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
-    print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", 9, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+
+    # from timeit import timeit
+    # print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7", 5, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", 9, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
 
     # todo Problem bei Straße mit Phönix aufgrund viele subsets (25 und mehr):
     #  Ab k == 7, wird es langsam und ab 8 unbrauchbar!
