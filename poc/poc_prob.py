@@ -20,8 +20,8 @@ def get_filename(t: int, m: int):
     name = ['single', 'pair', 'triple', 'stair', 'fullhouse', 'street', 'bomb'][t - 1]
     if t in (STAIR, STREET, BOMB):
         name += f"{m:02}"
-    #file = path.join(folder, f"{name}_hi.pkl")
-    file = path.join(folder, f"{name}_hi.pkl.gz")
+    file = path.join(folder, f"{name}_hi.pkl")
+    #file = path.join(folder, f"{name}_hi.pkl.gz")
     return file
 
 
@@ -93,10 +93,130 @@ def combine_lists(list1, list2, k: int):
     return result
 
 
+# -----------------------------------------------------------------------------
+# Treppen
+# -----------------------------------------------------------------------------
+
+# Ermittelt die höchste Treppe im Datensatz
+#
+# Wenn eine Treppe vorhanden ist, wird der Rang der Treppe zurückgegeben, sonst False.
+#
+# steps = 2: 2,3 bis K,A
+# steps = 3: 2,3,4 bis Q,K,A
+# steps = 7: 2,3,4,5,6,7,8 bis 8,9,10,J,Q,K,A
+#
+# row: row[0] == Phönix, row[1] bis row[14] == Rang 1 bis 14
+# steps: Anzahl Stufen der Treppe
+def get_max_rank_of_stair(row: tuple, steps: int) -> int|False:
+    for r in range(14, steps, -1):  # [14 ... 3] (höchster Rang zuerst)
+        r_start = r - steps + 1
+        r_end = r + 1  # exklusiv
+        if row[0]:  # mit Phönix
+            for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Treppe)
+                if row[r_pho] >= 1 and all(row[i] >= 2 for i in range(r_start, r_end) if i != r_pho):
+                    return r
+        else:  # ohne Phönix
+            if all(row[i] >= 2 for i in range(r_start, r_end)):
+                return r
+    return False
+
+
+# Generiert eine Tabelle mit allen möglichen Treppen der Länge m, höhere Treppe wird bevorzugt.
+# Diese Informationen werden in eine Datei gespeichert.
+def generate_stair_table(m: int):  # pragma: no cover
+    assert m % 2 == 0
+    assert 4 <= m <= 14
+    steps = int(m / 2)
+
+    time_start = time()
+
+    # 1. Schritt:
+    # alle möglichen Kombinationen (reduziert auf mind. 2 Karten/1 Karte/fehlt) durchlaufen und Treppen davon auflisten
+
+    c_all = 0
+    c_matches = 0
+    c_unique = 0
+    data = []
+    for row in itertools.product(range(3), repeat=15):
+        # Beispiel für row (steps = 5, r = 11):
+        # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
+        # (1, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 2, 0, 2, 1)
+        #  ^  ^----remain----^  ^-------unique-------^
+        #  |  |              |  | <-steps-> |        |
+        # pho 1        r-steps  r-steps+1   r       14
+        # Von r-m+1 bis r befindet sich die Treppe. Darunter muss nicht weiter betrachtet werden.
+        # Die Karten darüber (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
+        # row[0] == Phönix, row[1] bis row[14] == Rang 1 bis 14
+        c_all += 1
+        #print(f"\r{c_all}", end="")
+        print(f"\r{c_all}/14348907 = {100 * c_all / 14348907:.1f} %", end="")  # 14348907 == 3^15
+        r = get_max_rank_of_stair(row, steps)
+        if r:  # mindestens eine Treppe ist vorhanden
+            unique = row[r - steps + 1:]
+            c_matches += 1
+            found = (r, row[0], unique) in data
+            if not found:
+                # die Treppe ist noch nicht gelistet
+                c_unique += 1
+                data.append((r, row[0], unique))
+            #     print(row, f" -> r: {r} (start: {r - m + 1}), pho: {row[0]}, top: {top}")
+            # else:
+            #     print(row, f"r: {r}")
+    print("all:", c_all)
+    print("matches:", c_matches)
+    print("unique:", c_unique)
+
+    # data listet nun folgende Daten:
+    # r: Rang der Treppe (von 14 bis 3)
+    # pho: 1, wenn der Phönix verwendet wird, sonst 0
+    # unique: Muster von r-steps+1 bis 14
+    #
+    # Zuerst werden die Fälle ohne Phönix aufgeführt, sortiert nach Rang (absteigend).
+    # Dann werden die Fälle mit Phönix aufgeführt, wieder sortiert nach Rang (absteigend).
+
+    # Schritt 2:
+    # Karte mind. 2 Karten/1 Karte/fehlt expandieren zu Kartenanzahl 0,1,2,3,4
+
+    table = [[], []]  # erste Liste ohne Phönix, zweite Liste mit Phönix
+    c = 0
+    for r, pho, unique in data:
+        if r <= steps + 1:
+            # Der kleinste Rang einer 2er-Treppe ist 3, der einer 3er-Treppe ist 4, usw.
+            # Wir suchen höhere Treppen, also brauchen wir den kleinstmöglichen Rang nicht speichern.
+            continue
+        cases = []
+        for v in unique:
+            cases = combine_lists(cases, list(range(2, 5) if v == 2 else [v]), 14)
+        # if r == 14:
+        #     for case in cases:
+        #         print(f"r: {r}, pho: {pho}, case: {unique}", f" -> r: {r}, pho: {pho}, case: {case}")
+        c += len(cases)
+        print(f"\r{c}", end="")
+        table[pho].extend(cases)  # for case in cases: table[pho].append(case)
+    print("Expandiert:", c)
+    print(f"{(time() - time_start) * 1000:.6f} ms")
+
+    # Daten speichern
+    save_data(STREET, m, table)
+
+
+def generate_stair_tables_if_not_exists():
+    for m in range(4, 15):
+        file = get_filename(STREET, m)
+        if not path.exists(file):
+            generate_stair_table(m)
+
+# -----------------------------------------------------------------------------
+# Straßen
+# -----------------------------------------------------------------------------
+
 # Ermittelt die höchste Straße im Datensatz
 #
-# Wenn eine Straße vorhanden ist, wird der Rang der Straße zurückgegeben
-# (und ein Kennzeichen, ob der Phönix verwendet wird)
+# Wenn eine Straße vorhanden ist, wird der Rang der Straße zurückgegeben, sonst False.
+#
+# m = 5:  MAH,2,3,4,5 bis 10,J,Q,K,A
+# m = 6:  MAH,2,3,4,5,6 bis 9,10,J,Q,K,A
+# m = 14: MAH,2,3,4,5,6,7,8,9,10,J,Q,K,A
 #
 # row: row[0] == Phönix, row[1] bis row[14] == Rang 1 bis 14
 # m: Länge der Straße
@@ -105,18 +225,14 @@ def get_max_rank_of_street(row: tuple, m: int):
         r_start = r - m + 1
         r_end = r + 1  # exklusiv
         if row[0]:  # mit Phönix
-            for pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Straße)
-                if all(row[i] for i in range(r_start, r_end) if i != pho):
-                    return r, 1
+            for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Straße)
+                if row[r_pho] >= 0 and all(row[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
+                    return r
         else:  # ohne Phönix
-            if all(row[i] for i in range(r_start, r_end)):
-                return r, 0
+            if all(row[i] >= 1 for i in range(r_start, r_end)):
+                return r
     return False
 
-
-# -----------------------------------------------------------------------------
-# Straßen
-# -----------------------------------------------------------------------------
 
 # Generiert eine Tabelle mit allen möglichen Straßen der Länge m, höhere Straße wird bevorzugt.
 # Diese Informationen werden in eine Datei gespeichert.
@@ -130,50 +246,32 @@ def generate_street_table(m: int):  # pragma: no cover
     # 1. Schritt:
     # alle möglichen Kombinationen (reduziert auf Karte verfügbar/fehlt) durchlaufen und Straßen davon auflisten
 
-    # Kombinationen bei Straße der Länge 5, r = 11:
-    # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
-    # (1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0)
-    # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1)
-    #  ^  ^----remain----^  ^-------unique-------^
-    #  |  |              |  | <-  m  -> |        |
-    # pho 1            r-m  r-m+1       r       14
-
-    # Die Karten von 1 bis r-m sind einzeln nicht relevant.
-    # Von r-m+1 bis r befindet sich die Straße. An der Stelle des Phönix ist eine 0 (keine Karte mit
-    # diesem Rang), an jeder anderen Stelle der Straße ist eine 1 (mindestens eine Karte erforderlich).
-    # Die Karten überhalb der Straße (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
-    # Dadurch schließen sich die Teilmengen gegenseitig aus.
-
     c_all = 0
     c_matches = 0
     c_unique = 0
     data = []
     for row in itertools.product(range(2), repeat=15):
-        # row[0] == Phönix, row[1] bis row[14] == Rang 1 bis 14
+        # Beispiel für row (m = 5, r = 11):
+        # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
+        # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1)
+        #  ^  ^----remain----^  ^-------unique-------^
+        #  |  |              |  | <-  m  -> |        |
+        # pho 1            r-m  r-m+1       r       14
+        # Von r-m+1 bis r befindet sich die Straße. Darunter muss nicht weiter betrachtet werden.
+        # Die Karten darüber (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
         c_all += 1
-        res = get_max_rank_of_street(row, m)
-        if res:
+        print(f"\r{c_all}/32768 = {100 * c_all / 32768:.1f} %", end="")  # 32768 == 2^15
+        r = get_max_rank_of_street(row, m)
+        if r:
             # im Datensatz ist mindestens eine Straße vorhanden
-            r, pho = res
             unique = row[r - m + 1:]
             c_matches += 1
-            found = (r, pho, unique) in data  # zählt 1673 Fälle
+            found = (r, row[0], unique) in data
             if not found:
                 # die Straße ist noch nicht gelistet
                 c_unique += 1
-                data.append((r, pho, unique))
-            #     print(row, f" -> r: {r} (start: {r - m + 1}), pho: {pho}, top: {top}")
+                data.append((r, row[0], unique))
+            #     print(row, f" -> r: {r} (start: {r - m + 1}), pho: {row[0]}, top: {top}")
             # else:
             #     print(row, f"r: {r}")
     print("all:", c_all)
@@ -196,7 +294,7 @@ def generate_street_table(m: int):  # pragma: no cover
     for r, pho, unique in data:
         if r <= m:
             # Der kleinste Rang einer 5er-Straße ist 5, der einer 6er-Straße ist 6, usw.
-            # Eir suchen höhere Straßen, also brauchen wir den kleinstmöglichen Rang nicht speichern.
+            # Wir suchen höhere Straßen, also brauchen wir den kleinstmöglichen Rang nicht speichern.
             continue
         cases = []
         for v in unique:
@@ -205,6 +303,7 @@ def generate_street_table(m: int):  # pragma: no cover
         #     for case in cases:
         #         print(f"r: {r}, pho: {pho}, case: {unique}", f" -> r: {r}, pho: {pho}, case: {case}")
         c += len(cases)
+        print(f"\r{c}", end="")
         table[pho].extend(cases)  # for case in cases: table[pho].append(case)
     print("Expandiert:", c)
     print(f"{(time() - time_start) * 1000:.6f} ms")
@@ -320,6 +419,21 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
     assert p_expected == p_actual
 
 
+def inspect_stair():  # pragma: no cover
+    # Treppe ohne Phönix
+    #print(f"{timeit(lambda: inspect("RK GK BD SD SB RB BB", 6, (4, 6, 12), verbose=False), number=1) * 1000:.6f} ms")  # 10/10 = 1.0
+    print(f"{timeit(lambda: inspect("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), verbose=False), number=1) * 1000:.6f} ms")  # 10/10 = 1.0
+    print(f"{timeit(lambda: inspect("RK GK BD SD GD R9 B2", 6, (4, 4, 12), verbose=False), number=1) * 1000:.6f} ms")  # 10/10 = 1.0
+    print(f"{timeit(lambda: inspect("Dr GA BA GK BK SD BD", 6, (4, 4, 14), verbose=False), number=1) * 1000:.6f} ms")  # 10/10 = 1.0
+
+    # Treppe mit Phönix
+    print(f"{timeit(lambda: inspect("Ph GK BK SD SB RB BZ R9", 6, (4, 4, 10), verbose=False), number=1) * 1000:.6f} ms")  # 10/10 = 1.0
+    print(f"{timeit(lambda: inspect("Ph GK BK SD SB RB R9", 6, (4, 4, 10), verbose=False), number=1) * 1000:.6f} ms")  # 10/10 = 1.0
+    print(f"{timeit(lambda: inspect("Ph GK BK SD SB R9 S4", 6, (4, 4, 10), verbose=False), number=1) * 1000:.6f} ms")  # 10/10 = 1.0
+    #print(f"{timeit(lambda: inspect("Ph GK BD SD SB RB BB", 6, (4, 6, 12), verbose=False), number=1) * 1000:.6f} ms")  # 10/10 = 1.0
+    print(f"{timeit(lambda: inspect("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 9), verbose=False), number=1) * 1000:.6f} ms")  # 10/10 = 1.0
+
+
 def inspect_street():  # pragma: no cover
     # Test auf Fehler
 
@@ -329,7 +443,7 @@ def inspect_street():  # pragma: no cover
     # print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7", 5, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")  # 4/56 = 0.07142857142857142
     # print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", 9, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")  # 1476/2002 = 0.7372627372627373
     # print(f"{timeit(lambda: inspect("GA RK GD BB GB RB GZ R9 S8 B7 B6 S6 S5 G4 B4 R4 S3 S2 Ma Ph", 9, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")  # 56220/167960 = 0.3347225529888069
-    #
+
     # # Straße mit der Länge 10
     # print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 10, 10), verbose=False), number=1) * 1000:.6f} ms")  # 92/120 = 0.7666666666666667
     # print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 10, 12), verbose=False), number=1) * 1000:.6f} ms")  # 75/120 = 0.625
@@ -349,12 +463,12 @@ def inspect_street():  # pragma: no cover
     # n = 14, k = 6, figure = (6, 5, 6)
     # Gezählt:   p = 288/3003 = 0.0959040959040959 (100.065470 ms)
     # Berechnet: p = 288/3003 = 0.0959040959040959 (498.227119 ms (inkl. Daten laden))
-    for k_ in range(5, 10):
-        if k_ != 6: continue
+    # for k_ in range(5, 10):
+        # if k_ != 6: continue
         # print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
         # print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
         # print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
-        print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+        # print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
 
     # todo: Differenz wegen 4er-Bombe (wird von possible_hands_hi() berücksichtigt, aber noch nicht von get_streets();
     #  Farbbomben werden von beiden Funktionen noch nicht berücksichtigt)
@@ -375,7 +489,7 @@ def inspect_street():  # pragma: no cover
     # Gezählt:   p = 1648/2598960 = 0.0006340997937636593 (17087.398767 ms)
     # Berechnet: p = 1024/2598960 = 0.00039400375534829317 (565.371275 ms (inkl. Daten laden))
     # -> Differenz: 0.00024009603841536618
-    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 13), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 13), verbose=False), number=1) * 1000:.6f} ms")
 
     # n = 52, k = 5, figure = (6, 5, 14)
     # Gezählt:   p = 624/2598960 = 0.00024009603841536616 (12652.729511 ms)
@@ -387,9 +501,12 @@ def inspect_street():  # pragma: no cover
 
 
 if __name__ == '__main__':  # pragma: no cover
-    #generate_street_table(5)
-    generate_street_tables_if_not_exists()
-    inspect_street()
+    generate_stair_table(4)
+    inspect_stair()
+
+    #generate_street_table(13)
+    #generate_street_tables_if_not_exists()
+    #inspect_street()
 
     #print(f"{timeit(lambda: load_data(STREET, 10), number=10) * 1000 / 10:.6f} ms")  # 420 ms
     #print(f"{timeit(lambda: load_data(STREET, 5), number=10) * 1000 / 10:.6f} ms")  # 420 ms
