@@ -1,7 +1,9 @@
 import unittest
 from src.lib.cards import *
 from src.lib.combinations import *
-from src.lib.probabilities import *
+from src.lib.prob import *
+# noinspection PyProtectedMember
+from src.lib.prob import possible_hands_hi
 
 
 # Testfunktion possible_hands_hi() testen
@@ -89,36 +91,9 @@ class TestPossibleHands(unittest.TestCase):
             #self.assertAlmostEqual(p_expected, sum(matches) / len(hands) if len(hands) else 0.0, places=15, msg=t[6])
 
 
-# Hilfsfunktionen testen
-class TestProbabilities(unittest.TestCase):
-    def test_ranks_to_vector(self):
-        #   Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
-        h = [1, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0]
-        self.assertEqual(h, ranks_to_vector([(0, 0), (2, 1), (3, 2), (2, 3), (14, 3), (14, 4), (15, 0)]))
-
-        #   Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
-        h = [0, 1, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 1]
-        self.assertEqual(h, ranks_to_vector([(1, 0), (8, 1), (8, 2), (8, 3), (8, 4), (16, 0)]))
-
-    def test_cards_to_vector(self):
-        # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
-        # i= 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55
-        h = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        self.assertEqual(h, cards_to_vector([(0, 0), (14, 1), (10, 2), (5, 3), (2, 4)]))
-
-        # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
-        # i= 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55
-        h = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1]
-        self.assertEqual(h, cards_to_vector([(1, 0), (14, 4), (16, 0)]))
-
-        # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
-        # i= 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55
-        h = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
-        self.assertEqual(h, cards_to_vector([(2, 1), (15, 0)]))
-
-
 # prob_of_hand() testen (explizit ausgesuchte Fälle)
 class TestProbOfHandExplicit(unittest.TestCase):
+    # todo Fall k = 0 testen
     def _test(self, cards, k, figure, p_expected, msg):  # pragma: no cover
         if k > len(cards.split(" ")):
             with self.assertRaises(AssertionError, msg="k > n"):
@@ -195,10 +170,18 @@ class TestProbOfHandExplicit(unittest.TestCase):
         self._test("GA RA GK RK SD BD SB BB GB BZ RZ G9 B9 R9 S8 R8 S3 S2 Ma Ph", 14, (4, 14, 13), 0.003018575851393189, "7er-Treppe")
 
         # todo: Treppe mit 4er-Bombe
-        # self._test("SB RZ GZ BZ SZ R9", 5, (4, 4, 11), 0.3333333333333333, "Treppe mit 4er-Bombe")
+        # self._test("GB SB RZ GZ BZ SZ", 5, (4, 4, 10), 0.3333333333333333, "Treppe mit 4er-Bombe (1)")
+        # self._test("GB SB RZ GZ BZ SZ", 5, (4, 4, 11), 0.3333333333333333, "Treppe mit 4er-Bombe (2)")
 
         # todo: Treppe mit Farbbombe
-        # self._test("SB RZ R9 R8 R7 R6", 5, (4, 4, 11), 0.16666666666666667, "Treppe mit Farbbombe")
+        # self._test("GB RB GZ RZ R9 R8 R7", 5, (4, 4, 11), 0.16666666666666667, "Treppe mit Farbbombe (1)")
+        # self._test("GB RB GZ RZ R9 R8 R7", 5, (4, 4, 12), 0.16666666666666667, "Treppe mit Farbbombe (2)")
+
+        # todo: Treppe mit 4er-Bombe und Farbbombe
+        # self._test("GB RB GZ SZ BZ RZ R9 R8 R7", 5, (4, 4, 10), 0.16666666666666667, "Treppe 4er-Bombe und Farbbombe (1)")
+        # self._test("GB RB GZ SZ BZ RZ R9 R8 R7", 5, (4, 4, 11), 0.16666666666666667, "Treppe 4er-Bombe und Farbbombe (2)")
+        # self._test("GB RB GZ SZ BZ RZ R9 R8 R7", 6, (4, 4, 10), 0.16666666666666667, "Treppe 4er-Bombe und Farbbombe (3)")
+        # self._test("GB RB GZ SZ BZ RZ R9 R8 R7", 6, (4, 4, 11), 0.16666666666666667, "Treppe 4er-Bombe und Farbbombe (4)")
 
     def test_fullhouse(self):
         # Fullhouse ohne Phönix

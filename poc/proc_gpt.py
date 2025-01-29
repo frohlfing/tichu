@@ -1,7 +1,7 @@
 from itertools import combinations
 
 # noinspection PyProtectedMember
-from src.lib.probabilities import union_sets
+from src.lib.prob import union_sets
 
 
 def union_sets_optimized(sets: list[dict], k: int) -> list[list[dict]]:

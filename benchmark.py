@@ -8,7 +8,7 @@ from scipy.stats import hypergeom
 from src.lib.cards import _cardlabels, _cardlabels_index
 from src.lib.cards import *
 from src.lib.combinations import *
-from src.lib.probabilities import *
+from src.lib.prob import *
 from timeit import timeit
 
 
