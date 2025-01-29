@@ -32,6 +32,8 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
     if t == SINGLE:  # Einzelkarte
         assert 0 <= r <= 16
         steps = 1
+        if r == 16:  # Rang des Phönix an die Schlagkraft anpassen
+            r = 14.5  # der Phönix schlägt das Ass, aber nicht den Drachen
 
     elif t in [PAIR, TRIPLE, FULLHOUSE] or (t == BOMB and m == 4):  # Paar, Drilling, Fullhouse, 4er-Bombe
         assert 2 <= r <= 14
@@ -81,7 +83,7 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
     matches = 0
     for pho in range(2 if h[16] else 1):
         for case in data[pho]:
-            offset = 15 - len(case)
+            offset = (16 if t == SINGLE else 15) - len(case)
             r_higher = offset + steps - 1
             if r_higher <= r:
                 break
@@ -258,7 +260,7 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 
 
 def inspect_single():  # pragma: no cover
-    pass
+    print(f"{timeit(lambda: inspect("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), verbose=True), number=1) * 1000:.6f} ms")
 
 
 def inspect_pair():  # pragma: no cover
@@ -366,6 +368,6 @@ def benchmark_load_data():  # pragma: no cover
 
 
 if __name__ == "__main__":  # pragma: no cover
-    inspect_stair()
+    inspect_single()
     #inspect_street()
     pass
