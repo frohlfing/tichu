@@ -14,7 +14,7 @@ from time import time
 
 # Gibt den Dateinamen für die Hilfstabellen
 def get_filename_hi(t: int, m: int = None):
-    folder = path.join(config.DATA_PATH, "cache/prob")
+    folder = path.join(config.DATA_PATH, "lib/prob")
     if not path.exists(folder):
         mkdir(folder)
     name = ['single', 'pair', 'triple', 'stair', 'fullhouse', 'street', 'bomb'][t - 1]
@@ -216,8 +216,9 @@ def get_max_rank_of_bomb(row: tuple, m: int) -> int:
                 return r
     else:
         # Farbbombe
-        # todo
-        return -1
+        for r in range(14, m, -1):  # [14 ... 6] (höchster Rang zuerst)
+            if all(row[i] == 1 for i in range(r - m + 1, r + 1)):
+                return r
     return -1
 
 
@@ -240,18 +241,18 @@ def generate_pair_file_hi():
     c_matches = 0
     c_unique = 0
     data = []
-    a = [0, 1, 2]                 # 0    1  2  3  4  5  6  7  8  9 10 11 12 13 14
-    for row in itertools.product([0, 1], a, a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend (zuerst ohne Phönix, dann mit)
+    a = [0, 1, 2]                 # 0     1   2  3  4  5  6  7  8  9 10 11 12 13 14
+    for row in itertools.product([0, 1], [0], a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend (zuerst ohne Phönix, dann mit)
         # Beispiel für row (r = 10):
         # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
         # (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 0, 0, 1, 1)
-        #  ^  ^---------remain--------^  ^---unique--^
-        #  |  |                       |  |           |
-        # pho 1                     r-1  r          14
+        #  ^     ^------remain--------^  ^---unique--^
+        #  |     |                    |  |           |
+        # pho    2                  r-1  r          14
         # r ist der Rang des Pärchens. Darunter muss nicht weiter betrachtet werden.
         # Die Karten darüber sind wichtig, um das Muster eindeutig zu halten.
         c_all += 1
-        print(f"\r{c_all}/9565938 = {100 * c_all / 9565938:.1f} %", end="")  # 9565938 == 2 * 3^14
+        print(f"\r{c_all}/3188646 = {100 * c_all / 3188646:.1f} %", end="")  # 3188646 == 2 * 3^13
         r = get_max_rank_of_pair(row)
         if r >= 0:  # mindestens ein Pärchen ist vorhanden
             unique = row[r:]
@@ -263,10 +264,6 @@ def generate_pair_file_hi():
                 data.append((r, row[0], unique))
     print("\nmatches:", c_matches)
     print("unique:", c_unique)
-    # Daten zwischenspeichern
-    with open(path.join(config.DATA_PATH, f"cache/prob/~pair.pkl"), 'wb') as fp:
-        # noinspection PyTypeChecker
-        pickle.dump(data, fp)
 
     # 2. Schritt:
     # 2 Karten/1 Karte/fehlt expandieren zu Kartenanzahl 0,1,2,3,4
@@ -305,18 +302,18 @@ def generate_triple_file_hi():
     c_matches = 0
     c_unique = 0
     data = []
-    a = [1, 2, 3]                 # 0    1  2  3  4  5  6  7  8  9 10 11 12 13 14
-    for row in itertools.product([0, 1], a, a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend (zuerst ohne Phönix, dann mit)
-        # Beispiel für row (steps = 5, r = 11):
+    a = [1, 2, 3]                 # 0     1   2  3  4  5  6  7  8  9 10 11 12 13 14
+    for row in itertools.product([0, 1], [0], a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend (zuerst ohne Phönix, dann mit)
+        # Beispiel für row (r = 10):
         # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
-        # (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 3, 0, 0, 2, 1)
-        #  ^  ^---------remain--------^  ^---unique--^
-        #  |  |                       |  |           |
-        # pho 1                 r-steps  r          14
+        # (1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 3, 1, 1, 1, 1)
+        #  ^     ^------remain--------^  ^---unique--^
+        #  |     |                    |  |           |
+        # pho    2                  r-1  r          14
         # r ist der Rang des Drillings. Darunter muss nicht weiter betrachtet werden.
         # Die Karten darüber sind wichtig, um das Muster eindeutig zu halten.
         c_all += 1
-        print(f"\r{c_all}/9565938 = {100 * c_all / 9565938:.1f} %", end="")  # 9565938 == 2 * 3^14
+        print(f"\r{c_all}/3188646 = {100 * c_all / 3188646:.1f} %", end="")  # 3188646 == 2 * 3^13
         r = get_max_rank_of_triple(row)
         if r >= 0:  # mindestens ein Drilling ist vorhanden
             unique = row[r:]
@@ -328,10 +325,6 @@ def generate_triple_file_hi():
                 data.append((r, row[0], unique))
     print("\nmatches:", c_matches)
     print("unique:", c_unique)
-    # Daten zwischenspeichern
-    with open(path.join(config.DATA_PATH, f"cache/prob/~triple.pkl"), 'wb') as fp:
-        # noinspection PyTypeChecker
-        pickle.dump(data, fp)
 
     # 2. Schritt:
     # 3 Karten/2 Karten/weniger expandieren zu Kartenanzahl 0,1,2,3,4
@@ -374,18 +367,18 @@ def generate_stair_file_hi(m: int):
     c_matches = 0
     c_unique = 0
     data = []
-    a = [0, 1, 2]  #               0    1  2  3  4  5  6  7  8  9 10 11 12 13 14
-    for row in itertools.product([0,1], a, a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend (zuerst ohne Phönix, dann mit)
+    a = [0, 1, 2]  #                0     1   2  3  4  5  6  7  8  9 10 11 12 13 14
+    for row in itertools.product([0, 1], [0], a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend (zuerst ohne Phönix, dann mit)
         # Beispiel für row (steps = 5, r = 11):
         # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
         # (1, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 2, 0, 2, 1)
-        #  ^  ^----remain----^  ^-------unique-------^
-        #  |  |              |  | <-steps-> |        |
-        # pho 1        r-steps  r-steps+1   r       14
+        #  ^     ^--remain---^  ^-------unique-------^
+        #  |     |           |  | <-steps-> |        |
+        # pho    2     r-steps  r-steps+1   r       14
         # Von r-m+1 bis r befindet sich die Treppe. Darunter muss nicht weiter betrachtet werden.
         # Die Karten darüber (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
         c_all += 1
-        print(f"\r{c_all}/9565938 = {100 * c_all / 9565938:.1f} %", end="")  # 9565938 == 2 * 3^14
+        print(f"\r{c_all}/3188646 = {100 * c_all / 3188646:.1f} %", end="")  # 3188646 == 2 * 3^13
         r = get_max_rank_of_stair(row, steps)
         if r >= 0:  # mindestens eine Treppe ist vorhanden
             unique = row[r - steps + 1:]
@@ -397,10 +390,6 @@ def generate_stair_file_hi(m: int):
                 data.append((r, row[0], unique))
     print("\nmatches:", c_matches)
     print("unique:", c_unique)
-    # # Daten zwischenspeichern
-    # with open(path.join(config.DATA_PATH, f"cache/prob/~stair{m:02}.pkl"), 'wb') as fp:
-    #     # noinspection PyTypeChecker
-    #     pickle.dump(data, fp)
 
     # 2. Schritt:
     # Karte mind. 2 Karten/1 Karte/fehlt expandieren zu Kartenanzahl 0,1,2,3,4
@@ -497,27 +486,152 @@ def generate_street_file_hi(m: int):
     save_data_hi(STREET, m, table)
 
 
-# Generiert eine Datei mit allen möglichen Bomben der Länge m, höhere Bombe wird bevorzugt.
-def generate_bomb_file_hi(m: int):
-    assert 4 <= m <= 13  # die längste Bombe besteht aus 13 Karten (von 2 bis Ass)
-    # todo
-    pass
+# Generiert eine Datei mit allen möglichen 4er-Bomben, höhere Bombe wird bevorzugt.
+def generate_4_bomb_file_hi():
+    time_start = time()
 
+    # 1. Schritt:
+    # alle möglichen Kombinationen (reduziert auf mind. 4 Karten/weniger) durchlaufen und 4er-Bomben auflisten
+
+    c_all = 0
+    c_matches = 0
+    c_unique = 0
+    data = []
+    a = [3, 4]                  # 0    1   2  3  4  5  6  7  8  9 10 11 12 13 14
+    for row in itertools.product([0], [0], a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend
+        # Beispiel für row (r = 10):
+        # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
+        # (0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 3, 3)
+        #        ^------remain--------^  ^---unique--^
+        #        |                    |  |           |
+        #        2                  r-1  r          14
+        # r ist der Rang des Drillings. Darunter muss nicht weiter betrachtet werden.
+        # Die Karten darüber sind wichtig, um das Muster eindeutig zu halten.
+        c_all += 1
+        print(f"\r{c_all}/8192 = {100 * c_all / 8192:.1f} %", end="")  # 8192 == 2^13
+        r = get_max_rank_of_bomb(row, 4)
+        if r >= 0:  # mindestens eine 4er-Bombe ist vorhanden
+            unique = row[r:]
+            c_matches += 1
+            found = (r, row[0], unique) in data
+            if not found:
+                # die 4er-Bombe ist noch nicht gelistet
+                c_unique += 1
+                data.append((r, row[0], unique))
+    print("\nmatches:", c_matches)
+    print("unique:", c_unique)
+
+    # 2. Schritt:
+    # 3 Karten/2 Karten/weniger expandieren zu Kartenanzahl 0,1,2,3,4
+
+    table = [[], []]  # erste Liste ohne Phönix, zweite Liste mit Phönix (bleibt bei Bomben leer)
+    c = 0
+    for r, pho, unique in data:
+        if r == 2:
+            # Der kleinste Rang einer 4er-Bombe ist 2.
+            # Wir suchen höhere 4er-Bomben, also brauchen wir den kleinstmöglichen Rang nicht speichern.
+            continue
+        cases = []
+        for v in unique:
+            cases = combine_lists(cases, list([4] if v == 4 else range(4)), 14)
+            if not cases:
+                break
+        if cases:
+            c += len(cases)
+            print(f"\r{c}", end="")
+            table[pho].extend(cases)  # for case in cases: table[pho].append(case)
+    print("\nExpandiert:", c)
+    print(f"{(time() - time_start) * 1000:.6f} ms")
+
+    # Daten speichern
+    save_data_hi(BOMB, 4, table)
+
+
+# Generiert eine Datei mit allen möglichen Farbbomben der Länge m, höhere Bombe wird bevorzugt.
+# Es wird vorausgesetzt, dass die Karten nur in einer Farbe vorliegen.
+def generate_color_bomb_file_hi(m: int):
+    assert 5 <= m <= 13  # die längste Farbbombe besteht aus 13 Karten (von 2 bis Ass)
+
+    # todo
+
+    time_start = time()
+
+    # 1. Schritt:
+    # alle möglichen Kombinationen (reduziert auf Karte verfügbar/fehlt für 1 Farbe) durchlaufen und Farbbomben davon auflisten
+
+    c_all = 0
+    c_matches = 0
+    c_unique = 0
+    data = []
+    a = [0, 1]                  # 0    1   2  3  4  5  6  7  8  9 10 11 12 13 14
+    for row in itertools.product([0], [0], a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend
+        # Beispiel für row (m = 5, r = 11):
+        # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
+        # (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1)
+        #        ^--remain---^  ^-------unique-------^
+        #        |           |  | <-  m  -> |        |
+        #        1         r-m  r-m+1       r       14
+        # Von r-m+1 bis r befindet sich die Farbbombe. Darunter muss nicht weiter betrachtet werden.
+        # Die Karten darüber (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
+        c_all += 1
+        print(f"\r{c_all}/8192 = {100 * c_all / 8192:.1f} %", end="")  # 8192 == 2^13
+        r = get_max_rank_of_bomb(row, m)
+        if r >= 0:
+            # im Datensatz ist mindestens eine Farbbombe vorhanden
+            unique = row[r - m + 1:]
+            c_matches += 1
+            found = (r, row[0], unique) in data
+            if not found:
+                # die Farbbombe ist noch nicht gelistet
+                c_unique += 1
+                data.append((r, row[0], unique))
+    print("\nmatches:", c_matches)
+    print("unique:", c_unique)
+
+    # Daten zwischenspeichern
+    with open(path.join(config.DATA_PATH, f"cache/prob/~bomb{m:02}.pkl"), 'wb') as fp:
+        # noinspection PyTypeChecker
+        pickle.dump(data, fp)
+
+    # 2. Schritt:
+    # Karte verfügbar/fehlt expandieren zu Kartenanzahl 0,1,2,3,4
+
+    table = [[], []]  # erste Liste ohne Phönix, zweite Liste mit Phönix (bleibt bei Bomben leer)
+    c = 0
+    for r, pho, unique in data:
+        if r <= m + 1:
+            # Der kleinste Rang einer 5er-Farbbombe ist 6, der einer 6er-Farbbombe ist 7, usw.
+            # Wir suchen höhere Farbbomben, also brauchen wir den kleinstmöglichen Rang nicht speichern.
+            continue
+        cases = []
+        for v in unique:
+            cases = combine_lists(cases, [v], 14)
+            if not cases:
+                break
+        if cases:
+            c += len(cases)
+            print(f"\r{c}", end="")
+            table[pho].extend(cases)
+    print("\nExpandiert:", c)
+    print(f"{(time() - time_start) * 1000:.6f} ms")
+
+    # Daten speichern
+    save_data_hi(BOMB, m, table)
 
 # --------------------------------------------------------------------------------
 
 def generate_files_hi():
-    #file = get_filename_hi(SINGLE)
-    #if not path.exists(file) and not path.exists(file + ".gz"):
-    #    generate_single_file_hi()
+    file = get_filename_hi(SINGLE)
+    if not path.exists(file) and not path.exists(file + ".gz"):
+        generate_single_file_hi()
 
     #file = get_filename_hi(PAIR)
     #if not path.exists(file) and not path.exists(file + ".gz"):
     #    generate_pair_file_hi()
 
-    file = get_filename_hi(TRIPLE)
-    if not path.exists(file) and not path.exists(file + ".gz"):
-        generate_triple_file_hi()
+    #file = get_filename_hi(TRIPLE)
+    #if not path.exists(file) and not path.exists(file + ".gz"):
+    #    generate_triple_file_hi()
 
     #for m in range(4, 15, 2):
     #    file = get_filename_hi(STAIR, m)
@@ -533,11 +647,16 @@ def generate_files_hi():
     #    if not path.exists(file) and not path.exists(file + ".gz"):
     #        generate_street_file_hi(m)
 
-    #for m in range(4, 14):
+    #file = get_filename_hi(BOMB, 4)
+    #if not path.exists(file) and not path.exists(file + ".gz"):
+    #    generate_4_bomb_file_hi()
+
+    #for m in range(5, 14):
     #    file = get_filename_hi(BOMB, m)
     #    if not path.exists(file) and not path.exists(file + ".gz"):
-    #        generate_bomb_file_hi(m)
+    #        generate_color_bomb_file_hi(m)
 
 
 if __name__ == '__main__':  # pragma: no cover
     generate_files_hi()
+    #generate_color_bomb_file_hi(12)

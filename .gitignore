@@ -4,6 +4,7 @@
 /.idea
 /logs
 /data/cache
+/data/lib
 /*.py.lprof
 /*.py.prof
 .DS_Store
