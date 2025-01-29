@@ -12,75 +12,73 @@ from timeit import timeit
 # Wahrscheinlichkeitsberechnung
 # -----------------------------------------------------------------------------
 
-
-# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Einzelkarte überstechen kann
+# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann
 #
-# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# k: Anzahl Handkarten
-# r: Rang der Einzelkarte
-def prob_of_single_hi(h: list[int], k: int, r, verbose = False) -> float:
-    n = sum(h)  # Gesamtanzahl der verfügbaren Karten
+# todo:
+#  Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, was auch berücksichtigt wird.
+#  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
+#  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
+#
+# cards: Verfügbare Karten
+# k: Anzahl der Handkarten
+# figure: Typ, Länge und Rang der gegebenen Kombination
+# r: Rang der gegebenen Kombination
+def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # pragma: no cover
+    n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
-    assert 0 <= r <= 16
 
-    # todo
+    t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
+    if t == SINGLE:  # Einzelkarte
+        assert 0 <= r <= 16
+        steps = 1
 
-    return 0.0
+    elif t in [PAIR, TRIPLE, FULLHOUSE] or (t == BOMB and m == 4):  # Paar, Drilling, Fullhouse, 4er-Bombe
+        assert 2 <= r <= 14
+        steps = 1
 
+    # elif t == PAIR:  # Paar
+    #     assert 2 <= r <= 14
+    #     steps = 1
+    #
+    # elif t == TRIPLE:  # Drilling
+    #     assert 2 <= r <= 14
+    #     steps = 1
 
-# Berechnet die Wahrscheinlichkeit, dass die Hand das gegebene Pärchen überstechen kann
-#
-# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# k: Anzahl Handkarten
-# r: Rang des Pärchens
-def prob_of_pair_hi(h: list[int], k: int, r, verbose=False) -> float:
-    n = sum(h)  # Gesamtanzahl der verfügbaren Karten
-    assert k <= n <= 56
-    assert 0 <= k <= 14
-    assert 2 <= r <= 14
+    elif t == STAIR:  # Treppe
+        assert m % 2 == 0
+        assert 4 <= m <= 14
+        steps = int(m / 2)
+        assert steps + 1 <= r <= 14
 
-    # todo
+    # elif t == FULLHOUSE:  # Fullhouse
+    #     assert 2 <= r <= 14
+    #     steps = 1
 
-    return 0.0
+    elif t == STREET:  # Straße
+        assert 5 <= m <= 14
+        assert m <= r <= 14
+        steps = m
 
+    else:
+        assert t == BOMB
+        # if m == 4:  # 4er-Bombe
+        #     assert 2 <= r <= 14
+        #     steps = 1
+        # else:
+        # Farbbombe
+        assert 5 <= m <= 14
+        assert m + 1 <= r <= 14
+        steps = m
 
-# Berechnet die Wahrscheinlichkeit, dass die Hand den gegebenen Drilling überstechen kann
-#
-# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# k: Anzahl Handkarten
-# r: Rang des Drillings
-def prob_of_triple_hi(h: list[int], k: int, r, verbose=False) -> float:
-    n = sum(h)  # Gesamtanzahl der verfügbaren Karten
-    assert k <= n <= 56
-    assert 0 <= k <= 14
-    assert 2 <= r <= 14
+    # Anzahl der Karten je Rang
+    h = ranks_to_vector(cards)
 
-    # todo
-
-    return 0.0
-
-
-# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Treppe überstechen kann
-#
-# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# k: Anzahl Handkarten
-# m: Länge der Treppe
-# r: Rang der Treppe
-def prob_of_stair_hi(h: list[int], k: int, m: int, r, verbose = False) -> float:
-    n = sum(h)  # Gesamtanzahl der verfügbaren Karten
-    assert k <= n <= 56
-    assert 0 <= k <= 14
-    assert m % 2 == 0
-    assert 4 <= m <= 14
-    steps = int(m / 2)
-    assert steps + 1 <= r <= 14
-
-    # Muster laden
-    data = load_data_hi(STAIR, m, True)
+    # Hilfstabellen laden
+    data = load_data_hi(t, m, verbose)
 
     # alle Muster durchlaufen und mögliche Kombinationen zählen
-    matches  = 0
+    matches = 0
     for pho in range(2 if h[16] else 1):
         for case in data[pho]:
             offset = 15 - len(case)
@@ -106,134 +104,11 @@ def prob_of_stair_hi(h: list[int], k: int, m: int, r, verbose = False) -> float:
                     print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
                 matches += matches_part
 
-    total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
-    return matches / total
+    # Gesamtanzahl der möglichen Kombinationen
+    total = math.comb(n, k)
 
-
-# Berechnet die Wahrscheinlichkeit, dass die Hand das gegebene Fullhouse überstechen kann
-#
-# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# k: Anzahl Handkarten
-# r: Rang des Fullhouses
-def prob_of_fullhouse_hi(h: list[int], k: int, r, verbose=False) -> float:
-    n = sum(h)  # Gesamtanzahl der verfügbaren Karten
-    assert k <= n <= 56
-    assert 0 <= k <= 14
-    assert 2 <= r <= 14
-
-    # todo
-
-    return 0.0
-
-
-# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Straße überstechen kann
-#
-# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# k: Anzahl Handkarten
-# m: Länge der Straße
-# r: Rang der Straße
-def prob_of_street_hi(h: list[int], k: int, m: int, r, verbose = False) -> float:
-    n = sum(h)  # Gesamtanzahl der verfügbaren Karten
-    assert k <= n <= 56
-    assert 0 <= k <= 14
-    assert 5 <= m <= 14
-    assert m <= r <= 14
-
-    # Muster laden
-    data = load_data_hi(STREET, m, True)
-
-    # alle Muster durchlaufen und mögliche Kombinationen zählen
-    matches  = 0
-    for pho in range(2 if h[16] else 1):
-        for case in data[pho]:
-            offset = 15 - len(case)
-            r_higher = offset + m - 1
-            if r_higher <= r:
-                break
-            if sum(case) + pho > k:
-                continue
-
-            matches_part = 1
-            n_remain = n - h[16]
-            k_remain = k - pho
-            for i in range(len(case)):
-                matches_part *= math.comb(h[offset + i], case[i])
-                if matches_part == 0:
-                    break
-                n_remain -= h[offset + i]
-                k_remain -= case[i]
-
-            matches_part *= math.comb(n_remain, k_remain)
-            if matches_part > 0:
-                if verbose:
-                    print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
-                matches += matches_part
-
-    total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
-    return matches / total
-
-
-# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Bombe überstechen kann
-#
-# h: Verfügbaren Karten als Vektor (Index entspricht den Rang)
-# k: Anzahl Handkarten
-# m: Länge der Bombe
-# r: Rang der Bombe
-def prob_of_bomb_hi(h: list[int], k: int, m: int, r, verbose = False) -> float:
-    n = sum(h)  # Gesamtanzahl der verfügbaren Karten
-    assert k <= n <= 56
-    assert 0 <= k <= 14
-
-    if m == 4:
-        # 4er-Bombe
-        assert 2 <= r <= 14
-        # todo
-    else:
-        # Farbbombe
-        assert 5 <= m <= 14
-        assert m + 1 <= r <= 14
-        # todo
-
-    return 0.0
-
-
-# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann
-#
-# todo:
-#  Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, was auch berücksichtigt wird.
-#  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
-#  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
-#
-# cards: Verfügbare Karten
-# k: Anzahl der Handkarten
-# figure: Typ, Länge und Rang der gegebenen Kombination
-# r: Rang der gegebenen Kombination
-def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # pragma: no cover
-    h = ranks_to_vector(cards)
-    t, m, r = figure
-
-    if t == SINGLE:  # Einzelkarte
-        p = prob_of_single_hi(h, k, r, verbose)
-
-    elif t == PAIR:  # Paar
-        p = prob_of_pair_hi(h, k, r, verbose)
-
-    elif t == TRIPLE:  # Drilling
-        p = prob_of_triple_hi(h, k, r, verbose)
-
-    elif t == STAIR:  # Treppe
-        p = prob_of_stair_hi(h, k, m, r, verbose)
-
-    elif t == FULLHOUSE:  # Full House
-        p = prob_of_fullhouse_hi(h, k, r, verbose)
-
-    elif t == STREET:  # Straße
-        p = prob_of_street_hi(h, k, m, r, verbose)
-
-    else:  # Bombe
-        assert t == BOMB
-        p = prob_of_bomb_hi(h, k, m, r, verbose)
-
+    # Wahrscheinlichkeit
+    p = matches / total
     return p
 
 
