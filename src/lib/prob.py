@@ -19,6 +19,9 @@ from timeit import timeit
 #  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
 #  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
 #
+# Wenn die gegebene Kombination der Phönix ist, so wird sie als Anspielkarte gewertet.
+# Sollte der Phönix nicht die Anspielkarte sein, so muss die vom Phönix gestochene Karte angegeben werden.
+#
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
 # figure: Typ, Länge und Rang der gegebenen Kombination
@@ -27,31 +30,31 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
-
+    h = ranks_to_vector(cards)  # Anzahl der Karten je Rang
     t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
+
     if t == SINGLE:  # Einzelkarte
         assert 0 <= r <= 16
         steps = 1
-        if r == 16:  # Rang des Phönix an die Schlagkraft anpassen
-            r = 14.5  # der Phönix schlägt das Ass, aber nicht den Drachen
+        r_end = 16  # exklusiv (Drache + 1)
+        if r == 16:  # gegeben ist der Phönix
+            # Rang des Phönix anpassen (der Phönix im Anspiel wird von der 2 geschlagen, aber nicht vom Mahjong)
+            r = 1  # 1.5 abgerundet
+            # Der verfügbare Phönix hat den Rang 15 (14.5 aufgerundet); er würde sich selbst schlagen.
+            # Daher degradieren wir den verfügbaren Phönix zu einer Noname-Karte (n bleibt gleich, aber es gibt kein Phönix mehr!).
+            h[16] = 0
 
     elif t in [PAIR, TRIPLE, FULLHOUSE] or (t == BOMB and m == 4):  # Paar, Drilling, Fullhouse, 4er-Bombe
         assert 2 <= r <= 14
         steps = 1
-
-    # elif t == PAIR:  # Paar
-    #     assert 2 <= r <= 14
-    #     steps = 1
-    #
-    # elif t == TRIPLE:  # Drilling
-    #     assert 2 <= r <= 14
-    #     steps = 1
+        r_end = 15  # exklusiv (Ass + 1)
 
     elif t == STAIR:  # Treppe
         assert m % 2 == 0
         assert 4 <= m <= 14
         steps = int(m / 2)
         assert steps + 1 <= r <= 14
+        r_end = 15  # exklusiv (Ass + 1)
 
     # elif t == FULLHOUSE:  # Fullhouse
     #     assert 2 <= r <= 14
@@ -61,6 +64,7 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
         assert 5 <= m <= 14
         assert m <= r <= 14
         steps = m
+        r_end = 15  # exklusiv (Ass + 1)
 
     else:
         assert t == BOMB
@@ -72,9 +76,7 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
         assert 5 <= m <= 14
         assert m + 1 <= r <= 14
         steps = m
-
-    # Anzahl der Karten je Rang
-    h = ranks_to_vector(cards)
+        r_end = 15  # exklusiv (Ass + 1)
 
     # Hilfstabellen laden
     data = load_data_hi(t, m, verbose)
@@ -83,8 +85,8 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
     matches = 0
     for pho in range(2 if h[16] else 1):
         for case in data[pho]:
-            offset = (16 if t == SINGLE else 15) - len(case)
-            r_higher = offset + steps - 1
+            r_start = r_end - len(case)
+            r_higher = r_start + steps - 1
             if r_higher <= r:
                 break
             if sum(case) + pho > k:
@@ -94,10 +96,10 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
             n_remain = n - h[16]
             k_remain = k - pho
             for i in range(len(case)):
-                matches_part *= math.comb(h[offset + i], case[i])
+                matches_part *= math.comb(h[r_start + i], case[i])
                 if matches_part == 0:
                     break
-                n_remain -= h[offset + i]
+                n_remain -= h[r_start + i]
                 k_remain -= case[i]
 
             matches_part *= math.comb(n_remain, k_remain)
@@ -106,11 +108,8 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
                     print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
                 matches += matches_part
 
-    # Gesamtanzahl der möglichen Kombinationen
-    total = math.comb(n, k)
-
-    # Wahrscheinlichkeit
-    p = matches / total
+    total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
+    p = matches / total  # Wahrscheinlichkeit
     return p
 
 
@@ -252,15 +251,19 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
           f"({(time() - time_start) * 1000:.6f} ms)")
 
     time_start = time()
-    p_actual = prob_of_hand(parse_cards(cards), k, figure)
+    p_actual = prob_of_hand(parse_cards(cards), k, figure, verbose)
     print(f"Berechnet: p = {(total_expected * p_actual):.0f}/{total_expected} = {p_actual} "
           f"({(time() - time_start) * 1000:.6f} ms (inkl. Daten laden))")
 
-    assert p_expected == p_actual
+    #assert p_expected == p_actual
 
 
 def inspect_single():  # pragma: no cover
-    print(f"{timeit(lambda: inspect("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), verbose=True), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("Dr Hu Ph Ma S4 R3 R2", 3, (1, 1, 16), verbose=True), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("Dr Hu Ph Ma S4 R3 R2", 3, (1, 1, 10), verbose=True), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("SB RB GZ BZ SZ R9 G9 R8 G8 B4", 4, (1, 1, 10), verbose=True), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("Ph Dr RB GZ BZ SZ R9 G9 S9 R8 G8 B4", 2, (1, 1, 0), verbose=True), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("Ph SB RZ R9 G9 R8 G8 B4", 1, (1, 1, 15), verbose=True), number=1) * 1000:.6f} ms")
 
 
 def inspect_pair():  # pragma: no cover

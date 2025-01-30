@@ -310,25 +310,27 @@ class TestProbOfHandRaster(unittest.TestCase):
             "SB RZ R9 G9 R8 G8 B4",
             "SB RZ GZ R9 G9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 R8 G8 B4",  # 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
             "Ph SB RZ R9 G9 R8 G8 B4",
             "SB RZ Ph R9 G9 R8 G8 B4",
             "SB RZ GZ BZ Ph G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
             "SB RZ R9 G9 S9 R8 G8 B4 Ph",
             "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
             "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            "Ph Dr RB GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            "Ph SB RB GZ BZ SZ R9 G9 S9 R8 G8 B4 Hu",
+            "Ph SB RB GZ BZ SZ R9 G9 S9 R8 G8 B4 B2 Ma",
         ]
         m = 1
-        r = 9
-        for k in [0, 3, 4, 5, 6, 7, 9, 10, 13, 14]:
+        for r in range(17):
             for cards in combis:
-                self._test(cards, k, (t, m, r))
+                for k in range(len(combis) + 2):
+                    self._test(cards, k, (t, m, r))
 
     def test_pair(self):
         t = PAIR

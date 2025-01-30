@@ -249,11 +249,10 @@ def generate_single_file_hi():
         print(f"\r{c_all}/131072 = {100 * c_all / 131072:.1f} %", end="")  # 131072 == 2^17
         r = get_max_rank_of_single(row)
         if r >= 0:  # mindestens eine Einzelkarte ist vorhanden
-            if r < 16:  # höchster Rang ist nicht der Phönix
-                unique = row[r:-1]  # vom aktuellen Rank bis zum Drache (Phönix wird abgeschnitten)
-            else:
-                assert row[15] == 0
-                unique = [row[15]]
+            if r == 16:  # Phönix ist die höchste Karte (Drache ist nicht vorhanden)
+                # Rang des Phönix an die Schlagkraft anpassen (der Phönix schlägt das Ass, aber nicht den Drachen)
+                r = 15  # 14.5 aufgerundet
+            unique = row[r:-1]  # vom aktuellen Rang bis zum Drachen (Phönix wird abgeschnitten)
             c_matches += 1
             found = (r, row[16], unique) in data
             if not found:
@@ -719,5 +718,6 @@ def generate_files_hi():
 
 
 if __name__ == '__main__':  # pragma: no cover
-    generate_files_hi()
+    #generate_files_hi()
+    generate_single_file_hi()
     #generate_color_bomb_file_hi(12)
