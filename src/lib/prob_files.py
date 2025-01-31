@@ -13,6 +13,9 @@ from time import time
 # -----------------------------------------------------------------------------
 
 # Gibt den Dateinamen für die Hilfstabellen
+#
+# t: Typ der Kombination
+# m: Länge der Kombination (nur für Treppe, Straße und Bombe relevant)
 def get_filename_hi(t: int, m: int = None):
     folder = path.join(config.DATA_PATH, "lib/prob")
     if not path.exists(folder):
@@ -23,6 +26,9 @@ def get_filename_hi(t: int, m: int = None):
 
 
 # Speichert die Hilfstabelle
+#
+# t: Typ der Kombination
+# m: Länge der Kombination
 def save_table_hi(t: int, m: int, table: list):
     file = get_filename_hi(t, m)
 
@@ -48,6 +54,9 @@ def save_table_hi(t: int, m: int, table: list):
 
 
 # Lädt die Hilfstabelle
+#
+# t: Typ der Kombination
+# m: Länge der Kombination
 def load_table_hi(t: int, m: int, verbose = False) -> list:
     time_start = time()
     file = get_filename_hi(t, m)
@@ -91,160 +100,142 @@ def combine_lists(list1, list2, k: int):
     return result
 
 
-# Ermittelt dan höchsten Rang der gegebenen Kombination im Datensatz
+# Ermittelt den höchsten Rang der gegebenen Kombination im Datensatz
 #
-# Wenn die Kombination vorhanden ist, wird der Rang der Kombination und das eindeutige Muster zurückgegeben, sonst -1.
+# Datensatz bei einer Einzelkarte, r = 10:
+# r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+#  (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1)
+#   ^----------remain----------^  ^----unique----^  ^
+#   |                             |              |  |
+#   0                             r             dr pho
+# r ist der Rang der Einzelkarte. Darunter muss nichts weiter betrachtet werden.
+# Die Karten darüber bis zur 15 sind wichtig, um das Muster eindeutig zu halten.
 #
-# row: row[0] == Phönix, row[1] bis row[14] == Rang 1 bis 14
+# Datensatz beim Pärchen (und Drilling und 4er-Bombe), r = 10:
+# r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+#  (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 0, 0, 1, 1, 0, 0)
+#   ^----------remain----------^  ^---unique--^     ^
+#   |                             |           |     |
+#   0                             r          14    pho
+# r ist der Rang des Pärchens. Darunter muss nichts weiter betrachtet werden.
+# Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
+#
+# Datensatz bei einer Treppe, steps = 5, r = 11:
+# r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+#  (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 2, 0, 2, 1, 0, 1)
+#   ^-----remain------^  ^-------unique-------^     ^
+#   |                    | <-steps-> |        |     |
+#   0                    r-steps+1   r       14    pho
+# Von r-steps+1 bis r befindet sich die Treppe. Darunter muss nichts betrachtet werden.
+# Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
+#
+# Datensatz bei Fullhouse, r = 10:
+# r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+#  (0, 0, 1, 1, 0, 3, 1, 2, 1, 1, 3, 0, 1, 0, 1, 0, 0)
+#   ^------remain-----^  ^-------unique-------^     ^
+#   |                    |        |           |     |
+#   0                    r_pair   r_triple   14    pho
+# r_pair und r_triple sind die Ränge des Pärchens und des Drillings im Fullhouse.
+# r_triple könnte auch vor r_pair liegen! Darunter muss nichts weiter betrachtet werden.
+# Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
+#
+# Datensatz bei einer Straße (und Farbbombe), m = 5, r = 11:
+# r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+#  (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1)
+#   ^------remain-----^  ^-------unique-------^     ^
+#   |                    | <-  m  -> |        |     |
+#   0                    r-m+1       r       14    pho
+# Von r-m+1 bis r befindet sich die Straße. Darunter muss nicht weiter betrachtet werden.
+# Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
+#
+# Wenn die Kombination vorhanden ist, wird r und unique zurückgegeben, sonst -1.
+#
+# t: Typ der Kombination
+# m: Länge der Kombination
+# row: Datensatz, Kartenanzahl pro Rang (row[0] == Hund, ..., row[14] == Ass, row[15] == Drache, row[16] == Phönix)
 def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
-
     if t == SINGLE:
-        # todo: Vereinheitlichen
-        # row: row[0] == Hund, row[1] == Mahjong, row[2] bis row[14] == 2 bis 14, row[15] == Drache, row[16] == Phönix
         # erst den Drachen prüfen, dann den Phönix (höchste Schlagkraft zuerst)
         for r in [15, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]:
             if row[r] >= 1:
                 if r == 16:  # Phönix ist die höchste Karte (Drache ist nicht vorhanden)
                     # Rang des Phönix an die Schlagkraft anpassen (der Phönix schlägt das Ass, aber nicht den Drachen)
                     r = 15  # 14.5 aufgerundet
-                return r, row[r:-1]  # vom aktuellen Rang bis zum Drachen (Phönix wird abgeschnitten)
+                return r, row[r:-1]  # vom Rang der Einzelkarte bis zum Drachen
 
     if t == PAIR:
         for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
-            if row[0]:  # mit Phönix
+            if row[16]:  # mit Phönix
                 if row[r] >= 1:
-                    return r, row[r:]
+                    return r, row[r:-2]  # vom Rang des Pärchens bis zum Ass
             else:  # ohne Phönix
                 if row[r] >= 2:
-                    return r, row[r:]
+                    return r, row[r:-2]  # vom Rang des Pärchens bis zum Ass
 
     elif t == TRIPLE:
         for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
-            if row[0]:  # mit Phönix
+            if row[16]:  # mit Phönix
                 if row[r] >= 2:
-                    return r, row[r:]
+                    return r, row[r:-2]  # vom Rang des Drillings bis zum Ass
             else:  # ohne Phönix
                 if row[r] >= 3:
-                    return r, row[r:]
+                    return r, row[r:-2]  # vom Rang des Drillings bis zum Ass
 
     elif t == STAIR:
         steps = int(m / 2)
         for r in range(14, steps, -1):  # [14 ... 3] (höchster Rang zuerst)
             r_start = r - steps + 1
             r_end = r + 1  # exklusiv
-            if row[0]:  # mit Phönix
+            if row[16]:  # mit Phönix
                 for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Treppe)
                     if row[r_pho] >= 1 and all(row[i] >= 2 for i in range(r_start, r_end) if i != r_pho):
-                        return r, row[r - steps + 1:]
+                        return r, row[r - steps + 1:-2]  # vom Anfang der Treppe bis zum Ass
             else:  # ohne Phönix
                 if all(row[i] >= 2 for i in range(r_start, r_end)):
-                    return r, row[r - steps + 1:]
+                    return r, row[r - steps + 1:-2]  # vom Anfang der Treppe bis zum Ass
 
     elif t == FULLHOUSE:
         for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
-            if row[0]:  # mit Phönix
+            if row[16]:  # mit Phönix
                 if row[r] >= 3:  # Drilling mit Rang r
                     for i in range(14, 1, -1):
                         if i != r and row[i] >= 1:  # irgendeine Einzelkarte zw. 14 und 2
-                            return r, row[min(r, i):]
+                            return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
                 if row[r] == 2:  # Pärchen mit Rang r
                     for i in range(14, 1, -1):
                         if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
-                            return r, row[min(r, i):]
+                            return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
             else:  # ohne Phönix
                 if row[r] >= 3:  # Drilling mit Rang r
                     for i in range(14, 1, -1):
                         if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
-                            return r, row[min(r, i):]
+                            return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
 
     elif t == STREET:
         for r in range(14, m - 1, -1):  # [14 ... 5] (höchster Rang zuerst)
             r_start = r - m + 1
             r_end = r + 1  # exklusiv
-            if row[0]:  # mit Phönix
+            if row[16]:  # mit Phönix
                 for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Straße)
                     if row[r_pho] >= 0 and all(row[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
-                        return r, row[r - m + 1:]
+                        return r, row[r - m + 1:-2]  # vom Anfang der Straße bis zum Ass
             else:  # ohne Phönix
                 if all(row[i] >= 1 for i in range(r_start, r_end)):
-                    return r, row[r - m + 1:]
+                    return r, row[r - m + 1:-2]  # vom Anfang der Straße bis zum Ass
 
     elif t == BOMB:
         if m == 4:
             # 4er-Bombe
             for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
                 if row[r] == 4:
-                    return r, row[r:]
+                    return r, row[r:-2]  # vom Rang der 4er-Bombe bis zum Ass
         else:
             # Farbbombe
             for r in range(14, m, -1):  # [14 ... 6] (höchster Rang zuerst)
                 if all(row[i] == 1 for i in range(r - m + 1, r + 1)):
-                    return r, row[r - m + 1:]
+                    return r, row[r - m + 1:-2]  # vom Anfang der Farbbombe bis zum Ass
 
     return -1, []
-
-
-# --------------------------------------------------------------------------------
-
-# Generiert eine Datei mit allen möglichen Einzelkarten, höhere Einzelkarte wird bevorzugt.
-def generate_single_file_hi():
-    time_start = time()
-
-    # 1. Schritt:
-    # alle möglichen Kombinationen (reduziert auf Karte verfügbar/fehlt) durchlaufen und Einzelkarte auflisten
-
-    c_all = 0
-    c_matches = 0
-    c_unique = 0
-    data = []
-
-    for row in itertools.product(range(2), repeat=17):  # sortiert nach Rang absteigend
-        # Beispiel für row (r = 10):
-        # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
-        #  (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1)
-        #   ^----------remain----------^  ^----unique----^  ^
-        #   |                          |  |              |  |
-        #  Hu                        r-1  r             Dr Ph
-        # r ist der Rang der Einzelkarte. Darunter muss nicht weiter betrachtet werden.
-        # Die Karten darüber sind wichtig, um das Muster eindeutig zu halten.
-        c_all += 1
-        print(f"\r{c_all}/131072 = {100 * c_all / 131072:.1f} %", end="")  # 131072 == 2^17
-        r, unique = get_max_rank(SINGLE, 1, row)
-        if r >= 0:  # mindestens eine Einzelkarte ist vorhanden
-            c_matches += 1
-            found = (r, row[16], unique) in data
-            if not found:
-                # die Einzelkarte ist noch nicht gelistet
-                c_unique += 1
-                data.append((r, row[16], unique))
-
-    print("\nmatches:", c_matches)
-    print("unique:", c_unique)
-
-    # 2. Schritt:
-    # Karte verfügbar/fehlt expandieren zu Kartenanzahl 0,1,2,3,4 (bzw. 0,1 bei Sonderkarten)
-
-    table = [[], []]  # erste Liste ohne Phönix, zweite Liste mit Phönix
-    c = 0
-    for r, pho, unique in data:
-        if r == 0:
-            # Wir suchen höhere Einzelkarte, also brauchen wir den Hund nicht zu speichern.
-            continue
-        cases = []
-        for i, v in enumerate(unique):
-            a = 1 if r + i in [0, 1, 15, 16] else 4  # Kartenanzahl = 1 wenn Sonderkarte, sonst 4
-            cases = combine_lists(cases, list(range(1, a + 1) if v == 1 else [0]), 14)
-            if not cases:
-                break
-        if cases:
-            c += len(cases)
-            print(f"\r{c}", end="")
-            table[pho].extend(cases)
-    print("\nExpandiert:", c)
-    print(f"{(time() - time_start) * 1000:.6f} ms")
-
-    # Daten speichern
-    save_table_hi(SINGLE, 1, table)
 
 
 # Generiert eine Hilfstabelle für den gegebenen Typ, höhere Ränge werden bevorzugt.
@@ -261,10 +252,8 @@ def generate_file_hi(t: int, m: int = None):
         m = 5
     elif t == STREET:
         assert 5 <= m <= 14
-    elif t == BOMB:
-        assert 4 <= m <= 14
     else:
-        assert False
+        assert t == BOMB and 4 <= m <= 14
 
     # Mögliche Ränge von/bis
     r_start = 0 if t == SINGLE else 1 if t == STREET else 2
@@ -279,10 +268,10 @@ def generate_file_hi(t: int, m: int = None):
     # 1. Schritt:
     # alle möglichen Kombinationen (Kartenanzahl je Rang reduziert) durchlaufen und passende auflisten
 
-    for pho in range(2):
+    for pho in range(1 if t == BOMB else 2):
         print(f"Generiere Hilfstabelle {stringify_type(t, m)}[{pho}]...")
 
-        data = {r: [] for r in range(2, 15)}
+        data = {r: [] for r in range(r_start, r_end)}
 
         # reduzierte Kartenanzahl je Rang
         if t == SINGLE:
@@ -298,58 +287,28 @@ def generate_file_hi(t: int, m: int = None):
         elif t == STREET:
             a = [0, 1]
         else:
-            assert False
+            assert t == BOMB
+            if m == 4:  # 4er-Bombe
+                a = [3, 4]
+            else:  # Farbbombe
+                a = [0, 1]
 
         # Iterator für die Product-Operation
         if t == SINGLE:
-            #          0    1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-            iter1 = [[pho], a, a, a, a, a, a, a, a, a, a, a, a, a, a, a]
-            c_max = len(a) ** 15
+            #        0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15   16
+            iter1 = [a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, [pho]]
+            c_max = len(a) ** 16
         elif t == STREET:
-            #          0    1  2  3  4  5  6  7  8  9 10 11 12 13 14
-            iter1 = [[pho], a, a, a, a, a, a, a, a, a, a, a, a, a, a]
+            #         0   1  2  3  4  5  6  7  8  9 10 11 12 13 14  15    16
+            iter1 = [[0], a, a, a, a, a, a, a, a, a, a, a, a, a, a, [0], [pho]]  # Dummy für Hund und Drache
             c_max = len(a) ** 14
         else:
-            #          0     1   2  3  4  5  6  7  8  9 10 11 12 13 14
-            iter1 = [[pho], [0], a, a, a, a, a, a, a, a, a, a, a, a, a]  # Dummy für Mahjong (wird nicht betrachtet)
+            #         0    1   2  3  4  5  6  7  8  9 10 11 12 13 14  15    16
+            iter1 = [[0], [0], a, a, a, a, a, a, a, a, a, a, a, a, a, [0], [pho]]  # Dummy für Hund, Mahjong und Drache
             c_max = len(a) ** 13
 
         c = 0
         for row in itertools.product(*iter1):
-            # Beispiel für row beim Pärchen, r = 10:
-            # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
-            # (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 0, 0, 1, 1)
-            #  ^     ^------remain--------^  ^---unique--^
-            #  |     |                    |  |           |
-            # pho    2                  r-1  r          14
-            # r ist der Rang des Pärchens. Darunter muss nicht weiter betrachtet werden.
-            # Die Karten darüber sind wichtig, um das Muster eindeutig zu halten.
-
-            # Beispiel für row bei Fullhouse, r = 10:
-            # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
-            # (0, 0, 1, 1, 0, 3, 1, 2, 1, 1, 3, 0, 1, 0, 1)
-            #  ^     ^---remain--^  ^-------unique-------^
-            #  |     |           |  |        |           |
-            # pho    2              r_pair   r_triple   14
-
-            # Beispiel für row bei einer Treppe (steps = 5, r = 11):
-            # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
-            # (1, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 2, 0, 2, 1)
-            #  ^     ^--remain---^  ^-------unique-------^
-            #  |     |           |  | <-steps-> |        |
-            # pho    2     r-steps  r-steps+1   r       14
-            # Von r-steps+1 bis r befindet sich die Treppe. Darunter muss nicht weiter betrachtet werden.
-            # Die Karten darüber (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
-
-            # Beispiel für row bei einer Straße (m = 5, r = 11):
-            # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
-            # (1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1)
-            #  ^  ^----remain----^  ^-------unique-------^
-            #  |  |              |  | <-  m  -> |        |
-            # pho 1            r-m  r-m+1       r       14
-            # Von r-m+1 bis r befindet sich die Straße. Darunter muss nicht weiter betrachtet werden.
-            # Die Karten darüber (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
-
             c += 1
             print(f"\r{c}/{c_max} = {100 * c / c_max:.1f} %", end="")
             r, unique = get_max_rank(t, m, row)
@@ -358,24 +317,20 @@ def generate_file_hi(t: int, m: int = None):
                     data[r].append(unique)
         print()
 
-        # Daten zwischenspeichern
-        with open(path.join(config.DATA_PATH, f"lib/prob/~{stringify_type(t, m)}.pkl"), 'wb') as fp:
-            # noinspection PyTypeChecker
-            pickle.dump(data, fp)
-
         # 2. Schritt:
         # Kartenanzahl expandieren zu Kartenanzahl 0,1,2,3,4 (bzw. 0,1 bei Sonderkarten)
 
         c = 0
         for r, uniques in data.items():
-            w = r - m + 1
             for unique in uniques:
                 cases = []
                 for i, v in enumerate(unique):
-                    assert r_end - len(unique) == r - m + 1
                     if a == [0, 1]:
-                        if r - m + 1 + i in [0, 1, 15, 16]:  # Sonderkarte
-                            assert t in [SINGLE, STREET]
+                        if t == BOMB:  # Farbbombe
+                            assert m >= 5
+                            # für die Berechnung einer Farbbombe werden die Karten je Farbe vorgelegt, es gibt sie also pro Rang nur einmal
+                            v_expand = [v]
+                        elif t in [SINGLE, STREET] and r - m + 1 + i in [0, 1, 15, 16]:  # Sonderkarte
                             v_expand = [v]
                         else:
                             v_expand = [1, 2, 3, 4] if v == 1 else [0]
@@ -383,6 +338,8 @@ def generate_file_hi(t: int, m: int = None):
                         v_expand = [2, 3, 4] if v == 2 else [0, 1]
                     elif a == [2, 3]:
                         v_expand = [3, 4] if v == 3 else [0, 1, 2]
+                    elif a == [3, 4]:
+                        v_expand = [4] if v == 4 else [0, 1, 2, 3]
                     elif a == [0, 1, 2]:
                         v_expand = [2, 3, 4] if v == 2 else [v]
                     elif a == [1, 2, 3]:
@@ -404,145 +361,8 @@ def generate_file_hi(t: int, m: int = None):
     save_table_hi(t, m, table)
 
 
-# Generiert eine Datei mit allen möglichen 4er-Bomben, höhere Bombe wird bevorzugt.
-def generate_4_bomb_file_hi():
-    time_start = time()
-
-    # 1. Schritt:
-    # alle möglichen Kombinationen (reduziert auf mind. 4 Karten/weniger) durchlaufen und 4er-Bomben auflisten
-
-    c_all = 0
-    c_matches = 0
-    c_unique = 0
-    data = []
-    a = [3, 4]                  # 0    1   2  3  4  5  6  7  8  9 10 11 12 13 14
-    for row in itertools.product([0], [0], a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend
-        # Beispiel für row (r = 10):
-        # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
-        # (0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 3, 3)
-        #        ^------remain--------^  ^---unique--^
-        #        |                    |  |           |
-        #        2                  r-1  r          14
-        # r ist der Rang des Drillings. Darunter muss nicht weiter betrachtet werden.
-        # Die Karten darüber sind wichtig, um das Muster eindeutig zu halten.
-        c_all += 1
-        print(f"\r{c_all}/8192 = {100 * c_all / 8192:.1f} %", end="")  # 8192 == 2^13
-        r = get_max_rank_of_bomb(row, 4)
-        if r >= 0:  # mindestens eine 4er-Bombe ist vorhanden
-            unique = row[r:]
-            c_matches += 1
-            found = (r, row[0], unique) in data
-            if not found:
-                # die 4er-Bombe ist noch nicht gelistet
-                c_unique += 1
-                data.append((r, row[0], unique))
-    print("\nmatches:", c_matches)
-    print("unique:", c_unique)
-
-    # 2. Schritt:
-    # 3 Karten/2 Karten/weniger expandieren zu Kartenanzahl 0,1,2,3,4
-
-    table = [[], []]  # erste Liste ohne Phönix, zweite Liste mit Phönix (bleibt bei Bomben leer)
-    c = 0
-    for r, pho, unique in data:
-        if r == 2:
-            # Der kleinste Rang einer 4er-Bombe ist 2.
-            # Wir suchen höhere 4er-Bomben, also brauchen wir den kleinstmöglichen Rang nicht zu speichern.
-            continue
-        cases = []
-        for v in unique:
-            cases = combine_lists(cases, list([4] if v == 4 else range(4)), 14)
-            if not cases:
-                break
-        if cases:
-            c += len(cases)
-            print(f"\r{c}", end="")
-            table[pho].extend(cases)
-    print("\nExpandiert:", c)
-    print(f"{(time() - time_start) * 1000:.6f} ms")
-
-    # Daten speichern
-    save_table_hi(BOMB, 4, table)
-
-
-# Generiert eine Datei mit allen möglichen Farbbomben der Länge m, höhere Bombe wird bevorzugt.
-# Es wird vorausgesetzt, dass die Karten nur in einer Farbe vorliegen!
-def generate_color_bomb_file_hi(m: int):
-    assert 5 <= m <= 13  # die längste Farbbombe besteht aus 13 Karten (von 2 bis Ass)
-
-    # todo
-
-    time_start = time()
-
-    # 1. Schritt:
-    # alle möglichen Kombinationen (reduziert auf Karte verfügbar/fehlt für 1 Farbe) durchlaufen und Farbbomben auflisten
-
-    c_all = 0
-    c_matches = 0
-    c_unique = 0
-    data = []
-    a = [0, 1]                  # 0    1   2  3  4  5  6  7  8  9 10 11 12 13 14
-    for row in itertools.product([0], [0], a, a, a, a, a, a, a, a, a, a, a, a, a):  # sortiert nach Rang absteigend
-        # Beispiel für row (m = 5, r = 11):
-        # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
-        # (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1)
-        #        ^--remain---^  ^-------unique-------^
-        #        |           |  | <-  m  -> |        |
-        #        1         r-m  r-m+1       r       14
-        # Von r-m+1 bis r befindet sich die Farbbombe. Darunter muss nicht weiter betrachtet werden.
-        # Die Karten darüber (r+1 bis 14) sind wichtig, um das Muster eindeutig zu halten.
-        c_all += 1
-        print(f"\r{c_all}/8192 = {100 * c_all / 8192:.1f} %", end="")  # 8192 == 2^13
-        r = get_max_rank_of_bomb(row, m)
-        if r >= 0:
-            # im Datensatz ist mindestens eine Farbbombe vorhanden
-            unique = row[r - m + 1:]
-            c_matches += 1
-            found = (r, row[0], unique) in data
-            if not found:
-                # die Farbbombe ist noch nicht gelistet
-                c_unique += 1
-                data.append((r, row[0], unique))
-    print("\nmatches:", c_matches)
-    print("unique:", c_unique)
-
-    # Daten zwischenspeichern
-    with open(path.join(config.DATA_PATH, f"cache/prob/~bomb{m:02}.pkl"), 'wb') as fp:
-        # noinspection PyTypeChecker
-        pickle.dump(data, fp)
-
-    # 2. Schritt:
-    # Karte verfügbar/fehlt expandieren zu Kartenanzahl 0,1,2,3,4
-
-    table = [[], []]  # erste Liste ohne Phönix, zweite Liste mit Phönix (bleibt bei Bomben leer)
-    c = 0
-    for r, pho, unique in data:
-        if r <= m + 1:
-            # Der kleinste Rang einer 5er-Farbbombe ist 6, der einer 6er-Farbbombe ist 7, usw.
-            # Wir suchen höhere Farbbomben, also brauchen wir den kleinstmöglichen Rang nicht zu speichern.
-            continue
-        cases = []
-        for v in unique:
-            cases = combine_lists(cases, [v], 14)
-            if not cases:
-                break
-        if cases:
-            c += len(cases)
-            print(f"\r{c}", end="")
-            table[pho].extend(cases)
-    print("\nExpandiert:", c)
-    print(f"{(time() - time_start) * 1000:.6f} ms")
-
-    # Daten speichern
-    save_table_hi(BOMB, m, table)
-
-# --------------------------------------------------------------------------------
-
 def generate_files_hi():
     for t in range(1, 8):
-        if t in [SINGLE, BOMB]:  # todo
-            continue
-
         if t == STAIR:
             for m in range(4, 15, 2):
                 file = get_filename_hi(t, m)

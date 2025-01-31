@@ -14,13 +14,14 @@ from timeit import timeit
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann
 #
-# todo:
-#  Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, was auch berücksichtigt wird.
-#  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
-#  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
-#
-# Wenn die gegebene Kombination der Phönix ist, so wird sie als Anspielkarte gewertet.
+# Wenn die gegebene Kombination der Phönix ist (d.h. als Einzelkarte), so wird sie als Anspielkarte gewertet.
 # Sollte der Phönix nicht die Anspielkarte sein, so muss die vom Phönix gestochene Karte angegeben werden.
+#
+# todo:
+#  0) Für die Berechnung einer Farbbombe müssen die Karten je Farbe vorgelegt werden.
+#  1) Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden.
+#  2) Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden.
+#     Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
@@ -56,10 +57,6 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
 
     else:
         assert t == BOMB
-        # if m == 4:  # 4er-Bombe
-        #     assert 2 <= r <= 14
-        # else:
-        # Farbbombe
         assert 5 <= m <= 14
         assert m + 1 <= r <= 14
 
@@ -70,7 +67,7 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
 
     matches = 0
     r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
-    for pho in range(2 if h[16] else 1):
+    for pho in range(2 if h[16] and t != BOMB else 1):
         for r_higher in range(r + 1, r_end):
             for case in table[pho][r_higher]:
                 if sum(case) + pho > k:

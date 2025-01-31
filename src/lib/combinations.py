@@ -210,6 +210,9 @@ def stringify_figure(figure: tuple) -> str:
 
 
 # Wandelt den Typ einer Kombination in ein Label um
+#
+# t: Typ der Kombination
+# m: Länge der Kombination (optional)
 def stringify_type(t: int, m: int = None) -> str:
     assert 1 <= t <= 7
     label = ["pass", "single", "pair", "triple", "stair", "fullhouse", "street", "bomb"][t]
