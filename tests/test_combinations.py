@@ -14,6 +14,13 @@ class TestCombinations(unittest.TestCase):
             lb = stringify_figure(figure)
             self.assertEqual(figure, parse_figure(lb), f"Index nicht OK: {i}, {figure}, {lb}")
 
+    def test_stringify_type(self):
+        self.assertEqual(stringify_type(0), "pass")
+        self.assertEqual(stringify_type(5, 6), "fullhouse")
+        self.assertEqual(stringify_type(6), "street")
+        self.assertEqual(stringify_type(6, 7), "street07")
+        self.assertEqual(stringify_type(7), "bomb")
+
     def test_get_figure(self):
         # Passen
         self.assertEqual((PASS, 0, 0), get_figure([], 10), "Passen")

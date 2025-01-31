@@ -245,11 +245,7 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 
 
 def inspect_single():  # pragma: no cover
-    #print(f"{timeit(lambda: inspect("Dr Hu Ph Ma S4 R3 R2", 3, (1, 1, 16), verbose=True), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("Dr Hu Ph Ma S4 R3 R2", 3, (1, 1, 10), verbose=True), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("SB RB GZ BZ SZ R9 G9 R8 G8 B4", 4, (1, 1, 10), verbose=True), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("Ph Dr RB GZ BZ SZ R9 G9 S9 R8 G8 B4", 2, (1, 1, 0), verbose=True), number=1) * 1000:.6f} ms")
-    print(f"{timeit(lambda: inspect("Ph SB RZ R9 G9 R8 G8 B4", 1, (1, 1, 15), verbose=True), number=1) * 1000:.6f} ms")
+    pass
 
 
 def inspect_pair():  # pragma: no cover
@@ -279,9 +275,6 @@ def inspect_stair():  # pragma: no cover
 
 def inspect_fullhouse():  # pragma: no cover
     print(f"{timeit(lambda: inspect("SB RZ GZ R9 G9 R8 G8 B4", 5, (5, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
-    print(f"{timeit(lambda: inspect("GA RK GD RB GZ RZ SZ B7 S7 S5 R4 S3 S2 Ph", 10, (5, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
-    print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 B6 R6 S6 S5 R4 B4 G4 S3 S2 Ph", 10, (5, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
-
 
 
 def inspect_street():  # pragma: no cover
@@ -297,10 +290,7 @@ def inspect_street():  # pragma: no cover
     #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
     #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
     #print(f"{timeit(lambda: inspect("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
-    pass
 
-
-def inspect_street_with_bomb():  # pragma: no cover
     # Straße mit 4er-Bombe und Farbbombe
     # todo: Differenz wegen 4er-Bombe (wird von possible_hands_hi() berücksichtigt, aber noch nicht von get_streets();
     #  Farbbomben werden von beiden Funktionen noch nicht berücksichtigt)
@@ -338,7 +328,7 @@ def inspect_color_bomb():  # pragma: no cover
     pass
 
 
-def benchmark_street():  # pragma: no cover
+def benchmark():  # pragma: no cover
     # Test auf Geschwindigkeit
 
     # Straße mit der Länge 5 (hat die meisten Muster, daher nehmen wir diese Länge)
@@ -351,6 +341,10 @@ def benchmark_street():  # pragma: no cover
         print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
         print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 8), verbose=False), number=1) * 1000:.6f} ms")
         print(f"k={k_}: {timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ph", k_, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+
+    # Fullhouse
+    print(f"{timeit(lambda: inspect("GA RK GD RB GZ RZ SZ B7 S7 R6 S6 S5 R4 B4 G4 S3 S2 Ph", 10, (5, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GA BA RA RK SK GD RB GZ RZ SZ B7 S7 S5 R4 S3 S2 B4 G4 S3 S2 Ma", 10, (5, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
 
 
 def benchmark_load_data():  # pragma: no cover

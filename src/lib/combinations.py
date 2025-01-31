@@ -1,6 +1,6 @@
 __all__ = "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "BOMB", \
     "FIGURE_PASS", "FIGURE_DOG", "FIGURE_MAH", "FIGURE_DRA", "FIGURE_PHO", \
-    "parse_figure", "stringify_figure", "get_figure", \
+    "parse_figure", "stringify_figure", "stringify_type", "get_figure", \
     "build_combinations", "remove_combinations", \
     "build_action_space",
 
@@ -207,6 +207,16 @@ def parse_figure(lb: str) -> tuple:
 # Wandelt Typ, Länge und Rang einer Kombination in ein Label um
 def stringify_figure(figure: tuple) -> str:
     return _figurelabels[_figures_index[figure]]
+
+
+# Wandelt den Typ einer Kombination in ein Label um
+def stringify_type(t: int, m: int = None) -> str:
+    assert 1 <= t <= 7
+    label = ["pass", "single", "pair", "triple", "stair", "fullhouse", "street", "bomb"][t]
+    if m is not None and t in (STAIR, STREET, BOMB):
+        assert (t == STAIR and m % 2 == 0 and 4 <= m <= 14) or (t == STREET and 5 <= m <= 14) or (t == BOMB and 4 <= m <= 14)
+        label += f"{m:02}"
+    return label
 
 
 # Ermittelt Typ, Länge und Rang der gegebenen Kartenkombination
