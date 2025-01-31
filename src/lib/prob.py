@@ -4,7 +4,7 @@ import itertools
 import math
 from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure
-from src.lib.prob_files import load_data_hi
+from src.lib.prob_files import load_table_hi
 from time import time
 from timeit import timeit
 
@@ -35,8 +35,6 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
 
     if t == SINGLE:  # Einzelkarte
         assert 0 <= r <= 16
-        steps = 1
-        r_end = 16  # exklusiv (Drache + 1)
         if r == 16:  # gegeben ist der Phönix
             # Rang des Phönix anpassen (der Phönix im Anspiel wird von der 2 geschlagen, aber nicht vom Mahjong)
             r = 1  # 1.5 abgerundet
@@ -46,67 +44,55 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
 
     elif t in [PAIR, TRIPLE, FULLHOUSE] or (t == BOMB and m == 4):  # Paar, Drilling, Fullhouse, 4er-Bombe
         assert 2 <= r <= 14
-        steps = 1
-        r_end = 15  # exklusiv (Ass + 1)
 
     elif t == STAIR:  # Treppe
         assert m % 2 == 0
         assert 4 <= m <= 14
-        steps = int(m / 2)
-        assert steps + 1 <= r <= 14
-        r_end = 15  # exklusiv (Ass + 1)
-
-    # elif t == FULLHOUSE:  # Fullhouse
-    #     assert 2 <= r <= 14
-    #     steps = 1
+        assert int(m / 2) + 1 <= r <= 14
 
     elif t == STREET:  # Straße
         assert 5 <= m <= 14
         assert m <= r <= 14
-        steps = m
-        r_end = 15  # exklusiv (Ass + 1)
 
     else:
         assert t == BOMB
         # if m == 4:  # 4er-Bombe
         #     assert 2 <= r <= 14
-        #     steps = 1
         # else:
         # Farbbombe
         assert 5 <= m <= 14
         assert m + 1 <= r <= 14
-        steps = m
-        r_end = 15  # exklusiv (Ass + 1)
 
     # Hilfstabellen laden
-    data = load_data_hi(t, m, verbose)
+    table = load_table_hi(t, m, verbose)
 
-    # alle Muster durchlaufen und mögliche Kombinationen zählen
+    # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
+
     matches = 0
+    r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
     for pho in range(2 if h[16] else 1):
-        for case in data[pho]:
-            r_start = r_end - len(case)
-            r_higher = r_start + steps - 1
-            if r_higher <= r:
-                break
-            if sum(case) + pho > k:
-                continue
-
-            matches_part = 1
-            n_remain = n - h[16]
-            k_remain = k - pho
-            for i in range(len(case)):
-                matches_part *= math.comb(h[r_start + i], case[i])
-                if matches_part == 0:
-                    break
-                n_remain -= h[r_start + i]
-                k_remain -= case[i]
-
-            matches_part *= math.comb(n_remain, k_remain)
-            if matches_part > 0:
-                if verbose:
-                    print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
-                matches += matches_part
+        for r_higher in range(r + 1, r_end):
+            for case in table[pho][r_higher]:
+                if sum(case) + pho > k:
+                    continue
+                # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
+                r_start = r_end - len(case)
+                matches_part = 1
+                n_remain = n - h[16]
+                k_remain = k - pho
+                for i in range(len(case)):
+                    matches_part *= math.comb(h[r_start + i], case[i])
+                    if matches_part == 0:
+                        break
+                    n_remain -= h[r_start + i]
+                    k_remain -= case[i]
+                # Binomialkoeffizient vom Rest berechnen und mit dem Zwischenergebnis multiplizieren
+                matches_part *= math.comb(n_remain, k_remain)
+                # Zwischenergebnis zum Gesamtergebnis addieren
+                if matches_part > 0:
+                    if verbose:
+                        print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
+                    matches += matches_part
 
     total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
     p = matches / total  # Wahrscheinlichkeit
@@ -292,7 +278,10 @@ def inspect_stair():  # pragma: no cover
 
 
 def inspect_fullhouse():  # pragma: no cover
-    pass
+    print(f"{timeit(lambda: inspect("SB RZ GZ R9 G9 R8 G8 B4", 5, (5, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GA RK GD RB GZ RZ SZ B7 S7 S5 R4 S3 S2 Ph", 10, (5, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GA RK GD RB GZ R9 S8 B7 B6 R6 S6 S5 R4 B4 G4 S3 S2 Ph", 10, (5, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+
 
 
 def inspect_street():  # pragma: no cover
@@ -366,11 +355,20 @@ def benchmark_street():  # pragma: no cover
 
 def benchmark_load_data():  # pragma: no cover
     # Ladezeit messen
-    print(f"{timeit(lambda: load_data_hi(STREET, 10), number=10) * 1000 / 10:.6f} ms")  # 420 ms
-    print(f"{timeit(lambda: load_data_hi(STREET, 5), number=10) * 1000 / 10:.6f} ms")  # 420 ms
+    print(f"{timeit(lambda: load_table_hi(STREET, 5), number=10) * 1000 / 10:.6f} ms")  # 420 ms
+    print(f"{timeit(lambda: load_table_hi(FULLHOUSE, 5), number=10) * 1000 / 10:.6f} ms")  # 420 ms
+
+
+def report():  # pragma: no cover
+    # Anzahl Muster je Tabelle
+    table = load_table_hi(STREET, 5)
+    print("STREET", len(table[0]), len(table[1]))  # 516570, 1236896
+
+    table = load_table_hi(FULLHOUSE, 5)
+    print("FULLHOUSE", sum(len(cases) for cases in table[0].values()), sum(len(cases) for cases in table[1].values()))  # 926393, 151034
 
 
 if __name__ == "__main__":  # pragma: no cover
-    inspect_single()
-    #inspect_street()
-    pass
+    inspect_fullhouse()
+    #benchmark_load_data()
+    #report()

@@ -1,4 +1,4 @@
-__all__ = "load_data_hi",
+__all__ = "load_table_hi",
 
 import config
 import gzip
@@ -24,44 +24,45 @@ def get_filename_hi(t: int, m: int = None):
     return file
 
 
-# Speichert die Hilfstabellen
-def save_data_hi(t: int, m: int, data: list):
+# Speichert die Hilfstabelle
+def save_table_hi(t: int, m: int, table: list):
     file = get_filename_hi(t, m)
 
     # unkomprimiert speichern
     with open(file, 'wb') as fp:
         # noinspection PyTypeChecker
-        pickle.dump(data, fp)
+        pickle.dump(table, fp)
 
     # Komprimiert speichern
     with gzip.open(file + ".gz", "wb") as fp:
         # noinspection PyTypeChecker
-        pickle.dump(data, fp)
+        pickle.dump(table, fp)
 
     # zusätzlich als Textdatei speichern (nützlich zum Debuggen)
     with open(file[:-4] + ".txt", "w") as datei:
         for pho in range(2):
             datei.write(f"Pho={pho}\n")
-            for row in data[pho]:
-                datei.write(f"{row}\n")
+            for r, cases in table[pho].items():
+                for case in cases:
+                    datei.write(f"{r}, {case}\n")
 
-    print(f"Daten in {path.basename(file)} gespeichert", )
+    print(f"Hilfstabelle in {path.basename(file)} gespeichert", )
 
 
-# Lädt die Hilfstabellen
-def load_data_hi(t: int, m: int, verbose = False) -> list:
+# Lädt die Hilfstabelle
+def load_table_hi(t: int, m: int, verbose = False) -> list:
     time_start = time()
     file = get_filename_hi(t, m)
     if path.exists(file):
         with open(file, 'rb') as fp:
-            data = pickle.load(fp)
+            table = pickle.load(fp)
     else:
         file += ".gz"
         with gzip.open(file, 'rb') as fp:
-            data = pickle.load(fp)
+            table = pickle.load(fp)
     if verbose:
-        print(f"Daten aus {path.basename(file)} geladen ({(time() - time_start) * 1000:.6f} ms)")
-    return data
+        print(f"Hilfstabelle aus {path.basename(file)} geladen ({(time() - time_start) * 1000:.6f} ms)")
+    return table
 
 
 # Bildet das Produkt beider Listen
@@ -163,19 +164,26 @@ def get_max_rank_of_stair(row: tuple, steps: int) -> int:
 
 # Ermittelt das höchste Fullhouse im Datensatz
 #
-# Wenn ein Fullhouse vorhanden ist, wird der Rang des Fullhouses zurückgegeben, sonst -1.
+# Wenn ein Fullhouse vorhanden ist, wird der Rang des Fullhouses und das eindeutige Muster zurückgegeben, sonst -1.
 #
 # row: row[0] == Phönix, row[1] bis row[14] == Rang 1 bis 14
-def get_max_rank_of_fullhouse(row: tuple) -> int:
-    # todo
-    # for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
-    #     if row[0]:  # mit Phönix
-    #         if row[r] >= 1:
-    #             return r
-    #     else:  # ohne Phönix
-    #         if row[r] >= 2:
-    #             return r
-    return -1
+def get_max_rank_of_fullhouse(row: tuple) -> tuple[int, list]:
+    for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
+        if row[0]:  # mit Phönix
+            if row[r] >= 3:  # Drilling mit Rang r
+                for i in range(14, 1, -1):
+                    if i != r and row[i] >= 1:  # irgendeine Einzelkarte zw. 14 und 2
+                        return r, row[min(r, i):]
+            if row[r] == 2:  # Pärchen mit Rang r
+                for i in range(14, 1, -1):
+                    if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
+                        return r, row[min(r, i):]
+        else:  # ohne Phönix
+            if row[r] >= 3:  # Drilling mit Rang r
+                for i in range(14, 1, -1):
+                    if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
+                        return r, row[min(r, i):]
+    return -1, []
 
 
 # Ermittelt die höchste Straße im Datensatz
@@ -286,7 +294,7 @@ def generate_single_file_hi():
     print(f"{(time() - time_start) * 1000:.6f} ms")
 
     # Daten speichern
-    save_data_hi(SINGLE, 1, table)
+    save_table_hi(SINGLE, 1, table)
 
 
 # Generiert eine Datei mit allen möglichen Pärchen, höheres Pärchen wird bevorzugt.
@@ -294,7 +302,7 @@ def generate_pair_file_hi():
     time_start = time()
 
     # 1. Schritt:
-    # alle möglichen Kombinationen (reduziert 2 Karten/1 Karte/fehlt) durchlaufen und Pärchen auflisten
+    # alle möglichen Kombinationen (reduziert auf mehr/1 Karte/weniger) durchlaufen und Pärchen auflisten
 
     c_all = 0
     c_matches = 0
@@ -325,7 +333,7 @@ def generate_pair_file_hi():
     print("unique:", c_unique)
 
     # 2. Schritt:
-    # 2 Karten/1 Karte/fehlt expandieren zu Kartenanzahl 0,1,2,3,4
+    # Anzahl expandieren zu Kartenanzahl 0,1,2,3,4
 
     table = [[], []]  # erste Liste ohne Phönix, zweite Liste mit Phönix
     c = 0
@@ -347,7 +355,7 @@ def generate_pair_file_hi():
     print(f"{(time() - time_start) * 1000:.6f} ms")
 
     # Daten speichern
-    save_data_hi(PAIR, 2, table)
+    save_table_hi(PAIR, 2, table)
 
 
 # Generiert eine Datei mit allen möglichen Drillinge, höherer Drilling wird bevorzugt.
@@ -355,7 +363,7 @@ def generate_triple_file_hi():
     time_start = time()
 
     # 1. Schritt:
-    # alle möglichen Kombinationen (reduziert auf mind. 3 Karten/2 Karten/weniger) durchlaufen und Drillinge auflisten
+    # alle möglichen Kombinationen (reduziert mehr/2 Karten/weniger) durchlaufen und Drillinge auflisten
 
     c_all = 0
     c_matches = 0
@@ -386,7 +394,7 @@ def generate_triple_file_hi():
     print("unique:", c_unique)
 
     # 2. Schritt:
-    # 3 Karten/2 Karten/weniger expandieren zu Kartenanzahl 0,1,2,3,4
+    # Anzahl expandieren zu Kartenanzahl 0,1,2,3,4
 
     table = [[], []]  # erste Liste ohne Phönix, zweite Liste mit Phönix
     c = 0
@@ -408,7 +416,7 @@ def generate_triple_file_hi():
     print(f"{(time() - time_start) * 1000:.6f} ms")
 
     # Daten speichern
-    save_data_hi(TRIPLE, 3, table)
+    save_table_hi(TRIPLE, 3, table)
 
 
 # Generiert eine Datei mit allen möglichen Treppen der Länge m, höhere Treppe wird bevorzugt.
@@ -420,7 +428,7 @@ def generate_stair_file_hi(m: int):
     time_start = time()
 
     # 1. Schritt:
-    # alle möglichen Kombinationen (reduziert auf mind. 2 Karten/1 Karte/fehlt) durchlaufen und Treppen auflisten
+    # alle möglichen Kombinationen (reduziert auf mehr/1 Karte/fehlt) durchlaufen und Treppen auflisten
 
     c_all = 0
     c_matches = 0
@@ -451,7 +459,7 @@ def generate_stair_file_hi(m: int):
     print("unique:", c_unique)
 
     # 2. Schritt:
-    # Karte mind. 2 Karten/1 Karte/fehlt expandieren zu Kartenanzahl 0,1,2,3,4
+    # Anzahl expandieren zu Kartenanzahl 0,1,2,3,4
 
     table = [[], []]  # erste Liste ohne Phönix, zweite Liste mit Phönix
     c = 0
@@ -473,13 +481,74 @@ def generate_stair_file_hi(m: int):
     print(f"{(time() - time_start) * 1000:.6f} ms")
 
     # Daten speichern
-    save_data_hi(STAIR, m, table)
+    save_table_hi(STAIR, m, table)
 
 
 # Generiert eine Datei mit allen möglichen Fullhouses, höheres Fullhouse wird bevorzugt.
 def generate_fullhouse_file_hi():
-    # todo
-    pass
+    table = [
+        {r: [] for r in range(2, 15)},  # ohne Phönix
+        {r: [] for r in range(2, 15)},  # mit Phönix
+    ]
+
+    # 1. Schritt:
+    # alle möglichen Kombinationen (Kartenanzahl je Rang reduziert) durchlaufen und passende auflisten
+
+    for pho in range(2):
+        data = {r: [] for r in range(2, 15)}
+        a = [0, 1, 2, 3] if pho else [1, 2, 3]
+        c_max = 2 * len(a) ** 13
+        c_all = 0
+        c_matches = 0
+        c_unique = 0                 # 0     1   2  3  4  5  6  7  8  9 10 11 12 13 14
+        for row in itertools.product([pho], [0], a, a, a, a, a, a, a, a, a, a, a, a, a):
+            # Beispiel für row (r = 10):
+            # r = 1  2  3  4  5  6  7  8  9 10 11 12 13 14
+            # (0, 0, 1, 1, 0, 3, 1, 2, 2, 1, 3, 0, 1, 0, 1)
+            #  ^     ^----remain----^  ^-------unique----^
+            #  |     |              |  |     |           |
+            # pho    2                pair   r          14
+            c_all += 1
+            print(f"\r{c_all}/{c_max} = {100 * c_all / c_max:.1f} %", end="")
+            r, unique = get_max_rank_of_fullhouse(row)
+            if r >= 0:
+                c_matches += 1
+                if not unique in data[r]:
+                    c_unique += 1
+                    data[r].append(unique)
+        print("\nmatches:", c_matches)
+        print("unique:", c_unique)
+
+        # Daten zwischenspeichern
+        with open(path.join(config.DATA_PATH, f"lib/prob/~fullhouse{c_max}.pkl"), 'wb') as fp:
+            # noinspection PyTypeChecker
+            pickle.dump(data, fp)
+
+        # 2. Schritt:
+        # Kartenanzahl expandieren zu Kartenanzahl 0,1,2,3,4 (bzw. 0,1 bei Sonderkarten)
+
+        c = 0
+        for r, uniques in data.items():
+            #if r == 2:  # kleinster Rang
+            #    continue  # wir suchen höhere Kombinationen, also brauchen wir den kleinstmöglichen Rang nicht zu speichern
+            for unique in uniques:
+                cases = []
+                for v in unique:
+                    if pho:
+                        v_expand = [3, 4] if v == 3 else [v]
+                    else:
+                        v_expand = [3, 4] if v == 3 else [2] if v == 2 else [0, 1]
+                    cases = combine_lists(cases, v_expand, 14)
+                    if not cases:
+                        break
+                c += len(cases)
+                print(f"\r{c}", end="")
+                for case in cases:
+                    table[pho][r].append(case)
+        print("\rExpandiert:", c)
+
+    # Daten speichern
+    save_table_hi(FULLHOUSE, 5, table)
 
 
 # Generiert eine Datei mit allen möglichen Straßen der Länge m, höhere Straße wird bevorzugt.
@@ -543,7 +612,7 @@ def generate_street_file_hi(m: int):
     print(f"{(time() - time_start) * 1000:.6f} ms")
 
     # Daten speichern
-    save_data_hi(STREET, m, table)
+    save_table_hi(STREET, m, table)
 
 
 # Generiert eine Datei mit allen möglichen 4er-Bomben, höhere Bombe wird bevorzugt.
@@ -604,7 +673,7 @@ def generate_4_bomb_file_hi():
     print(f"{(time() - time_start) * 1000:.6f} ms")
 
     # Daten speichern
-    save_data_hi(BOMB, 4, table)
+    save_table_hi(BOMB, 4, table)
 
 
 # Generiert eine Datei mit allen möglichen Farbbomben der Länge m, höhere Bombe wird bevorzugt.
@@ -676,41 +745,49 @@ def generate_color_bomb_file_hi(m: int):
     print(f"{(time() - time_start) * 1000:.6f} ms")
 
     # Daten speichern
-    save_data_hi(BOMB, m, table)
+    save_table_hi(BOMB, m, table)
 
 # --------------------------------------------------------------------------------
 
 def generate_files_hi():
-    file = get_filename_hi(SINGLE)
-    if not path.exists(file) and not path.exists(file + ".gz"):
-        generate_single_file_hi()
+    #print("SINGLE")
+    #file = get_filename_hi(SINGLE)
+    #if not path.exists(file) and not path.exists(file + ".gz"):
+    #    generate_single_file_hi()
 
+    #print("PAIR")
     #file = get_filename_hi(PAIR)
     #if not path.exists(file) and not path.exists(file + ".gz"):
     #    generate_pair_file_hi()
 
+    #print("TRIPLE")
     #file = get_filename_hi(TRIPLE)
     #if not path.exists(file) and not path.exists(file + ".gz"):
     #    generate_triple_file_hi()
 
+    #print("STAIR")
     #for m in range(4, 15, 2):
     #    file = get_filename_hi(STAIR, m)
     #    if not path.exists(file) and not path.exists(file + ".gz"):
     #        generate_stair_file_hi(m)
 
-    #file = get_filename_hi(FULLHOUSE)
-    #if not path.exists(file) and not path.exists(file + ".gz"):
-    #    generate_fullhouse_file_hi()
+    print("FULLHOUSE")
+    file = get_filename_hi(FULLHOUSE)
+    if not path.exists(file) and not path.exists(file + ".gz"):
+        generate_fullhouse_file_hi()
 
+    #print("STREET")
     #for m in range(5, 15):
     #    file = get_filename_hi(STREET, m)
     #    if not path.exists(file) and not path.exists(file + ".gz"):
     #        generate_street_file_hi(m)
 
+    #print("4 BOMB")
     #file = get_filename_hi(BOMB, 4)
     #if not path.exists(file) and not path.exists(file + ".gz"):
     #    generate_4_bomb_file_hi()
 
+    #print("COLOR BOMB")
     #for m in range(5, 14):
     #    file = get_filename_hi(BOMB, m)
     #    if not path.exists(file) and not path.exists(file + ".gz"):
@@ -718,6 +795,6 @@ def generate_files_hi():
 
 
 if __name__ == '__main__':  # pragma: no cover
-    #generate_files_hi()
-    generate_single_file_hi()
-    #generate_color_bomb_file_hi(12)
+    #generate_fullhouse_file_hi()
+    generate_files_hi()
+

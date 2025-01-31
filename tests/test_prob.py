@@ -314,11 +314,11 @@ class TestProbOfHandRaster(unittest.TestCase):
             "SB RZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            #"SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",  # 4er-Bombe
             "Ph SB RZ R9 G9 R8 G8 B4",
             "SB RZ Ph R9 G9 R8 G8 B4",
             "SB RZ GZ BZ Ph G9 R8 G8 B4",
-            #"SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 Ph R8 G8 B4",  # 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4 Ph",
             "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
             "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
@@ -338,19 +338,19 @@ class TestProbOfHandRaster(unittest.TestCase):
             "SB RZ R9 G9 R8 G8 B4",
             "SB RZ GZ R9 G9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 R8 G8 B4",  # 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",  # 4er-Bombe
             "Ph SB RZ R9 G9 R8 G8 B4",
             "SB RZ Ph R9 G9 R8 G8 B4",
             "SB RZ GZ BZ Ph G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 Ph R8 G8 B4",  # 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4 Ph",
             "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
             "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",  # 4er-Bombe
         ]
         m = 2
         r = 9
@@ -364,19 +364,19 @@ class TestProbOfHandRaster(unittest.TestCase):
             "SB RZ R9 G9 R8 G8 B4",
             "SB RZ GZ R9 G9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 R8 G8 B4",  # 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",  # 4er-Bombe
             "Ph SB RZ R9 G9 R8 G8 B4",
             "SB RZ Ph R9 G9 R8 G8 B4",
             "SB RZ GZ BZ Ph G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 Ph R8 G8 B4",  # 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4 Ph",
             "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
             "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",  # 4er-Bombe
         ]
         m = 3
         r = 9
@@ -390,19 +390,19 @@ class TestProbOfHandRaster(unittest.TestCase):
             "SB RZ R9 G9 R8 G8 B4",
             "SB RZ GZ R9 G9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 R8 G8 B4",  # 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",  # 4er-Bombe
             "Ph SB RZ R9 G9 R8 G8 B4",
             "SB RZ Ph R9 G9 R8 G8 B4",
             "SB RZ GZ BZ Ph G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 Ph R8 G8 B4",  # 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4 Ph",
             "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
             "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",  # 4er-Bombe
             "Ph GK BK SD SB RB BZ R9",
             "Ph GK BK SD SB RB R9",
             "Ph GK BK SD SB R9 S4",
@@ -420,19 +420,19 @@ class TestProbOfHandRaster(unittest.TestCase):
             "SB RZ GZ R9 G9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 R9 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 R8 G8 B4",  # mit 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ R9 G9 S9 R8 G8 B4",
             "SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",  # mit 4er-Bombe
             "Ph SB RZ R9 G9 R8 G8 B4",
             "SB RZ Ph R9 G9 R8 G8 B4",
             "SB RZ GZ BZ Ph G9 R8 G8 B4",
-            "SB RZ GZ BZ SZ R9 Ph R8 G8 B4",
+            #"SB RZ GZ BZ SZ R9 Ph R8 G8 B4",  # mit 4er-Bombe
             "SB RZ R9 G9 S9 R8 G8 B4 Ph",
             "Ph SB RZ GZ R9 G9 S9 R8 G8 B4",
             "Ph SB RZ GZ BZ R9 G9 S9 R8 G8 B4",
-            "Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",
+            #"Ph SB RZ GZ BZ SZ R9 G9 S9 R8 G8 B4",  # mit 4er-Bombe
         ]
         m = 5
         r = 9
