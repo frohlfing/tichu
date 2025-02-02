@@ -1,12 +1,23 @@
 import unittest
 # noinspection PyProtectedMember
-from src.lib.combinations import _figures, _figures_index, _figurelabels, _figurelabels_index
+from src.lib.combinations import _figures, _figures_index, _figurelabels, _figurelabels_index, validate_figure
 from src.lib.combinations import *
 from src.lib.cards import *
 
 
 # noinspection DuplicatedCode
 class TestCombinations(unittest.TestCase):
+    def test_validate_figure(self):
+        self.assertTrue(validate_figure((0, 0, 0)))
+        self.assertTrue(validate_figure((1, 1, 6)))
+        self.assertTrue(validate_figure((2, 2, 5)))
+        self.assertTrue(validate_figure((3, 3, 6)))
+        self.assertTrue(validate_figure((4, 14, 8)))
+        self.assertTrue(validate_figure((5, 5, 2)))
+        self.assertTrue(validate_figure((6, 14, 14)))
+        self.assertTrue(validate_figure((7, 13, 14)))
+        self.assertFalse(validate_figure((6, 11, 10)))
+
     def test_parse_and_stringify_figure(self):
         self.assertTrue(len(_figures) == len(_figures_index) == len(_figurelabels) == len(_figurelabels_index) == 227, "es gibt 227 Kombinationsarten (inklusiv Passen)")
         for i in range(0, 227):

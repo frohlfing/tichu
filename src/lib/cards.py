@@ -152,7 +152,6 @@ def ranks_to_vector(cards: list[tuple]) -> list[int]:
     return h
 
 
-# todo evtl so sortieren wie das Deck: Hu Ma 2 2 2 2 3 3 3 3 4 4 4 4 ... Dr Ph
 # Wandelt die Karten in einen Vektor um
 def cards_to_vector(cards: list[tuple]) -> list[int]:
     # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph

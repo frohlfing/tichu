@@ -256,7 +256,7 @@ def generate_file_hi(t: int, m: int = None):
         assert t == BOMB and 4 <= m <= 14
 
     # Mögliche Ränge von/bis
-    r_start = 0 if t == SINGLE else 1 if t == STREET else 2
+    r_start = 0 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
     r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
 
     # Hilfstabelle
@@ -270,6 +270,11 @@ def generate_file_hi(t: int, m: int = None):
 
     for pho in range(1 if t == BOMB else 2):
         print(f"Generiere Hilfstabelle {stringify_type(t, m)}[{pho}]...")
+
+        r_start = 0 if t == SINGLE else 1 if t == STREET else 2
+
+        # todo r_start um 1 erhöhen, wenn keine Bombe
+        #  und alles nochmal generieren
 
         data = {r: [] for r in range(r_start, r_end)}
 

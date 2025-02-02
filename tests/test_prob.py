@@ -99,9 +99,13 @@ class TestProbOfHandExplicit(unittest.TestCase):
             with self.assertRaises(AssertionError, msg="k > n"):
                 prob_of_hand(parse_cards(cards), k, figure)
         else:
-            p_actual = prob_of_hand(parse_cards(cards), k, figure)
-            print(f"{p_actual:<20} {p_expected:<20}  {msg}")
-            self.assertEqual(p_expected, p_actual)
+            p_min, p_max = prob_of_hand(parse_cards(cards), k, figure)
+            if p_min == p_max:
+                print(f"{p_min:<20} == {p_expected:<20}  {msg}")
+                self.assertAlmostEqual(p_expected, p_min, places=15, msg=msg)
+            else:
+                print(f"{p_min:<20} <= {p_expected:<20} <= {p_max:<20} {msg}")
+                self.assertTrue(p_min <= p_expected <= p_max, msg=msg)
 
     def test_single(self):  # pragma: no cover
         # Einzelkarte
@@ -115,15 +119,15 @@ class TestProbOfHandExplicit(unittest.TestCase):
         self._test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0.0, "Einzelkarte Drache")
         self._test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 0.5714285714285714, "Einzelkarte Phönix")
 
-        # todo: Einzelkarte mit 4er-Bombe
-        #self._test("SB RZ GZ BZ SZ R9", 5, (1, 1, 11), 0.3333333333333333, "Einzelkarte Bube mit 4er-Bombe")
-        #self._test("Hu Ma RZ GZ BZ SZ", 4, (1, 1, 15), 0.06666666666666667, "Einzelkarte Drache mit 4er-Bombe")
+        # Einzelkarte mit 4er-Bombe
+        self._test("SB RZ GZ BZ SZ R9", 5, (1, 1, 11), 0.3333333333333333, "Einzelkarte Bube mit 4er-Bombe")
+        self._test("Hu Ma RZ GZ BZ SZ", 4, (1, 1, 15), 0.06666666666666667, "Einzelkarte Drache mit 4er-Bombe")
 
-        # todo: Einzelkarte mit Farbbombe
-        #self._test("SB RZ R9 R8 R7 R6", 5, (1, 1, 11), 0.16666666666666667, "Einzelkarte Bube mit Farbbombe")
+        # Einzelkarte mit Farbbombe
+        self._test("SB RZ R9 R8 R7 R6", 5, (1, 1, 11), 0.16666666666666667, "Einzelkarte Bube mit Farbbombe")
 
-        # todo: Einzelkarte mit 4er-Bombe und Farbbombe
-        #self._test("RB GZ SZ BZ RZ R9 R8 R7", 5, (1, 1, 10), 0.16666666666666667, "Einzelkarte mit 4er-Bombe und Farbbombe (1)")
+        # Einzelkarte mit 4er-Bombe und Farbbombe
+        self._test("RB GZ SZ BZ RZ R9 R8 R7", 5, (1, 1, 10), 0.6785714285714286, "Einzelkarte mit 4er-Bombe und Farbbombe (1)")
 
     def test_pair(self):  # pragma: no cover
         # Pärchen
@@ -282,6 +286,8 @@ class TestProbOfHandExplicit(unittest.TestCase):
         self._test("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 0.047619047619047616, "Farbbombe")
         self._test("BK BD BB BZ B9 RK RD RB RZ R9 S3 S2", 11, (7, 5, 12), 1.0, "2 Farbbomben in 12 Karten")
         self._test("BK BD BB BZ B9 RK RD RB RZ R9 G7 S3 S2", 11, (7, 5, 12), 0.6794871794871795, "2 Farbbomben in 13 Karten")
+        self._test("RK RD RB RZ R9 BD BB BZ B9 B8 B7 S3 S2", 11, (7, 5, 12), 0.6153846153846154, "2 Farbbomben in 13 Karten (davon ein länger)")
+
         # Farbbombe mit längerer Farbbombe
         self._test("SD RZ R9 R8 R7 R6 R5", 6, (7, 5, 11), 0.14285714285714285, "Farbbombe mit längerer Farbbombe (1)")
         self._test("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11), 0.25, "Farbbombe mit längerer Farbbombe (2)")
@@ -298,11 +304,16 @@ class TestProbOfHandRaster(unittest.TestCase):
             return
         self.c += 1
         matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
-        p_expect = sum(matches) / len(hands) if hands else 0.0
+        p_expected = sum(matches) / len(hands) if hands else 0.0
         msg = stringify_figure(figure)
-        print(f'("{cards}", {k}, ({figure[0]}, {figure[1]}, {figure[2]}), {sum(matches)}, {len(hands)}, {p_expect}, "{msg}, Test {self.c}"),'),
-        p_actual = prob_of_hand(parse_cards(cards), k, figure)
-        self.assertAlmostEqual(p_expect, p_actual, places=15, msg=msg)
+        #print(f'("{cards}", {k}, ({figure[0]}, {figure[1]}, {figure[2]}), {sum(matches)}, {len(hands)}, {p_expected}, "{msg}, Test {self.c}"),'),
+        p_min, p_max = prob_of_hand(parse_cards(cards), k, figure)
+        if p_min == p_max:
+            print(f"{p_min:<20} == {p_expected:<20} {msg}")
+            self.assertAlmostEqual(p_expected, p_min, places=15, msg=msg)
+        else:
+            print(f"{p_min:<20} <= {p_expected:<20} <= {p_max:<20} {msg}")
+            self.assertTrue(p_min <= p_expected <= p_max, msg=msg)
 
     def test_single(self):
         t = SINGLE

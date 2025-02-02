@@ -2,8 +2,8 @@ __all__ = "prob_of_hand",
 
 import itertools
 import math
-from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector
-from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure
+from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector
+from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
 from src.lib.prob_files import load_table_hi
 from time import time
 from timeit import timeit
@@ -12,59 +12,160 @@ from timeit import timeit
 # Wahrscheinlichkeitsberechnung
 # -----------------------------------------------------------------------------
 
+# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Farbbombe überstechen kann
+# (entweder durch einen höheren Rang, oder durch eine längere Bombe)
+#
+# Mit m = r = 5 wird die Wahrscheinlichkeit berechnet, dass irgendeine Farbbombe auf der Hand ist.
+#
+# cards: Verfügbare Karten
+# k: Anzahl der Handkarten
+# m: Länge der gegebenen Kombination
+# r: Rang der gegebenen Kombination
+def prob_of_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5, verbose=False) -> float:  # pragma: no cover
+    n = len(cards)  # Gesamtanzahl der verfügbaren Karten
+    assert k <= n <= 56
+    assert 0 <= k <= 14
+    assert 5 <= m <= 14
+    assert m == r == 5 or m + 1 <= r <= 14
+
+    # Karten in einem Vektor umwandeln (die Werte in h sind 0 oder 1)
+    h = cards_to_vector(cards)
+
+    # Hilfstabellen laden
+    table = load_table_hi(BOMB, m, verbose)
+    table_longer = load_table_hi(BOMB, m + 1, verbose) if m < 14 and r > 5 else [{}, {}]
+
+    # für jede der vier Farben alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
+    matches = 0
+    for color in range(4):
+        for r_curr in range(6, 15):
+            cases = table[0][r_curr] if r_curr > r else table_longer[0][r_curr]
+            for case in cases:
+                if sum(case) > k:
+                    continue
+                r_start = 15 - len(case)
+                # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
+                matches_part = 1
+                n_remain = n
+                k_remain = k
+                for i in range(len(case)):
+                    if h[color * 13 + r_start + i] < case[i]:
+                        matches_part = 0
+                        break
+                    #matches_part *= math.comb(h[color * 13 + r_start + i], case[i])  # der Binomialkoeffizienten ist hier immer 1
+                    n_remain -= h[color * 13 + r_start + i]
+                    k_remain -= case[i]
+                if matches_part == 1:
+                    matches_part = math.comb(n_remain, k_remain)
+                    if verbose:
+                        print(f"r={r_curr}, color={color}, case={case}, matches_part={matches_part}")
+                    # Anzahl Möglichkeiten, die sich aus den der übrigen Karten ergeben, berechnen und zum Gesamtergebnis addieren
+                    matches += matches_part
+                    # die Anzahl Möglichkeiten, zwei Bomben gleichzeitig zu haben, müssen wieder abgezogen werden (Prinzip von Inklusion und Exklusion)
+                    for color2 in range(color + 1, 4):
+                        for r_curr2 in range(6, 15):
+                            cases = table[0][r_curr2] if r_curr2 > r else table_longer[0][r_curr2]
+                            for case2 in cases:
+                                if sum(case2) > k_remain:
+                                    continue
+                                r_start2 = 15 - len(case2)
+                                matches_part2 = 1
+                                n_remain2 = n_remain
+                                k_remain2 = k_remain
+                                for i in range(len(case2)):
+                                    if h[color2 * 13 + r_start2 + i] < case2[i]:
+                                        matches_part2 = 0
+                                        break
+                                    n_remain2 -= h[color2 * 13 + r_start2 + i]
+                                    k_remain2 -= case2[i]
+                                if matches_part2 == 1:
+                                    matches_part2 = math.comb(n_remain2, k_remain2)
+                                    if verbose:
+                                        print(f"r2={r_curr2}, color2={color2}, case2={case2}, matches_part2={matches_part2}")
+                                    matches -= matches_part2
+
+    # Wahrscheinlichkeit berechnen
+    total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
+    p = matches / total
+    return p
+
+
+# # Berechnet die Wahrscheinlichkeit, dass die Hand eine 4er-Bombe hat
+#
+# cards: Verfügbare Karten
+# k: Anzahl der Handkarten
+def prob_of_any_4_bomb(cards: list[tuple], k: int) -> float:  # pragma: no cover
+    n = len(cards)  # Gesamtanzahl der verfügbaren Karten
+    assert k <= n <= 56
+    assert 0 <= k <= 14
+
+    # Anzahl der Karten je Rang zählen
+    h = ranks_to_vector(cards)
+
+    # Hilfstabellen laden
+    table = load_table_hi(BOMB, 4)
+
+    # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
+    matches = 0
+    for r in range(2, 15):
+        for case in table[0][r]:
+            if sum(case) > k:
+                continue
+            r_start = 15 - len(case)
+            matches_part = 1
+            n_remain = n
+            k_remain = k
+            for i in range(len(case)):
+                if h[r_start + i] < case[i]:
+                    matches_part = 0
+                    break
+                matches_part *= math.comb(h[r_start + i], case[i])
+                n_remain -= h[r_start + i]
+                k_remain -= case[i]
+            if matches_part > 0:
+                matches += matches_part * math.comb(n_remain, k_remain)
+
+    # Wahrscheinlichkeit berechnen
+    total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
+    p = matches / total
+    return p
+
+
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann
 #
 # Wenn die gegebene Kombination der Phönix ist (d.h. als Einzelkarte), so wird sie als Anspielkarte gewertet.
 # Sollte der Phönix nicht die Anspielkarte sein, so muss die vom Phönix gestochene Karte angegeben werden.
 #
-# todo:
-#  0) Für die Berechnung einer Farbbombe müssen die Karten je Farbe vorgelegt werden.
-#  1) Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden.
-#  2) Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden.
-#     Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
-#
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
 # figure: Typ, Länge und Rang der gegebenen Kombination
-# r: Rang der gegebenen Kombination
-def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # pragma: no cover
+def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False) -> tuple[float, float]:  # pragma: no cover
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
-    h = ranks_to_vector(cards)  # Anzahl der Karten je Rang
+    assert figure == (BOMB, 4, 1) or (figure != (0, 0, 0) and validate_figure(figure))
     t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
 
-    if t == SINGLE:  # Einzelkarte
-        assert 0 <= r <= 16
-        if r == 16:  # gegeben ist der Phönix
-            # Rang des Phönix anpassen (der Phönix im Anspiel wird von der 2 geschlagen, aber nicht vom Mahjong)
-            r = 1  # 1.5 abgerundet
-            # Der verfügbare Phönix hat den Rang 15 (14.5 aufgerundet); er würde sich selbst schlagen.
-            # Daher degradieren wir den verfügbaren Phönix zu einer Noname-Karte (n bleibt gleich, aber es gibt kein Phönix mehr!).
-            h[16] = 0
+    # Farbbombe ausrangieren
+    if t == BOMB and m >= 5:
+        p = prob_of_color_bomb(cards, k, m, r, verbose)
+        return p, p
 
-    elif t in [PAIR, TRIPLE, FULLHOUSE] or (t == BOMB and m == 4):  # Paar, Drilling, Fullhouse, 4er-Bombe
-        assert 2 <= r <= 14
+    # Anzahl der Karten je Rang zählen
+    h = ranks_to_vector(cards)
 
-    elif t == STAIR:  # Treppe
-        assert m % 2 == 0
-        assert 4 <= m <= 14
-        assert int(m / 2) + 1 <= r <= 14
-
-    elif t == STREET:  # Straße
-        assert 5 <= m <= 14
-        assert m <= r <= 14
-
-    else:
-        assert t == BOMB
-        assert 5 <= m <= 14
-        assert m + 1 <= r <= 14
+    # Sonderbehandlung für Phönix als Einzelkarte
+    if t == SINGLE and r == 16:
+        # Rang des Phönix anpassen (der Phönix im Anspiel wird von der 2 geschlagen, aber nicht vom Mahjong)
+        r = 1  # 1.5 abgerundet
+        # Der verfügbare Phönix hat den Rang 15 (14.5 aufgerundet); er würde sich selbst schlagen.
+        # Daher degradieren wir den verfügbaren Phönix zu einer Noname-Karte (n bleibt gleich, aber es gibt kein Phönix mehr!).
+        h[16] = 0
 
     # Hilfstabellen laden
     table = load_table_hi(t, m, verbose)
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
-
     matches = 0
     r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
     for pho in range(2 if h[16] and t != BOMB else 1):
@@ -72,28 +173,44 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
             for case in table[pho][r_higher]:
                 if sum(case) + pho > k:
                     continue
-                # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
                 r_start = r_end - len(case)
+                # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
                 matches_part = 1
                 n_remain = n - h[16]
                 k_remain = k - pho
                 for i in range(len(case)):
-                    matches_part *= math.comb(h[r_start + i], case[i])
-                    if matches_part == 0:
+                    if h[r_start + i] < case[i]:
+                        matches_part = 0
                         break
+                    matches_part *= math.comb(h[r_start + i], case[i])
                     n_remain -= h[r_start + i]
                     k_remain -= case[i]
-                # Binomialkoeffizient vom Rest berechnen und mit dem Zwischenergebnis multiplizieren
-                matches_part *= math.comb(n_remain, k_remain)
-                # Zwischenergebnis zum Gesamtergebnis addieren
                 if matches_part > 0:
+                    # Binomialkoeffizient vom Rest berechnen und mit dem Zwischenergebnis multiplizieren
+                    matches_part *= math.comb(n_remain, k_remain)
+                    # Zwischenergebnis zum Gesamtergebnis addieren
                     if verbose:
                         print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
                     matches += matches_part
 
+    # Wahrscheinlichkeit berechnen
     total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
-    p = matches / total  # Wahrscheinlichkeit
-    return p
+    p = matches / total
+    if t == BOMB:
+        if m == 4:  # 4er-Bombe
+            p_color = prob_of_color_bomb(cards, k)  # Wahrscheinlichkeit einer Farbbombe
+            p_min = max(p, p_color)
+            p_max = min(p + p_color, 1)
+            return p_min, p_max
+        else:  # Farbbombe
+            return p, p
+
+    else:  # keine Bombe
+        p_4 = prob_of_any_4_bomb(cards, k)  # Wahrscheinlichkeit einer 4er-Bombe
+        p_color = prob_of_color_bomb(cards, k)  # Wahrscheinlichkeit einer Farbbombe
+        p_min = max([p, p_4, p_color])
+        p_max = min(p + p_4 + p_color, 1)
+        return p_min, p_max
 
 
 # -----------------------------------------------------------------------------
@@ -104,13 +221,10 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False):  # p
 #
 # Wenn k größer ist als die Anzahl der ungespielten Karten, werden leere Listen zurückgegeben.
 #
+# figure wird nicht validiert. So kann auch (BOMB, 5, 5) übergeben werden, um alle Farbbomben zu zählen.
+#
 # Diese Methode wird nur für Testzwecke verwendet. Je mehr ungespielte Karten es gibt, desto langsamer wird sie.
 # Ab ca. 20 ist sie praktisch unbrauchbar.
-#
-# todo:
-#  Falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, was auch berücksichtigt wird.
-#  Falls die gegebene Kombination aber keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden, was NICHT berücksichtigt wird!
-#  Ausnahme: Falls die gegebene Kombination eine Straße ist, wird eine Farbbombe, die einen höheren Rang hat, berücksichtigt.
 #
 # unplayed_cards: Ungespielte Karten
 # k: Anzahl Handkarten
@@ -193,14 +307,13 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                 if b:
                     break
 
-        # todo: Farbbombe berücksichtigen
-        # # falls die gegebene Kombination keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden
-        # if not b and not (t == BOMB and m >= 5):
-        #     m2 = 5
-        #     for rhi in range(m2 + 1, 15):
-        #         b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
-        #         if b:
-        #             break
+        # falls die gegebene Kombination keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden
+        if not b and not (t == BOMB and m >= 5):
+            m2 = 5
+            for rhi in range(m2 + 1, 15):
+                b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
+                if b:
+                    break
 
         # oder beide Fälle zusammengefasst:
         # # falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden, ansonsten von einer beliebigen
@@ -230,19 +343,24 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
     matches_expected = sum(matches)
     total_expected = len(hands)
     p_expected = (matches_expected / total_expected) if total_expected else "nan"
-    print(f"Gezählt:   p = {matches_expected}/{total_expected} = {p_expected} "
-          f"({(time() - time_start) * 1000:.6f} ms)")
+    print(f"Gezählt:   p = {matches_expected}/{total_expected} = {p_expected}"
+          f" ({(time() - time_start) * 1000:.6f} ms)")
 
     time_start = time()
-    p_actual = prob_of_hand(parse_cards(cards), k, figure, verbose)
-    print(f"Berechnet: p = {(total_expected * p_actual):.0f}/{total_expected} = {p_actual} "
-          f"({(time() - time_start) * 1000:.6f} ms (inkl. Daten laden))")
-
+    p_min, p_max = prob_of_hand(parse_cards(cards), k, figure, verbose)
+    if p_min == p_max:
+        print(f"Berechnet: p = {(total_expected * p_min):.0f}/{total_expected} = {p_min}"
+              f" ({(time() - time_start) * 1000:.6f} ms (inkl. Daten laden))")
+    else:
+        print(f"Berechnet: p = {(total_expected * p_min):.0f}/{total_expected} = {p_min}"
+              f" bis {(total_expected * p_max):.0f}/{total_expected} = {p_max}"
+              f" ({(time() - time_start) * 1000:.6f} ms (inkl. Daten laden))")
     #assert p_expected == p_actual
 
 
 def inspect_single():  # pragma: no cover
-    pass
+    print(f"{timeit(lambda: inspect("RB GZ SZ BZ RZ R9 R8 R7", 5, (1, 1, 10), verbose=False), number=1) * 1000:.6f} ms")
+
 
 
 def inspect_pair():  # pragma: no cover
@@ -254,20 +372,16 @@ def inspect_triple():  # pragma: no cover
 
 
 def inspect_stair():  # pragma: no cover
-    # todo: Treppe mit 4er-Bombe
-    # print(f"{timeit(lambda: inspect("GB SB RZ GZ BZ SZ", 5, (4, 4, 10), verbose=True), number=1) * 1000:.6f} ms")
-    # print(f"{timeit(lambda: inspect("GB SB RZ GZ BZ SZ", 5, (4, 4, 11), verbose=True), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GB SB RZ GZ BZ SZ", 5, (4, 4, 10), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GB SB RZ GZ BZ SZ", 5, (4, 4, 11), verbose=False), number=1) * 1000:.6f} ms")
 
-    # todo: Treppe mit Farbbombe
-    # print(f"{timeit(lambda: inspect("GB RB GZ RZ R9 R8 R7", 5, (4, 4, 11), verbose=True), number=1) * 1000:.6f} ms")
-    # print(f"{timeit(lambda: inspect("GB RB GZ RZ R9 R8 R7", 5, (4, 4, 12), verbose=True), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GB RB GZ RZ R9 R8 R7", 5, (4, 4, 11), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GB RB GZ RZ R9 R8 R7", 5, (4, 4, 12), verbose=False), number=1) * 1000:.6f} ms")
 
-    # todo: Treppe mit 4er-Bombe und Farbbombe
-    # print(f"{timeit(lambda: inspect("GB RB GZ SZ BZ RZ R9 R8 R7", 5, (4, 4, 10), verbose=True), number=1) * 1000:.6f} ms")
-    # print(f"{timeit(lambda: inspect("GB RB GZ SZ BZ RZ R9 R8 R7", 5, (4, 4, 11), verbose=True), number=1) * 1000:.6f} ms")
-    # print(f"{timeit(lambda: inspect("GB RB GZ SZ BZ RZ R9 R8 R7", 6, (4, 4, 10), verbose=True), number=1) * 1000:.6f} ms")
-    # print(f"{timeit(lambda: inspect("GB RB GZ SZ BZ RZ R9 R8 R7", 6, (4, 4, 11), verbose=True), number=1) * 1000:.6f} ms")
-    pass
+    print(f"{timeit(lambda: inspect("GB RB GZ SZ BZ RZ R9 R8 R7", 5, (4, 4, 10), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GB RB GZ SZ BZ RZ R9 R8 R7", 5, (4, 4, 11), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GB RB GZ SZ BZ RZ R9 R8 R7", 6, (4, 4, 10), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("GB RB GZ SZ BZ RZ R9 R8 R7", 6, (4, 4, 11), verbose=False), number=1) * 1000:.6f} ms")
 
 
 def inspect_fullhouse():  # pragma: no cover
@@ -275,22 +389,18 @@ def inspect_fullhouse():  # pragma: no cover
 
 
 def inspect_street():  # pragma: no cover
-    # todo: Straße mit 4er-Bombe
-    #print(f"{timeit(lambda: inspect("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), verbose=False), number=1) * 1000:.6f} ms")
-
-    # todo: Straße mit Farbbombe
-    #print(f"{timeit(lambda: inspect("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), verbose=False), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("GB GZ G9 G8 G7", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("GD GB GZ G9 G8 G7", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), verbose=False), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), verbose=False), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), verbose=False), number=1) * 1000:.6f} ms")
+    #
+    # print(f"{timeit(lambda: inspect("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("GB GZ G9 G8 G7", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("GD GB GZ G9 G8 G7", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 R8 G7 G6 G5 G4 G3 Ph", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
+    # print(f"{timeit(lambda: inspect("SK GB GZ G9 G8 G7 RB RZ R9 R8 R7 S4 Ph", 6, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
 
     # Straße mit 4er-Bombe und Farbbombe
-    # todo: Differenz wegen 4er-Bombe (wird von possible_hands_hi() berücksichtigt, aber noch nicht von get_streets();
-    #  Farbbomben werden von beiden Funktionen noch nicht berücksichtigt)
 
     # n = 52, k = 5, figure = (6, 5, 6)
     # Gezählt:   p = 8816/2598960 = 0.0033921260812017117 (42438.135147 ms)
@@ -322,7 +432,7 @@ def inspect_4_bomb():  # pragma: no cover
 
 
 def inspect_color_bomb():  # pragma: no cover
-    pass
+    print(f"{timeit(lambda: inspect("RK RD RB RZ R9 BD BB BZ B9 B8 B7 S3 S2", 11, (7, 5, 12), verbose=False), number=1) * 1000:.6f} ms")
 
 
 def benchmark():  # pragma: no cover
@@ -360,6 +470,4 @@ def report():  # pragma: no cover
 
 
 if __name__ == "__main__":  # pragma: no cover
-    inspect_fullhouse()
-    #benchmark_load_data()
-    #report()
+    inspect_single()

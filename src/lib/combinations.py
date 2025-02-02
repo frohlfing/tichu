@@ -1,6 +1,6 @@
 __all__ = "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "BOMB", \
     "FIGURE_PASS", "FIGURE_DOG", "FIGURE_MAH", "FIGURE_DRA", "FIGURE_PHO", \
-    "parse_figure", "stringify_figure", "stringify_type", "get_figure", \
+    "validate_figure", "parse_figure", "stringify_figure", "stringify_type", "get_figure", \
     "build_combinations", "remove_combinations", \
     "build_action_space",
 
@@ -197,6 +197,22 @@ _figurelabels_index = {
     "12erBombeK": 224, "12erBombeA": 225,
     "13erBombeA": 226,
 }
+
+
+# Ermittelt, ob Typ, Länge und Rang eine gültige Kartenkombination angibt
+def validate_figure(figure: tuple) -> bool:
+    t, m, r = figure
+    if t == PASS:
+        return m == 0 and r == 0
+    if t == SINGLE:  # Einzelkarte
+        return 0 <= r <= 16
+    if t in [PAIR, TRIPLE, FULLHOUSE] or (t == BOMB and m == 4):  # Paar, Drilling, Fullhouse, 4er-Bombe
+        return 2 <= r <= 14
+    if t == STAIR:  # Treppe
+        return m % 2 == 0 and 4 <= m <= 14 and int(m / 2) + 1 <= r <= 14
+    if t == STREET:  # Straße
+        return 5 <= m <= 14 and m <= r <= 14
+    return t == BOMB and 5 <= m <= 14 and m + 1 <= r <= 14  # Farbbombe
 
 
 # Wandelt das Label einer Kartenkombination in Typ, Länge und Rang umw

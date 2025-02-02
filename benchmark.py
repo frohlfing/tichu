@@ -7,7 +7,11 @@ from scipy.stats import hypergeom
 # noinspection PyProtectedMember
 from src.lib.cards import _cardlabels, _cardlabels_index
 from src.lib.cards import *
+# noinspection PyProtectedMember
+from src.lib.combinations import _figures
 from src.lib.combinations import *
+# noinspection PyProtectedMember
+from src.lib.prob import possible_hands_hi
 from src.lib.prob import *
 from timeit import timeit
 
@@ -281,10 +285,33 @@ def test_unions():
     print(f"combine_and_count2: {t:.6f} ms")
 
 
-if __name__ == '__main__':
-    #test_unions()
+def validate_figure1(figure: tuple) -> bool:
+    t, m, r = figure
+    if t == SINGLE:  # Einzelkarte
+        return 0 <= r <= 16
+    if t in [PAIR, TRIPLE, FULLHOUSE] or (t == BOMB and m == 4):  # Paar, Drilling, Fullhouse, 4er-Bombe
+        return 2 <= r <= 14
+    if t == STAIR:  # Treppe
+        return m % 2 == 0 and 4 <= m <= 14 and int(m / 2) + 1 <= r <= 14
+    if t == STREET:  # Straße
+        return 5 <= m <= 14 and m <= r <= 14
+    return t == BOMB and 5 <= m <= 14 and m + 1 <= r <= 14  # Farbbombe
 
-    possible_hands_benchmark()
+def validate_figure2(figure: tuple) -> bool:
+    return figure in _figures
+
+def validate_figure_benchmark():
+    number = 1000
+    t = timeit(lambda: validate_figure1((7, 13, 14)), number=number) * 1000 / number
+    print(f"validate_figure1: {t:.6f} ms")
+    t = timeit(lambda: validate_figure2((7, 13, 14)), number=number) * 1000 / number
+    print(f"validate_figure2: {t:.6f} ms")
+
+
+if __name__ == '__main__':
+    validate_figure_benchmark()
+
+    #possible_hands_benchmark()
     #prob_of_hand_benchmark()
 
     #calc_statistic_benchmark()
