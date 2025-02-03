@@ -208,38 +208,38 @@ def possible_hands_benchmark():
     number = 1
     for figure in [(SINGLE, 1, 8), (PAIR, 2, 8), (TRIPLE, 3, 8), (STAIR, 6, 8), (FULLHOUSE, 5, 8), (STREET, 6, 8), (BOMB, 4, 8), (BOMB, 6, 8)]:
         for k in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]:
-            t = timeit(lambda: possible_hands_hi(cards, k, figure), number=number) * 1000 / number
+            t = timeit(lambda: possible_hands_hi(cards, k, figure, with_bombs=True), number=number) * 1000 / number
             print(f"possible_hands_hi, {stringify_figure(figure)}, {k}, {t:.6f} ms")
 
 
 def prob_of_hand_benchmark():
     number = 1
     for k in range(5, 10):
-        t = timeit(lambda: prob_of_hand(parse_cards("GA RA BK SK GD RD BZ SZ G9 R9 B9 S9 G8 R8 B8 S8 G7 R7 B7 S7 G6 R6 B6 S6 Ph Hu Dr Ma"), 9, (SINGLE, 1, 8)), number=number) * 1000 / number
+        t = timeit(lambda: prob_of_higher_combi(parse_cards("GA RA BK SK GD RD BZ SZ G9 R9 B9 S9 G8 R8 B8 S8 G7 R7 B7 S7 G6 R6 B6 S6 Ph Hu Dr Ma"), 9, (SINGLE, 1, 8)), number=number) * 1000 / number
         print(f"prob_of_hand SINGLE, k={k}: {t:.6f} ms")
 
-        t = timeit(lambda: prob_of_hand(parse_cards("GA RA BK SK GD RD BZ SZ G9 R9 B9 S9 G8 R8 B8 S8 G7 R7 B7 S7 G6 R6 B6 S6 Ph Hu Dr Ma"), 9, (PAIR, 2, 8)), number=number) * 1000 / number
+        t = timeit(lambda: prob_of_higher_combi(parse_cards("GA RA BK SK GD RD BZ SZ G9 R9 B9 S9 G8 R8 B8 S8 G7 R7 B7 S7 G6 R6 B6 S6 Ph Hu Dr Ma"), 9, (PAIR, 2, 8)), number=number) * 1000 / number
         print(f"prob_of_hand PAIR, k={k}: {t:.6f} ms")
 
-        t = timeit(lambda: prob_of_hand(parse_cards("GA RA BA BK SK GK GD RD BD BZ SZ G9 G9 R9 B9 S9 G8 R8 B8 S8 G7 R6 B6 S6 Ph Hu Dr Ma"), 9, (TRIPLE, 3, 8)), number=number) * 1000 / number
+        t = timeit(lambda: prob_of_higher_combi(parse_cards("GA RA BA BK SK GK GD RD BD BZ SZ G9 G9 R9 B9 S9 G8 R8 B8 S8 G7 R6 B6 S6 Ph Hu Dr Ma"), 9, (TRIPLE, 3, 8)), number=number) * 1000 / number
         print(f"prob_of_hand TRIPLE, k={k}: {t:.6f} ms")
 
-        t = timeit(lambda: prob_of_hand(parse_cards("GA RA BK SK GD RD BZ SZ G9 R9 B9 S9 G8 R8 B8 S8 G7 R7 B7 S7 G6 R6 B6 S6 Ph Hu Dr Ma"), 9, (STAIR, 6, 8)), number=number) * 1000 / number
+        t = timeit(lambda: prob_of_higher_combi(parse_cards("GA RA BK SK GD RD BZ SZ G9 R9 B9 S9 G8 R8 B8 S8 G7 R7 B7 S7 G6 R6 B6 S6 Ph Hu Dr Ma"), 9, (STAIR, 6, 8)), number=number) * 1000 / number
         print(f"prob_of_hand STAIR, k={k}: {t:.6f} ms")
 
-        t = timeit(lambda: prob_of_hand(parse_cards("GA RA SA BK RK SK RD SD GD GZ RZ BZ Ph Hu Dr Ma"), 9, (FULLHOUSE, 5, 8)), number=number) * 1000 / number
+        t = timeit(lambda: prob_of_higher_combi(parse_cards("GA RA SA BK RK SK RD SD GD GZ RZ BZ Ph Hu Dr Ma"), 9, (FULLHOUSE, 5, 8)), number=number) * 1000 / number
         print(f"prob_of_hand FULLHOUSE, k={k}: {t:.6f} ms")
 
-        t = timeit(lambda: prob_of_hand(parse_cards("GA RK GD RB GZ R9 S8 B7 S6 S5 S4 S3 S2 Ph"), k, (STREET, 5, 8)), number=number) * 1000 / number
+        t = timeit(lambda: prob_of_higher_combi(parse_cards("GA RK GD RB GZ R9 S8 B7 S6 S5 S4 S3 S2 Ph"), k, (STREET, 5, 8)), number=number) * 1000 / number
         print(f"prob_of_hand STREET, k={k}: {t:.6f} ms")
 
         #t = timeit(lambda: possible_hands_hi(parse_cards("GA RK GD RB GZ R9 S8 B7 S6 S5 S4 S3 S2 Ph"), k, (STREET, 6, 8)), number=number) * 1000 / number
         #print(f"possible_hands_hi STREET, k={k}: {t:.6f} ms")
 
-        t = timeit(lambda: prob_of_hand(parse_cards("BA RA SA GA BK RK SK GK BD RD SD GD Ph Hu Dr Ma"), 9, (BOMB, 4, 8)), number=number) * 1000 / number
+        t = timeit(lambda: prob_of_higher_combi(parse_cards("BA RA SA GA BK RK SK GK BD RD SD GD Ph Hu Dr Ma"), 9, (BOMB, 4, 8)), number=number) * 1000 / number
         print(f"prob_of_hand BOMB, k={k}: {t:.6f} ms")
 
-        t = timeit(lambda: prob_of_hand(parse_cards("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2"), 9, (BOMB, 6, 8)), number=number) * 1000 / number
+        t = timeit(lambda: prob_of_higher_combi(parse_cards("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2"), 9, (BOMB, 6, 8)), number=number) * 1000 / number
         print(f"prob_of_hand Color BOMB, k={k}: {t:.6f} ms")
 
 

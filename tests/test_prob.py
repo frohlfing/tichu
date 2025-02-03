@@ -42,6 +42,9 @@ class TestPossibleHands(unittest.TestCase):
             ("GA RA GK RK SD BD SB BB GB BZ RZ G9 B9 R9 S8 R8 S3 S2 Ma Ph", 14, (4, 14, 13), 117, 38760, "7er-Treppe"),
             ("SB RZ GZ BZ SZ R9", 5, (4, 4, 11), 2, 6, "Treppe mit 4er-Bombe"),
             ("SB RZ R9 R8 R7 R6", 5, (4, 4, 11), 1, 6, "Treppe mit Farbbombe"),
+            ("SB RZ GZ BZ SZ R9 Ph R8 G8 B4", 5, (4, 14, 14), 6, 252, "keine 7er-Treppe, aber 4er-Bombe"),
+            ("RK RD RB RZ R9 Ph R8 G8 B4", 6, (4, 14, 14), 7, 84, "keine 7er-Treppe, aber Farbbombe"),
+
             # Fullhouse
             ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, "Fullhouse ohne Phönix"),
             ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, "Fullhouse und zusätzliches Pärchen"),
@@ -82,7 +85,7 @@ class TestPossibleHands(unittest.TestCase):
         ]
         for cards, k, figure, matches_expected, total_expected, msg in test:
             print(msg)
-            matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
+            matches, hands = possible_hands_hi(parse_cards(cards), k, figure, with_bombs=True)
             #for match, hand in zip(matches, hands):
             #    print(stringify_cards(hand), match)
             self.assertEqual(matches_expected, sum(matches))
@@ -96,9 +99,9 @@ class TestProbOfHandExplicit(unittest.TestCase):
     def _test(self, cards, k, figure, p_expected, msg):  # pragma: no cover
         if k > len(cards.split(" ")):
             with self.assertRaises(AssertionError, msg="k > n"):
-                prob_of_hand(parse_cards(cards), k, figure)
+                prob_of_higher_combi_or_bomb(parse_cards(cards), k, figure)
         else:
-            p_min, p_max = prob_of_hand(parse_cards(cards), k, figure)
+            p_min, p_max = prob_of_higher_combi_or_bomb(parse_cards(cards), k, figure)
             if p_min == p_max:
                 print(f"{p_min:<20} == {p_expected:<20}  {msg}")
                 self.assertAlmostEqual(p_expected, p_min, places=15, msg=msg)
@@ -189,10 +192,12 @@ class TestProbOfHandExplicit(unittest.TestCase):
         # Treppe mit 4er-Bombe
         self._test("GB SB RZ GZ BZ SZ", 5, (4, 4, 10), 1.0, "Treppe mit 4er-Bombe (1)")
         self._test("GB SB RZ GZ BZ SZ", 5, (4, 4, 11), 0.3333333333333333, "Treppe mit 4er-Bombe (2)")
+        self._test("SB RZ GZ BZ SZ R9 Ph R8 G8 B4", 5, (4, 14, 14), 0.023809523809523808, "keine 7er-Treppe, aber 4er-Bombe")
 
         # Treppe mit Farbbombe
         self._test("GB RB GZ RZ R9 R8 R7", 5, (4, 4, 11), 0.047619047619047616, "Treppe mit Farbbombe (1)")
         self._test("GB RB GZ RZ R9 R8 R7", 5, (4, 4, 12), 0.047619047619047616, "Treppe mit Farbbombe (2)")
+        self._test("RK RD RB RZ R9 Ph R8 G8 B4", 6, (4, 14, 14), 0.08333333333333333, "keine 7er-Treppe, aber Farbbombe")
 
         # Treppe mit 4er-Bombe und Farbbombe
         self._test("GB RB GZ SZ BZ RZ R9 R8 R7", 5, (4, 4, 10), 0.2222222222222222, "Treppe mit 4er-Bombe und Farbbombe (1)")
@@ -306,14 +311,14 @@ class TestProbOfHandRaster(unittest.TestCase):
     def _test(self, cards, k, figure):  # pragma: no cover
         if k > len(cards.split(" ")):
             with self.assertRaises(AssertionError, msg="k > n"):
-                prob_of_hand(parse_cards(cards), k, figure)
+                prob_of_higher_combi_or_bomb(parse_cards(cards), k, figure)
             return
         self.c += 1
-        matches, hands = possible_hands_hi(parse_cards(cards), k, figure)
+        matches, hands = possible_hands_hi(parse_cards(cards), k, figure, with_bombs=True)
         p_expected = sum(matches) / len(hands) if hands else 0.0
         msg = stringify_figure(figure)
         print(f'("{cards}", {k}, ({figure[0]}, {figure[1]}, {figure[2]}), {sum(matches)}, {len(hands)}, {p_expected}, "{msg}, Test {self.c}"),'),
-        p_min, p_max = prob_of_hand(parse_cards(cards), k, figure)
+        p_min, p_max = prob_of_higher_combi_or_bomb(parse_cards(cards), k, figure)
         if p_min == p_max:
             #print(f"{p_min:<20} == {p_expected:<20} {msg}")
             self.assertAlmostEqual(p_expected, p_min, places=15, msg=msg)

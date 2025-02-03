@@ -1,4 +1,4 @@
-__all__ = "load_table_hi",
+__all__ = "load_database",
 
 import config
 import gzip
@@ -6,7 +6,6 @@ import itertools
 import pickle
 from os import path, mkdir
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_type
-from time import time
 
 # -----------------------------------------------------------------------------
 # Generiert Hilfstabellen für die Wahrscheinlichkeitsberechnung
@@ -17,7 +16,7 @@ from time import time
 # t: Typ der Kombination
 # m: Länge der Kombination (nur für Treppe, Straße und Bombe relevant)
 def get_filename_hi(t: int, m: int = None):
-    folder = path.join(config.DATA_PATH, "lib/prob")
+    folder = path.join(config.DATA_PATH, "lib/~prob")
     if not path.exists(folder):
         mkdir(folder)
     name = stringify_type(t, m)
@@ -37,11 +36,6 @@ def save_table_hi(t: int, m: int, table: list):
         # noinspection PyTypeChecker
         pickle.dump(table, fp)
 
-    # Komprimiert speichern
-    with gzip.open(file + ".gz", "wb") as fp:
-        # noinspection PyTypeChecker
-        pickle.dump(table, fp)
-
     # zusätzlich als Textdatei speichern (nützlich zum Debuggen)
     with open(file[:-4] + ".txt", "w") as datei:
         for pho in range(2):
@@ -57,18 +51,10 @@ def save_table_hi(t: int, m: int, table: list):
 #
 # t: Typ der Kombination
 # m: Länge der Kombination
-def load_table_hi(t: int, m: int, verbose = False) -> list:
-    time_start = time()
+def load_table_hi(t: int, m: int) -> list:
     file = get_filename_hi(t, m)
-    if path.exists(file):
-        with open(file, 'rb') as fp:
-            table = pickle.load(fp)
-    else:
-        file += ".gz"
-        with gzip.open(file, 'rb') as fp:
-            table = pickle.load(fp)
-    if verbose:
-        print(f"Hilfstabelle aus {path.basename(file)} geladen ({(time() - time_start) * 1000:.6f} ms)")
+    with open(file, 'rb') as fp:
+        table = pickle.load(fp)
     return table
 
 
@@ -239,7 +225,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
 
 
 # Generiert eine Hilfstabelle für den gegebenen Typ, höhere Ränge werden bevorzugt.
-def generate_file_hi(t: int, m: int = None):
+def create_table_hi(t: int, m: int = None):
     if t == SINGLE:
         m = 1
     elif t == PAIR:
@@ -259,6 +245,11 @@ def generate_file_hi(t: int, m: int = None):
     r_start = 0 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
     r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
 
+    # Wir suchen höhere Kombinationen, also brauchen wir den kleinstmöglichen Rang nicht zu speichern.
+    # Nur für Bomben brauchen wir alle Ränge.
+    if t != BOMB:
+        r_start += 1
+
     # Hilfstabelle
     table = [
         {r: [] for r in range(r_start, r_end)},  # ohne Phönix
@@ -269,13 +260,7 @@ def generate_file_hi(t: int, m: int = None):
     # alle möglichen Kombinationen (Kartenanzahl je Rang reduziert) durchlaufen und passende auflisten
 
     for pho in range(1 if t == BOMB else 2):
-        print(f"Generiere Hilfstabelle {stringify_type(t, m)}[{pho}]...")
-
-        r_start = 0 if t == SINGLE else 1 if t == STREET else 2
-
-        # todo r_start um 1 erhöhen, wenn keine Bombe
-        #  und alles nochmal generieren
-
+        print(f"Erzeuge Hilfstabelle {stringify_type(t, m)}[{pho}]...")
         data = {r: [] for r in range(r_start, r_end)}
 
         # reduzierte Kartenanzahl je Rang
@@ -317,7 +302,7 @@ def generate_file_hi(t: int, m: int = None):
             c += 1
             print(f"\r{c}/{c_max} = {100 * c / c_max:.1f} %", end="")
             r, unique = get_max_rank(t, m, row)
-            if r >= 0:
+            if r >= r_start:
                 if not unique in data[r]:
                     data[r].append(unique)
         print()
@@ -326,6 +311,7 @@ def generate_file_hi(t: int, m: int = None):
         # Kartenanzahl expandieren zu Kartenanzahl 0,1,2,3,4 (bzw. 0,1 bei Sonderkarten)
 
         c = 0
+        print(f"\rAnzahl Muster: {c}", end="")
         for r, uniques in data.items():
             for unique in uniques:
                 cases = []
@@ -366,30 +352,91 @@ def generate_file_hi(t: int, m: int = None):
     save_table_hi(t, m, table)
 
 
-def generate_files_hi():
+# Erzeugt alle Hilfstabellen, falls nicht vorhanden
+def create_tables_hi():
     for t in range(1, 8):
         if t == STAIR:
             for m in range(4, 15, 2):
                 file = get_filename_hi(t, m)
                 if not path.exists(file) and not path.exists(file + ".gz"):
-                    generate_file_hi(t, m)
+                    create_table_hi(t, m)
         elif t == STREET:
             for m in range(5, 15):
                 file = get_filename_hi(t, m)
                 if not path.exists(file) and not path.exists(file + ".gz"):
-                    generate_file_hi(t, m)
+                    create_table_hi(t, m)
         elif t == BOMB:
             for m in range(4, 15):
                 file = get_filename_hi(t, m)
                 if not path.exists(file) and not path.exists(file + ".gz"):
-                    generate_file_hi(t, m)
+                    create_table_hi(t, m)
         else:
             assert t in [SINGLE, PAIR, TRIPLE, FULLHOUSE]
             file = get_filename_hi(t)
             if not path.exists(file) and not path.exists(file + ".gz"):
-                generate_file_hi(t)
+                create_table_hi(t)
+
+
+# Legt eine Datenbank mit allen Hilfstabellen an
+def create_database():
+    # alle Hilfstabellen erzeugen, falls nicht vorhanden
+    create_tables_hi()
+
+    # Hilfstabellen laden und übernehmen
+    print(f"Erzeuge Datenbank...")
+    db = {"low": {}, "high": {}}
+    for t in range(1, 8):
+        print(f"Lade {stringify_type(t)}")
+        db["high"][t] = {}
+        if t == STAIR:
+            for m in range(4, 15, 2):
+                db["high"][t][m] = load_table_hi(t, m)
+        elif t == STREET:
+            for m in range(5, 15):
+                db["high"][t][m] = load_table_hi(t, m)
+        elif t == BOMB:
+            for m in range(4, 15):
+                db["high"][t][m] = load_table_hi(t, m)
+        else:
+            assert t in [SINGLE, PAIR, TRIPLE, FULLHOUSE]
+            m = t
+            db["high"][t][m] = load_table_hi(t, m)
+
+    # # Datenbank speichern
+    # file = path.join(config.DATA_PATH, "lib/prob.pkl")
+    # # unkomprimiert speichern
+    # print("Speicher lib/prob.pkl...")
+    # with open(file, 'wb') as fp:
+    #     # noinspection PyTypeChecker
+    #     pickle.dump(db, fp)
+
+    # Datenbank speichern (komprimiert)
+    file = path.join(config.DATA_PATH, "lib/prob.pkl.gz")
+    print("Speicher lib/prob.pkl.gz...")
+    with gzip.open(file, "wb") as fp:
+        # noinspection PyTypeChecker
+        pickle.dump(db, fp)
+
+    print("Datenbank gespeichert")
+
+
+# Lädt die Datenbank mit den Hilfstabellen
+#
+# Die Datenbank hat folgende Struktur:
+# cases = db["high"][t][m][pho][r]
+def load_database() -> dict:
+    # Datenbank laden
+    # file = path.join(config.DATA_PATH, "lib/prob.pkl")
+    # with open(file, 'rb') as fp:
+    #     db = pickle.load(fp)
+
+    # Datenbank laden (aus komprimierte Datei)
+    file = path.join(config.DATA_PATH, "lib/prob.pkl.gz")
+    with gzip.open(file, 'rb') as fp:
+        db = pickle.load(fp)
+    return db
 
 
 if __name__ == '__main__':  # pragma: no cover
-    generate_files_hi()
-
+    #create_tables_hi()
+    create_database()
