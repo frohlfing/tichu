@@ -176,7 +176,7 @@ def prob_of_hand(cards: list[tuple], k: int, figure: tuple, verbose=False) -> tu
                 r_start = r_end - len(case)
                 # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
                 matches_part = 1
-                n_remain = n - h[16]
+                n_remain = (n - h[16]) if t != BOMB else n
                 k_remain = k - pho
                 for i in range(len(case)):
                     if h[r_start + i] < case[i]:
@@ -386,9 +386,11 @@ def inspect_stair():  # pragma: no cover
 
 def inspect_fullhouse():  # pragma: no cover
     print(f"{timeit(lambda: inspect("SB RZ GZ R9 G9 R8 G8 B4", 5, (5, 5, 9), verbose=False), number=1) * 1000:.6f} ms")
-
+    print(f"{timeit(lambda: inspect("GD GB GZ G9 G8 G7", 5, (6, 5, 10), verbose=False), number=1) * 1000:.6f} ms")
 
 def inspect_street():  # pragma: no cover
+    print(f"{timeit(lambda: inspect("GD GB GZ G9 G8 G7", 5, (6, 5, 10), verbose=True), number=1) * 1000:.6f} ms")
+
     # print(f"{timeit(lambda: inspect("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), verbose=False), number=1) * 1000:.6f} ms")
     #
     # print(f"{timeit(lambda: inspect("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), verbose=False), number=1) * 1000:.6f} ms")
@@ -406,33 +408,33 @@ def inspect_street():  # pragma: no cover
     # Gezählt:   p = 8816/2598960 = 0.0033921260812017117 (42438.135147 ms)
     # Berechnet: p = 8192/2598960 = 0.0031520300427863453 (662.052393 ms (inkl. Daten laden))
     # -> Differenz: 0.00024009603841536635
-    print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
 
     # n = 52, k = 6, figure = (6, 5, 6)
     # Gezählt:   p = 309576/20358520 = 0.015206213418264196 (368347.875834 ms)
     # Berechnet: p = 294912/20358520 = 0.014485925303018097 (670.219183 ms (inkl. Daten laden))
     # -> Differenz:  0.0007202881152460986   (0.0007202881152460986/0.00024009603841536635 == 3)
-    print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 6, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 6, (6, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
 
     # n = 52, k = 5, figure = (6, 5, 13)
     # Gezählt:   p = 1648/2598960 = 0.0006340997937636593 (17087.398767 ms)
     # Berechnet: p = 1024/2598960 = 0.00039400375534829317 (565.371275 ms (inkl. Daten laden))
     # -> Differenz: 0.00024009603841536618
-    print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 13), verbose=False), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 13), verbose=False), number=1) * 1000:.6f} ms")
 
     # n = 52, k = 5, figure = (6, 5, 14)
     # Gezählt:   p = 624/2598960 = 0.00024009603841536616 (12652.729511 ms)
     # Berechnet: p = 0/2598960 = 0.0 (541.404486 ms (inkl. Daten laden))
     # -> Differenz: 0.00024009603841536616
-    print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 14), verbose=False), number=1) * 1000:.6f} ms")
+    #print(f"{timeit(lambda: inspect("GA GK GD GB GZ G9 G8 G7 G6 G5 G4 G3 G2 SA SK SD SB SZ S9 S8 S7 S6 S5 S4 S3 S2 RA RK RD RB RZ R9 R8 R7 R6 R5 R4 R3 R2 BA BK BD BB BZ B9 B8 B7 B6 B5 B4 B3 B2", 5, (6, 5, 14), verbose=False), number=1) * 1000:.6f} ms")
 
 
-def inspect_4_bomb():  # pragma: no cover
-    pass
+def inspect_4_bomb():  # pragma: no cover#
+    print(f"{timeit(lambda: inspect("SB RZ GZ BZ SZ R9 Ph R8 G8 B4", 5, (7, 4, 9), verbose=True), number=1) * 1000:.6f} ms")
 
 
 def inspect_color_bomb():  # pragma: no cover
-    print(f"{timeit(lambda: inspect("RK RD RB RZ R9 BD BB BZ B9 B8 B7 S3 S2", 11, (7, 5, 12), verbose=False), number=1) * 1000:.6f} ms")
+    print(f"{timeit(lambda: inspect("RK RD RB RZ R9 BD BB BZ B9 B8 B7 S3 S2", 11, (7, 5, 12), verbose=True), number=1) * 1000:.6f} ms")
 
 
 def benchmark():  # pragma: no cover
@@ -470,4 +472,27 @@ def report():  # pragma: no cover
 
 
 if __name__ == "__main__":  # pragma: no cover
-    inspect_single()
+    inspect_4_bomb()
+
+
+    # def relative_abweichung(p_min, p_true, p_max):
+    #     return ((p_max - p_min) / p_true) * 100
+    #
+    #
+    # werte = [
+    #     (0.003152, 0.00339, 0.003406),
+    #     (0.014486, 0.01521, 0.015288),
+    #     (0.000394, 0.00065, 0.000648),
+    #     (0.000240, 0.00025, 0.000254),
+    #     (0.333333, 0.33333, 0.666667),
+    #     (0.428571, 0.42857, 0.714286),
+    #     (0.935897, 0.93590, 1.000000),
+    #     (0.006993, 0.00699, 0.010101),
+    #     (0.016317, 0.01709, 0.018648),
+    #     (0.300699, 0.30070, 0.310023)
+    # ]
+    #
+    # for p_min, p_true, p_max in werte:
+    #     abweichung = relative_abweichung(p_min, p_true, p_max)
+    #     print(f"Relative Abweichung für {p_true}: {abweichung:.2f}%")
+
