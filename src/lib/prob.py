@@ -40,7 +40,7 @@ def get_table(low_or_high: str, t: int, m: int) -> list:
 # k: Anzahl der Handkarten
 # m: Länge der gegebenen Kombination
 # r: Rang der gegebenen Kombination
-def prob_of_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5) -> float:  # pragma: no cover
+def prob_of_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5) -> float:
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
@@ -119,7 +119,7 @@ def prob_of_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5) -> fl
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
-def prob_of_any_4_bomb(cards: list[tuple], k: int) -> float:  # pragma: no cover
+def prob_of_any_4_bomb(cards: list[tuple], k: int) -> float:
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
@@ -164,7 +164,7 @@ def prob_of_any_4_bomb(cards: list[tuple], k: int) -> float:  # pragma: no cover
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
 # figure: Typ, Länge und Rang der gegebenen Kombination
-def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:  # pragma: no cover
+def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
@@ -233,7 +233,7 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:  #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
 # figure: Typ, Länge und Rang der gegebenen Kombination
-def prob_of_higher_combi_or_bomb(cards: list[tuple], k: int, figure: tuple) -> tuple[float, float]:  # pragma: no cover
+def prob_of_higher_combi_or_bomb(cards: list[tuple], k: int, figure: tuple) -> tuple[float, float]:
     p_combi = prob_of_higher_combi(cards, k, figure)  # Wahrscheinlichkeit einer höheren Kombination als die gegebene
     t, m, r = figure
     if t == BOMB:
