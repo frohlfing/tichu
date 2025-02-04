@@ -10,7 +10,7 @@ from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET,
 # Generierung von Hilfstabellen für die Wahrscheinlichkeitsberechnung p_high
 # -----------------------------------------------------------------------------
 
-# Gibt den Dateinamen für die Hilfstabellen
+# Gibt den Dateinamen für die Hilfstabelle
 #
 # t: Typ der Kombination
 # m: Länge der Kombination (nur für Treppe, Straße und Bombe relevant)

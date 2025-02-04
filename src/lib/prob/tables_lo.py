@@ -10,7 +10,7 @@ from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET,
 # Generierung von Hilfstabellen für die Wahrscheinlichkeitsberechnung p_low
 # -----------------------------------------------------------------------------
 
-# Gibt den Dateinamen für die Hilfstabellen
+# Gibt den Dateinamen für die Hilfstabelle
 #
 # t: Typ der Kombination
 # m: Länge der Kombination (nur für Treppe, Straße und Bombe relevant)
@@ -57,9 +57,9 @@ def load_table_lo(t: int, m: int) -> list:
     return table
 
 
-# Ermittelt den höchsten Rang der gegebenen Kombination im Datensatz
+# Ermittelt den niedrigsten Rang der gegebenen Kombination im Datensatz
 #
-# Datensatz bei einer Einzelkarte, r = 10:
+# Datensatz bei einer Einzelkarte, r = 10:  todo
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
 #  (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1)
 #   ^----------remain----------^  ^----unique----^  ^
@@ -68,16 +68,16 @@ def load_table_lo(t: int, m: int) -> list:
 # r ist der Rang der Einzelkarte. Darunter muss nichts weiter betrachtet werden.
 # Die Karten darüber bis zur 15 sind wichtig, um das Muster eindeutig zu halten.
 #
-# Datensatz beim Pärchen (und Drilling und 4er-Bombe), r = 10:
+# Datensatz beim Pärchen (und Drilling und 4er-Bombe), r = 8:
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
 #  (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 0, 0, 1, 1, 0, 0)
-#   ^----------remain----------^  ^---unique--^     ^
-#   |                             |           |     |
-#   0                             r          14    pho
-# r ist der Rang des Pärchens. Darunter muss nichts weiter betrachtet werden.
-# Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
+#         ^-----unique------^  ^-----remain------^  ^
+#         |                 |                    |  |
+#         2                 r                   15 pho
+# r ist der Rang des Pärchens. Darüber muss nichts weiter betrachtet werden.
+# Die Karten darunter bis zur 2 sind wichtig, um das Muster eindeutig zu halten.
 #
-# Datensatz bei einer Treppe, steps = 5, r = 11:
+# Datensatz bei einer Treppe, steps = 5, r = 11:  todo
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
 #  (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 2, 0, 2, 1, 0, 1)
 #   ^-----remain------^  ^-------unique-------^     ^
@@ -86,7 +86,7 @@ def load_table_lo(t: int, m: int) -> list:
 # Von r-steps+1 bis r befindet sich die Treppe. Darunter muss nichts betrachtet werden.
 # Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
 #
-# Datensatz bei Fullhouse, r = 10:
+# Datensatz bei Fullhouse, r = 10:   todo
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
 #  (0, 0, 1, 1, 0, 3, 1, 2, 1, 1, 3, 0, 1, 0, 1, 0, 0)
 #   ^------remain-----^  ^-------unique-------^     ^
@@ -96,7 +96,7 @@ def load_table_lo(t: int, m: int) -> list:
 # r_triple könnte auch vor r_pair liegen! Darunter muss nichts weiter betrachtet werden.
 # Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
 #
-# Datensatz bei einer Straße (und Farbbombe), m = 5, r = 11:
+# Datensatz bei einer Straße (und Farbbombe), m = 5, r = 11:  todo
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
 #  (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1)
 #   ^------remain-----^  ^-------unique-------^     ^
@@ -111,7 +111,7 @@ def load_table_lo(t: int, m: int) -> list:
 # m: Länge der Kombination
 # row: Datensatz, Kartenanzahl pro Rang (row[0] == Hund, ..., row[14] == Ass, row[15] == Drache, row[16] == Phönix)
 def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
-    if t == SINGLE:
+    if t == SINGLE:  # todo
         # erst den Drachen prüfen, dann den Phönix (höchste Schlagkraft zuerst)
         for r in [15, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]:
             if row[r] >= 1:
@@ -121,15 +121,15 @@ def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                 return r, row[r:-1]  # vom Rang der Einzelkarte bis zum Drachen
 
     if t == PAIR:
-        for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
+        for r in range(2, 15):  # [2 ... 14] (niedrigster Rang zuerst)
             if row[16]:  # mit Phönix
                 if row[r] >= 1:
-                    return r, row[r:-2]  # vom Rang des Pärchens bis zum Ass
+                    return r, row[2:r + 1]  # von der 2 bis zum Rang des Pärchens
             else:  # ohne Phönix
                 if row[r] >= 2:
-                    return r, row[r:-2]  # vom Rang des Pärchens bis zum Ass
+                    return r, row[2:r + 1]  # von der 2 bis zum Rang des Pärchens
 
-    elif t == TRIPLE:
+    elif t == TRIPLE:  # todo
         for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
             if row[16]:  # mit Phönix
                 if row[r] >= 2:
@@ -138,7 +138,7 @@ def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                 if row[r] >= 3:
                     return r, row[r:-2]  # vom Rang des Drillings bis zum Ass
 
-    elif t == STAIR:
+    elif t == STAIR:  # todo
         steps = int(m / 2)
         for r in range(14, steps, -1):  # [14 ... 3] (höchster Rang zuerst)
             r_start = r - steps + 1
@@ -151,7 +151,7 @@ def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                 if all(row[i] >= 2 for i in range(r_start, r_end)):
                     return r, row[r - steps + 1:-2]  # vom Anfang der Treppe bis zum Ass
 
-    elif t == FULLHOUSE:
+    elif t == FULLHOUSE:  # todo
         for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
             if row[16]:  # mit Phönix
                 if row[r] >= 3:  # Drilling mit Rang r
@@ -168,7 +168,7 @@ def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                         if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
                             return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
 
-    elif t == STREET:
+    elif t == STREET:  # todo
         for r in range(14, m - 1, -1):  # [14 ... 5] (höchster Rang zuerst)
             r_start = r - m + 1
             r_end = r + 1  # exklusiv
@@ -180,7 +180,7 @@ def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                 if all(row[i] >= 1 for i in range(r_start, r_end)):
                     return r, row[r - m + 1:-2]  # vom Anfang der Straße bis zum Ass
 
-    elif t == BOMB:
+    elif t == BOMB:  # todo
         if m == 4:
             # 4er-Bombe
             for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
@@ -223,6 +223,7 @@ def combine_lists(list1, list2, k: int):
     return result
 
 
+# todo
 # Generiert eine Hilfstabelle für den gegebenen Typ, höhere Ränge werden bevorzugt.
 def create_table_lo(t: int, m: int = None):
     if t == SINGLE:
@@ -351,6 +352,7 @@ def create_table_lo(t: int, m: int = None):
     save_table_lo(t, m, table)
 
 
+# todo
 # Erzeugt alle Hilfstabellen, falls nicht vorhanden
 def create_tables_lo():
     for t in range(1, 8):
