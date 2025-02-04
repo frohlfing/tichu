@@ -3,11 +3,11 @@ from src.lib.cards import *
 from src.lib.combinations import *
 from src.lib.prob import *
 # noinspection PyProtectedMember
-from src.lib.prob import possible_hands_hi
+from src.lib.prob.prob_hi import possible_hands_hi
 
 
 # Testfunktion possible_hands_hi() testen
-class TestPossibleHands(unittest.TestCase):
+class TestPossibleHandsHi(unittest.TestCase):
     def test_possible_hands_hi(self):
         test = [
             # Einzelkarte
@@ -94,8 +94,8 @@ class TestPossibleHands(unittest.TestCase):
             #self.assertAlmostEqual(p_expected, sum(matches) / len(hands) if len(hands) else 0.0, places=15, msg=t[6])
 
 
-# prob_of_hand() testen (explizit ausgesuchte Fälle)
-class TestProbOfHandExplicit(unittest.TestCase):
+# prob_of_higher_combi_or_bomb() testen (explizit ausgesuchte Fälle)
+class TestExplicitProbOfHigherCombiOrBomb(unittest.TestCase):
     def _test(self, cards, k, figure, p_expected, msg):  # pragma: no cover
         if k > len(cards.split(" ")):
             with self.assertRaises(AssertionError, msg="k > n"):
@@ -304,8 +304,8 @@ class TestProbOfHandExplicit(unittest.TestCase):
         self._test("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11), 0.25, "Farbbombe mit längerer Farbbombe (2)")
 
 
-# prob_of_hand() testen (Rastersuche)
-class TestProbOfHandRaster(unittest.TestCase):
+# prob_of_higher_combi_or_bomb() testen (Rastersuche)
+class TestRasterProbOfHigherCombiOrBomb(unittest.TestCase):
     c = 0
 
     def _test(self, cards, k, figure):  # pragma: no cover

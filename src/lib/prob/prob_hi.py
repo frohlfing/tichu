@@ -1,35 +1,16 @@
-__all__ = "prob_of_higher_combi", "prob_of_higher_combi_or_bomb"
+__all__ = "prob_of_higher_combi", "prob_of_higher_combi_or_bomb",
 
 import itertools
 import math
 from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
-from src.lib.prob_files import load_database
+from .database import get_table
 from time import time
 from timeit import timeit
 
 # -----------------------------------------------------------------------------
-# Wahrscheinlichkeitsberechnung
+# Wahrscheinlichkeitsberechnung p_high
 # -----------------------------------------------------------------------------
-
-# Datenbank mit Hilfstabellen
-_db = None
-
-
-# Datenbank laden und Hilfstabelle zurückgeben
-#
-# low_or_high: "low" oder "high"
-# t: Typ der Kombination
-# m: Länge der Kombination
-def get_table(low_or_high: str, t: int, m: int) -> list:
-    global _db
-    if not _db:
-        print("Lade Datenbank...", end="")
-        time_start = time()
-        _db = load_database()
-        print(f" ({(time() - time_start) * 1000:.3f} ms) ok")
-    return _db[low_or_high][t][m]
-
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Farbbombe überstechen kann
 # (entweder durch einen höheren Rang, oder durch eine längere Bombe)
@@ -40,7 +21,7 @@ def get_table(low_or_high: str, t: int, m: int) -> list:
 # k: Anzahl der Handkarten
 # m: Länge der gegebenen Kombination
 # r: Rang der gegebenen Kombination
-def prob_of_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5) -> float:
+def prob_of_higher_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5) -> float:
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
@@ -175,7 +156,7 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 
     # Farbbombe ausrangieren
     if t == BOMB and m >= 5:
-        return prob_of_color_bomb(cards, k, m, r)
+        return prob_of_higher_color_bomb(cards, k, m, r)
 
     # Anzahl der Karten je Rang zählen
     h = ranks_to_vector(cards)
@@ -238,7 +219,7 @@ def prob_of_higher_combi_or_bomb(cards: list[tuple], k: int, figure: tuple) -> t
     t, m, r = figure
     if t == BOMB:
         if m == 4:  # 4er-Bombe
-            p_color = prob_of_color_bomb(cards, k)  # Wahrscheinlichkeit einer Farbbombe
+            p_color = prob_of_higher_color_bomb(cards, k)  # Wahrscheinlichkeit einer Farbbombe
             p_min = max(p_combi, p_color)
             p_max = min(p_combi + p_color, 1)
             return p_min, p_max
@@ -246,7 +227,7 @@ def prob_of_higher_combi_or_bomb(cards: list[tuple], k: int, figure: tuple) -> t
             return p_combi, p_combi
     else:  # keine Bombe
         p_4 = prob_of_any_4_bomb(cards, k)  # Wahrscheinlichkeit einer 4er-Bombe
-        p_color = prob_of_color_bomb(cards, k)  # Wahrscheinlichkeit einer Farbbombe
+        p_color = prob_of_higher_color_bomb(cards, k)  # Wahrscheinlichkeit einer Farbbombe
         p_min = max([p_combi, p_4, p_color])
         p_max = min(p_combi + p_4 + p_color, 1)
         return p_min, p_max
@@ -385,7 +366,6 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
         print(f"Berechnet: p = {(total_expected * p_min):.0f}/{total_expected} = {p_min}"
               f" bis {(total_expected * p_max):.0f}/{total_expected} = {p_max}"
               f" ({(time() - time_start) * 1000:.6f} ms (inkl. Daten laden))")
-    #assert p_expected == p_actual
 
 
 def inspect_combination():  # pragma: no cover
@@ -410,11 +390,6 @@ def benchmark():  # pragma: no cover
     # Fullhouse
     print(f"{timeit(lambda: inspect("GA RK GD RB GZ RZ SZ B7 S7 R6 S6 S5 R4 B4 G4 S3 S2 Ph", 10, (5, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
     print(f"{timeit(lambda: inspect("GA BA RA RK SK GD RB GZ RZ SZ B7 S7 S5 R4 S3 S2 B4 G4 S3 S2 Ma", 10, (5, 5, 6), verbose=False), number=1) * 1000:.6f} ms")
-
-
-def benchmark_load_data():  # pragma: no cover
-    # Ladezeit messen
-    print(f"{timeit(lambda: load_database(), number=5) * 1000 / 5:.6f} ms")  # 1890 ms
 
 
 def report():  # pragma: no cover

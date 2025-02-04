@@ -11,7 +11,7 @@ from src.lib.cards import *
 from src.lib.combinations import _figures
 from src.lib.combinations import *
 # noinspection PyProtectedMember
-from src.lib.prob import possible_hands_hi
+from src.lib.prob.prob_hi import possible_hands_hi
 from src.lib.prob import *
 from timeit import timeit
 

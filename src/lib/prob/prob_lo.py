@@ -1,0 +1,288 @@
+__all__ = "prob_of_lower_combi",
+
+import itertools
+import math
+from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector
+from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
+from .database import get_table
+from time import time
+from timeit import timeit
+
+# -----------------------------------------------------------------------------
+# Wahrscheinlichkeitsberechnung p_low
+# -----------------------------------------------------------------------------
+
+# todo
+# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Farbbombe unterbieten kann
+# (entweder durch einen höheren Rang, oder durch eine längere Bombe)
+#
+# Mit m = r = 5 wird die Wahrscheinlichkeit berechnet, dass irgendeine Farbbombe auf der Hand ist.
+#
+# cards: Verfügbare Karten
+# k: Anzahl der Handkarten
+# m: Länge der gegebenen Kombination
+# r: Rang der gegebenen Kombination
+def prob_of_lower_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5) -> float:
+    n = len(cards)  # Gesamtanzahl der verfügbaren Karten
+    assert k <= n <= 56
+    assert 0 <= k <= 14
+    assert 5 <= m <= 14
+    assert m == r == 5 or m + 1 <= r <= 14
+
+    debug = False
+
+    # Karten in einem Vektor umwandeln (die Werte in h sind 0 oder 1)
+    h = cards_to_vector(cards)
+
+    # Hilfstabellen laden
+    table = get_table("low", BOMB, m)
+    table_longer = get_table("low", BOMB, m + 1) if m < 14 and r > 5 else [{}, {}]
+
+    # für jede der vier Farben alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
+    matches = 0
+    for color in range(4):
+        for r_curr in range(6, 15):
+            if r_curr <= r and r_curr < m + 2:
+                continue
+            cases = table[0][r_curr] if r_curr > r else table_longer[0][r_curr]
+            for case in cases:
+                if sum(case) > k:
+                    continue
+                r_start = 15 - len(case)
+                # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
+                matches_part = 1
+                n_remain = n
+                k_remain = k
+                for i in range(len(case)):
+                    if h[color * 13 + r_start + i] < case[i]:
+                        matches_part = 0
+                        break
+                    #matches_part *= math.comb(h[color * 13 + r_start + i], case[i])  # der Binomialkoeffizienten ist hier immer 1
+                    n_remain -= h[color * 13 + r_start + i]
+                    k_remain -= case[i]
+                if matches_part == 1:
+                    matches_part = math.comb(n_remain, k_remain)
+                    if debug:
+                        print(f"r={r_curr}, color={color}, case={case}, matches_part={matches_part}")
+                    # Anzahl Möglichkeiten, die sich aus den der übrigen Karten ergeben, berechnen und zum Gesamtergebnis addieren
+                    matches += matches_part
+                    # die Anzahl Möglichkeiten, zwei Bomben gleichzeitig zu haben, müssen wieder abgezogen werden (Prinzip von Inklusion und Exklusion)
+                    for color2 in range(color + 1, 4):
+                        for r_curr2 in range(6, 15):
+                            if r_curr2 <= r and r_curr2 < m + 2:
+                                continue
+                            cases = table[0][r_curr2] if r_curr2 > r else table_longer[0][r_curr2]
+                            for case2 in cases:
+                                if sum(case2) > k_remain:
+                                    continue
+                                r_start2 = 15 - len(case2)
+                                matches_part2 = 1
+                                n_remain2 = n_remain
+                                k_remain2 = k_remain
+                                for i in range(len(case2)):
+                                    if h[color2 * 13 + r_start2 + i] < case2[i]:
+                                        matches_part2 = 0
+                                        break
+                                    n_remain2 -= h[color2 * 13 + r_start2 + i]
+                                    k_remain2 -= case2[i]
+                                if matches_part2 == 1:
+                                    matches_part2 = math.comb(n_remain2, k_remain2)
+                                    if debug:
+                                        print(f"r2={r_curr2}, color2={color2}, case2={case2}, matches_part2={matches_part2}")
+                                    matches -= matches_part2
+
+    # Wahrscheinlichkeit berechnen
+    total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
+    p = matches / total
+    return p
+
+
+# todo
+# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination unterbieten kann
+#
+# Wenn die gegebene Kombination der Phönix ist (d.h. als Einzelkarte), so wird sie als Anspielkarte gewertet.
+# Sollte der Phönix nicht die Anspielkarte sein, so muss die vom Phönix gestochene Karte angegeben werden.
+#
+# cards: Verfügbare Karten
+# k: Anzahl der Handkarten
+# figure: Typ, Länge und Rang der gegebenen Kombination
+def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
+    n = len(cards)  # Gesamtanzahl der verfügbaren Karten
+    assert k <= n <= 56
+    assert 0 <= k <= 14
+    assert figure != (0, 0, 0) and validate_figure(figure)
+    t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
+
+    debug = False
+
+    # Farbbombe ausrangieren
+    if t == BOMB and m >= 5:
+        return prob_of_lower_color_bomb(cards, k, m, r)
+
+    # Anzahl der Karten je Rang zählen
+    h = ranks_to_vector(cards)
+
+    # Sonderbehandlung für Phönix als Einzelkarte
+    if t == SINGLE and r == 16:
+        # Rang des Phönix anpassen (der Phönix im Anspiel wird von der 2 geschlagen, aber nicht vom Mahjong)
+        r = 1  # 1.5 abgerundet
+        # Der verfügbare Phönix hat den Rang 15 (14.5 aufgerundet); er würde sich selbst schlagen.
+        # Daher degradieren wir den verfügbaren Phönix zu einer Noname-Karte (n bleibt gleich, aber es gibt kein Phönix mehr!).
+        h[16] = 0
+
+    # Hilfstabellen laden
+    table = get_table("low", t, m)
+
+    # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
+    matches = 0
+    r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
+    for pho in range(2 if h[16] and t != BOMB else 1):
+        for r_higher in range(r + 1, r_end):
+            for case in table[pho][r_higher]:
+                if sum(case) + pho > k:
+                    continue
+                r_start = r_end - len(case)
+                # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
+                matches_part = 1
+                n_remain = (n - h[16]) if t != BOMB else n
+                k_remain = k - pho
+                for i in range(len(case)):
+                    if h[r_start + i] < case[i]:
+                        matches_part = 0
+                        break
+                    matches_part *= math.comb(h[r_start + i], case[i])
+                    n_remain -= h[r_start + i]
+                    k_remain -= case[i]
+                if matches_part > 0:
+                    # Binomialkoeffizient vom Rest berechnen und mit dem Zwischenergebnis multiplizieren
+                    matches_part *= math.comb(n_remain, k_remain)
+                    # Zwischenergebnis zum Gesamtergebnis addieren
+                    if debug:
+                        print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
+                    matches += matches_part
+
+    # Wahrscheinlichkeit berechnen
+    total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
+    p = matches / total
+    return p
+
+
+# -----------------------------------------------------------------------------
+# Test
+# -----------------------------------------------------------------------------
+
+# Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebene unterbieten kann
+#
+# Wenn k größer ist als die Anzahl der ungespielten Karten, werden leere Listen zurückgegeben.
+#
+# Diese Methode wird nur für Testzwecke verwendet. Je mehr ungespielte Karten es gibt, desto langsamer wird sie.
+# Ab ca. 20 Karten ist sie praktisch unbrauchbar.
+#
+# unplayed_cards: Ungespielte Karten
+# k: Anzahl Handkarten
+# figure: Typ, Länge, Rang der Kombination
+def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[list, list]:
+    hands = list(itertools.combinations(unplayed_cards, k))  # die Länge der Liste entspricht math.comb(len(unplayed_cards), k)
+    matches = []
+    t, m, r = figure  # type, length, rank
+    for hand in hands:
+        b = False
+        if t == SINGLE:  # Einzelkarte
+            if r == 15:  # Drache
+                b = False
+            elif r < 15:  # bis zum Ass
+                b = any(v > r for v, _ in hand)
+            else:  # Phönix
+                assert r == 16
+                b = any(1 < v < 16 for v, _ in hand)
+        else:
+            for rhi in range(r + 1, 15):
+                if t in [PAIR, TRIPLE]:  # Paar oder Drilling
+                    b = sum(1 for v, _ in hand if v in [rhi, 16]) >= m
+
+                elif t == STAIR:  # Treppe
+                    steps = int(m / 2)
+                    if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
+                        for j in range(steps):
+                            b = all(sum(1 for v, _ in hand if v == rhi - i) >= (1 if i == j else 2) for i in range(steps))
+                            if b:
+                                break
+                    else:
+                        b = all(sum(1 for v, _ in hand if v == rhi - i) >= 2 for i in range(steps))
+
+                elif t == FULLHOUSE:  # Fullhouse
+                    if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
+                        for j in range(2, 15):
+                            b = (sum(1 for v, _ in hand if v == rhi) >= (2 if rhi == j else 3)
+                                 and any(sum(1 for v2, _ in hand if v2 == r2) >= (1 if r2 == j else 2) for r2 in range(2, 15) if r2 != rhi))
+                            if b:
+                                break
+                    else:
+                        b = (sum(1 for v, _ in hand if v == rhi) >= 3
+                             and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != rhi))
+
+                elif t == STREET:  # Straße
+                    # colors = set([c for i in range(m) for v, c in hand if v == rhi - i])  # Auswahl an Farben in der Straße
+                    if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
+                        for j in range(int(m)):
+                            b = all(sum(1 for v, _ in hand if v == rhi - i) >= (0 if i == j else 1) for i in range(m))
+                            if b:
+                                break
+                    # elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Farbbombe
+                    #     b = False
+                    else:
+                        b = all(sum(1 for v, _ in hand if v == rhi - i) >= 1 for i in range(m))
+
+                elif t == BOMB and m == 4:  # 4er-Bombe
+                    b = sum(1 for v, _ in hand if v == rhi) >= 4
+
+                elif t == BOMB and m >= 5:  # Farbbombe (hier werden zunächst nur Farbbomben gleicher Länge verglichen)
+                    b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m)) for color in range(1, 5))
+                else:
+                    assert False
+
+                if b:
+                    break
+
+        # falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden
+        if not b and t == BOMB and m >= 5:
+            m2 = m + 1
+            for rhi in range(m2 + 1, r + 1):
+                b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
+                if b:
+                    break
+
+        matches.append(b)
+    return matches, hands
+
+
+# Ergebnisse untersuchen
+def inspect(cards, k, figure, verbose=True):  # pragma: no cover
+    print(f"Kartenauswahl: {cards}")
+    print(f"Anzahl Handkarten: {k}")
+    print(f"Kombination: {stringify_figure(figure)}")
+    print("Mögliche Handkarten:")
+
+    time_start = time()
+    matches, hands = possible_hands_lo(parse_cards(cards), k, figure)
+    if verbose:
+        for match, sample in zip(matches, hands):
+            print("  ", stringify_cards(sample), match)
+    matches_expected = sum(matches)
+    total_expected = len(hands)
+    p_expected = (matches_expected / total_expected) if total_expected else "nan"
+    print(f"Gezählt:   p = {matches_expected}/{total_expected} = {p_expected}"
+          f" ({(time() - time_start) * 1000:.6f} ms)")
+
+    time_start = time()
+    p_actual = prob_of_lower_combi(parse_cards(cards), k, figure)
+    print(f"Berechnet: p = {(total_expected * p_actual):.0f}/{total_expected} = {p_actual}"
+          f" ({(time() - time_start) * 1000:.6f} ms (inkl. Daten laden))")
+
+
+def inspect_combination():  # pragma: no cover
+    print(f"{timeit(lambda: inspect("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), verbose=True), number=1) * 1000:.6f} ms")
+
+
+if __name__ == "__main__":  # pragma: no cover
+    inspect_combination()
