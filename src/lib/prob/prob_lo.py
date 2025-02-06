@@ -4,104 +4,26 @@ import itertools
 import math
 from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
-from .database import get_table
+from src.lib.prob.database import get_table
+from src.lib.prob.tables_lo import load_table_lo
 from time import time
-from timeit import timeit
 
 # -----------------------------------------------------------------------------
 # Wahrscheinlichkeitsberechnung p_low
 # -----------------------------------------------------------------------------
 
+# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination anspielen kann
+#
+# Sonderkarte Phönix:
+# Wir gehen davon aus, dass die gegebene Kombination den aktuellen Stich und somit den Phönix überstechen kann.
+# Ausnahme: Der Mahjong kann den Phönix nicht überstechen (im Anspiel hat der Phönix den Rang 1.5).
+#
+# Sonderkarte Hund:
+# Mit dem Hund als gegebene Kombination wird 0.0 zurückgegeben, da der Hund keine Karte stechen kann.
+# Der Hund auf der Hand des Mitspielers kann aber auch keine Kombination anspielen. Daher wird der Hund ignoriert.
+#
 # todo
-# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Farbbombe unterbieten kann
-# (entweder durch einen höheren Rang, oder durch eine längere Bombe)
-#
-# Mit m = r = 5 wird die Wahrscheinlichkeit berechnet, dass irgendeine Farbbombe auf der Hand ist.
-#
-# cards: Verfügbare Karten
-# k: Anzahl der Handkarten
-# m: Länge der gegebenen Kombination
-# r: Rang der gegebenen Kombination
-def prob_of_lower_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5) -> float:
-    n = len(cards)  # Gesamtanzahl der verfügbaren Karten
-    assert k <= n <= 56
-    assert 0 <= k <= 14
-    assert 5 <= m <= 14
-    assert m == r == 5 or m + 1 <= r <= 14
-
-    debug = False
-
-    # Karten in einem Vektor umwandeln (die Werte in h sind 0 oder 1)
-    h = cards_to_vector(cards)
-
-    # Hilfstabellen laden
-    table = get_table("low", BOMB, m)
-    table_longer = get_table("low", BOMB, m + 1) if m < 14 and r > 5 else [{}, {}]
-
-    # für jede der vier Farben alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
-    matches = 0
-    for color in range(4):
-        for r_curr in range(6, 15):
-            if r_curr <= r and r_curr < m + 2:
-                continue
-            cases = table[0][r_curr] if r_curr > r else table_longer[0][r_curr]
-            for case in cases:
-                if sum(case) > k:
-                    continue
-                r_start = 15 - len(case)
-                # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
-                matches_part = 1
-                n_remain = n
-                k_remain = k
-                for i in range(len(case)):
-                    if h[color * 13 + r_start + i] < case[i]:
-                        matches_part = 0
-                        break
-                    #matches_part *= math.comb(h[color * 13 + r_start + i], case[i])  # der Binomialkoeffizienten ist hier immer 1
-                    n_remain -= h[color * 13 + r_start + i]
-                    k_remain -= case[i]
-                if matches_part == 1:
-                    matches_part = math.comb(n_remain, k_remain)
-                    if debug:
-                        print(f"r={r_curr}, color={color}, case={case}, matches_part={matches_part}")
-                    # Anzahl Möglichkeiten, die sich aus den der übrigen Karten ergeben, berechnen und zum Gesamtergebnis addieren
-                    matches += matches_part
-                    # die Anzahl Möglichkeiten, zwei Bomben gleichzeitig zu haben, müssen wieder abgezogen werden (Prinzip von Inklusion und Exklusion)
-                    for color2 in range(color + 1, 4):
-                        for r_curr2 in range(6, 15):
-                            if r_curr2 <= r and r_curr2 < m + 2:
-                                continue
-                            cases = table[0][r_curr2] if r_curr2 > r else table_longer[0][r_curr2]
-                            for case2 in cases:
-                                if sum(case2) > k_remain:
-                                    continue
-                                r_start2 = 15 - len(case2)
-                                matches_part2 = 1
-                                n_remain2 = n_remain
-                                k_remain2 = k_remain
-                                for i in range(len(case2)):
-                                    if h[color2 * 13 + r_start2 + i] < case2[i]:
-                                        matches_part2 = 0
-                                        break
-                                    n_remain2 -= h[color2 * 13 + r_start2 + i]
-                                    k_remain2 -= case2[i]
-                                if matches_part2 == 1:
-                                    matches_part2 = math.comb(n_remain2, k_remain2)
-                                    if debug:
-                                        print(f"r2={r_curr2}, color2={color2}, case2={case2}, matches_part2={matches_part2}")
-                                    matches -= matches_part2
-
-    # Wahrscheinlichkeit berechnen
-    total = math.comb(n, k)  # Gesamtanzahl der möglichen Kombinationen
-    p = matches / total
-    return p
-
-
-# todo
-# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination unterbieten kann
-#
-# Wenn die gegebene Kombination der Phönix ist (d.h. als Einzelkarte), so wird sie als Anspielkarte gewertet.
-# Sollte der Phönix nicht die Anspielkarte sein, so muss die vom Phönix gestochene Karte angegeben werden.
+# Hat der Partner allerdings den Hund, so erhält man das Anspielrecht, was gesondert bewertet werden muss (aber nicht hier).
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
@@ -110,38 +32,46 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
+
+    if figure == (1, 1, 0):  # Hund
+        return 0.0  # der Hund kann keine Karte stechen
+
     assert figure != (0, 0, 0) and validate_figure(figure)
     t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
 
-    debug = False
+    # eine Bombe kann jede Einzelkarte aus der Hand übernehmen, allein das reicht schon
+    # todo Hilfstabellen für Bomben werden nicht benötigt
+    if t == BOMB:
+        return 1.0
 
-    # Farbbombe ausrangieren
-    if t == BOMB and m >= 5:
-        return prob_of_lower_color_bomb(cards, k, m, r)
+    debug = True
 
     # Anzahl der Karten je Rang zählen
     h = ranks_to_vector(cards)
 
     # Sonderbehandlung für Phönix als Einzelkarte
     if t == SINGLE and r == 16:
-        # Rang des Phönix anpassen (der Phönix im Anspiel wird von der 2 geschlagen, aber nicht vom Mahjong)
-        r = 1  # 1.5 abgerundet
-        # Der verfügbare Phönix hat den Rang 15 (14.5 aufgerundet); er würde sich selbst schlagen.
+        # Rang des Phönix anpassen (der Phönix schlägt das Ass, aber nicht den Drachen)
+        r = 15  # 14.5 aufgerundet
+        # Der verfügbare Phönix hat den Rang 1 (1.5 abgerundet); er würde von sich selbst geschlagen werden.
         # Daher degradieren wir den verfügbaren Phönix zu einer Noname-Karte (n bleibt gleich, aber es gibt kein Phönix mehr!).
         h[16] = 0
 
     # Hilfstabellen laden
-    table = get_table("low", t, m)
+    if debug:
+        table = load_table_lo(t, m)
+    else:
+        table = get_table("low", t, m)
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
-    r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
+    r_min = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
+    r_start = 1 if t in [SINGLE, STREET] else 2
     for pho in range(2 if h[16] and t != BOMB else 1):
-        for r_higher in range(r + 1, r_end):
-            for case in table[pho][r_higher]:
+        for r_lower in range(r_min, r):
+            for case in table[pho][r_lower]:
                 if sum(case) + pho > k:
                     continue
-                r_start = r_end - len(case)
                 # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
                 matches_part = 1
                 n_remain = (n - h[16]) if t != BOMB else n
@@ -158,7 +88,7 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
                     matches_part *= math.comb(n_remain, k_remain)
                     # Zwischenergebnis zum Gesamtergebnis addieren
                     if debug:
-                        print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
+                        print(f"r={r_lower}, php={pho}, case={case}, matches={matches_part}")
                     matches += matches_part
 
     # Wahrscheinlichkeit berechnen
@@ -171,7 +101,7 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 # Test
 # -----------------------------------------------------------------------------
 
-# Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebene unterbieten kann
+# Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebenen anspielen kann
 #
 # Wenn k größer ist als die Anzahl der ungespielten Karten, werden leere Listen zurückgegeben.
 #
@@ -189,66 +119,67 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
         b = False
         if t == SINGLE:  # Einzelkarte
             if r == 15:  # Drache
-                b = False
-            elif r < 15:  # bis zum Ass
-                b = any(v > r for v, _ in hand)
+                b = any(v != 0 for v, _ in hand)  # jede Karte, die nicht der Hund ist, kann der Drache stechen
+            elif 2 <= r <= 14:  # von der 2 bis zum Ass
+                b = any(v == 16 or 0 < v < r for v, _ in hand)
+            elif r <= 1:  # Hund oder Mahjong
+                b = False  # der Hund und der Mahjong können keine Karte stechen
             else:  # Phönix
                 assert r == 16
-                b = any(1 < v < 16 for v, _ in hand)
+                b = any(0 < v < 15 for v, _ in hand)  # jede Karte, die nicht Hund oder Drache ist, kann der Phönix stechen
         else:
-            for rhi in range(r + 1, 15):
+            r_min = int(m / 2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
+            #r_min = 3 if t == STAIR else 5 if t == STREET else 6 if t == BOMB and m >= 5 else 2
+            for rlo in range(r_min, r):  # rlo = Rang kleiner als der Rang der gegebenen Kombination
                 if t in [PAIR, TRIPLE]:  # Paar oder Drilling
-                    b = sum(1 for v, _ in hand if v in [rhi, 16]) >= m
+                    b = sum(1 for v, _ in hand if v in [rlo, 16]) >= m
 
                 elif t == STAIR:  # Treppe
                     steps = int(m / 2)
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(steps):
-                            b = all(sum(1 for v, _ in hand if v == rhi - i) >= (1 if i == j else 2) for i in range(steps))
+                            b = all(sum(1 for v, _ in hand if v == rlo - i) >= (1 if i == j else 2) for i in range(steps))
                             if b:
                                 break
                     else:
-                        b = all(sum(1 for v, _ in hand if v == rhi - i) >= 2 for i in range(steps))
+                        b = all(sum(1 for v, _ in hand if v == rlo - i) >= 2 for i in range(steps))
 
                 elif t == FULLHOUSE:  # Fullhouse
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(2, 15):
-                            b = (sum(1 for v, _ in hand if v == rhi) >= (2 if rhi == j else 3)
-                                 and any(sum(1 for v2, _ in hand if v2 == r2) >= (1 if r2 == j else 2) for r2 in range(2, 15) if r2 != rhi))
+                            b = (sum(1 for v, _ in hand if v == rlo) >= (2 if rlo == j else 3)
+                                 and any(sum(1 for v2, _ in hand if v2 == r2) >= (1 if r2 == j else 2) for r2 in range(2, 15) if r2 != rlo))
                             if b:
                                 break
                     else:
-                        b = (sum(1 for v, _ in hand if v == rhi) >= 3
-                             and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != rhi))
+                        b = (sum(1 for v, _ in hand if v == rlo) >= 3
+                             and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != rlo))
 
                 elif t == STREET:  # Straße
-                    # colors = set([c for i in range(m) for v, c in hand if v == rhi - i])  # Auswahl an Farben in der Straße
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(int(m)):
-                            b = all(sum(1 for v, _ in hand if v == rhi - i) >= (0 if i == j else 1) for i in range(m))
+                            b = all(sum(1 for v, _ in hand if v == rlo - i) >= (0 if i == j else 1) for i in range(m))
                             if b:
                                 break
-                    # elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Farbbombe
-                    #     b = False
                     else:
-                        b = all(sum(1 for v, _ in hand if v == rhi - i) >= 1 for i in range(m))
+                        b = all(sum(1 for v, _ in hand if v == rlo - i) >= 1 for i in range(m))
 
                 elif t == BOMB and m == 4:  # 4er-Bombe
-                    b = sum(1 for v, _ in hand if v == rhi) >= 4
+                    b = sum(1 for v, _ in hand if v == rlo) >= 4
 
                 elif t == BOMB and m >= 5:  # Farbbombe (hier werden zunächst nur Farbbomben gleicher Länge verglichen)
-                    b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m)) for color in range(1, 5))
+                    b = any(all(sum(1 for v, c in hand if v == rlo - i and c == color) >= 1 for i in range(m)) for color in range(1, 5))
                 else:
                     assert False
 
                 if b:
                     break
 
-        # falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden
-        if not b and t == BOMB and m >= 5:
-            m2 = m + 1
-            for rhi in range(m2 + 1, r + 1):
-                b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
+        # falls die gegebene Kombination eine Farbbombe ist, kann sie von einer kürzeren Farbbombe angespielt werden
+        if not b and t == BOMB and m >= 6:
+            m2 = 5
+            for rlo in range(m2 + 1, 15):
+                b = any(all(sum(1 for v, c in hand if v == rlo - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
                 if b:
                     break
 
@@ -281,7 +212,79 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 
 
 def inspect_combination():  # pragma: no cover
-    print(f"{timeit(lambda: inspect("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), verbose=True), number=1) * 1000:.6f} ms")
+    test = [
+        # Einzelkarte
+        #("Dr RK GK BD S4 R3 R2", 3, (1, 1, 11), 31, 35, "Einzelkarte"),
+        #("Dr BD RB SB R3 R2", 3, (1, 1, 11), 16, 20, "Einzelkarte mit 2 Buben"),
+        #("Ph RB G6 B5 R2", 3, (1, 1, 5), 9, 10, "Einzelkarte mit Phönix"),
+        #("Dr Ph Ma S4 R3 R2", 1, (1, 1, 0), 0, 6, "Einzelkarte Hund"),
+        #("Dr Hu Ph S4 R3 R2", 1, (1, 1, 1), 0, 6, "Einzelkarte Mahjong"),
+        #("Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 5, 6, "Einzelkarte Drache"),
+        #("Dr Hu Ma S4 R3 R2", 1, (1, 1, 16), 4, 6, "Einzelkarte Phönix"),
+        #("Dr Hu Ma S4 R3 R2 Ph", 1, (1, 1, 16), 4, 7, "Einzelkarte Phönix (2)"),
+        #("SB RZ GZ BZ SZ R9", 5, (1, 1, 10), 5, 6, "Einzelkarte Bube mit 4er-Bombe"),
+        #("Hu Ma RZ GZ BZ SZ", 4, (1, 1, 1), 0, 15, "Einzelkarte Mahjong mit 4er-Bombe"),
+        #("SB RZ R9 R8 R7 R6", 5, (1, 1, 7), 5, 6, "Einzelkarte mit Farbbombe"),
+        # # Pärchen
+        #("Dr RK GK BB SB RB R2", 5, (2, 2, 12), 18, 21, "Pärchen ohne Phönix"),
+        #("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 10, 21, "Pärchen mit Phönix"),
+        #("Ph RK GK BD SB RB R2", 5, (2, 2, 12), 19, 21, "Pärchen mit Phönix (2)"),
+        #("RZ GZ BZ SZ R9 S9", 5, (2, 2, 10), 4, 6, "Pärchen mit 4er-Bombe"),
+        #("RZ R9 R8 R7 R6 S6", 5, (2, 2, 11), 4, 6, "Pärchen mit Farbbombe"),
+        # # Drilling
+        #("SK RK GB BB SB R3 R2", 4, (3, 3, 12), 4, 35, "Drilling ohne Phönix"),
+        #("Ph RK GK BB SB R3 R2", 4, (3, 3, 13), 4, 35, "Drilling mit Phönix"),
+        #("RZ GZ BZ SZ R9 S9 B9", 5, (3, 3, 10), 6, 21, "Drilling mit 4er-Bombe"),
+        #("SB RZ R9 R8 R7 R6", 5, (3, 3, 11), 0, 6, "Drilling mit Farbbombe"),
+        # # Treppe
+        #("RK GK SK BD SD GB RB", 5, (4, 4, 13), 3, 21, "2er-Treppe aus Fullhouse"),
+        #("SB RZ R9 G9 R8 G8 B4", 9, (4, 4, 9), 0, 0, "2er-Treppe nicht möglich"),
+        #("Ph SB RZ GZ R9 G9 S9 R8 G8 B4", 4, (4, 4, 10), 12, 210, "2er-Treppe mit Phönix"),
+        #("RK GK BD SD SB RB BB", 6, (4, 6, 14), 3, 7, "3er-Treppe ohne Phönix"),
+        #("Ph GK BD SD SB RB BB", 6, (4, 6, 14), 3, 7, "3er-Treppe mit Phönix"),
+        #("GA RA GK RK SD BD SB BB GB BZ RZ G9 B9 R9 Ph", 13, (4, 10, 14), 84, 105, "5er-Treppe"),
+        # # Fullhouse
+        # ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, "Fullhouse ohne Phönix"),
+        # ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, "Fullhouse und zusätzliches Pärchen"),
+        # ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, "Fullhouse mit 2 Drillinge"),
+        # ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, "Fullhouse mit Phönix für Paar"),
+        # ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, "Fullhouse mit Phönix für Drilling"),
+        # ("SB RZ GZ BZ SZ R9", 5, (5, 5, 11), 2, 6, "Fullhouse mit 4er-Bombe"),
+        # ("SB RZ R9 R8 R7 R6", 5, (5, 5, 11), 1, 6, "Fullhouse mit Farbbombe"),
+        # # Straße
+        #("BK SD BD RB BZ B9 R3", 6, (6, 5, 14), 3, 7, "5er-Straße bis König aus 7 Karten ohne Phönix"),
+        ("RA GK BD SB RZ B9 R3", 6, (6, 5, 14), 2, 7, "5er-Straße bis Ass aus 7 Karten ohne Phönix"),
+        # todo ab hier...
+        # ("GA RK GD RB GZ R9 S8 B7", 5, (6, 5, 9), 4, 56, "5er-Straße bis Ass aus 8 Karten ohne Phönix"),
+        # ("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 5, 28, "5er-Straße mit 2 Könige aus 8 Karten ohne Phönix"),
+        # ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, "5er-Straße aus 7 Karten mit Phönix (Lücke gefüllt)"),
+        # ("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 18, 28, "5er-Straße aus 8 Karten mit 2 Könige mit Phönix (verlängert)"),
+        # ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, "5er-Straße aus 8 Karten mit Phönix (verlängert)"),
+        # ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, "5er-Straße aus 8 Karten mit Phönix (verlängert, 2)"),
+        # ("GA RK GD RB GZ R9 S8 B7 Ph", 9, (6, 5, 6), 1, 1, "5er-Straße aus 9 Karten"),
+        # ("GA RK GD RB GZ R9 S8 B7 S6 Ph", 9, (6, 5, 6), 10, 10, "5er-Straße aus 10 Karten"),
+        # ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 10, 10), 92, 120, "10er-Straße aus 16 Karten (1)"),
+        # ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 10, 12), 75, 120, "10er-Straße aus 16 Karten (2)"),
+        # ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ma Ph", 13, (6, 13, 13), 14, 105, "13er-Straße aus 15 Karten"),
+        # ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 13, 13), 42, 120, "13er-Straße aus 16 Karten"),
+        # ("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), 2, 6, "Straße mit 4er-Bombe"),
+        # ("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), 1, 6, "Straße mit Farbbombe (1)"),
+        # ("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 2, 6, "Straße ist Farbbombe (2)"),
+        # ("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, "Straße mit Farbbombe (3)"),
+        # ("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, "Straße mit 2 Farbbomben"),
+        # # 4er-Bombe
+        # ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, "4er-Bombe"),
+        # ("SB RZ R9 R8 R7 R6", 5, (7, 4, 11), 1, 6, "4er-Bombe mit Farbbombe"),
+        # # Farbbombe
+        # ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, "Farbbombe"),
+        # ("SD RZ R9 R8 R7 R6 R5", 6, (7, 5, 11), 1, 7, "Farbbombe mit längerer Farbbombe (1)"),
+        # ("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11), 2, 8, "Farbbombe mit längerer Farbbombe (2)"),
+        # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, "2 Farbbomben aus 12 Karten"),
+        # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 12), 53, 78, "2 Farbbomben aus 13 Karten"),
+    ]
+    for cards, k, figure, matches_expected, total_expected, msg in test:
+        print(msg)
+        inspect(cards, k, figure, verbose=True)
 
 
 if __name__ == "__main__":  # pragma: no cover

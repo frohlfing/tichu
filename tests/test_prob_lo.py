@@ -114,10 +114,10 @@ class TestExplicitProbOfLowerCombi(unittest.TestCase):
         self._test("Ph RB G6 B5 S4 R3 R2", 5, (1, 1, 11), 0.7142857142857143, "Einzelkarte mit Phönix")
 
         # Sonderkarten
-        self._test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 0.8571428571428571, "Einzelkarte Hund")
-        self._test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 1), 0.7142857142857143, "Einzelkarte Mahjong")
-        self._test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0.0, "Einzelkarte Drache")
-        self._test("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 16), 0.5714285714285714, "Einzelkarte Phönix")
+        self._test("Dr Ph Ma S4 R3 R2", 1, (1, 1, 0), 0.0, "Einzelkarte Hund")
+        self._test("Dr Hu Ph S4 R3 R2", 1, (1, 1, 1), 0.0, "Einzelkarte Mahjong")
+        self._test("Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 0.8333333333333334, "Einzelkarte Drache")
+        self._test("Dr Hu Ma S4 R3 R2", 1, (1, 1, 16), 0.6666666666666666, "Einzelkarte Phönix")
 
         # Einzelkarte mit 4er-Bombe
         self._test("SB RZ GZ BZ SZ R9", 5, (1, 1, 11), 0.3333333333333333, "Einzelkarte Bube mit 4er-Bombe")

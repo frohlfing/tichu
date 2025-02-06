@@ -57,16 +57,16 @@ def load_table_lo(t: int, m: int) -> list:
     return table
 
 
-# Ermittelt den niedrigsten Rang der gegebenen Kombination im Datensatz
+# Ermittelt den niedrigsten Rang der gegebenen Kombination im Datensatz, der überstochen werden kann
 #
-# Datensatz bei einer Einzelkarte, r = 10:  todo
+# Datensatz bei einer Einzelkarte, r = 8:
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
-#  (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1)
-#   ^----------remain----------^  ^----unique----^  ^
-#   |                             |              |  |
-#   0                             r             dr pho
-# r ist der Rang der Einzelkarte. Darunter muss nichts weiter betrachtet werden.
-# Die Karten darüber bis zur 15 sind wichtig, um das Muster eindeutig zu halten.
+#  (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 0, 0, 1, 1, 0, 0)
+#      ^------unique--------^  ^-----remain------^  ^
+#      |                    |                    |  |
+#     mah                   r                   dr pho
+# r ist der Rang der Einzelkarte. Darüber muss nichts weiter betrachtet werden.
+# Die Karten darunter bis zum Mahjong sind wichtig, um das Muster eindeutig zu halten.
 #
 # Datensatz beim Pärchen (und Drilling und 4er-Bombe), r = 8:
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
@@ -77,33 +77,33 @@ def load_table_lo(t: int, m: int) -> list:
 # r ist der Rang des Pärchens. Darüber muss nichts weiter betrachtet werden.
 # Die Karten darunter bis zur 2 sind wichtig, um das Muster eindeutig zu halten.
 #
-# Datensatz bei einer Treppe, steps = 5, r = 11:  todo
+# Datensatz bei einer Treppe, steps = 5, r = 8:
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
-#  (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 2, 0, 2, 1, 0, 1)
-#   ^-----remain------^  ^-------unique-------^     ^
-#   |                    | <-steps-> |        |     |
-#   0                    r-steps+1   r       14    pho
-# Von r-steps+1 bis r befindet sich die Treppe. Darunter muss nichts betrachtet werden.
-# Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
+#  (0, 0, 0, 0, 2, 2, 2, 2, 2, 0, 3, 0, 0, 1, 1, 0, 0)
+#         ^-----unique------^  ^-----remain------^  ^
+#         |     | <-steps-> |                    |  |
+#         2     r-steps+1   r                   15 pho
+# Von r-steps+1 bis r befindet sich die Treppe. Darüber muss nichts betrachtet werden.
+# Die Karten darunter bis zur 2 sind wichtig, um das Muster eindeutig zu halten.
 #
-# Datensatz bei Fullhouse, r = 10:   todo
+# Datensatz bei Fullhouse, r = 4:
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
-#  (0, 0, 1, 1, 0, 3, 1, 2, 1, 1, 3, 0, 1, 0, 1, 0, 0)
-#   ^------remain-----^  ^-------unique-------^     ^
-#   |                    |        |           |     |
-#   0                    r_pair   r_triple   14    pho
+#  (0, 1, 0, 0, 2, 0, 1, 3, 1, 2, 2, 0, 0, 1, 1, 0, 0)
+#         ^----unique----^  ^-------remain-------^  ^
+#         |     |        |                       |  |
+#         2     r_triple r_pair                 15 ph
 # r_pair und r_triple sind die Ränge des Pärchens und des Drillings im Fullhouse.
-# r_triple könnte auch vor r_pair liegen! Darunter muss nichts weiter betrachtet werden.
-# Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
+# r_triple könnte auch hinter r_pair liegen! Darüber muss nichts weiter betrachtet werden.
+# Die Karten darunter bis zur 2 sind wichtig, um das Muster eindeutig zu halten.
 #
-# Datensatz bei einer Straße (und Farbbombe), m = 5, r = 11:  todo
+# Datensatz bei einer Straße (und Farbbombe), m = 5, r = 8:
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
-#  (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1)
-#   ^------remain-----^  ^-------unique-------^     ^
-#   |                    | <-  m  -> |        |     |
-#   0                    r-m+1       r       14    pho
-# Von r-m+1 bis r befindet sich die Straße. Darunter muss nicht weiter betrachtet werden.
-# Die Karten darüber bis zur 14 sind wichtig, um das Muster eindeutig zu halten.
+#  (0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 3, 0, 0, 1, 1, 0, 0)
+#      ^-------unique-------^  ^-----remain------^  ^
+#      |        | <---m---> |                    |  |
+#      1        r-m+1       r                   15 pho
+# Von r-m+1 bis r befindet sich die Straße. Darüber muss nicht weiter betrachtet werden.
+# Die Karten darunter bis zum Mahjong (bei der Farbbombe bis zur 2) sind wichtig, um das Muster eindeutig zu halten.
 #
 # Wenn die Kombination vorhanden ist, wird r und unique zurückgegeben, sonst -1.
 #
@@ -111,14 +111,14 @@ def load_table_lo(t: int, m: int) -> list:
 # m: Länge der Kombination
 # row: Datensatz, Kartenanzahl pro Rang (row[0] == Hund, ..., row[14] == Ass, row[15] == Drache, row[16] == Phönix)
 def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
-    if t == SINGLE:  # todo
-        # erst den Drachen prüfen, dann den Phönix (höchste Schlagkraft zuerst)
-        for r in [15, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]:
+    if t == SINGLE:
+        # Der Hund wird ignoriert.
+        for r in [1, 16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]:  # erst den Mahjong prüfen, dann den Phönix (niedrigste Abwehrkraft zuerst)
             if row[r] >= 1:
-                if r == 16:  # Phönix ist die höchste Karte (Drache ist nicht vorhanden)
-                    # Rang des Phönix an die Schlagkraft anpassen (der Phönix schlägt das Ass, aber nicht den Drachen)
-                    r = 15  # 14.5 aufgerundet
-                return r, row[r:-1]  # vom Rang der Einzelkarte bis zum Drachen
+                if r == 16:  # ist der Phönix die niedrigste Karte?
+                    # Rang des Phönix an die Abwehrkraft anpassen (der Phönix wird von der 2 geschlagen, aber nicht vom Mahjong)
+                    r = 1  # 1.5 abgerundet
+                return r, row[1:r + 1]  # vom Mahjong bis zum Rang der Einzelkarte
 
     if t == PAIR:
         for r in range(2, 15):  # [2 ... 14] (niedrigster Rang zuerst)
@@ -129,68 +129,68 @@ def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                 if row[r] >= 2:
                     return r, row[2:r + 1]  # von der 2 bis zum Rang des Pärchens
 
-    elif t == TRIPLE:  # todo
-        for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
+    elif t == TRIPLE:
+        for r in range(2, 15):  # [2 ... 14] (niedrigster Rang zuerst)
             if row[16]:  # mit Phönix
                 if row[r] >= 2:
-                    return r, row[r:-2]  # vom Rang des Drillings bis zum Ass
+                    return r, row[2:r + 1]  # von der 2 bis zum Rang des Drillings
             else:  # ohne Phönix
                 if row[r] >= 3:
-                    return r, row[r:-2]  # vom Rang des Drillings bis zum Ass
+                    return r, row[2:r + 1]  # von der 2 bis zum Rang des Drillings
 
-    elif t == STAIR:  # todo
+    elif t == STAIR:
         steps = int(m / 2)
-        for r in range(14, steps, -1):  # [14 ... 3] (höchster Rang zuerst)
+        for r in range(steps + 1, 15):  # [3 ... 14] (niedrigster Rang zuerst)
             r_start = r - steps + 1
             r_end = r + 1  # exklusiv
             if row[16]:  # mit Phönix
                 for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Treppe)
                     if row[r_pho] >= 1 and all(row[i] >= 2 for i in range(r_start, r_end) if i != r_pho):
-                        return r, row[r - steps + 1:-2]  # vom Anfang der Treppe bis zum Ass
+                        return r, row[2:r + 1]  # von der 2 bis zum Rang der Treppe
             else:  # ohne Phönix
                 if all(row[i] >= 2 for i in range(r_start, r_end)):
-                    return r, row[r - steps + 1:-2]  # vom Anfang der Treppe bis zum Ass
+                    return r, row[2:r + 1]  # von der 2 bis zum Rang der Treppe
 
-    elif t == FULLHOUSE:  # todo
-        for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
+    elif t == FULLHOUSE:
+        for r in range(2, 15):  # [2 ... 14] (niedrigster Rang zuerst)
             if row[16]:  # mit Phönix
                 if row[r] >= 3:  # Drilling mit Rang r
                     for i in range(14, 1, -1):
                         if i != r and row[i] >= 1:  # irgendeine Einzelkarte zw. 14 und 2
-                            return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
-                if row[r] == 2:  # Pärchen mit Rang r
+                            return r, row[2:max(r, i) + 1]  # von der 2 bis zum Rang des Pärchens bzw. Drillings
+                elif row[r] == 2:  # Pärchen mit Rang r
                     for i in range(14, 1, -1):
                         if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
-                            return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
+                            return r, row[2:max(r, i) + 1]  # von der 2 bis zum Rang des Pärchens bzw. Drillings
             else:  # ohne Phönix
                 if row[r] >= 3:  # Drilling mit Rang r
                     for i in range(14, 1, -1):
                         if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
-                            return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
+                            return r, row[2:max(r, i) + 1]  # von der 2 bis zum Rang des Pärchens bzw. Drillings
 
-    elif t == STREET:  # todo
-        for r in range(14, m - 1, -1):  # [14 ... 5] (höchster Rang zuerst)
+    elif t == STREET:
+        for r in range(m, 15):  # [5 ... 14] (niedrigster Rang zuerst)
             r_start = r - m + 1
             r_end = r + 1  # exklusiv
             if row[16]:  # mit Phönix
                 for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Straße)
                     if row[r_pho] >= 0 and all(row[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
-                        return r, row[r - m + 1:-2]  # vom Anfang der Straße bis zum Ass
+                        return r, row[1:r + 1]  # vom Mahjong bis zum Rang der Straße
             else:  # ohne Phönix
                 if all(row[i] >= 1 for i in range(r_start, r_end)):
-                    return r, row[r - m + 1:-2]  # vom Anfang der Straße bis zum Ass
+                    return r, row[1:r + 1]  # vom Mahjong bis zum Rang der Straße
 
-    elif t == BOMB:  # todo
+    elif t == BOMB:
         if m == 4:
             # 4er-Bombe
-            for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
+            for r in range(2, 15):  # [2 ... 14] (niedrigster Rang zuerst)
                 if row[r] == 4:
-                    return r, row[r:-2]  # vom Rang der 4er-Bombe bis zum Ass
+                    return r, row[2:r + 1]  # von der 2 bis zum Rang der 4er-Bombe
         else:
             # Farbbombe
-            for r in range(14, m, -1):  # [14 ... 6] (höchster Rang zuerst)
+            for r in range(m + 1, 15):  # [6 ... 14] (niedrigster Rang zuerst)
                 if all(row[i] == 1 for i in range(r - m + 1, r + 1)):
-                    return r, row[r - m + 1:-2]  # vom Anfang der Farbbombe bis zum Ass
+                    return r, row[2:r + 1]  # von der 2 bis zum Rang der Farbbombe
 
     return -1, []
 
@@ -224,7 +224,7 @@ def combine_lists(list1, list2, k: int):
 
 
 # todo
-# Generiert eine Hilfstabelle für den gegebenen Typ, höhere Ränge werden bevorzugt.
+# Generiert eine Hilfstabelle für den gegebenen Typ, niedrigere Ränge werden bevorzugt.
 def create_table_lo(t: int, m: int = None):
     if t == SINGLE:
         m = 1
@@ -241,14 +241,14 @@ def create_table_lo(t: int, m: int = None):
     else:
         assert t == BOMB and 4 <= m <= 14
 
-    # Mögliche Ränge von/bis
-    r_start = 0 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
+    # Mögliche Ränge von/bis (der Hund wird ignoriert)
+    r_start = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
     r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
 
-    # Wir suchen höhere Kombinationen, also brauchen wir den kleinstmöglichen Rang nicht zu speichern.
+    # Wir suchen niedrigere Kombinationen, also brauchen wir den höchstmöglichen Rang nicht zu speichern.
     # Nur für Bomben brauchen wir alle Ränge.
     if t != BOMB:
-        r_start += 1
+        r_end -= 1
 
     # Hilfstabelle
     table = [
@@ -285,9 +285,9 @@ def create_table_lo(t: int, m: int = None):
 
         # Iterator für die Product-Operation
         if t == SINGLE:
-            #        0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15   16
-            iter1 = [a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, [pho]]
-            c_max = len(a) ** 16
+            #         0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15   16
+            iter1 = [[0], a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, [pho]]
+            c_max = len(a) ** 15
         elif t == STREET:
             #         0   1  2  3  4  5  6  7  8  9 10 11 12 13 14  15    16
             iter1 = [[0], a, a, a, a, a, a, a, a, a, a, a, a, a, a, [0], [pho]]  # Dummy für Hund und Drache
@@ -302,7 +302,9 @@ def create_table_lo(t: int, m: int = None):
             c += 1
             print(f"\r{c}/{c_max} = {100 * c / c_max:.1f} %", end="")
             r, unique = get_min_rank(t, m, row)
-            if r >= r_start:
+            if -1 < r < r_end:
+                if r not in data:
+                    print(r)
                 if not unique in data[r]:
                     data[r].append(unique)
         print()
@@ -352,7 +354,6 @@ def create_table_lo(t: int, m: int = None):
     save_table_lo(t, m, table)
 
 
-# todo
 # Erzeugt alle Hilfstabellen, falls nicht vorhanden
 def create_tables_lo():
     for t in range(1, 8):
@@ -373,6 +374,8 @@ def create_tables_lo():
                     create_table_lo(t, m)
         else:
             assert t in [SINGLE, PAIR, TRIPLE, FULLHOUSE]
+            if t == FULLHOUSE:
+                continue  # todo
             file = get_filename_lo(t)
             if not path.exists(file) and not path.exists(file + ".gz"):
                 create_table_lo(t)

@@ -112,10 +112,10 @@ def load_table_hi(t: int, m: int) -> list:
 # row: Datensatz, Kartenanzahl pro Rang (row[0] == Hund, ..., row[14] == Ass, row[15] == Drache, row[16] == Phönix)
 def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
     if t == SINGLE:
-        # erst den Drachen prüfen, dann den Phönix (höchste Schlagkraft zuerst)
-        for r in [15, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]:
+        # Der Hund wird ignoriert.
+        for r in [15, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]:  # erst den Drachen prüfen, dann den Phönix (höchste Schlagkraft zuerst)
             if row[r] >= 1:
-                if r == 16:  # Phönix ist die höchste Karte (Drache ist nicht vorhanden)
+                if r == 16:  # ist der Phönix die höchste Karte?
                     # Rang des Phönix an die Schlagkraft anpassen (der Phönix schlägt das Ass, aber nicht den Drachen)
                     r = 15  # 14.5 aufgerundet
                 return r, row[r:-1]  # vom Rang der Einzelkarte bis zum Drachen
@@ -158,7 +158,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                     for i in range(14, 1, -1):
                         if i != r and row[i] >= 1:  # irgendeine Einzelkarte zw. 14 und 2
                             return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
-                if row[r] == 2:  # Pärchen mit Rang r
+                elif row[r] == 2:  # Pärchen mit Rang r
                     for i in range(14, 1, -1):
                         if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
                             return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
@@ -240,8 +240,8 @@ def create_table_hi(t: int, m: int = None):
     else:
         assert t == BOMB and 4 <= m <= 14
 
-    # Mögliche Ränge von/bis
-    r_start = 0 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
+    # Mögliche Ränge von/bis (der Hund wird ignoriert)
+    r_start = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
     r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
 
     # Wir suchen höhere Kombinationen, also brauchen wir den kleinstmöglichen Rang nicht zu speichern.
@@ -284,9 +284,9 @@ def create_table_hi(t: int, m: int = None):
 
         # Iterator für die Product-Operation
         if t == SINGLE:
-            #        0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15   16
-            iter1 = [a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, [pho]]
-            c_max = len(a) ** 16
+            #         0   1  2  3  4  5  6  7  8  9 10 11 12 13 14 15   16
+            iter1 = [[0], a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, [pho]]
+            c_max = len(a) ** 15
         elif t == STREET:
             #         0   1  2  3  4  5  6  7  8  9 10 11 12 13 14  15    16
             iter1 = [[0], a, a, a, a, a, a, a, a, a, a, a, a, a, a, [0], [pho]]  # Dummy für Hund und Drache

@@ -4,7 +4,7 @@ import itertools
 import math
 from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
-from .database import get_table
+from src.lib.prob.database import get_table
 from time import time
 from timeit import timeit
 
@@ -139,8 +139,12 @@ def prob_of_any_4_bomb(cards: list[tuple], k: int) -> float:
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann, ohne sie zu bomben
 #
+# Sonderkarte Phönix:
 # Wenn die gegebene Kombination der Phönix ist (d.h. als Einzelkarte), so wird sie als Anspielkarte gewertet.
 # Sollte der Phönix nicht die Anspielkarte sein, so muss die vom Phönix gestochene Karte angegeben werden.
+#
+# Sonderkarte Hund:
+# Mit dem Hund als gegebene Kombination wird 1.0 zurückgegeben (man wird "überstochen"; man verliert das Anspielrecht).
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
@@ -149,6 +153,10 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
+
+    if figure == (1, 1, 0):  # Hund
+        return 1.0  # wenn der Hund gespielt wird, verliert man das Anspielrecht (also als ob man überstochen wird)
+
     assert figure != (0, 0, 0) and validate_figure(figure)
     t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
 
@@ -208,8 +216,12 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen oder bomben kann
 #
+# Sonderkarte Phönix:
 # Wenn die gegebene Kombination der Phönix ist (d.h. als Einzelkarte), so wird sie als Anspielkarte gewertet.
 # Sollte der Phönix nicht die Anspielkarte sein, so muss die vom Phönix gestochene Karte angegeben werden.
+#
+# Sonderkarte Hund:
+# Mit dem Hund als gegebene Kombination wird 1.0 zurückgegeben (man wird "überstochen"; man verliert das Anspielrecht).
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
@@ -257,13 +269,13 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_b
         if t == SINGLE:  # Einzelkarte
             if r == 15:  # Drache
                 b = False
-            elif r < 15:  # bis zum Ass
+            elif r <= 14:  # bis zum Ass
                 b = any(v > r for v, _ in hand)
             else:  # Phönix
                 assert r == 16
                 b = any(1 < v < 16 for v, _ in hand)
         else:
-            for rhi in range(r + 1, 15):
+            for rhi in range(r + 1, 15):  # rhi = Rang größer als der Rang der gegebenen Kombination
                 if t in [PAIR, TRIPLE]:  # Paar oder Drilling
                     b = sum(1 for v, _ in hand if v in [rhi, 16]) >= m
 
@@ -289,14 +301,11 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_b
                              and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != rhi))
 
                 elif t == STREET:  # Straße
-                    # colors = set([c for i in range(m) for v, c in hand if v == rhi - i])  # Auswahl an Farben in der Straße
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(int(m)):
                             b = all(sum(1 for v, _ in hand if v == rhi - i) >= (0 if i == j else 1) for i in range(m))
                             if b:
                                 break
-                    # elif len(colors) == 1: # nur eine Auswahl an Farben → wenn eine Straße, dann Farbbombe
-                    #     b = False
                     else:
                         b = all(sum(1 for v, _ in hand if v == rhi - i) >= 1 for i in range(m))
 
@@ -369,8 +378,7 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 
 
 def inspect_combination():  # pragma: no cover
-    print(f"{timeit(lambda: inspect("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), verbose=True), number=1) * 1000:.6f} ms")
-    #print(f"{timeit(lambda: inspect("RB GZ SZ BZ RZ R9 R8 R7", 5, (1, 1, 10), verbose=True), number=1) * 1000:.6f} ms")
+    inspect("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), verbose=True)
 
 
 def benchmark():  # pragma: no cover
