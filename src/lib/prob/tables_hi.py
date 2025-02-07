@@ -224,21 +224,15 @@ def combine_lists(list1, list2, k: int):
 
 
 # Generiert eine Hilfstabelle für den gegebenen Typ, höhere Ränge werden bevorzugt.
-def create_table_hi(t: int, m: int = None):
-    if t == SINGLE:
-        m = 1
-    elif t == PAIR:
-        m = 2
-    elif t == TRIPLE:
-        m = 3
-    elif t == STAIR:
-        assert 4 <= m <= 14
-    elif t == FULLHOUSE:
-        m = 5
+def create_table_hi(t: int, m: int):
+    if t == STAIR:
+        assert m % 2 == 0 and 4 <= m <= 14
     elif t == STREET:
         assert 5 <= m <= 14
+    elif t == BOMB:
+        assert 4 <= m <= 14
     else:
-        assert t == BOMB and 4 <= m <= 14
+        assert m == t
 
     # Mögliche Ränge von/bis (der Hund wird ignoriert)
     r_start = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
@@ -373,8 +367,9 @@ def create_tables_hi():
             assert t in [SINGLE, PAIR, TRIPLE, FULLHOUSE]
             file = get_filename_hi(t)
             if not path.exists(file) and not path.exists(file + ".gz"):
-                create_table_hi(t)
+                create_table_hi(t, t)
 
 
 if __name__ == '__main__':  # pragma: no cover
     create_tables_hi()
+    #create_table_hi(5, 5)

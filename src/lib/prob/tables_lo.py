@@ -211,24 +211,19 @@ def combine_lists(list1, list2, k: int):
     return result
 
 
-# todo
 # Generiert eine Hilfstabelle für den gegebenen Typ, niedrigere Ränge werden bevorzugt.
-def create_table_lo(t: int, m: int = None):
+def create_table_lo(t: int, m: int):
     if t == BOMB:
         return  # Hilfstabellen für Bomben werden nicht benötigt
 
-    if t == SINGLE:
-        m = 1
-    elif t == PAIR:
-        m = 2
-    elif t == TRIPLE:
-        m = 3
-    elif t == STAIR:
-        assert 4 <= m <= 14
-    elif t == FULLHOUSE:
-        m = 5
-    else :
-        assert t == STREET and 5 <= m <= 14
+    if t == STAIR:
+        assert m % 2 == 0 and 4 <= m <= 14
+    elif t == STREET:
+        assert 5 <= m <= 14
+    #elif t == BOMB:
+    #    assert 4 <= m <= 14
+    else:
+        assert m == t
 
     # Mögliche Ränge von/bis (der Hund wird ignoriert)
     r_start = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
@@ -358,9 +353,9 @@ def create_tables_lo():
             assert t in [SINGLE, PAIR, TRIPLE, FULLHOUSE]
             file = get_filename_lo(t)
             if not path.exists(file) and not path.exists(file + ".gz"):
-                create_table_lo(t)
+                create_table_lo(t, t)
 
 
 if __name__ == '__main__':  # pragma: no cover
-    create_tables_lo()
-    #create_table_lo(5, 5)
+    #create_tables_lo()
+    create_table_lo(5, 5)

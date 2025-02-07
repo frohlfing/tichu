@@ -205,14 +205,19 @@ def validate_figure(figure: tuple) -> bool:
     if t == PASS:
         return m == 0 and r == 0
     if t == SINGLE:  # Einzelkarte
-        return 0 <= r <= 16
-    if t in [PAIR, TRIPLE, FULLHOUSE] or (t == BOMB and m == 4):  # Paar, Drilling, Fullhouse, 4er-Bombe
-        return 2 <= r <= 14
+        return m == 1 and 0 <= r <= 16
+    if t in [PAIR, TRIPLE, FULLHOUSE]:  # Paar, Drilling, Fullhouse
+        return m == t and 2 <= r <= 14
     if t == STAIR:  # Treppe
         return m % 2 == 0 and 4 <= m <= 14 and int(m / 2) + 1 <= r <= 14
     if t == STREET:  # Straße
         return 5 <= m <= 14 and m <= r <= 14
-    return t == BOMB and 5 <= m <= 14 and m + 1 <= r <= 14  # Farbbombe
+    if t == BOMB:
+        if m == 4:  # 4er-Bombe
+            return 2 <= r <= 14
+        else:  # Farbbombe
+            return 5 <= m <= 14 and m + 1 <= r <= 14
+    return False
 
 
 # Wandelt das Label einer Kartenkombination in Typ, Länge und Rang umw
