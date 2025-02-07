@@ -45,7 +45,6 @@ class TestPossibleHandsLo(unittest.TestCase):
             ("SB RZ R9 R8 R7 R6", 5, (4, 4, 11), 1, 6, "Treppe mit Farbbombe"),
             ("SB RZ GZ BZ SZ R9 Ph R8 G8 B4", 5, (4, 14, 14), 6, 252, "keine 7er-Treppe, aber 4er-Bombe"),
             ("RK RD RB RZ R9 Ph R8 G8 B4", 6, (4, 14, 14), 7, 84, "keine 7er-Treppe, aber Farbbombe"),
-
             # Fullhouse
             ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, "Fullhouse ohne Phönix"),
             ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, "Fullhouse und zusätzliches Pärchen"),

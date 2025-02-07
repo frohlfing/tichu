@@ -68,7 +68,7 @@ def load_table_lo(t: int, m: int) -> list:
 # r ist der Rang der Einzelkarte. Darüber muss nichts weiter betrachtet werden.
 # Die Karten darunter bis zum Mahjong sind wichtig, um das Muster eindeutig zu halten.
 #
-# Datensatz beim Pärchen (und Drilling und 4er-Bombe), r = 8:
+# Datensatz beim Pärchen (und Drilling), r = 8:
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
 #  (0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 2, 0, 0, 1, 1, 0, 0)
 #         ^-----unique------^  ^-----remain------^  ^
@@ -96,14 +96,14 @@ def load_table_lo(t: int, m: int) -> list:
 # r_triple könnte auch hinter r_pair liegen! Darüber muss nichts weiter betrachtet werden.
 # Die Karten darunter bis zur 2 sind wichtig, um das Muster eindeutig zu halten.
 #
-# Datensatz bei einer Straße (und Farbbombe), m = 5, r = 8:
+# Datensatz bei einer Straße, m = 5, r = 8:
 # r=0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
 #  (0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 3, 0, 0, 1, 1, 0, 0)
 #      ^-------unique-------^  ^-----remain------^  ^
 #      |        | <---m---> |                    |  |
 #      1        r-m+1       r                   15 pho
 # Von r-m+1 bis r befindet sich die Straße. Darüber muss nicht weiter betrachtet werden.
-# Die Karten darunter bis zum Mahjong (bei der Farbbombe bis zur 2) sind wichtig, um das Muster eindeutig zu halten.
+# Die Karten darunter bis zum Mahjong sind wichtig, um das Muster eindeutig zu halten.
 #
 # Wenn die Kombination vorhanden ist, wird r und unique zurückgegeben, sonst -1.
 #
@@ -144,7 +144,7 @@ def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
             r_start = r - steps + 1
             r_end = r + 1  # exklusiv
             if row[16]:  # mit Phönix
-                for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Treppe)
+                for r_pho in range(r_start, r_end):
                     if row[r_pho] >= 1 and all(row[i] >= 2 for i in range(r_start, r_end) if i != r_pho):
                         return r, row[2:r + 1]  # von der 2 bis zum Rang der Treppe
             else:  # ohne Phönix
@@ -173,24 +173,12 @@ def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
             r_start = r - m + 1
             r_end = r + 1  # exklusiv
             if row[16]:  # mit Phönix
-                for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Straße)
-                    if row[r_pho] >= 0 and all(row[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
+                for r_pho in range(r_start + 1 if r < 14 else r_start, r_end):  # der Phönix wird möglichst nicht an das untere Ende der Straße eingereiht
+                    if all(row[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
                         return r, row[1:r + 1]  # vom Mahjong bis zum Rang der Straße
             else:  # ohne Phönix
                 if all(row[i] >= 1 for i in range(r_start, r_end)):
                     return r, row[1:r + 1]  # vom Mahjong bis zum Rang der Straße
-
-    elif t == BOMB:
-        if m == 4:
-            # 4er-Bombe
-            for r in range(2, 15):  # [2 ... 14] (niedrigster Rang zuerst)
-                if row[r] == 4:
-                    return r, row[2:r + 1]  # von der 2 bis zum Rang der 4er-Bombe
-        else:
-            # Farbbombe
-            for r in range(m + 1, 15):  # [6 ... 14] (niedrigster Rang zuerst)
-                if all(row[i] == 1 for i in range(r - m + 1, r + 1)):
-                    return r, row[2:r + 1]  # von der 2 bis zum Rang der Farbbombe
 
     return -1, []
 
@@ -226,6 +214,9 @@ def combine_lists(list1, list2, k: int):
 # todo
 # Generiert eine Hilfstabelle für den gegebenen Typ, niedrigere Ränge werden bevorzugt.
 def create_table_lo(t: int, m: int = None):
+    if t == BOMB:
+        return  # Hilfstabellen für Bomben werden nicht benötigt
+
     if t == SINGLE:
         m = 1
     elif t == PAIR:
@@ -236,19 +227,15 @@ def create_table_lo(t: int, m: int = None):
         assert 4 <= m <= 14
     elif t == FULLHOUSE:
         m = 5
-    elif t == STREET:
-        assert 5 <= m <= 14
-    else:
-        assert t == BOMB and 4 <= m <= 14
+    else :
+        assert t == STREET and 5 <= m <= 14
 
     # Mögliche Ränge von/bis (der Hund wird ignoriert)
     r_start = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
     r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
 
     # Wir suchen niedrigere Kombinationen, also brauchen wir den höchstmöglichen Rang nicht zu speichern.
-    # Nur für Bomben brauchen wir alle Ränge.
-    if t != BOMB:
-        r_end -= 1
+    r_end -= 1
 
     # Hilfstabelle
     table = [
@@ -356,7 +343,7 @@ def create_table_lo(t: int, m: int = None):
 
 # Erzeugt alle Hilfstabellen, falls nicht vorhanden
 def create_tables_lo():
-    for t in range(1, 8):
+    for t in range(1, 7):  # von Einzelkarte bis Straße (Bomben werden nicht benötigt)
         if t == STAIR:
             for m in range(4, 15, 2):
                 file = get_filename_lo(t, m)
@@ -367,15 +354,8 @@ def create_tables_lo():
                 file = get_filename_lo(t, m)
                 if not path.exists(file) and not path.exists(file + ".gz"):
                     create_table_lo(t, m)
-        elif t == BOMB:
-            for m in range(4, 15):
-                file = get_filename_lo(t, m)
-                if not path.exists(file) and not path.exists(file + ".gz"):
-                    create_table_lo(t, m)
         else:
             assert t in [SINGLE, PAIR, TRIPLE, FULLHOUSE]
-            if t == FULLHOUSE:
-                continue  # todo
             file = get_filename_lo(t)
             if not path.exists(file) and not path.exists(file + ".gz"):
                 create_table_lo(t)
@@ -383,3 +363,4 @@ def create_tables_lo():
 
 if __name__ == '__main__':  # pragma: no cover
     create_tables_lo()
+    #create_table_lo(5, 5)

@@ -68,7 +68,7 @@ class TestPossibleHandsHi(unittest.TestCase):
             ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 10, 12), 75, 120, "10er-Straße aus 16 Karten (2)"),
             ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ma Ph", 13, (6, 13, 13), 14, 105, "13er-Straße aus 15 Karten"),
             ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 13, 13), 42, 120, "13er-Straße aus 16 Karten"),
-            ("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), 2, 6, "Straße mit 4er-Bombe"),
+            ("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), 2, 6, "keine Straße, sondern 4er-Bombe"),
             ("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), 1, 6, "Straße mit Farbbombe (1)"),
             ("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 2, 6, "Straße ist Farbbombe (2)"),
             ("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, "Straße mit Farbbombe (3)"),

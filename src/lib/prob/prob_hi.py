@@ -5,6 +5,7 @@ import math
 from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
 from src.lib.prob.database import get_table
+from src.lib.prob.tables_hi import load_table_hi
 from time import time
 from timeit import timeit
 
@@ -160,7 +161,7 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
     assert figure != (0, 0, 0) and validate_figure(figure)
     t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
 
-    debug = False
+    debug = True
 
     # Farbbombe ausrangieren
     if t == BOMB and m >= 5:
@@ -178,6 +179,9 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
         h[16] = 0
 
     # Hilfstabellen laden
+    #if debug:
+    #    table = load_table_hi(t, m)
+    #else:
     table = get_table("high", t, m)
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
@@ -378,7 +382,13 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 
 
 def inspect_combination():  # pragma: no cover
-    inspect("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), verbose=True)
+    #inspect("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), verbose=True)
+    test = [
+        ("RA BD BB RZ B9 B2 Ph", 6, (6, 5, 13), 0, 7, "5er-Straße aus 7 Karten mit Phönix (nicht hinten verlängert)"),
+    ]
+    for cards, k, figure, matches_expected, total_expected, msg in test:
+        print(msg)
+        inspect(cards, k, figure, verbose=True)
 
 
 def benchmark():  # pragma: no cover

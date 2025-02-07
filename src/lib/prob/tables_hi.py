@@ -144,7 +144,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
             r_start = r - steps + 1
             r_end = r + 1  # exklusiv
             if row[16]:  # mit Phönix
-                for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Treppe)
+                for r_pho in range(r_start, r_end):
                     if row[r_pho] >= 1 and all(row[i] >= 2 for i in range(r_start, r_end) if i != r_pho):
                         return r, row[r - steps + 1:-2]  # vom Anfang der Treppe bis zum Ass
             else:  # ohne Phönix
@@ -173,8 +173,8 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
             r_start = r - m + 1
             r_end = r + 1  # exklusiv
             if row[16]:  # mit Phönix
-                for r_pho in range(r, r_start - 1, -1):  # (vom Ende bis zum Anfang der Straße)
-                    if row[r_pho] >= 0 and all(row[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
+                for r_pho in range(r_start, r_end):
+                    if all(row[i] >= 1 for i in range(r_start, r_end) if i != r_pho):
                         return r, row[r - m + 1:-2]  # vom Anfang der Straße bis zum Ass
             else:  # ohne Phönix
                 if all(row[i] >= 1 for i in range(r_start, r_end)):

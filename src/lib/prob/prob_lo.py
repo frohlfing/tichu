@@ -2,11 +2,12 @@ __all__ = "prob_of_lower_combi",
 
 import itertools
 import math
-from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector
+from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
 from src.lib.prob.database import get_table
 from src.lib.prob.tables_lo import load_table_lo
 from time import time
+
 
 # -----------------------------------------------------------------------------
 # Wahrscheinlichkeitsberechnung p_low
@@ -21,6 +22,11 @@ from time import time
 # Sonderkarte Hund:
 # Mit dem Hund als gegebene Kombination wird 0.0 zurückgegeben, da der Hund keine Karte stechen kann.
 # Der Hund auf der Hand des Mitspielers kann aber auch keine Kombination anspielen. Daher wird der Hund ignoriert.
+#
+# Bekannter Fehler (weil die Kartenfarbe nicht berücksichtigt wird):
+# Ist die gegebene Kombination eine Straße, und wäre eine Farbbombe mit kleinerem Rang auf der Hand, die nicht auch zu
+# einer normalen Straße zerlegt werden könnte, so würde diese Farbbombe fälschlicherweise als niedrigere Kombination gezählt.
+# Dieser Fall ist sehr selten und kann vernachlässigt werden.
 #
 # todo
 # Hat der Partner allerdings den Hund, so erhält man das Anspielrecht, was gesondert bewertet werden muss (aber nicht hier).
@@ -40,7 +46,6 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
     t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
 
     # eine Bombe kann jede Einzelkarte aus der Hand übernehmen, allein das reicht schon
-    # todo Hilfstabellen für Bomben werden nicht benötigt
     if t == BOMB:
         return 1.0
 
@@ -65,7 +70,7 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
-    r_min = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
+    r_min = 1 if t == SINGLE else int(m / 2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
     r_start = 1 if t in [SINGLE, STREET] else 2
     for pho in range(2 if h[16] and t != BOMB else 1):
         for r_lower in range(r_min, r):
@@ -104,6 +109,11 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 # Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebenen anspielen kann
 #
 # Wenn k größer ist als die Anzahl der ungespielten Karten, werden leere Listen zurückgegeben.
+#
+# Bekannter Fehler (weil die Kartenfarbe nicht berücksichtigt wird):
+# Ist die gegebene Kombination eine Straße, und wäre eine Farbbombe mit kleinerem Rang auf der Hand, die nicht auch zu
+# einer normalen Straße zerlegt werden könnte, so würde diese Farbbombe fälschlicherweise als niedrigere Kombination gezählt.
+# Dieser Fall ist sehr selten und kann vernachlässigt werden.
 #
 # Diese Methode wird nur für Testzwecke verwendet. Je mehr ungespielte Karten es gibt, desto langsamer wird sie.
 # Ab ca. 20 Karten ist sie praktisch unbrauchbar.
@@ -157,29 +167,20 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
 
                 elif t == STREET:  # Straße
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
-                        for j in range(int(m)):
+                        a = rlo < 14  # die Straße könnte nach oben hin mit dem Phönix verlängert werden
+                        for j in range(m - 1 if a else m):  # der Phönix wird möglichst nicht an das untere Ende der Straße eingereiht
                             b = all(sum(1 for v, _ in hand if v == rlo - i) >= (0 if i == j else 1) for i in range(m))
                             if b:
                                 break
                     else:
                         b = all(sum(1 for v, _ in hand if v == rlo - i) >= 1 for i in range(m))
 
-                elif t == BOMB and m == 4:  # 4er-Bombe
-                    b = sum(1 for v, _ in hand if v == rlo) >= 4
+                elif t == BOMB:  # Bombe
+                    b = True  # bereits jede Einzelkarte kann ist einer Bombe unterlegen
 
-                elif t == BOMB and m >= 5:  # Farbbombe (hier werden zunächst nur Farbbomben gleicher Länge verglichen)
-                    b = any(all(sum(1 for v, c in hand if v == rlo - i and c == color) >= 1 for i in range(m)) for color in range(1, 5))
                 else:
                     assert False
 
-                if b:
-                    break
-
-        # falls die gegebene Kombination eine Farbbombe ist, kann sie von einer kürzeren Farbbombe angespielt werden
-        if not b and t == BOMB and m >= 6:
-            m2 = 5
-            for rlo in range(m2 + 1, 15):
-                b = any(all(sum(1 for v, c in hand if v == rlo - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
                 if b:
                     break
 
@@ -217,14 +218,11 @@ def inspect_combination():  # pragma: no cover
         #("Dr RK GK BD S4 R3 R2", 3, (1, 1, 11), 31, 35, "Einzelkarte"),
         #("Dr BD RB SB R3 R2", 3, (1, 1, 11), 16, 20, "Einzelkarte mit 2 Buben"),
         #("Ph RB G6 B5 R2", 3, (1, 1, 5), 9, 10, "Einzelkarte mit Phönix"),
-        #("Dr Ph Ma S4 R3 R2", 1, (1, 1, 0), 0, 6, "Einzelkarte Hund"),
+        #("Dr Ph Ma S4 R3 R2", 1, (1, 1, 0), 0, 6, "Einzelkarte Hund"),  # todo, mehr Fälle mit Hund!
         #("Dr Hu Ph S4 R3 R2", 1, (1, 1, 1), 0, 6, "Einzelkarte Mahjong"),
         #("Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 5, 6, "Einzelkarte Drache"),
         #("Dr Hu Ma S4 R3 R2", 1, (1, 1, 16), 4, 6, "Einzelkarte Phönix"),
         #("Dr Hu Ma S4 R3 R2 Ph", 1, (1, 1, 16), 4, 7, "Einzelkarte Phönix (2)"),
-        #("SB RZ GZ BZ SZ R9", 5, (1, 1, 10), 5, 6, "Einzelkarte Bube mit 4er-Bombe"),
-        #("Hu Ma RZ GZ BZ SZ", 4, (1, 1, 1), 0, 15, "Einzelkarte Mahjong mit 4er-Bombe"),
-        #("SB RZ R9 R8 R7 R6", 5, (1, 1, 7), 5, 6, "Einzelkarte mit Farbbombe"),
         # # Pärchen
         #("Dr RK GK BB SB RB R2", 5, (2, 2, 12), 18, 21, "Pärchen ohne Phönix"),
         #("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 10, 21, "Pärchen mit Phönix"),
@@ -244,43 +242,26 @@ def inspect_combination():  # pragma: no cover
         #("Ph GK BD SD SB RB BB", 6, (4, 6, 14), 3, 7, "3er-Treppe mit Phönix"),
         #("GA RA GK RK SD BD SB BB GB BZ RZ G9 B9 R9 Ph", 13, (4, 10, 14), 84, 105, "5er-Treppe"),
         # # Fullhouse
-        # ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, "Fullhouse ohne Phönix"),
+        ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, "Fullhouse ohne Phönix"),
         # ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, "Fullhouse und zusätzliches Pärchen"),
         # ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, "Fullhouse mit 2 Drillinge"),
         # ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, "Fullhouse mit Phönix für Paar"),
         # ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, "Fullhouse mit Phönix für Drilling"),
-        # ("SB RZ GZ BZ SZ R9", 5, (5, 5, 11), 2, 6, "Fullhouse mit 4er-Bombe"),
-        # ("SB RZ R9 R8 R7 R6", 5, (5, 5, 11), 1, 6, "Fullhouse mit Farbbombe"),
         # # Straße
         #("BK SD BD RB BZ B9 R3", 6, (6, 5, 14), 3, 7, "5er-Straße bis König aus 7 Karten ohne Phönix"),
-        ("RA GK BD SB RZ B9 R3", 6, (6, 5, 14), 2, 7, "5er-Straße bis Ass aus 7 Karten ohne Phönix"),
-        # todo ab hier...
-        # ("GA RK GD RB GZ R9 S8 B7", 5, (6, 5, 9), 4, 56, "5er-Straße bis Ass aus 8 Karten ohne Phönix"),
-        # ("SK RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 5, 28, "5er-Straße mit 2 Könige aus 8 Karten ohne Phönix"),
-        # ("RA GK BD RZ B9 R3 Ph", 6, (6, 5, 12), 3, 7, "5er-Straße aus 7 Karten mit Phönix (Lücke gefüllt)"),
-        # ("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 12), 18, 28, "5er-Straße aus 8 Karten mit 2 Könige mit Phönix (verlängert)"),
-        # ("Ph RK GD BB RZ B9 R8 R2", 6, (6, 5, 12), 13, 28, "5er-Straße aus 8 Karten mit Phönix (verlängert)"),
-        # ("SA RK GD BB RZ B9 R8 Ph", 6, (6, 5, 12), 18, 28, "5er-Straße aus 8 Karten mit Phönix (verlängert, 2)"),
-        # ("GA RK GD RB GZ R9 S8 B7 Ph", 9, (6, 5, 6), 1, 1, "5er-Straße aus 9 Karten"),
-        # ("GA RK GD RB GZ R9 S8 B7 S6 Ph", 9, (6, 5, 6), 10, 10, "5er-Straße aus 10 Karten"),
-        # ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 10, 10), 92, 120, "10er-Straße aus 16 Karten (1)"),
-        # ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 10, 12), 75, 120, "10er-Straße aus 16 Karten (2)"),
-        # ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 S2 Ma Ph", 13, (6, 13, 13), 14, 105, "13er-Straße aus 15 Karten"),
-        # ("GA RK GD RB GZ R9 S8 B7 S6 S5 R4 S3 G2 S2 Ma Ph", 14, (6, 13, 13), 42, 120, "13er-Straße aus 16 Karten"),
-        # ("SB RZ GZ BZ SZ R9", 5, (6, 5, 11), 2, 6, "Straße mit 4er-Bombe"),
-        # ("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), 1, 6, "Straße mit Farbbombe (1)"),
-        # ("GD GB GZ G9 G8 G7", 5, (6, 5, 10), 2, 6, "Straße ist Farbbombe (2)"),
-        # ("BK SD BD BB BZ B9 R3", 6, (6, 5, 12), 3, 7, "Straße mit Farbbombe (3)"),
-        # ("BK BD BB BZ B9 RK RD RB RZ R9 G2 G3 G4", 11, (6, 5, 12), 73, 78, "Straße mit 2 Farbbomben"),
-        # # 4er-Bombe
-        # ("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 3, 21, "4er-Bombe"),
-        # ("SB RZ R9 R8 R7 R6", 5, (7, 4, 11), 1, 6, "4er-Bombe mit Farbbombe"),
-        # # Farbbombe
-        # ("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), 1, 21, "Farbbombe"),
-        # ("SD RZ R9 R8 R7 R6 R5", 6, (7, 5, 11), 1, 7, "Farbbombe mit längerer Farbbombe (1)"),
-        # ("SK RB RZ R9 R8 R7 R6 S2", 7, (7, 5, 11), 2, 8, "Farbbombe mit längerer Farbbombe (2)"),
-        # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3", 11, (7, 5, 12), 12, 12, "2 Farbbomben aus 12 Karten"),
-        # ("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7", 11, (7, 5, 12), 53, 78, "2 Farbbomben aus 13 Karten"),
+        #("RA GK BD SB RZ B9 R3", 6, (6, 5, 14), 2, 7, "5er-Straße bis Ass aus 7 Karten ohne Phönix"),
+        #("GA RK GD RB GZ R9 S8 B7", 5, (6, 5, 13), 2, 56, "5er-Straße bis Ass aus 8 Karten ohne Phönix"),
+        #("SK RD GB BB RZ B9 R8 R2", 6, (6, 5, 13), 5, 28, "5er-Straße mit 2 Buben aus 8 Karten ohne Phönix"),
+        #("RA GK BD RZ B9 R8 Ph", 6, (6, 5, 13), 2, 7, "5er-Straße aus 7 Karten mit Phönix (Lücke gefüllt)"),
+        #("RA BD BB RZ B9 B2 Ph", 6, (6, 5, 13), 0, 7, "5er-Straße aus 7 Karten mit Phönix (nicht unten verlängert)"),
+        #("RA SK BD BB B9 B2 Ph", 6, (6, 5, 14), 2, 7, "5er-Straße bis zum Ass mit Phönix (Lücke gefüllt)"),
+        #("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 13), 18, 28, "5er-Straße aus 8 Karten mit 2 Könige mit Phönix (verlängert)"),
+        #("GA RK GD RB GZ R9 S8 B7 S6 Ph", 9, (6, 5, 11), 1, 10, "5er-Straße aus 10 Karten"),
+        #("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), 1, 6, "Straße mit Farbbombe (bekannter Fehler, 0/6 wäre eigentlich richtig)"),
+        # Bombe
+        #("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 21, 21, "4er-Bombe"),
+        #("BK BB BZ B9 B8 B7 B2", 5, (7, 7, 10), 21, 21, "Farbbombe"),
+
     ]
     for cards, k, figure, matches_expected, total_expected, msg in test:
         print(msg)
