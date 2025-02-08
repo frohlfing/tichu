@@ -4,7 +4,6 @@ import itertools
 import math
 from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
-from src.lib.prob.database import get_table
 from src.lib.prob.tables_hi import load_table_hi
 from time import time
 from timeit import timeit
@@ -35,8 +34,8 @@ def prob_of_higher_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5
     h = cards_to_vector(cards)
 
     # Hilfstabellen laden
-    table = get_table("high", BOMB, m)
-    table_longer = get_table("high", BOMB, m + 1) if m < 14 and r > 5 else [{}, {}]
+    table = load_table_hi(BOMB, m)
+    table_longer = load_table_hi(BOMB, m + 1) if m < 14 and r > 5 else [{}, {}]
 
     # für jede der vier Farben alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
@@ -110,7 +109,7 @@ def prob_of_any_4_bomb(cards: list[tuple], k: int) -> float:
     h = ranks_to_vector(cards)
 
     # Hilfstabelle laden
-    table = get_table("high", BOMB, 4)
+    table = load_table_hi(BOMB, 4)
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
@@ -151,6 +150,8 @@ def prob_of_any_4_bomb(cards: list[tuple], k: int) -> float:
 # k: Anzahl der Handkarten
 # figure: Typ, Länge und Rang der gegebenen Kombination
 def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
+    if k == 0:
+        return 0.0
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
@@ -161,7 +162,7 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
     assert figure != (0, 0, 0) and validate_figure(figure)
     t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
 
-    debug = True
+    #debug = True
 
     # Farbbombe ausrangieren
     if t == BOMB and m >= 5:
@@ -179,10 +180,7 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
         h[16] = 0
 
     # Hilfstabellen laden
-    #if debug:
-    #    table = load_table_hi(t, m)
-    #else:
-    table = get_table("high", t, m)
+    table = load_table_hi(t, m)
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
@@ -208,8 +206,8 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
                     # Binomialkoeffizient vom Rest berechnen und mit dem Zwischenergebnis multiplizieren
                     matches_part *= math.comb(n_remain, k_remain)
                     # Zwischenergebnis zum Gesamtergebnis addieren
-                    if debug:
-                        print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
+                    #if debug:
+                    #    print(f"r={r_higher}, php={pho}, case={case}, matches={matches_part}")
                     matches += matches_part
 
     # Wahrscheinlichkeit berechnen
@@ -273,8 +271,10 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_b
         if t == SINGLE:  # Einzelkarte
             if r == 15:  # Drache
                 b = False
-            elif r <= 14:  # bis zum Ass
+            elif 1 <= r <= 14:  # vom Mahjong bis zum Ass
                 b = any(v > r for v, _ in hand)
+            elif r == 0:  # Hund
+                b = k > 0  # der Hund gibt das Anspielrecht an den Partner, das zählt so wie gestochen
             else:  # Phönix
                 assert r == 16
                 b = any(1 < v < 16 for v, _ in hand)
@@ -384,7 +384,10 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 def inspect_combination():  # pragma: no cover
     #inspect("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), verbose=True)
     test = [
-        ("RA BD BB RZ B9 B2 Ph", 6, (6, 5, 13), 0, 7, "5er-Straße aus 7 Karten mit Phönix (nicht hinten verlängert)"),
+        #("RA BD BB RZ B9 B2 Ph", 6, (6, 5, 13), 0, 7, "5er-Straße aus 7 Karten mit Phönix (nicht hinten verlängert)"),
+        ("SB RZ R9 G9 R8 G8 B4", 0, (1, 1, 0), 0, 1, "Hund, Test 1"),
+        #("Ph SB RB GZ BZ SZ R9 G9 S9 R8 G8 B4 Hu", 1, (1, 1, 0), 12, 13, "Hund, Test 167"),
+
     ]
     for cards, k, figure, matches_expected, total_expected, msg in test:
         print(msg)
@@ -412,10 +415,10 @@ def benchmark():  # pragma: no cover
 
 def report():  # pragma: no cover
     # Anzahl Muster je Tabelle
-    table = get_table("high", STREET, 5)
+    table = load_table_hi(STREET, 5)
     print("STREET", len(table[0]), len(table[1]))  # 516570, 1236896
 
-    table = get_table("high", FULLHOUSE, 5)
+    table = load_table_hi(FULLHOUSE, 5)
     print("FULLHOUSE", sum(len(cases) for cases in table[0].values()), sum(len(cases) for cases in table[1].values()))  # 926393, 151034
 
 

@@ -117,7 +117,7 @@ class TestExplicitProbOfHigherCombiOrBomb(unittest.TestCase):
         self._test("Ph RB G6 B5 S4 R3 R2", 5, (1, 1, 11), 0.7142857142857143, "Einzelkarte mit Phönix")
 
         # Sonderkarten
-        self._test("Ma", 0, (1, 1, 0), 1.0, "Einzelkarte Hund (keine Handkarten)")
+        self._test("Ma", 0, (1, 1, 0), 0.0, "Einzelkarte Hund (keine Handkarten)")
         self._test("Ma", 1, (1, 1, 0), 1.0, "Einzelkarte Hund (nur der Mahjong als Handkarte möglich)")
         self._test("Dr Ph Ma S4 R3 R2", 1, (1, 1, 0), 1.0, "Einzelkarte Hund")
         self._test("Dr Hu Ph S4 R3 R2", 1, (1, 1, 1), 0.8333333333333334, "Einzelkarte Mahjong")

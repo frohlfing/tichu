@@ -4,7 +4,6 @@ import itertools
 import math
 from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
-from src.lib.prob.database import get_table
 from src.lib.prob.tables_lo import load_table_lo
 from time import time
 
@@ -35,6 +34,8 @@ from time import time
 # k: Anzahl der Handkarten
 # figure: Typ, Länge und Rang der gegebenen Kombination
 def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
+    if k == 0:
+        return 0.0
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
@@ -49,7 +50,7 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
     if t == BOMB:
         return 1.0
 
-    debug = True
+    #debug = False
 
     # Anzahl der Karten je Rang zählen
     h = ranks_to_vector(cards)
@@ -63,10 +64,7 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
         h[16] = 0
 
     # Hilfstabellen laden
-    if debug:
-        table = load_table_lo(t, m)
-    else:
-        table = get_table("low", t, m)
+    table = load_table_lo(t, m)
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
@@ -92,8 +90,8 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
                     # Binomialkoeffizient vom Rest berechnen und mit dem Zwischenergebnis multiplizieren
                     matches_part *= math.comb(n_remain, k_remain)
                     # Zwischenergebnis zum Gesamtergebnis addieren
-                    if debug:
-                        print(f"r={r_lower}, php={pho}, case={case}, matches={matches_part}")
+                    #if debug:
+                    #    print(f"r={r_lower}, php={pho}, case={case}, matches={matches_part}")
                     matches += matches_part
 
     # Wahrscheinlichkeit berechnen

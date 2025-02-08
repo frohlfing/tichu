@@ -1,10 +1,12 @@
-__all__ = "create_tables_lo", "load_table_lo",
+__all__ = "load_table_lo",
 
 import config
+import gzip
 import itertools
 import pickle
 from os import path, mkdir
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_type
+from time import time
 
 # -----------------------------------------------------------------------------
 # Generierung von Hilfstabellen für die Wahrscheinlichkeitsberechnung p_low
@@ -15,11 +17,11 @@ from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET,
 # t: Typ der Kombination
 # m: Länge der Kombination (nur für Treppe, Straße und Bombe relevant)
 def get_filename_lo(t: int, m: int = None):
-    folder = path.join(config.DATA_PATH, "lib/~prob")
+    folder = path.join(config.DATA_PATH, "lib/prob")
     if not path.exists(folder):
         mkdir(folder)
     name = stringify_type(t, m)
-    file = path.join(folder, f"{name}_lo.pkl")
+    file = path.join(folder, f"{name}_lo.pkl.gz")
     return file
 
 
@@ -30,20 +32,29 @@ def get_filename_lo(t: int, m: int = None):
 def save_table_lo(t: int, m: int, table: list):
     file = get_filename_lo(t, m)
 
-    # unkomprimiert speichern
-    with open(file, 'wb') as fp:
+    # # unkomprimiert speichern
+    # with open(file, 'wb') as fp:
+    #     # noinspection PyTypeChecker
+    #     pickle.dump(table, fp)
+
+    # komprimiert speichern
+    with gzip.open(file, "wb") as fp:
         # noinspection PyTypeChecker
         pickle.dump(table, fp)
 
-    # zusätzlich als Textdatei speichern (nützlich zum Debuggen)
-    with open(file[:-4] + ".txt", "w") as datei:
-        for pho in range(2):
-            datei.write(f"Pho={pho}\n")
-            for r, cases in table[pho].items():
-                for case in cases:
-                    datei.write(f"{r}, {case}\n")
+    # # zusätzlich als Textdatei speichern (nützlich zum Debuggen)
+    # with open(file[:-7] + ".txt", "w") as datei:
+    #     for pho in range(2):
+    #         datei.write(f"Pho={pho}\n")
+    #         for r, cases in table[pho].items():
+    #             for case in cases:
+    #                 datei.write(f"{r}, {case}\n")
 
     print(f"Hilfstabelle in {path.basename(file)} gespeichert", )
+
+
+# Cache für die geladenen Hilfstabellen
+_cache = {t: {} for t in range(1, 8)}
 
 
 # Lädt die Hilfstabelle
@@ -51,9 +62,22 @@ def save_table_lo(t: int, m: int, table: list):
 # t: Typ der Kombination
 # m: Länge der Kombination
 def load_table_lo(t: int, m: int) -> list:
+    global _cache
+    if m in _cache[t]:
+        return _cache[t][m]
+
+    print(f"Lade Hilfstabelle {stringify_type(t, m)}... ", end="")
+    time_start = time()
     file = get_filename_lo(t, m)
-    with open(file, 'rb') as fp:
+    if not path.exists(file):
+        create_table_lo(t, m)
+    #with open(file, 'rb') as fp:  # aus unkomprimierte Datei
+    #    table = pickle.load(fp)
+    with gzip.open(file, 'rb') as fp:  # aus komprimierte Datei
         table = pickle.load(fp)
+    _cache[t][m] = table
+    print(f"({(time() - time_start) * 1000:.3f} ms) ok")
+
     return table
 
 
@@ -332,21 +356,19 @@ def create_tables_lo():
         if t == STAIR:
             for m in range(4, 15, 2):
                 file = get_filename_lo(t, m)
-                if not path.exists(file) and not path.exists(file + ".gz"):
+                if not path.exists(file):
                     create_table_lo(t, m)
         elif t == STREET:
             for m in range(5, 15):
                 file = get_filename_lo(t, m)
-                if not path.exists(file) and not path.exists(file + ".gz"):
+                if not path.exists(file):
                     create_table_lo(t, m)
         else:
             assert t in [SINGLE, PAIR, TRIPLE, FULLHOUSE]
             file = get_filename_lo(t)
-            if not path.exists(file) and not path.exists(file + ".gz"):
+            if not path.exists(file):
                 create_table_lo(t, t)
 
 
 if __name__ == '__main__':  # pragma: no cover
-    #create_tables_lo()
-    for m in range(5, 15):
-        create_table_lo(6, m)
+    create_tables_lo()
