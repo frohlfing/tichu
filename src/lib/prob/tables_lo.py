@@ -155,17 +155,17 @@ def get_min_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
         for r in range(2, 15):  # [2 ... 14] (niedrigster Rang zuerst)
             if row[16]:  # mit Phönix
                 if row[r] >= 3:  # Drilling mit Rang r
-                    for i in range(14, 1, -1):
-                        if i != r and row[i] >= 1:  # irgendeine Einzelkarte zw. 14 und 2
+                    for i in range(2, 15):
+                        if i != r and row[i] >= 1:  # irgendeine Einzelkarte zw. 2 und 14
                             return r, row[2:max(r, i) + 1]  # von der 2 bis zum Rang des Pärchens bzw. Drillings
                 elif row[r] == 2:  # Pärchen mit Rang r
-                    for i in range(14, 1, -1):
-                        if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
+                    for i in range(2, 15):
+                        if i != r and row[i] >= 2:  # irgendein Pärchen zw. 2 und 14
                             return r, row[2:max(r, i) + 1]  # von der 2 bis zum Rang des Pärchens bzw. Drillings
             else:  # ohne Phönix
                 if row[r] >= 3:  # Drilling mit Rang r
-                    for i in range(14, 1, -1):
-                        if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
+                    for i in range(2, 15):
+                        if i != r and row[i] >= 2:  # irgendein Pärchen zw. 2 und 14
                             return r, row[2:max(r, i) + 1]  # von der 2 bis zum Rang des Pärchens bzw. Drillings
 
     elif t == STREET:
@@ -226,7 +226,7 @@ def create_table_lo(t: int, m: int):
         assert m == t
 
     # Mögliche Ränge von/bis (der Hund wird ignoriert)
-    r_start = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
+    r_start = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else 2
     r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
 
     # Wir suchen niedrigere Kombinationen, also brauchen wir den höchstmöglichen Rang nicht zu speichern.
@@ -241,7 +241,7 @@ def create_table_lo(t: int, m: int):
     # 1. Schritt:
     # alle möglichen Kombinationen (Kartenanzahl je Rang reduziert) durchlaufen und passende auflisten
 
-    for pho in range(1 if t == BOMB else 2):
+    for pho in range(2):
         print(f"Erzeuge Hilfstabelle {stringify_type(t, m)}[{pho}]...")
         data = {r: [] for r in range(r_start, r_end)}
 
@@ -259,15 +259,11 @@ def create_table_lo(t: int, m: int):
         elif t == STREET:
             a = [0, 1]
         else:
-            assert t == BOMB
-            if m == 4:  # 4er-Bombe
-                a = [3, 4]
-            else:  # Farbbombe
-                a = [0, 1]
+            assert False
 
         # Iterator für die Product-Operation
         if t == SINGLE:
-            #         0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15   16
+            #         0   1  2  3  4  5  6  7  8  9 10 11 12 13 14 15   16
             iter1 = [[0], a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, [pho]]
             c_max = len(a) ** 15
         elif t == STREET:
@@ -285,8 +281,6 @@ def create_table_lo(t: int, m: int):
             print(f"\r{c}/{c_max} = {100 * c / c_max:.1f} %", end="")
             r, unique = get_min_rank(t, m, row)
             if -1 < r < r_end:
-                if r not in data:
-                    print(r)
                 if not unique in data[r]:
                     data[r].append(unique)
         print()
@@ -301,11 +295,7 @@ def create_table_lo(t: int, m: int):
                 cases = []
                 for i, v in enumerate(unique):
                     if a == [0, 1]:
-                        if t == BOMB:  # Farbbombe
-                            assert m >= 5
-                            # für die Berechnung einer Farbbombe werden die Karten je Farbe vorgelegt, es gibt sie also pro Rang nur einmal
-                            v_expand = [v]
-                        elif t in [SINGLE, STREET] and r - m + 1 + i in [0, 1, 15, 16]:  # Sonderkarte
+                        if t in [SINGLE, STREET] and 1 + i in [0, 1, 15, 16]:  # Sonderkarte
                             v_expand = [v]
                         else:
                             v_expand = [1, 2, 3, 4] if v == 1 else [0]
@@ -358,4 +348,5 @@ def create_tables_lo():
 
 if __name__ == '__main__':  # pragma: no cover
     #create_tables_lo()
-    create_table_lo(5, 5)
+    for m in range(5, 15):
+        create_table_lo(6, m)

@@ -129,7 +129,7 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
         b = False
         if t == SINGLE:  # Einzelkarte
             if r == 15:  # Drache
-                b = any(v != 0 for v, _ in hand)  # jede Karte, die nicht der Hund ist, kann der Drache stechen
+                b = any(v not in [0, 15] for v, _ in hand)  # jede Karte, die nicht der Hund ist, kann der Drache stechen
             elif 2 <= r <= 14:  # von der 2 bis zum Ass
                 b = any(v == 16 or 0 < v < r for v, _ in hand)
             elif r <= 1:  # Hund oder Mahjong
@@ -218,11 +218,14 @@ def inspect_combination():  # pragma: no cover
         #("Dr RK GK BD S4 R3 R2", 3, (1, 1, 11), 31, 35, "Einzelkarte"),
         #("Dr BD RB SB R3 R2", 3, (1, 1, 11), 16, 20, "Einzelkarte mit 2 Buben"),
         #("Ph RB G6 B5 R2", 3, (1, 1, 5), 9, 10, "Einzelkarte mit Phönix"),
-        #("Dr Ph Ma S4 R3 R2", 1, (1, 1, 0), 0, 6, "Einzelkarte Hund"),  # todo, mehr Fälle mit Hund!
+        #("Dr Ph Ma S4 R3 R2", 1, (1, 1, 0), 0, 6, "Einzelkarte Hund"),
         #("Dr Hu Ph S4 R3 R2", 1, (1, 1, 1), 0, 6, "Einzelkarte Mahjong"),
         #("Hu Ph Ma S4 R3 R2", 1, (1, 1, 15), 5, 6, "Einzelkarte Drache"),
         #("Dr Hu Ma S4 R3 R2", 1, (1, 1, 16), 4, 6, "Einzelkarte Phönix"),
         #("Dr Hu Ma S4 R3 R2 Ph", 1, (1, 1, 16), 4, 7, "Einzelkarte Phönix (2)"),
+        #("SB RZ R9 G9 R8 G8 B4", 2, (1, 1, 9), 15, 21, "Neun, Test 1884"),
+        #("Ph Dr RB GZ BZ SZ R9 G9 S9 R8 G8 B4", 1, (1, 1, 15), 12, 12, "Drache, Test 3289"),
+        ("Dr", 1, (1, 1, 15), 12, 12, "Drache, Test 3289"),
         # # Pärchen
         #("Dr RK GK BB SB RB R2", 5, (2, 2, 12), 18, 21, "Pärchen ohne Phönix"),
         #("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 10, 21, "Pärchen mit Phönix"),
@@ -242,11 +245,11 @@ def inspect_combination():  # pragma: no cover
         #("Ph GK BD SD SB RB BB", 6, (4, 6, 14), 3, 7, "3er-Treppe mit Phönix"),
         #("GA RA GK RK SD BD SB BB GB BZ RZ G9 B9 R9 Ph", 13, (4, 10, 14), 84, 105, "5er-Treppe"),
         # # Fullhouse
-        ("RK GK BD SB RB BB S2", 6, (5, 5, 10), 2, 7, "Fullhouse ohne Phönix"),
-        # ("BK RK SK BZ RZ R9 S9 RB", 7, (5, 5, 12), 5, 8, "Fullhouse und zusätzliches Pärchen"),
-        # ("BK RK SK G9 R9 S9 RB S2", 7, (5, 5, 12), 5, 8, "Fullhouse mit 2 Drillinge"),
-        # ("Ph GK BD SB RB BB S2", 6, (5, 5, 10), 3, 7, "Fullhouse mit Phönix für Paar"),
-        # ("RK GK BD SB RB BZ Ph", 6, (5, 5, 10), 2, 7, "Fullhouse mit Phönix für Drilling"),
+        #("RK GD BD SB RB BB S2", 6, (5, 5, 13), 2, 7, "Fullhouse ohne Phönix"),
+        #("BB RB SB BZ RZ R9 S9 R8", 7, (5, 5, 12), 5, 8, "Fullhouse und zusätzliches Pärchen"),
+        #("BB RB SB G9 R9 S9 R7 S2", 7, (5, 5, 10), 5, 8, "Fullhouse mit 2 Drillinge"),
+        #("Ph GK BD SB RB BB S2", 6, (5, 5, 12), 3, 7, "Fullhouse mit Phönix für Paar"),
+        #("RK GK BD SB RB BZ Ph", 6, (5, 5, 12), 2, 7, "Fullhouse mit Phönix für Drilling"),
         # # Straße
         #("BK SD BD RB BZ B9 R3", 6, (6, 5, 14), 3, 7, "5er-Straße bis König aus 7 Karten ohne Phönix"),
         #("RA GK BD SB RZ B9 R3", 6, (6, 5, 14), 2, 7, "5er-Straße bis Ass aus 7 Karten ohne Phönix"),
@@ -255,13 +258,12 @@ def inspect_combination():  # pragma: no cover
         #("RA GK BD RZ B9 R8 Ph", 6, (6, 5, 13), 2, 7, "5er-Straße aus 7 Karten mit Phönix (Lücke gefüllt)"),
         #("RA BD BB RZ B9 B2 Ph", 6, (6, 5, 13), 0, 7, "5er-Straße aus 7 Karten mit Phönix (nicht unten verlängert)"),
         #("RA SK BD BB B9 B2 Ph", 6, (6, 5, 14), 2, 7, "5er-Straße bis zum Ass mit Phönix (Lücke gefüllt)"),
-        #("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 13), 18, 28, "5er-Straße aus 8 Karten mit 2 Könige mit Phönix (verlängert)"),
-        #("GA RK GD RB GZ R9 S8 B7 S6 Ph", 9, (6, 5, 11), 1, 10, "5er-Straße aus 10 Karten"),
+        #("Ph SK RK GD BB RZ B9 R8", 6, (6, 5, 13), 11, 28, "5er-Straße aus 8 Karten mit 2 Könige mit Phönix (verlängert)"),
+        #("GA RK GD RB GZ R9 S8 B7 S6 Ph", 9, (6, 5, 11), 9, 10, "5er-Straße aus 10 Karten"),
         #("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), 1, 6, "Straße mit Farbbombe (bekannter Fehler, 0/6 wäre eigentlich richtig)"),
         # Bombe
         #("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 21, 21, "4er-Bombe"),
         #("BK BB BZ B9 B8 B7 B2", 5, (7, 7, 10), 21, 21, "Farbbombe"),
-
     ]
     for cards, k, figure, matches_expected, total_expected, msg in test:
         print(msg)
