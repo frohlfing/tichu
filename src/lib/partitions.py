@@ -109,6 +109,23 @@ def stringify_partition(partition: list[tuple]) -> str:
 # statistic: Ergebnis von combinations.calc_statistic()
 # return: Güte im Wertebereich [-1, 1]
 def partition_quality(partition: list[tuple], action_space: list[tuple], statistic: dict) -> float:
+
+    # !!!!!!!!!!!!!!!!!! Neue Beschreibung  !!!!!!!!!!!!!!!!!!!
+    #
+    # p_lo: Wahrscheinlichkeit, dass ein Mitspieler die Kombination (mit niederem Rang) anspielen kann (Bespielbarkeit)
+    # p_hi: Wahrscheinlichkeit, dass ein Mitspieler die Kombination überstechen kann
+    # p_pw = 1 - p_hi  # Wahrscheinlichkeit, mit der Kombination das Anspielrecht zu erhalten (Schlagkraft)
+    # q_combi = p_lo * p_pw  # Güte der Kombinationen = Bespielbarkeit * Schlagkraft
+    #
+    # Für die Kombinationen, die jetzt ausgespielt werden kann und soll, ist p_lo = 1 (sie ist definitiv bespielbar).
+    # q_first_combi = p_pw
+    #
+    # Für die letzte Kombination ist p_hi = 0 (kann nicht überstochen werden) und somit p_pw = 1
+    # q_last_combi = p_lo
+    #
+    # Die Güte der Hand ist die Summe aller Kombinationen, wobei die erste und letzte Kombinationen so gewählt sind, dass der Wert maximiert wird.
+    # q_hand = q_first_combi + sum(q_middle_combi) + q_last_combi
+
     assert partition
     total_lo = total_hi = 0.
     lo_playing_now = math.inf

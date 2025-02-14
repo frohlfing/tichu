@@ -1,12 +1,12 @@
 import unittest
-from src.deprecated.calc_statistic import calc_statistic
+from src.lib.prob.calc_statistic import calc_statistic
 # noinspection PyProtectedMember
 from src.lib.combinations import *
 from src.lib.cards import *
 
 
 # noinspection DuplicatedCode
-class TestCalcStatistic(unittest.TestCase):
+class TestProbCalcStatistic(unittest.TestCase):
     def test_calc_statistic(self):
         # 1) Ich hab Fullhouse und Sonderkarten, Gegner hat Straße und Phönix
         hand = parse_cards("Dr BD GD RD BZ RZ Ma Hu")

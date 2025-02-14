@@ -1,7 +1,5 @@
 import math
 from collections import Counter
-from src.deprecated.calc_statistic import calc_statistic
-from src.deprecated.statistic import probability_of_sample
 from scipy.special import comb
 from scipy.stats import hypergeom
 # noinspection PyProtectedMember
@@ -179,21 +177,18 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     print("scipy comb", hypergeometric_scipy_comb(N, n, M, k))
     print("scipy exact", hypergeometric_scipy_exact(N, n, M, k))
     print("manual", hypergeometric_manual(N, n, M, k))
-    print("final2", probability_of_sample(N, n, (M,), [(k,)], "=="))
 
     time_math = timeit(lambda: hypergeometric_math(N, n, M, k), number=number)
     time_scipy = timeit(lambda: hypergeometric_scipy(N, n, M, k), number=number)
     time_scipy_comb = timeit(lambda: hypergeometric_scipy_comb(N, n, M, k), number=number)
     time_scipy_exact = timeit(lambda: hypergeometric_scipy_exact(N, n, M, k), number=number)
     time_manual = timeit(lambda: hypergeometric_manual(N, n, M, k), number=number)
-    time_final2 = timeit(lambda: probability_of_sample(N, n, (M,), [(k,)], "=="), number=number)
 
     print(f"math: {time_math:.6f} Sekunden")
     print(f"scipy: {time_scipy:.6f} Sekunden")
     print(f"scipy comb: {time_scipy_comb:.6f} Sekunden")
     print(f"scipy exact: {time_scipy_exact:.6f} Sekunden")
     print(f"manual: {time_manual:.6f} Sekunden")
-    print(f"final2: {time_final2:.6f} Sekunden")
 
     # math: 0.000233 Sekunden
     # scipy: 0.058888 Sekunden

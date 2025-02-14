@@ -19,8 +19,8 @@ from timeit import timeit
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
-# m: Länge der gegebenen Kombination
-# r: Rang der gegebenen Kombination
+# m: Länge der gegebenen Farbbombe
+# r: Rang der gegebenen Farbbombe
 def prob_of_higher_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5) -> float:
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56

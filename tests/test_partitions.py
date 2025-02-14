@@ -1,5 +1,5 @@
 import unittest
-from src.deprecated.calc_statistic import calc_statistic
+from src.lib.prob.calc_statistic import calc_statistic
 # noinspection PyProtectedMember
 from src.lib.cards import *
 from src.lib.combinations import *
@@ -69,7 +69,7 @@ class TestPartitions(unittest.TestCase):
         expected = "PaarZ Bube Bube"
         self.assertEqual(expected, stringify_partition(partition))
 
-    def test_partition_quality(self):  # Gleiche Beispiele wie in test_combinations.test_calc_statistic!
+    def test_partition_quality(self):  # Gleiche Beispiele wie in TestProbCalcStatistic.test_calc_statistic!
         def _test(c, expected, hand, hidden, number_of_cards, trick_figure=(0, 0, 0), action_space=None):
             if action_space is None:
                 action_space = []
