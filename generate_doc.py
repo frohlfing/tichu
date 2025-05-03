@@ -11,7 +11,7 @@ def generate_doc(module_name):
         module_name (str): Der Name des Moduls, für das die Dokumentation generiert werden soll.
     """
 
-    output_dir = "./docs/pydoc"
+    output_dir = "docs/pydoc"
 
     # Generiere die HTML-Dokumentation
     pydoc.writedoc(module_name)

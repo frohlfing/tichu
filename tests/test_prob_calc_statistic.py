@@ -60,10 +60,10 @@ class TestProbCalcStatistic(unittest.TestCase):
         expected.setdefault(tuple(parse_cards("RZ GZ G9 S9")), (0.011904761904762, 0.011904761904762, 0.009920634920635, 0.009920634920635, 0.001984126984127, 0.001984126984127))
         expected.setdefault(tuple(parse_cards("G9 S9 B8 G8")), (0.009920634920635, 0.009920634920635, 0.011904761904762, 0.011904761904762, 0.001984126984127, 0.001984126984127))
         expected.setdefault(tuple(parse_cards("RZ GZ")), (0.119658119658120, 0.119658119658120, 0.051282051282051, 0.051282051282051, 0.051282051282051, 0.051282051282051))
-        expected.setdefault(tuple(parse_cards("G9 S9")), (0.102564102564103, 0.102564102564103, 0.102564102564103, 0.102564102564103, 0.017094017094017, 0.017094017094017))
+        expected.setdefault(tuple(parse_cards("G9 S9")), (0.10256415, 0.15, 0.1, 0.1))
+        expected.setdefault(tuple(parse_cards("B8")), (0.1, 0.1, 0.3, 102564103, 0.102564102564103, 0.102564102564103, 0.102564102564103, 0.017094017094017, 0.017094017094017))
         expected.setdefault(tuple(parse_cards("B8 G8")), (0.051282051282051, 0.051282051282051, 0.119658119658120, 0.119658119658120, 0.051282051282051, 0.051282051282051))
-        expected.setdefault(tuple(parse_cards("RZ")), (0.25, 0.25, 0.15, 0.15, 0.1, 0.1))
-        expected.setdefault(tuple(parse_cards("B8")), (0.1, 0.1, 0.3, 0.3, 0.1, 0.1))
+        expected.setdefault(tuple(parse_cards("RZ")), (0.25, 0.25, 0.3, 0.1, 0.1))
         statistic = calc_statistic(0, hand, build_combinations(hand), number_of_cards, trick_figure, hand + hidden)
         for combi in expected:
             result = statistic[combi]
