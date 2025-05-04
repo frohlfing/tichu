@@ -1,12 +1,20 @@
-__all__ = "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
+__all__ = "Card", "CardLabel", \
+    "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
     "deck", \
     "parse_cards", "stringify_cards", \
     "ranks_to_vector", "cards_to_vector", \
     "is_wish_in", "sum_card_points", "other_cards",
 
+from typing import Tuple
+
 # -----------------------------------------------------------------------------
 # Spielkarten
 # -----------------------------------------------------------------------------
+
+# Typ-Alias für eine Karte
+Card = Tuple[int, int]  # Wert, Farbe
+CardLabel = str  # z.B. "R2"
+
 
 # Sonderkarten
 #   (Wert, Farbe)

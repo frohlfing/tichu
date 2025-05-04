@@ -1,14 +1,32 @@
-__all__ = "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "BOMB", \
+__all__ = "CombinationType", "Combination", \
+    "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "BOMB", \
     "FIGURE_PASS", "FIGURE_DOG", "FIGURE_MAH", "FIGURE_DRA", "FIGURE_PHO", \
     "validate_figure", "parse_figure", "stringify_figure", "stringify_type", "get_figure", \
     "build_combinations", "remove_combinations", \
     "build_action_space",
 
+import enum
 from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in
+from typing import Tuple
 
 # -----------------------------------------------------------------------------
 # Kartenkombinationen
 # -----------------------------------------------------------------------------
+
+# Enum für Kombinationstypen
+class CombinationType(enum.IntEnum):
+    PASS = 0  # Passen
+    SINGLE = 1  # Einzelkarte
+    PAIR = 2  # Paar
+    TRIPLE = 3  # Drilling
+    STAIR = 4  # Treppe
+    FULLHOUSE = 5  # Full House
+    STREET = 6  # Straße
+    BOMB = 7  # Vierer-Bombe oder Farbbombe
+
+# Typ-Alias für eine Kombination
+Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)
+
 
 # Figur-Typen
 PASS = 0       # Passen
@@ -18,7 +36,7 @@ TRIPLE = 3     # Drilling
 STAIR = 4      # Treppe
 FULLHOUSE = 5  # Full House
 STREET = 6     # Straße
-BOMB = 7       # Bombe
+BOMB = 7       # Vierer-Bombe oder Farbbombe
 
 # Sonderkarten einzeln ausgespielt (Typ, Länge, Rang)
 FIGURE_PASS = (0, 0, 0)

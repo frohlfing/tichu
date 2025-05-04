@@ -122,3 +122,16 @@ Hier  mein erster Entwurf zum Ablauf. Lass uns das diskutieren :
 17) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), leitet der Server automatisch eine neue Runde ein (wir beginnen wieder bei Punkt 5).
 18) Wenn die Partie beendet ist, beginnen wir wieder mit Punkt 4.  
 
+-----------------------------------------------------
+
+PublicState:
+
+Wichtige Änderungen und Überlegungen:
+Nur Daten: Keine Methoden wie play, clear_trick, step etc. mehr.
+Klarere Namen: is_done -> is_round_over, points -> round_points_collected, score -> total_scores, start_player_index -> round_start_player_index.
+Neue Felder: table_name, player_connected_status, current_phase hinzugefügt für bessere Client-Info.
+Trick-Info: trick_figure ersetzt durch last_played_cards, last_player_index und current_trick_history. Das ist für den Client verständlicher. Die Engine muss die Gültigkeit neuer Kombinationen anhand von last_played_cards prüfen. trick_leader_index hinzugefügt.
+Kartendarstellung: CardRepresentation als Typ-Alias verwendet (ist str). Alle Kartenlisten verwenden diesen Typ.
+State vs. Events: Diese Klasse repräsentiert den Zustand. Ereignisse wie "Spieler X hat Y gespielt" werden separate Nachrichten sein ("type": "event"), obwohl sie natürlich diesen Zustand ändern.
+Default Factories: field(default_factory=list) oder field(default_factory=lambda: [0, 0]) wird für Listen verwendet, um Probleme mit veränderlichen Standardwerten zu vermeiden.
+to_dict(): Eine Methode zur einfachen Konvertierung für JSON.
