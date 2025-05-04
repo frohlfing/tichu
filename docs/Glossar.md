@@ -24,16 +24,16 @@ Eine Runde besteht aus mehreren Stichen, bis der Gewinner feststeht und Punkte v
 
 Eine Partie besteht aus mehreren Runden und endet, wenn ein Team mindestens 1000 Punkte erreicht hat.
 
-- PublicState = Public Observation Space = der öffentliche Spielstatus (ist für alle Spieler zu sehen)
+- PublicState = der öffentliche Spielstatus (ist für alle Spieler zu sehen)
 
-- PrivateState = Private Observation Space = der verborgene Spielstatus (ist nur für einen bestimmten Spieler zu sehen)
+- PrivateState = der verborgene Spielstatus (ist nur für einen bestimmten Spieler zu sehen)
  
 - Observation Space: Beobachtungsraum des Spielers (Public + Private State), die Sitzplatznummern sind relativ zum Spieler angegeben:
   0 == dieser Spieler, 1 == rechter Gegner, 2 == Partner, 3 == linker Gegner
 
-- Canonical State = Nummerierung der Spieler sind in der Normalform (kanonische Form)
+- Canonical Index = Nummerierung der Spieler sind in der Normalform (kanonische Form) (so wie der Server die Spieler-Liste pflegt)
 
-- Relative State = Nummerierung der Spieler sind relativ zum Spieler 
+- Relativer Index = Nummerierung der Spieler sind relativ zum Spieler 
 
 - card = (Kartenwert, Farbe)
     - value: Kartenwert: (0 (Dog, 1 (Mah Jong), 2 bis 10, 11 (Jack), 12 (Queen), 13 (King), 14 (Ace), 15 (Dragon), 16 (Phoenix)
@@ -46,18 +46,18 @@ Eine Partie besteht aus mehreren Runden und endet, wenn ein Team mindestens 1000
     - length: Länge der Kombination, z.B. 1 bei Single
     - rank: Der Rang der Kombination bestimmt, ob eine Kombination eine andere stechen kann.
  
-- combination = combi = Kombination = (cards, figure) (inklusiv Passen)
+- combination = combi = Kombination = (cards, figure)
   
-- combinations = Kombinationsmöglichkeiten = [combi, combi, ...] (inklusiv Passen)
+- combinations = Kombinationen = [combi, combi, ...]
  
 - partition = mögliche Aufteilung der Handkarten = [combi, combi, ...]
 
-- partitions = mögliche Partitionen = [partition, partition, ...]
+- partitions = Partitionen = [partition, partition, ...]
 
-- History = 
-  - In der DB für Brettspielwelt: [player,cards,cards_type,cards_value,card_points;...|...] (| == Stich einkassiert). 
-  - Im PublicState: Der jeweilige Spieler und die gespielte Kombi.
-  - In alpha-zero in der Arena: [([(state, probability, action)], reward)] 
+- History = Der jeweilige Spieler und die gespielte Kombi, also [(player, combi), (player, combi), ...]
+  (Anmerkung: 
+  - in der DB für Brettspielwelt: [player,cards,cards_type,cards_value,card_points;...|...] (| == Stich einkassiert).
+    In alpha-zero in der Arena: [([(state, probability, action)], reward)] ) 
 
 - Arena = lässt Agenten gegeneinander antreten
  

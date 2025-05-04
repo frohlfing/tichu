@@ -5,13 +5,13 @@ import websockets
 
 
 async def test_connection():
-    uri = f"ws://{config.HOST}:{config.PORT}/ws?tableName=my_world&playerPame=Tiger&canonical_chair=-1"
+    uri = f"ws://{config.HOST}:{config.PORT}/ws?tableName=my_world&playerPame=Tiger"
     async with websockets.connect(uri) as websocket:
         print("Connected")
         try:
             c = 0
             while True:
-                data = ["Ping", c]
+                data = {"action": "ping", "payload": c}
                 await websocket.send(json.dumps(data))
                 print(f"Send: {data}")
                 #response = await websocket.recv()

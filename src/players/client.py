@@ -118,7 +118,7 @@ class Client(Player):
         :param data: Die Nutzdaten der Nachricht als Dictionary.
         """
         # Nur senden, wenn der Client als verbunden gilt.
-        if self.is_connected and self._websocket:
+        if self._is_connected and self._websocket is not None and not self._websocket.closed:
             # Standardisiertes Nachrichtenformat {type: ..., payload: ...}
             message = {"type": message_type, "payload": data}
             try:
@@ -134,8 +134,12 @@ class Client(Player):
                  # Andere unerwartete Fehler beim Senden.
                  logger.exception(f"Unerwarteter Fehler beim Senden an {self.player_name}: {e}")
                  self.mark_as_disconnected(reason=f"Unerwarteter Sendefehler: {e}")
-        # else: Wenn nicht verbunden, tue nichts (kein Logging nötig, um Spam zu vermeiden).
-        #    pass
+        else:
+            # Client nicht verbunden
+            if self._websocket is not None:
+                logger.debug(f"Senden an {self.player_name} übersprungen. Status: _is_connected={self._is_connected}, _websocket.closed={self._websocket.closed}")
+            # else: # Kein Logging, wenn _websocket None ist (normal nach disconnect)
+            #    pass
 
     # ------------------------------------------------------
     # Entscheidungen

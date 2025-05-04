@@ -94,3 +94,31 @@ Test-Client schreiben (und parallel zu 3 nutzen)
 Unit-Tests schreiben (detaillierte Fälle)
 Entwickler-Dokumentation schreiben
 WebApp schreiben
+
+
+------------------------------------------------------------
+
+Ich hab die redundanten Blöcke entfernt. Lass uns mit dem nächsten Punkt fortfahren: Nachrichten / Kommunikation zw. Server und Client definieren
+Lese dir dazu nochmal die Regeln durch: Die Regeln stehen hier: https://cardgames.wiki/de/blog/tichu-spielen-regeln-und-anleitung-einfach-erklaert/#:~:text=Wichtige%20Regeln%201%20Ein%20Spieler%20kann%20%E2%80%9ETichu%E2%80%9C%20ansagen%2C,verwendet%20werden%2C%20senkt%20aber%20den%20Gesamtwert%20des%20Stichs. 
+
+Hier  mein erster Entwurf zum Ablauf. Lass uns das diskutieren :
+
+1) Grundsätzlich sendet der Server jedes Ereignis inkl. Private- und PublicState (oder nur die Status-Änderungen, was ist besser?) über alle aktiven Websocket-Verbindungen, damit die menschlichen Mitspielern auf dem aktuellen Stand  bleiben können. Das ist für Agenten nicht notwendig, da sie bei einer Entscheidung direkt auf PublicState und PrivateState zugreifen können.
+2) Sobald der Client sich verbindet, sendet er den gewünschten Tisch, an den er sich setzen möchte. 
+3) Wenn der Client das Spiel regulär verlassen will, kündigt der Client dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis de Client durch eine KI ersetzt wird.
+4) Der erste Client (Mensch) am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet (normalerweise wird er warten, bis sein Freunde auch am Tisch sitzen und dann sagen, wer mit wem ein Team bildet.)
+5) Eine Neue Runde beginnt. Der Server verteilt je 8 Karten an jeden Spieler. 
+6) Jeder Spieler muss sich dann entscheiden, ob er Grand Tichu ansagen möchte oder nicht (passt). 
+7) Sobald jeder Client sich entschieden hat, ob er ein Großes Tichu ansagen möchte oder nicht, teilt er die restlichen Karten aus (je 6 pro Spieler).
+8) Solange noch kein Spieler Karten zum Tausch (Schupfen) abgegeben hat, kann der Spieler ein Tichu ansagen. 
+9) Die Spieler müssen nun 3 Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler). 
+10) Sobald alle Spieler die Karten zum Tauschen abgegeben haben, sendet der Server an jedem Client jeweils die getauschten Karten, die für dem Client  bestimmt sind.
+11) Ab jetzt kann der Spieler so wie vor dem Schupfen wieder Tichu ansagen, solange er noch 14 Karten auf der Hand hat.
+12) Der Spieler mit dem MahJong muss eine Kartenkombination ablegen. 
+13) Der nächste Spieler wird aufgefordert, Karten abzulegen oder zu Passen. 
+14) Punkt 13 wird wiederholt, bis alle Mitspieler hintereinander gepasst haben, so das der Spieler, die die letzten Karten gespielt hat, wieder an der Reihe ist.
+15) Dieser Spieler darf die Karten kassieren.
+16) Wenn ein Spieler keine Handkarten mehr hat, kann er in die Karten der Mitspieler kucken (die Karten sind für ihn nicht mehr verdeckt).
+17) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), leitet der Server automatisch eine neue Runde ein (wir beginnen wieder bei Punkt 5).
+18) Wenn die Partie beendet ist, beginnen wir wieder mit Punkt 4.  
+

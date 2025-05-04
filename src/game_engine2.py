@@ -212,9 +212,7 @@ class GameEngine:
         # Sende den Zustand parallel an alle verbundenen Clients.
         for player in self.players:
             if isinstance(player, Client) and player.is_connected:
-                tasks.append(asyncio.create_task(
-                    player.notify("public_state_update", state_dict)
-                ))
+                tasks.append(asyncio.create_task(player.notify("public_state_update", state_dict)))
         if tasks:
             # Warte auf das Senden, fange aber Fehler ab (falls Verbindung genau jetzt abbricht).
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -266,6 +264,15 @@ class GameEngine:
             logger.warning(f"Tisch '{self.table_name}': Ignoriere Nachricht von nicht verbundenem/zugewiesenem Client {client.player_name}")
             return
 
+        if not isinstance(message, dict):
+            logger.error(f"Tisch '{self.table_name}': Ungültiger Nachrichtentyp von {client.player_name} empfangen. Erwartet: dict, Bekommen: {type(message)}. Nachricht: {message}")
+            try:
+                # Informiere den Client über das ungültige Format.
+                await client.notify("error", {"message": "Ungültiges Nachrichtenformat (kein Objekt)."})
+            except Exception as e:
+                logger.warning(f"Tisch '{self.table_name}': Fehler beim Senden an {client.player_name}: {e}")
+            return  # Verarbeitung für diese ungültige Nachricht abbrechen
+
         action_type = message.get("action")
         payload = message.get("payload", {})
         player_index = client.player_index # Typ-Checker weiß jetzt, dass player_index nicht None ist.
@@ -314,6 +321,11 @@ class GameEngine:
             await self._broadcast_public_state()
 
         # TODO: Weitere Aktionen implementieren (Schupfen bestätigen, Wunsch äußern, Drachen abgeben)
+
+        elif action_type == "ping":
+            # Ping empfangen.
+            logger.info(f"{client.player_name}: ping")
+            await client.notify("pong", {"message": f"{payload}"})
 
         else:
             # Unbekannte Aktion empfangen.
