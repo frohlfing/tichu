@@ -1,171 +1,266 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Haupt-Server-Skript für die Tichu Webanwendung.
+
+Startet einen aiohttp-Server, der einen WebSocket-Endpunkt bereitstellt,
+über den Clients (Spieler) mit dem Spiel interagieren können.
+Verwaltet den Server-Lebenszyklus und Signal-Handling für sauberes Beenden.
+"""
+
 import asyncio
 import config
 import json
+import os
 import signal
 import sys
-from aiohttp.web_ws import WebSocketResponse
 from aiohttp import web, WSMsgType, WSCloseCode, WSMessage
-from json import JSONDecodeError
-from src.common.logger import logger
-from src.game_factory import GameFactory
+from src.common.logger import logger  # Eigenes Logger-Modul
+from src.game_engine2 import GameEngine  # Spiel-Logik-Klasse
+from src.game_factory import GameFactory  # Verwaltung der Spiele
+from src.players.client import Client  # Spieler-Repräsentation (Mensch)
+from typing import Optional
 
 
-def shutdown(*_args):
-    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-    if tasks:
-        if len(tasks) == 1:
-            logger.info('Cancelling outstanding task...')
-        else:
-            logger.info(f'Cancelling {len(tasks)} outstanding tasks...')
-        for task in tasks:
-            task.cancel()
-
-
-async def websocket_handler(request: web.Request) -> WebSocketResponse | None:
+async def websocket_handler(request: web.Request) -> web.WebSocketResponse | None:
     """
-    Verarbeitet eingehende WebSocket-Verbindungen mit aiohttp.
+    Behandelt eingehende WebSocket-Verbindungen.
+
+    Diese Funktion wird für jede neue WebSocket-Verbindung aufgerufen.
+    Sie initialisiert die Verbindung, leitet die Verbindungsanfrage
+    an die GameFactory weiter, um den Spieler einem Tisch zuzuordnen,
+    und verwaltet dann den Nachrichtenfluss zwischen Client und Server
+    während der Lebenszeit der Verbindung.
+
+    :param request: Das aiohttp Request-Objekt, das die initiale HTTP-Anfrage enthält.
+    :type request: web.Request
+    :return: Das aiohttp WebSocketResponse-Objekt, das die Verbindung repräsentiert.
+    :rtype: web.WebSocketResponse
     """
-    # WebSocketResponse-Objekt erstellen
     ws = web.WebSocketResponse()
+    try:
+        # prepare() führt den WebSocket-Handshake durch.
+        # Kann Exceptions werfen, z.B. bei Handshake-Fehlern.
+        await ws.prepare(request)
+    except Exception as e:
+        # Loggen des Fehlers, wenn der Handshake fehlschlägt.
+        logger.exception(f"WebSocket Handshake fehlgeschlagen für {request.remote}: {e}")
+        return ws  # Rückgabe des ws-Objekts ist notwendig, auch wenn prepare fehlschlägt.
 
-    # Vorbereitung der WebSocket-Verbindung (Handshake)
-    await ws.prepare(request)
-
-    # Zugriff auf die GameFactory über den App-Kontext
+    # Zugriff auf die zentrale GameFactory über den App-Kontext.
     factory: GameFactory = request.app['game_factory']
+    # Query-Parameter aus der Verbindungs-URL extrahieren.
+    params = request.query  # z.B. ?playerName=Frank&tableName=Tisch1[&playerId=UUID...]
+    # Client-Adresse für Logging. request.remote ist hier verfügbar.
+    remote_addr = request.remote
+    logger.info(f"WebSocket Verbindung hergestellt von {remote_addr} mit Parametern: {params}")
 
-    # Zugriff auf die Query-Parameter über das request-Objekt
-    params = request.query
-    remote_addr = request.remote # Client-Adresse für Logging
-    logger.info(f"WebSocket connection established from {remote_addr}")
-    logger.debug(f"Request Parameters: {params}")
-
-    # --- Hier könntest du Logik hinzufügen, um den Spieler anhand der Params zu identifizieren/registrieren ---
-    # player_id = params.get('player_id') or str(uuid.uuid4()) # Beispiel
-    # await factory.register_player(player_id, ws) # Beispielhafte Registrierung
+    client: Optional[Client] = None
+    engine: Optional[GameEngine] = None
 
     try:
-        # Asynchron über eingehende Nachrichten iterieren
+        # Die Factory verarbeitet die Logik für Beitritt/Reconnect.
+        client, engine = await factory.handle_connection_request(ws, dict(params), remote_addr)
+
+        # Wenn die Factory None zurückgibt, wurde die Verbindung abgelehnt.
+        if client is None or engine is None:
+            logger.warning(f"Verbindung von {remote_addr} wurde von der Factory abgelehnt oder konnte nicht zugeordnet werden.")
+            # Die Factory sollte ws bereits geschlossen haben, aber zur Sicherheit prüfen.
+            if not ws.closed:
+                await ws.close(code=WSCloseCode.ABNORMAL_CLOSURE, message="Verbindung abgelehnt".encode('utf-8'))
+            return ws  # Handler beenden.
+
+        # Erfolgreich verbunden und zugeordnet.
+        logger.info(f"Handler: Client {client.player_name} ({client.player_id}) erfolgreich Tisch '{engine.table_name}' zugeordnet.")
+
+        # Haupt-Nachrichtenschleife: Warten auf und Verarbeiten von Client-Nachrichten.
         msg: WSMessage
         async for msg in ws:
             if msg.type == WSMsgType.TEXT:
-                logger.debug(f"Received TEXT from {remote_addr}: {msg.data}")
+                # Ignoriere Nachrichten, wenn der Client intern bereits als getrennt markiert ist.
+                if not client.is_connected:
+                    logger.warning(f"Handler: Nachricht von {client.player_name} empfangen, obwohl intern als disconnected markiert.")
+                    break  # Schleife verlassen -> finally wird ausgeführt.
                 try:
-                    # Nachricht als JSON parsen
+                    # Versuche, die Textnachricht als JSON zu parsen.
                     data = json.loads(msg.data)
-                    logger.debug(f"Parsed JSON data: {data}")
-
-                    # --- Hier deine Logik zur Verarbeitung der Nachricht 'data' ---
-                    # Beispiel: Verwende die factory, um die Aktion zu verarbeiten
-                    # response_data = await factory.handle_action(player_id, data)
-
-                    # ---- Dein bisheriger Beispiel-Code ----
-                    # Sendet eine Nachricht über die Websocket an den Benutzer
-                    response_data = "Pong" # Platzhalter - ersetze dies durch deine echte Antwort
-                    # ---- Ende Beispiel-Code ----
-
-                    # Sende die Antwort als JSON zurück
-                    if response_data is not None:
-                        await ws.send_json(response_data)
-                        logger.debug(f"Sending JSON to {remote_addr}: {response_data}")
-
-                except JSONDecodeError:
-                    logger.error(f"Invalid JSON received from {remote_addr}: {msg.data}")
-                    await ws.send_json({"error": "Invalid JSON format"})
-                except Exception as e:
-                    logger.exception(f"Error processing message from {remote_addr}: {e}")
-                    # Sende eine generische Fehlermeldung an den Client
+                    logger.debug(f"Empfangen TEXT von {client.player_name}: {data}") # Log nach erfolgreichem Parsen
+                    # Leite die geparsten Daten zur Verarbeitung an die GameEngine weiter.
+                    await engine.handle_player_message(client, data)
+                except json.JSONDecodeError:
+                    # Fehler beim Parsen von JSON. Informiere Client.
+                    logger.exception(f"Ungültiges JSON von {client.player_name}: {msg.data}")
                     try:
-                        await ws.send_json({"error": "Error processing message"})
+                        await client.notify("error", {"message": "Ungültiges JSON Format"})
+                    except Exception as e:
+                        logger.exception(f"Fehler beim Senden der Fehlermeldung ab {client.player_name}: {e}")
+                except Exception as send_e:
+                    logger.exception(f"Fehler bei Verarbeitung der Nachricht von {client.player_name}: {send_e}")
+                    try:
+                        # Sende generische Fehlermeldung an Client.
+                        await client.notify("error", {"message": "Fehler bei Verarbeitung Ihrer Anfrage."})
                     except Exception as send_e:
-                        logger.error(f"Failed to send error message to {remote_addr}: {send_e}")
+                        # Fehler beim Senden der Fehlermeldung loggen.
+                        logger.exception(f"Senden der Fehlermeldung an {client.player_name} fehlgeschlagen: {send_e}")
 
             elif msg.type == WSMsgType.BINARY:
-                logger.warning(f"Received unexpected BINARY data from {remote_addr}")
-                # Ignorieren oder behandeln, falls binäre Nachrichten erwartet werden
+                # Binäre Nachrichten werden aktuell nicht erwartet.
+                logger.warning(f"Empfangen unerwartete BINARY Daten von {client.player_name or remote_addr}")
+                # Ignorieren oder spezifische Logik hinzufügen, falls benötigt.
 
             elif msg.type == WSMsgType.ERROR:
-                logger.error(f'WebSocket connection closed with exception {ws.exception()} for {remote_addr}')
+                # aiohttp meldet einen internen WebSocket-Fehler.
+                logger.error(f'WebSocket Fehler für {client.player_name or "unbekannt"}: {ws.exception()}')
+                break  # Schleife verlassen -> finally wird ausgeführt.
 
             elif msg.type == WSMsgType.CLOSE:
-                 logger.info(f"WebSocket CLOSE message received from {remote_addr}")
-                 # Client hat die Schließung initiiert
+                # Der Client hat die Verbindung aktiv geschlossen (normaler Vorgang).
+                logger.info(f"WebSocket CLOSE Nachricht von {client.player_name or 'unbekannt'} empfangen.")
+                break  # Schleife verlassen -> finally wird ausgeführt.
 
     except asyncio.CancelledError:
-        logger.info(f"WebSocket handler for {remote_addr} cancelled.")
-        raise # Wichtig, damit der Abbruch weitergereicht wird
+        # Der Server wird heruntergefahren (z.B. durch Signal).
+        client_name_log = client.player_name if client else remote_addr
+        logger.info(f"WebSocket Handler für {client_name_log} abgebrochen (Server Shutdown).")
+        raise  # Wichtig: CancelledError weitergeben für sauberes Beenden.
     except Exception as e:
-        # Fängt unerwartete Fehler während der Verbindung ab
-        logger.exception(f"Unexpected error in WebSocket handler for {remote_addr}: {e}")
+        # Fängt unerwartete Fehler während der Verbindung oder im Handler ab.
+        client_name_log = client.player_name if client else "unbekannt"
+        logger.exception(f"Unerwarteter Fehler im WebSocket Handler für {client_name_log} von {remote_addr}: {e}")
     finally:
-        # Wird immer ausgeführt, wenn die Verbindung endet (normal, Fehler, Abbruch)
-        logger.info(f"WebSocket connection closing for {remote_addr}")
-        # --- Hier Aufräumarbeiten durchführen ---
-        # Beispiel: Spieler aus dem Spiel entfernen
-        # await factory.unregister_player(player_id, ws)
+        # Dieser Block wird immer ausgeführt, wenn der Handler endet
+        # (durch normalen Close, Fehler, CancelledError, etc.).
+        client_name_log = client.player_name if client else 'N/A'
+        client_id_log = client.player_id if client else 'N/A'
+        table_name_log = engine.table_name if engine else 'N/A'
+        logger.info(f"WebSocket Verbindung schließt für {client_name_log} ({client_id_log}) von {remote_addr}, Tisch: '{table_name_log}'")
 
-        # Sicherstellen, dass der WebSocket serverseitig geschlossen ist
-        # Ist nicht unbedingt nötig wenn der Loop normal endet, aber sicher ist sicher
+        # Informiere die Factory über den Disconnect, damit der Timer gestartet werden kann.
+        # Dies geschieht nur, wenn Client und Engine erfolgreich initialisiert wurden.
+        if client and engine:
+            # Ruft die synchrone Methode in der Factory auf.
+            factory.notify_player_disconnect(engine.table_name, client.player_id, client.player_name)
+        # else: # Optional: Loggen, wenn Client/Engine nicht vorhanden waren
+        #    if not client: logger.debug(f"Kein Client-Objekt im finally-Block für {remote_addr} vorhanden.")
+        #    if not engine: logger.debug(f"Keine Engine-Referenz im finally-Block für {remote_addr} vorhanden.")
+
+        # Sicherstellen, dass die WebSocket-Verbindung serverseitig geschlossen ist.
         if not ws.closed:
-             await ws.close(code=WSCloseCode.GOING_AWAY, message=b'Server shutdown or client disconnect')
-        logger.info(f"WebSocket connection definitively closed for {remote_addr}")
+            logger.debug(f"Stelle sicher, dass WebSocket für {remote_addr} im finally Block geschlossen wird.")
+            try:
+                await ws.close(code=WSCloseCode.GOING_AWAY, message="Verbindung wird serverseitig beendet".encode('utf-8'))
+            except Exception as close_e:
+                logger.warning(f"Fehler beim expliziten Schließen des WebSockets für {remote_addr}: {close_e}")
+        logger.info(f"WebSocket Verbindung definitiv geschlossen für {remote_addr}")
 
-    # Wichtig: Das WebSocketResponse-Objekt zurückgeben
     return ws
 
 
 async def main():
-    # aiohttp Anwendung erstellen
+    """
+    Haupt-Einstiegspunkt zum Starten des aiohttp Servers.
+
+    Erstellt die aiohttp-Anwendung, initialisiert die GameFactory,
+    richtet Routen und Signal-Handler ein und startet den Server.
+    Hält den Server am Laufen, bis ein Shutdown-Signal empfangen wird.
+    """
+    # aiohttp Anwendung erstellen.
     app = web.Application()
 
-    # GameFactory Instanz erstellen und im App-Kontext speichern, damit Handler darauf zugreifen können
+    # GameFactory Instanz erstellen und im App-Kontext speichern.
+    # Dadurch ist sie für Handler über request.app['game_factory'] zugänglich.
     factory = GameFactory()
     app['game_factory'] = factory
 
-    # Route für den WebSocket-Endpunkt hinzufügen (z.B. /ws)
-    app.router.add_get('/ws', websocket_handler) # Passe '/ws' an, falls ein anderer Pfad benötigt wird
+    # Route für den WebSocket-Endpunkt '/ws' hinzufügen und mit dem Handler verknüpfen.
+    app.router.add_get('/ws', websocket_handler)
 
     # --- Plattformspezifisches Signal Handling ---
+    # Notwendig, um auf Strg+C (SIGINT) und Terminate-Signale (SIGTERM) zu reagieren
+    # und einen geordneten Shutdown einzuleiten.
     if sys.platform == 'win32':
-        # Unter Windows: Verwende signal.signal für SIGINT (Strg+C)
-        # SIGTERM ist hier nicht relevant/zuverlässig
-        signal.signal(signal.SIGINT, shutdown)
-        logger.debug("Using signal.signal for SIGINT on Windows.")
+        # Unter Windows wird signal.signal verwendet, da loop.add_signal_handler nicht unterstützt wird.
+        # Nur SIGINT (Strg+C) wird zuverlässig unterstützt.
+        signal.signal(signal.SIGINT, shutdown) # Registriert die shutdown Funktion als Handler
+        logger.debug("Signal-Handler: Verwende signal.signal für SIGINT unter Windows.")
     else:
-        # Unter POSIX (Linux, macOS, RPi): Verwende loop.add_signal_handler
-        # SIGINT: Interrupt from keyboard (CTRL+C), SIGTERM: Termination signal
-        loop = asyncio.get_running_loop()
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, shutdown, sig)
-        logger.debug("Using loop.add_signal_handler for SIGINT and SIGTERM on POSIX.")
+        # Unter POSIX-Systemen (Linux, macOS) wird loop.add_signal_handler bevorzugt.
+        # Es integriert sich besser in die asyncio Event-Schleife.
+        try:
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                # Registriert die shutdown Funktion für SIGINT und SIGTERM.
+                loop.add_signal_handler(sig, shutdown, sig) # Übergibt Signalnummer an shutdown
+            logger.debug("Signal-Handler: Verwende loop.add_signal_handler für SIGINT und SIGTERM unter POSIX.")
+        except NotImplementedError:
+            # Fallback für seltene Fälle, wo add_signal_handler nicht verfügbar ist.
+            logger.warning("Signal-Handler: loop.add_signal_handler nicht implementiert, falle zurück auf signal.signal für SIGINT.")
+            signal.signal(signal.SIGINT, shutdown)
 
-    # Server mit AppRunner und TCPSite starten (mehr Kontrolle über Start/Stop)
+    # Server mit AppRunner und TCPSite starten für mehr Kontrolle.
     runner = web.AppRunner(app)
     await runner.setup()
+    # Server an Host und Port aus der Konfiguration binden.
     site = web.TCPSite(runner, config.HOST, config.PORT)
 
     try:
+        # Starte den Server und beginne, auf Verbindungen zu lauschen.
         await site.start()
-        logger.info(f"aiohttp server started on http://{config.HOST}:{config.PORT}")
-        logger.info(f"WebSocket available at ws://{config.HOST}:{config.PORT}/ws") # Pfad angepasst
-        # Läuft "ewig" bzw. bis ein Signal empfangen wird
+        logger.info(f"aiohttp Server gestartet auf http://{config.HOST}:{config.PORT}")
+        logger.info(f"WebSocket verfügbar unter ws://{config.HOST}:{config.PORT}/ws")
+        # Hält den Haupt-Task am Laufen, bis ein Ereignis (z.B. CancelledError durch shutdown) eintritt.
         await asyncio.Event().wait()
     except asyncio.CancelledError:
-        logger.debug('Interrupt signal received (e.g., CTRL-C)')
-        # Der finally Block wird für das Cleanup sorgen
+        # Wird ausgelöst, wenn shutdown() die Tasks abbricht.
+        logger.info("Haupt-Task abgebrochen, beginne Shutdown-Sequenz.")
     finally:
-        logger.info('Shutting down server...')
-        # Korrektes Herunterfahren des Servers
-        await site.stop() # Stoppt das Lauschen auf neue Verbindungen
-        await runner.cleanup() # Räumt die App und Verbindungen auf
-        logger.info('Server stopped.')
+        # Wird immer ausgeführt, auch bei Fehlern oder Abbruch.
+        logger.info("Fahre Server herunter...")
+        # Führe zuerst den Shutdown der Factory aus (bricht Timer ab, räumt Engines auf).
+        await factory.shutdown()
+        # Stoppe dann den aiohttp Listener (nimmt keine neuen Verbindungen mehr an).
+        await site.stop()
+        # Räume die aiohttp AppRunner Ressourcen auf.
+        await runner.cleanup()
+        logger.info("Server erfolgreich heruntergefahren.")
+
+
+def shutdown(*_args):
+    """
+    Leitet den Server-Shutdown ein, indem laufende asyncio-Tasks abgebrochen werden.
+
+    Diese Funktion wird durch die Signal-Handler (SIGINT/SIGTERM) aufgerufen.
+    Das Abbrechen der Tasks führt dazu, dass `asyncio.Event().wait()` in `main`
+    eine `CancelledError` auslöst, was den `finally`-Block für das
+    geordnete Herunterfahren aktiviert.
+
+    :param _args: Akzeptiert variable Argumente (z.B. Signalnummer), die aber nicht verwendet werden.
+    """
+    logger.info("Shutdown-Signal empfangen.")
+    # Finde alle laufenden Tasks außer dem aktuellen Task (dem shutdown-Handler selbst).
+    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    if tasks:
+        count = len(tasks)
+        logger.info(f'Breche {count} laufende Task{"s" if count > 1 else ""} ab...')
+        for task in tasks:
+            task.cancel() # Sendet ein CancelledError an den Task.
+    else:
+        logger.info("Keine laufenden Tasks zum Abbrechen gefunden.")
 
 
 if __name__ == "__main__":
-    # Stelle sicher, dass aiohttp installiert ist: pip install aiohttp
+    # Stellt sicher, dass das Skript nur ausgeführt wird, wenn es direkt gestartet wird.
+    # Prüfe, ob aiohttp installiert ist (optional, aber gute Praxis).
+    logger.info(f"Starte Tichu Server (PID: {os.getpid()})...") # os importieren
     try:
        asyncio.run(main(), debug=config.DEBUG)
     except KeyboardInterrupt:
-       # Wird normalerweise durch den Signal-Handler abgefangen,
-       # aber sicher ist sicher - falls etwas schiefgeht.
-       logger.info("KeyboardInterrupt caught in __main__")
+       # Fängt Strg+C ab, falls die Signal-Handler aus irgendeinem Grund nicht greifen
+       # (sollte unter Windows mit signal.signal passieren).
+       logger.info("KeyboardInterrupt im __main__ abgefangen.")
+    except Exception as e_top:
+        # Fängt alle anderen unerwarteten Fehler beim Start ab.
+        logger.exception(f"Unerwarteter Fehler auf Top-Level: {e_top}")
+        sys.exit(1) # Beenden mit Fehlercode
+    finally:
+        logger.info("Server-Prozess beendet.")

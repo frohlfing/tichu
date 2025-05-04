@@ -2,6 +2,7 @@ from src.common.rand import Random
 from src.players.agent import Agent
 from src.private_state import PrivateState
 from src.public_state import PublicState
+from typing import Optional
 
 
 class RandomAgent(Agent):
@@ -9,9 +10,13 @@ class RandomAgent(Agent):
     #
     # Die Entscheidungen werden zufällig getroffen.
 
-    def __init__(self, seed: int = None):
-        super().__init__()
+    def __init__(self, player_name: Optional[str] = None, player_id: Optional[str] = None, seed: int = None):
+        super().__init__(player_name, player_id=player_id)
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
+
+    # ------------------------------------------------------
+    # Entscheidungen
+    # ------------------------------------------------------
 
     # Welche Karten an die Mitspieler abgeben?
     # return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner

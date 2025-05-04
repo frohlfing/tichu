@@ -1,0 +1,28 @@
+Tichu Messaging-Protokoll
+Das Tichuana Tichu Messaging Protocol (TMP) spezifiziert die Nachrichten, die zwischen Server und Client ausgetauscht werden. 
+
+An den Tisch setzen und verlassen
+Die Verbindung zwischen Client und Server wird vom Client mit JOIN initiert. Nach dem Empfang überprüft der Server die Richtigkeit der Details und antwortet im Erfolgsfall mit JOINED, im Fehlerfall mit JOIN_FAILED. Im Erfolgsfall sendet der Server an alle Mitspieler mit event_occurred(PLAYER_JOINED) den Namen und Sitzplatz des neuen Spielers.
+Mit LEAVE kann der Client das Spiel wieder verlassen. Hier erhält der Spieler keine Antwort. Nur die Mitspier erfahren mit event_occurred(PLAYER_JOINED), dass nun eine KI den Platz eingenommen hat.
+
+Starten des Spiels
+Sobald der erste Client verbunden ist, startet das Spiel automatisch. Mit event_occurred(CARDS_DEALT) verteilt der Server zunächst je 8 Katen an alle Spieler. 
+
+Der Client muss sich dann entscheiden, ob er Grand Tichu ansagen möchte oder nicht. Er wird dies erklären, indem er action_request(DECLARE) bzw. action_request(PASS) sendet. Der Server antwortet dem Spieler mit action_response(DECLARE) und überträgt jedes angekündigte Tichu mit event_occurred(PLAYER_DECLARED, grand=true) an die Mitspieler.
+
+Sobald jder CLient sich entschieden hat, ob er ein Großes Tichu ansagen möchte oder nicht, teilt er die restlichen sechs Karten mit event_occurred(CARDS_DEALT) an alle Spieler aus (alle 14 Karten werden nach dem Rang sortiert übermittelt).
+
+Solange noch kein Spieler Karten zum Tausch abgegeben hat, kann der Spieler ein Tichu mit action_request(DECLARE) ansagen. Der Server antwortet dem Spieler dann mit action_response(DECLARE) und überträgt jedes angekündigte Tichu mit event_occurred(PLAYER_DECLARED, grand=false) an die Mitspieler. 
+
+SCHUPF - Schupfen
+Die Spieler müssen nun 3 Karten zum Tauschen mit action_request(SCHUPF) abgeben. Der Server antwortet mit action_response(SCHUPF) und sendet allen Mitspieler mit PLAYER_SCHUPFED die Info, dass der Spieler Karten abgelegt hat. Sobald alle Spieler die Karten zum Tauschen abgegebne haben, sendet der Server mit event_occurred(SCHUPF_DISTRIBUTED) die getauschen Karten zum aufnehmen an die Spieler.
+
+Ab jetzt kann der Spieler so wie vor dem Schupfen wieder Tichu ansagen, solange er noch 14 Karten auf der Hand hat.
+
+Spielablauf
+Der Spieler sendet mit action_request() eine Aktion, der Server validiert diese und antwortet mit action_response() und sendet an alle Mitspieler eine entsprechende Nachricht event_occurred(PLAYER_...).
+Wenn der Stich eingesammtelt wird, teilt der Server dies mit event_occurred(TRICK_CLEARED) mit. 
+
+Rundenende
+Wenn die Runde beendet ist, teilt der Server den Punktestand mit ROUND_OVER mit.
+Wenn die Partie beendet ist, teil der Server den Punktestand mit GAME_OVER mit.

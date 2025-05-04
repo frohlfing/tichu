@@ -5,7 +5,7 @@ import websockets
 
 
 async def test_connection():
-    uri = f"ws://{config.HOST}:{config.PORT}/ws?world=my_world&nickname=Tiger&canonical_chair=-1"
+    uri = f"ws://{config.HOST}:{config.PORT}/ws?tableName=my_world&playerPame=Tiger&canonical_chair=-1"
     async with websockets.connect(uri) as websocket:
         print("Connected")
         try:

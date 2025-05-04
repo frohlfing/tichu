@@ -8,6 +8,7 @@ from src.lib.prob import calc_statistic
 from src.players.agent import Agent
 from src.private_state import PrivateState
 from src.public_state import PublicState
+from typing import Optional
 
 
 class HeuristicAgent(Agent):
@@ -15,10 +16,9 @@ class HeuristicAgent(Agent):
     #
     # Die Entscheidungen werden aufgrund statistischen Berechnungen und Regeln aus Expertenwissen getroffen.
 
-    def __init__(self,
-                 grand_quality: list[float] = config.HEURISTIC_TICHU_QUALITY,
-                 seed: int = None):
-        super().__init__() 
+    def __init__(self, player_name: Optional[str] = None, player_id: Optional[str] = None,
+                 grand_quality: list[float] = config.HEURISTIC_TICHU_QUALITY, seed: int = None):
+        super().__init__(player_name, player_id=player_id)
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
         self.__statistic: dict = {}  # Statistische Häufigkeit der Kombinationen (wird erst berechnet, wenn benötigt)
         self._statistic_key: tuple = ()  # Spieler und Anzahl Handkarten, für die die Statistik berechnet wurde
@@ -27,6 +27,10 @@ class HeuristicAgent(Agent):
     def reset_round(self):  # pragma: no cover
         self.__statistic = {}
         self._statistic_key = ()
+
+    # ------------------------------------------------------
+    # Entscheidungen
+    # ------------------------------------------------------
 
     # Welche Karten an die Mitspieler abgeben?
     # return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner
