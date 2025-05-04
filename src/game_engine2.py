@@ -1,3 +1,8 @@
+"""
+Definiert die GameEngine-Klasse, welche die gesamte Spiellogik und den Zustand
+für einen einzelnen Tichu-Tisch kapselt und verwaltet.
+"""
+
 import asyncio
 from aiohttp import WSCloseCode
 from src.common.logger import logger
@@ -10,348 +15,527 @@ from typing import List, Dict, Optional, Tuple
 
 
 class GameEngine:
-    """Verwaltet die Logik und den Zustand eines einzelnen Tichu-Tisches."""
-    MAX_PLAYERS = 4
+    """
+    Verwaltet die Spiellogik, den Zustand und die Spieler eines einzelnen Tichu-Tisches.
+
+    Diese Klasse ist verantwortlich für:
+    - Nachverfolgung der Spieler (Clients und Agents) am Tisch.
+    - Verwaltung des öffentlichen und privaten Spielzustands.
+    - Verarbeitung von Spieleraktionen (über `handle_player_message`).
+    - Durchführung der KI-Ersetzung (über `replace_player_with_agent`).
+    - Bereitstellung von Informationen für die GameFactory (über `is_empty_of_humans`).
+    - Verwaltung des Spielablaufs (zukünftig über `_run_game_loop`).
+    - Aufräumen von Ressourcen beim Schließen des Tisches (über `cleanup`).
+
+    Sie enthält *keine* Logik zur Timer-Verwaltung für Disconnects; dies
+    wird von der GameFactory gehandhabt.
+    """
+    MAX_PLAYERS = 4  #: Die maximale Anzahl von Spielern an einem Tichu-Tisch.
 
     def __init__(self, table_name: str):
+        """
+        Initialisiert eine neue GameEngine für einen gegebenen Tischnamen.
+
+        :param table_name: Der Name des Tisches, eindeutiger Identifikator.
+        :type table_name: str
+        """
+        # Der Name dieses Spieltisches.
         self.table_name: str = table_name
 
-        # Slots für Spieler initial leer oder mit KIs
+        # Liste der Spieler an den vier Positionen (0-3). Kann Player-Objekte oder None enthalten
         self.players: List[Optional[Player]] = [None] * self.MAX_PLAYERS
 
-        # Clients speichern, um sie bei reconnect zu finden über player_id
+        # Dictionary zur Nachverfolgung verbundener Clients über ihre eindeutige player_id.
+        # Wird für Reconnects und zum Nachschlagen von Client-Objekten verwendet.
         self._clients: Dict[str, Client] = {}
+
+        # Der öffentliche Spielzustand, sichtbar für alle Spieler am Tisch.
         self.public_state: PublicState = PublicState(table_name=table_name)
 
-        # Jeder Spieler hat seinen eigenen privaten Zustand
+        # Liste der privaten Spielzustände, einer für jede Spielerposition (Index 0-3).
         self.private_states: List[PrivateState] = [PrivateState(player_index=i) for i in range(self.MAX_PLAYERS)]
 
-        # todo wofür?
+        # Optionaler Task für die Haupt-Spielschleife (`_run_game_loop`).
+        # TODO (Frage): Wofür? Antwort: Hält die Referenz auf den asyncio Task,
+        #  der den eigentlichen Spielablauf (Karten geben, Runden spielen etc.)
+        #  steuert. Wird benötigt, um den Task z.B. bei `cleanup` sauber beenden zu können.
         self.game_loop_task: Optional[asyncio.Task] = None
 
-        # Optional: Tisch direkt mit KIs füllen
+        # Optional: Tisch direkt mit KIs füllen. Kann zum Testen nützlich sein.
         # for i in range(self.MAX_PLAYERS):
-        #     self.players[i] = Agent(ai_level=1)
-        #     self.players[i].assign_game(self, i)
+        #     agent = Agent(player_name=f"KI_{i+1}") # Beispielnamen
+        #     agent.player_index = i
+        #     self.players[i] = agent
+        #     logger.debug(f"DEBUG: Initialen Agent {agent.player_name} an Slot {i} für Tisch '{table_name}' hinzugefügt.")
 
-        logger.info(f"GameEngine created for table: {table_name}")
+        logger.info(f"GameEngine für Tisch '{table_name}' erstellt.")
 
     def _get_player_names(self) -> List[Optional[str]]:
-        """Hilfsmethode, um die Namen der Spieler in der Liste zu erhalten."""
+        """Hilfsmethode, um die Namen der Spieler an den Slots zu erhalten."""
         return [p.player_name if p else None for p in self.players]
 
-    #  Wird vom websocket_handler aufgerufen
     def check_reconnect_or_find_slot(self, player_id: Optional[str], player_name: str) -> Tuple[Optional[int], Optional[Client], Optional[str]]:
-        """Prüft Reconnect oder findet neuen Slot. Timer-Abbruch erfolgt in der Factory!"""
-        # 1. Reconnect-Versuch?
+        """
+        Prüft, ob eine `player_id` zu einem bekannten, getrennten Client gehört (Reconnect),
+        oder findet einen verfügbaren Slot (leer oder von einer KI besetzt).
+
+        Der Timer-Abbruch für einen Reconnect muss von der `GameFactory` durchgeführt werden,
+        da die Timer dort verwaltet werden. Diese Methode informiert die Factory *nicht*.
+
+        :param player_id: Die vom Client übermittelte ID (kann None sein bei neuer Verbindung).
+        :type player_id: Optional[str]
+        :param player_name: Der vom Client übermittelte oder generierte Name.
+        :type player_name: str
+        :return: Ein Tupel:
+                 (Slot-Index | None, existierendes Client-Objekt bei Reconnect | None, Fehlermeldung | None).
+                 Slot-Index ist None bei Fehler oder vollem Tisch.
+                 Client-Objekt ist nur bei Reconnect gesetzt.
+                 Fehlermeldung ist nur bei Ablehnung gesetzt.
+        :rtype: Tuple[Optional[int], Optional[Client], Optional[str]]
+        """
+        # 1. Reconnect-Versuch prüfen: Existiert die ID und ist der zugehörige Client getrennt?
         if player_id and player_id in self._clients:
             existing_client = self._clients[player_id]
             if not existing_client.is_connected:
-                # Ja, ist ein Reconnect-Versuch für einen bekannten, getrennten Client
-                logger.info(f"Tisch '{self.table_name}': Reconnect Versuch für bekannten Spieler {existing_client.player_name} ({player_id}) an Index {existing_client.player_index}.")
+                # Gefunden! Erfolgreicher Reconnect-Versuch identifiziert.
+                logger.info(f"Tisch '{self.table_name}': Reconnect Versuch für Spieler {existing_client.player_name} ({player_id}) an Index {existing_client.player_index} erkannt.")
+                # Timer-Abbruch erfolgt in der Factory!
                 return existing_client.player_index, existing_client, None
             elif existing_client.is_connected:
-                # Spieler ist bereits verbunden (vielleicht alter Tab offen?)
-                logger.warning(f"Table {self.table_name}: Player '{player_name}' ({player_id}) is already connected.")
-                return None, None, f"Player '{player_name}' ({player_id}) is already connected to this table."
-            # else: # Sollte nicht passieren, Client ist in _clients aber weder connected noch disconnected?
-            #    logger.error(f"Inconsistent state for player {player_id}")
-            #    del self._clients[player_id] # Bereinigen
+                # Spieler mit dieser ID ist bereits aktiv verbunden.
+                logger.warning(f"Tisch '{self.table_name}': Spieler '{player_name}' ({player_id}) ist bereits verbunden.")
+                return None, None, f"Spieler '{player_name}' ({player_id}) ist bereits mit diesem Tisch verbunden."
 
-        # 2. Neuen Platz suchen (prüft nur, ob ID schon vergeben ist, falls eine kam)
+        # 2. Prüfen, ob ID (falls vorhanden) von einem *anderen* verbundenen Client genutzt wird (sollte selten sein).
         if player_id and player_id in self._clients:
-            # Ein anderer Spieler (aber verbunden) hat diese ID bereits - unwahrscheinlich mit UUIDs
-            logger.error(f"Table {self.table_name}: Player ID {player_id} (Name: {player_name}) already in use by a connected player.")
-            return None, None, f"Player ID {player_id} is already in use at this table."
+            # Dieser Fall tritt ein, wenn die ID von einem *anderen*, aktuell verbundenen Client stammt.
+            logger.error(f"Tisch '{self.table_name}': Spieler ID {player_id} (Name: {player_name}) wird bereits von einem anderen verbundenen Client verwendet.")
+            return None, None, f"Spieler ID {player_id} wird bereits an diesem Tisch verwendet."
 
-        # 3. Freien Slot suchen (leer oder KI)
+        # 3. Freien Slot suchen: Bevorzugt leere Slots, dann Slots mit KIs.
         available_slot = -1
+        agent_slot = -1
         for i, p in enumerate(self.players):
-            if p is None:  # Leerer Slot ist bevorzugt
+            if p is None:
                 available_slot = i
-                break
-            if isinstance(p, Agent):  # KI-Slot als zweite Wahl
-                if available_slot == -1:  # Nur nehmen, wenn noch kein leerer Slot gefunden wurde
-                    available_slot = i
+                break  # Leeren Slot gefunden, bevorzuge diesen.
+            if isinstance(p, Agent):
+                if agent_slot == -1: # Merke den ersten gefundenen KI-Slot.
+                    agent_slot = i
+
+        # Wenn kein leerer Slot gefunden wurde, nimm den KI-Slot (falls vorhanden).
+        if available_slot == -1:
+            available_slot = agent_slot
 
         if available_slot != -1:
-            logger.info(f"Table {self.table_name}: Found available slot {available_slot} for new player {player_name} (ID: {player_id or 'new'})")
-            return available_slot, None, None  # Slot gefunden, kein Reconnect
+            # Freien Slot (leer oder KI) gefunden.
+            logger.info(f"Tisch '{self.table_name}': Freien Slot {available_slot} für neuen Spieler {player_name} (ID: {player_id or 'neu'}) gefunden.")
+            return available_slot, None, None # Kein Reconnect, aber Slot gefunden.
         else:
-            logger.warning(f"Table {self.table_name} is full for player {player_name}")
-            return None, None, f"Table '{self.table_name}' is full."
+            # Kein freier Slot verfügbar (alle Plätze von verbundenen Clients belegt).
+            logger.warning(f"Tisch '{self.table_name}' ist voll für Spieler {player_name}.")
+            return None, None, f"Tisch '{self.table_name}' ist voll (nur menschliche Spieler)."
 
-    # Wird vom websocket_handler aufgerufen
     async def confirm_player_join(self, client: Client, slot_index: int):
         """
-        Bestätigt das Hinzufügen oder Aktualisieren eines Clients an einem bestimmten Slot.
-        Wird vom websocket_handler aufgerufen, nachdem check_reconnect_or_find_slot erfolgreich war.
-        Ersetzt ggf. vorhandene Spieler/Agenten an diesem Slot.
-        Aktualisiert den Spielzustand und benachrichtigt die Spieler.
+        Bestätigt den Beitritt (oder Reconnect) eines Clients an einem bestimmten Slot.
+
+        Diese Methode wird von der `GameFactory` aufgerufen, nachdem `check_reconnect_or_find_slot`
+        einen gültigen Slot zurückgegeben hat. Sie platziert den Client, aktualisiert
+        interne Strukturen und sendet die notwendigen Zustandsinformationen.
+
+        :param client: Das Client-Objekt des beitretenden Spielers.
+        :type client: Client
+        :param slot_index: Der zugewiesene Index (0-3) am Tisch.
+        :type slot_index: int
         """
         if not (0 <= slot_index < self.MAX_PLAYERS):
-            logger.error(f"Tisch '{self.table_name}': Ungültiger Slot-Index {slot_index} für Spieler {client.player_name}.")
-            await client.close_connection(code=WSCloseCode.INTERNAL_ERROR, message=b'Interner Fehler bei der Slot-Zuweisung')
+            logger.error(f"Tisch '{self.table_name}': Ungültiger Slot-Index {slot_index} beim Bestätigen für Spieler {client.player_name}.")
+            # Versuche, den Client zu informieren und die Verbindung zu schließen.
+            try:
+                await client.close_connection(code=WSCloseCode.INTERNAL_ERROR, message='Interner Serverfehler bei Slot-Zuweisung'.encode('utf-8'))
+            except Exception as e:
+                logger.exception(f"Fehler bei close_connection für '{self.table_name}': {e}.")
             return
 
         logger.info(f"Tisch '{self.table_name}': Bestätige Spieler {client.player_name} ({client.player_id}) an Slot {slot_index}.")
 
-        # Alten Spieler/KI an diesem Platz ggf. entfernen/informieren
+        # Prüfen, ob der Slot aktuell von jemand anderem besetzt ist.
         existing_player = self.players[slot_index]
         if existing_player and existing_player.player_id != client.player_id:
             logger.warning(f"Tisch '{self.table_name}': Slot {slot_index} aktuell belegt durch {existing_player.player_name}. Ersetze.")
             if isinstance(existing_player, Client):
-                # Anderen Client entfernen (sollte durch check_reconnect_or_find_slot verhindert werden, aber sicher ist sicher)
+                # Wenn ein anderer Client dort saß, entferne ihn aus dem Tracking und schließe seine Verbindung.
+                # Dies sollte selten sein, falls check_reconnect korrekt funktioniert.
                 if existing_player.player_id in self._clients:
                     del self._clients[existing_player.player_id]
-                await existing_player.close_connection(message=b'Slot taken by new player')  # Alten Client informieren & trennen
-            # Agent oder None braucht keine spezielle Behandlung hier
+                try:
+                    await existing_player.close_connection(message='Dein Platz wurde von einer neuen Verbindung übernommen'.encode('utf-8'))
+                except Exception as e:
+                    logger.exception(f"Fehler bei close_connection für '{self.table_name}': {e}.")
+            # Eine KI an diesem Platz wird einfach überschrieben.
 
-        # Spieler am Slot platzieren und im Tracking vermerken
+        # Client am Slot platzieren und im Client-Tracking vermerken/aktualisieren.
         self.players[slot_index] = client
-        self._clients[client.player_id] = client # Client im Dictionary hinzufügen/aktualisieren
+        self._clients[client.player_id] = client
+        # Index im Client-Objekt setzen, damit der Client weiß, wo er sitzt.
         client.player_index = slot_index
 
-        # Relevanten Spielzustand senden
-        await self._send_private_state(client) # Privaten Zustand an den beitretenden Spieler senden
-        await self._broadcast_public_state() # Alle über die aktualisierte Spielerliste informieren
+        # Sende initialen/aktualisierten Zustand an die Spieler.
+        await self._send_private_state(client)  # Sende Handkarten etc. an den (wieder-)verbundenen Client.
+        await self._broadcast_public_state()   # Informiere alle über die neue Spielerliste.
 
-        # Prüfen, ob das Spiel starten/fortgesetzt werden kann
+        # Prüfe, ob das Spiel jetzt starten kann (wenn alle Plätze belegt sind).
         await self._check_start_game()
 
     async def _broadcast_public_state(self):
-        """Sendet den aktuellen öffentlichen Zustand an alle verbundenen Clients."""
+        """
+        Aktualisiert den öffentlichen Spielzustand und sendet ihn an alle verbundenen Clients.
+        """
+        # Sicherstellen, dass die Spielerliste im State aktuell ist.
         self.public_state.player_names = self._get_player_names()
-        # ... andere public_state Felder aktualisieren ...
+        # TODO: Weitere Felder im public_state aktualisieren, z.B.:
+        # - Aktuelle Punktzahlen
+        # - Wer ist am Zug? (current_turn_index)
+        # - Zuletzt gespielte Kombination
+        # - Angekündigte Tichu/Grand Tichu
+        # - Spielstatus (läuft, beendet)
+
         state_dict = self.public_state.to_dict()
+        # Füge optional den Verbindungsstatus hinzu (nützlich für UI)
+        state_dict['player_connected_status'] = [
+            isinstance(p, Client) and p.is_connected for p in self.players
+        ]
+
+        logger.debug(f"Tisch '{self.table_name}': Sende Public State Update: {state_dict}")
+        tasks = []
+        # Sende den Zustand parallel an alle verbundenen Clients.
         for player in self.players:
-            # Nur an verbundene Clients senden
             if isinstance(player, Client) and player.is_connected:
-                await player.notify("public_state_update", state_dict)
+                tasks.append(asyncio.create_task(
+                    player.notify("public_state_update", state_dict)
+                ))
+        if tasks:
+            # Warte auf das Senden, fange aber Fehler ab (falls Verbindung genau jetzt abbricht).
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.warning(f"Tisch '{self.table_name}': Fehler beim Senden des Public State an einen Client: {result}")
 
     async def _send_private_state(self, player: Player):
-        """Sendet den privaten Zustand an einen spezifischen Spieler."""
-        if player.player_index is not None:
-            private_state = self.private_states[player.player_index]
-            # ... private_state Felder aktualisieren (z.B. Handkarten) ...
-            if isinstance(player, Client) and player.is_connected:
-                await player.notify("private_state_update", private_state.to_dict())
-
-    def find_slot_for_human(self, player_name: str, player_id: str) -> Tuple[Optional[int], Optional[Client], Optional[str]]:
         """
-        Sucht einen Platz für einen menschlichen Spieler.
-        Prüft, ob der Spieler (via ID) schon am Tisch war und disconnected ist.
-        Prüft, ob ein Platz frei ist oder von einer KI besetzt ist.
-        Gibt (slot_index, reconnected_client, error_message) zurück.
+        Aktualisiert und sendet den privaten Spielzustand an einen spezifischen Client.
+
+        :param player: Der Spieler (muss ein verbundener Client sein), der den Zustand erhalten soll.
+        :type player: Player
         """
-        # 1. Reconnect-Versuch?
-        if player_id in self._clients:
-            existing_client = self._clients[player_id]
-            if not existing_client.is_connected and existing_client.player_index is not None:
-                 logger.info(f"Found disconnected client {player_name} ({player_id}) at index {existing_client.player_index}. Reconnecting.")
-                 # Timer abbrechen passiert in update_websocket
-                 return existing_client.player_index, existing_client, None # Slot gefunden, Client-Objekt für Update zurückgeben
-            elif existing_client.is_connected:
-                 return None, None, f"Player '{player_name}' ({player_id}) is already connected to this table."
-            else: # Sollte nicht passieren, aber sicherheitshalber
-                 del self._clients[player_id] # Aus der Liste entfernen, wenn inkonsistent
+        # Nur an verbundene Clients senden, die einen gültigen Index haben.
+        if not isinstance(player, Client) or not player.is_connected or player.player_index is None:
+            return
 
-        # 2. Neuen Platz suchen (leerer Slot oder KI-Slot)
-        available_slot = -1
-        for i, p in enumerate(self.players):
-            if p is None:
-                available_slot = i
-                break
-            if isinstance(p, Agent):
-                available_slot = i
-                break # Nimm den ersten freien/KI-Slot
+        player_index = player.player_index
+        private_state = self.private_states[player_index]
 
-        if available_slot != -1:
-            logger.info(f"Found available slot {available_slot} for new player {player_name}")
-            return available_slot, None, None # Slot gefunden, kein Reconnect
-        else:
-            logger.info(f"Table {self.table_name} is full for player {player_name}")
-            return None, None, f"Table '{self.table_name}' is full (only human players)."
+        # TODO: Private State Felder hier aktualisieren, bevor gesendet wird.
+        # Dies ist der Ort, um z.B. die Handkarten nach dem Ziehen oder Spielen zu aktualisieren.
+        # Beispiel: private_state.hand_cards = self._get_current_hand(player_index)
+        # Beispiel: private_state.can_announce_tichu = self._can_announce_tichu(player_index)
 
-    async def add_player(self, client: Client, slot_index: int):
-        """Fügt einen Client an einem bestimmten Slot hinzu (ersetzt ggf. KI/None)."""
-        if 0 <= slot_index < self.MAX_PLAYERS:
-            logger.info(f"Adding player {client.player_name} to slot {slot_index} in table {self.table_name}")
-            existing_player = self.players[slot_index]
-            if isinstance(existing_player, Client) and existing_player.player_id != client.player_id:
-                 # Sollte durch find_slot_for_human verhindert werden, aber sicher ist sicher
-                 logger.info(f"WARNUNG: Slot {slot_index} wird von anderem Client {existing_player.player_name} belegt.")
-                 # await existing_player.close_connection() # Alten Client rauswerfen? Oder Fehler?
-                 return # Vorerst nicht hinzufügen
-
-            self.players[slot_index] = client
-            self._clients[client.player_id] = client # Für Reconnect speichern
-            client.player_index = slot_index
-
-            # Zustand aktualisieren und senden
-            await self._send_private_state(client)
-            await self._broadcast_public_state()
-
-            # Prüfen, ob das Spiel starten kann (z.B. wenn 4 Spieler da sind)
-            await self._check_start_game()
-        else:
-            logger.error(f"Error: Invalid slot index {slot_index} for table {self.table_name}")
+        state_dict = private_state.to_dict()
+        logger.debug(f"Tisch '{self.table_name}': Sende Private State Update an {player.player_name}: {state_dict}")
+        try:
+            await player.notify("private_state_update", state_dict)
+        except Exception as e:
+            logger.warning(f"Tisch '{self.table_name}': Fehler beim Senden des Private State an {player.player_name}: {e}")
 
     async def handle_player_message(self, client: Client, message: dict):
-        """Verarbeitet eine Nachricht (Aktion) von einem verbundenen Client."""
-        if not client.is_connected:
-            logger.warning(f"Ignoring message from disconnected client {client.player_name}")
+        """
+        Verarbeitet eine eingehende Nachricht (Spielaktion) von einem verbundenen Client.
+
+        Validiert die Aktion basierend auf dem aktuellen Spielzustand (z.B. wer ist am Zug)
+        und den Spielregeln. Aktualisiert den Zustand und benachrichtigt Spieler.
+
+        :param client: Der Client, der die Nachricht gesendet hat.
+        :type client: Client
+        :param message: Die als Dictionary geparste JSON-Nachricht vom Client.
+                        Erwartet typischerweise `{'action': '...', 'payload': {...}}`.
+        :type message: dict
+        """
+        # Ignoriere Nachrichten von Clients, die nicht (mehr) verbunden sind oder keinen Index haben.
+        if not client.is_connected or client.player_index is None:
+            logger.warning(f"Tisch '{self.table_name}': Ignoriere Nachricht von nicht verbundenem/zugewiesenem Client {client.player_name}")
             return
 
         action_type = message.get("action")
         payload = message.get("payload", {})
-        logger.info(f"Table {self.table_name}: Received action '{action_type}' from {client.player_name}")
+        player_index = client.player_index # Typ-Checker weiß jetzt, dass player_index nicht None ist.
 
-        # --- HIER DIE SPIELLOGIK IMPLEMENTIEREN ---
-        # z.B. prüfen, ob der Spieler am Zug ist, ob die Aktion gültig ist etc.
-        # Beispiel: Tichu ansagen
+        logger.info(f"Tisch '{self.table_name}': Empfangen Aktion '{action_type}' von {client.player_name} (Index: {player_index}), Payload: {payload}")
+
+        # --- TODO: Kern-Spiellogik hier implementieren ---
+        # 1. Ist der Spieler überhaupt am Zug?
+        #    if self.public_state.current_turn_index != player_index:
+        #        await client.notify("error", {"message": "Du bist nicht am Zug."})
+        #        return
+
+        # 2. Aktion validieren und ausführen
         if action_type == "announce_tichu":
-            # ... Logik zum Tichu ansagen ...
-            logger.info(f"{client.player_name} announced Tichu (type: {payload.get('type')})")
-            # Zustand aktualisieren und senden
-            # self.public_state.xyz = ...
+            # Kann Tichu jetzt angesagt werden? (Vor dem Spielen der ersten Karte)
+            # Ist der Typ ('small' oder 'grand') gültig?
+            # ... Logik ...
+            logger.info(f"{client.player_name} sagt Tichu an (Typ: {payload.get('type')})")
+            # Zustand aktualisieren (z.B. im PublicState vermerken)
             await self._broadcast_public_state()
 
-        # Beispiel: Karten spielen
         elif action_type == "play_cards":
             cards = payload.get("cards")
-            # ... Logik zum Karten spielen (Validierung!) ...
-            logger.info(f"{client.player_name} played cards: {cards}")
-            # self.public_state.last_played_combination = ...
-            # self.private_states[client.player_index].hand_cards = ...
-            await self._send_private_state(client) # Eigene Hand aktualisieren
-            await self._broadcast_public_state() # Alle über gespielte Karten informieren
+            if not cards:
+                 await client.notify("error", {"message": "Keine Karten zum Spielen ausgewählt."})
+                 return
+            # Hat der Spieler diese Karten?
+            # Ist die Kombination gültig (Straße, Paar, etc.)?
+            # Ist die Kombination höher als die letzte gespielte Kombination?
+            # ... Logik zur Validierung und Ausführung ...
+            logger.info(f"{client.player_name} spielt Karten: {cards} (VALIDIERUNG AUSSTEHEND!)")
+            # Zustand aktualisieren: Karten aus Hand entfernen, letzte Kombi setzen, nächsten Spieler bestimmen.
+            # Beispiel (vereinfacht):
+            # self.private_states[player_index].hand_cards = [c for c in self.private_states[player_index].hand_cards if c not in cards]
+            # self.public_state.last_played_combination = cards # Detaillierter speichern!
+            # self.public_state.current_turn_index = self._get_next_player_index(player_index)
+            await self._send_private_state(client) # Eigene (aktualisierte) Hand senden
+            await self._broadcast_public_state() # Alle informieren
 
-        # Beispiel: Passen
         elif action_type == "pass_turn":
-            # ... Logik zum Passen ...
-            logger.info(f"{client.player_name} passed.")
-            # self.public_state.current_turn_index = ...
+            # Darf der Spieler passen? (Nicht, wenn er den Stich eröffnet)
+            # ... Logik zur Validierung und Ausführung ...
+            logger.info(f"{client.player_name} passt (VALIDIERUNG AUSSTEHEND!).")
+            # Zustand aktualisieren: Nächsten Spieler bestimmen.
+            # self.public_state.current_turn_index = self._get_next_player_index(player_index)
             await self._broadcast_public_state()
 
+        # TODO: Weitere Aktionen implementieren (Schupfen bestätigen, Wunsch äußern, Drachen abgeben)
+
         else:
-            logger.warning(f"Unknown action type: {action_type}")
-            await client.notify("error", {"message": f"Unknown action: {action_type}"})
+            # Unbekannte Aktion empfangen.
+            logger.warning(f"Tisch '{self.table_name}': Unbekannte Aktion '{action_type}' von {client.player_name}")
+            await client.notify("error", {"message": f"Unbekannte Aktion: {action_type}"})
 
-        # --- SPIELENDE PRÜFEN ---
-        # if game_is_over:
+        # --- TODO: Nach jeder Aktion prüfen, ob der Stich, die Runde oder das Spiel beendet ist ---
+        # if self._is_stich_over():
+        #    await self._handle_stich_end()
+        # if self._is_round_over():
+        #    await self._handle_round_end()
+        # if self._is_game_over():
         #    await self._handle_game_end()
-
-    async def notify_player_disconnected(self, client: Client):
-        """Wird vom Client aufgerufen, wenn die Verbindung abbricht."""
-        logger.info(f"Table {self.table_name}: Player {client.player_name} disconnected.")
-        # Informiere andere Spieler (optional)
-        await self._broadcast_public_state() # Aktualisiert Spielerliste/Status
-        # Der KI-Takeover-Timer wird im Client selbst gestartet
 
     async def replace_player_with_agent(self, player_id: str) -> bool:
         """
-        Ersetzt einen Client durch eine KI. Wird von der GameFactory aufgerufen.
-        Gibt True zurück, wenn die Ersetzung erfolgreich war, sonst False.
+        Ersetzt einen Client (identifiziert durch `player_id`) durch eine KI.
+
+        Diese Methode wird von der `GameFactory` aufgerufen, nachdem der
+        Disconnect-Timer für den Spieler abgelaufen ist. Sie prüft, ob der
+        Spieler immer noch als getrennt gilt und ersetzt ihn dann durch
+        eine `Agent`-Instanz.
+
+        :param player_id: Die ID des zu ersetzenden Clients.
+        :type player_id: str
+        :return: True, wenn die Ersetzung erfolgreich war, andernfalls False.
+        :rtype: bool
         """
         if player_id not in self._clients:
-            logger.warning(f"Tisch '{self.table_name}': Ersetzung fehlgeschlagen - Player ID {player_id} nicht gefunden (vielleicht reconnected?).")
+            # Der Client ist nicht (mehr) in unserer Verwaltung.
+            logger.warning(f"Tisch '{self.table_name}': Ersetzung fehlgeschlagen - Player ID {player_id} nicht in _clients gefunden (vielleicht reconnected oder bereits ersetzt?).")
             return False
 
+        # Hole das Client-Objekt.
         disconnected_client = self._clients[player_id]
         slot_index = disconnected_client.player_index
 
-        # Prüfen: Ist der Spieler wirklich noch disconnected? Und am richtigen Platz?
+        # Überprüfe den Zustand: Ist der Slot gültig? Steht der Client dort? Ist er wirklich getrennt?
         if slot_index is not None and 0 <= slot_index < self.MAX_PLAYERS and \
            self.players[slot_index] == disconnected_client and \
-           not disconnected_client.is_connected:
+           not disconnected_client.is_connected: # Wichtige Prüfung!
 
-            logger.info(f"Tisch '{self.table_name}': Ersetze disconnected {disconnected_client.player_name} (ID: {player_id}) an Slot {slot_index} durch Agent (von Factory ausgelöst).")
+            logger.info(f"Tisch '{self.table_name}': Ersetze disconnected Client {disconnected_client.player_name} (ID: {player_id}) an Slot {slot_index} durch Agent (von Factory ausgelöst).")
 
-            del self._clients[player_id] # Aus Client-Tracking entfernen
+            # Entferne den Client aus dem aktiven Client-Tracking.
+            del self._clients[player_id]
 
-            agent = Agent(player_name=f"{disconnected_client.player_name} (AI)", ai_level=1)
+            # Erstelle eine neue Agent-Instanz.
+            agent = Agent(player_name=f"{disconnected_client.player_name} (KI)", ai_level=1)
             agent.player_index = slot_index
+            # Setze den Agenten an den Platz des Clients.
             self.players[slot_index] = agent
 
-            # TODO: State Transfer implementieren!
-            logger.warning(f"Tisch '{self.table_name}': Zustandsübertragung an Agent {agent.player_name} fehlt!")
+            # --- TODO: WICHTIG - Zustand übertragen! ---
+            # Der Agent muss den aktuellen Spielzustand des ersetzten Spielers übernehmen.
+            # Das beinhaltet mindestens die Handkarten, aber potenziell auch:
+            # - Bereits gewonnene Stiche/Punkte in dieser Runde.
+            # - Ob Tichu angesagt wurde.
+            # Überlege, wie der Agent diese Informationen erhält (z.B. über `agent.load_state(self.private_states[slot_index])`).
+            logger.warning(f"Tisch '{self.table_name}': Zustandsübertragung von {disconnected_client.player_name} an Agent {agent.player_name} ist NICHT implementiert!")
 
-            await self._broadcast_public_state() # Zustand mit neuem Agenten senden
-            return True # Erfolg signalisieren
+            # Sende den aktualisierten Zustand (zeigt jetzt den Agenten an).
+            await self._broadcast_public_state()
+            return True  # Erfolg signalisieren.
         else:
-            logger.warning(f"Tisch '{self.table_name}': Ersetzung für Player ID {player_id} abgebrochen. Bedingungen nicht erfüllt (reconnected, anderer Slot, inkonsistenter Zustand?).")
-            return False # Misserfolg signalisieren
+            # Die Bedingungen für die Ersetzung sind nicht (mehr) erfüllt.
+            reason = "Bedingungen nicht erfüllt"
+            if slot_index is None or not (0 <= slot_index < self.MAX_PLAYERS):
+                reason = "Ungültiger Slot-Index"
+            elif self.players[slot_index] != disconnected_client:
+                reason = f"Slot wird von anderem Spieler ({self.players[slot_index]}) belegt"
+            elif disconnected_client.is_connected:
+                reason = "Spieler hat sich inzwischen wieder verbunden"
+            logger.warning(f"Tisch '{self.table_name}': KI-Ersetzung für Player ID {player_id} abgebrochen. Grund: {reason}.")
+            return False # Misserfolg signalisieren.
 
     def is_empty_of_humans(self) -> bool:
-        """Prüft, ob nur noch KIs (oder leere Slots) am Tisch sind."""
-        # Wichtig: Prüft auf Client-Instanzen, auch wenn sie disconnected sind!
-        # Ein Tisch mit einem disconnected Client ist nicht leer!
+        """
+        Prüft, ob keine menschlichen Spieler (Clients) mehr am Tisch aktiv sind.
+
+        Ein Tisch gilt als leer, wenn alle Slots entweder leer (`None`) sind
+        oder von einer `Agent`-Instanz besetzt sind. Ein `Client`-Objekt,
+        auch wenn es `is_connected == False` ist, zählt *nicht* als leer,
+        solange es nicht durch einen Agenten ersetzt wurde.
+
+        Diese Methode wird von der `GameFactory` verwendet, um zu entscheiden,
+        ob ein Tisch aufgeräumt werden kann.
+
+        :return: True, wenn nur Agents oder leere Slots vorhanden sind, sonst False.
+        :rtype: bool
+        """
         for player in self.players:
             if isinstance(player, Client):
+                # Sobald ein Client-Objekt gefunden wird (egal ob verbunden), ist der Tisch nicht leer.
                 return False
-        logger.debug(f"Table {self.table_name} is empty of humans.")
+        # Wenn die Schleife durchläuft, ohne einen Client zu finden:
+        logger.debug(f"Tisch '{self.table_name}' ist leer von menschlichen Clients.")
         return True
 
     async def _check_start_game(self):
-       """Prüft, ob alle Plätze belegt sind und startet ggf. den Game-Loop."""
+       """
+       Prüft, ob alle Spielerplätze belegt sind und startet ggf. die Spiel-Logik.
+       """
+       # Sind alle 4 Slots belegt (egal ob Client oder Agent)?
        if all(p is not None for p in self.players):
+           # Ist der Spiel-Loop noch nicht gestartet oder bereits beendet?
            if self.game_loop_task is None or self.game_loop_task.done():
-               logger.info(f"Table {self.table_name}: All players ready. Starting game loop.")
-               # self.game_loop_task = asyncio.create_task(self._run_game()) # Startet die Spiellogik
-               # Hier muss die Logik für den eigentlichen Spielablauf hin
-               await self._broadcast_public_state() # Sicherstellen, dass alle den finalen Zustand haben
+               logger.info(f"Tisch '{self.table_name}': Alle Spieler bereit. Starte Spiel-Loop.")
+               # --- TODO: Die eigentliche Spiel-Loop-Coroutine starten ---
+               # self.game_loop_task = asyncio.create_task(self._run_game_loop())
+               # Beispiel: Initialen Zustand senden, nachdem alle bereit sind.
+               await self._broadcast_public_state()
            else:
-               logger.info(f"Table {self.table_name}: All players present, but game loop already running.")
+               # Spiel läuft bereits.
+               logger.debug(f"Tisch '{self.table_name}': Alle Spieler anwesend, aber Spiel-Loop läuft bereits.")
        else:
-           logger.info(f"Table {self.table_name}: Waiting for more players.")
+           # Es fehlen noch Spieler.
+           player_count = sum(1 for p in self.players if p is not None)
+           logger.info(f"Tisch '{self.table_name}': Warte auf {self.MAX_PLAYERS - player_count} weitere Spieler.")
 
     async def cleanup(self):
-        """Bereinigt Ressourcen der GameEngine (Tasks, Client-Verbindungen)."""
-        logger.info(f"Räume GameEngine für Tisch auf: '{self.table_name}'")
+        """
+        Bereinigt Ressourcen dieser GameEngine Instanz.
 
-        # 1. Game loop task abbrechen
+        Wird von der `GameFactory` aufgerufen, bevor die Engine-Instanz
+        aus dem Speicher entfernt wird. Bricht laufende Tasks ab und
+        schließt verbleibende Client-Verbindungen.
+        """
+        logger.info(f"Räume GameEngine für Tisch '{self.table_name}' auf...")
+
+        # 1. Breche den Haupt-Spiel-Loop Task ab, falls er läuft.
         if self.game_loop_task and not self.game_loop_task.done():
+            logger.debug(f"Tisch '{self.table_name}': Breche Spiel-Loop Task ab.")
             self.game_loop_task.cancel()
             try:
-                await self.game_loop_task
+                # Warte kurz darauf, dass der Task auf den Abbruch reagiert.
+                await asyncio.wait_for(self.game_loop_task, timeout=1.0)
             except asyncio.CancelledError:
-                pass  # Erwartet
-        self.game_loop_task = None
+                logger.debug(f"Tisch '{self.table_name}': Spiel-Loop Task bestätigt abgebrochen.")
+            except asyncio.TimeoutError:
+                logger.warning(f"Tisch '{self.table_name}': Timeout beim Warten auf Abbruch des Spiel-Loop Tasks.")
+            except Exception as e:
+                 logger.error(f"Tisch '{self.table_name}': Fehler beim Warten auf abgebrochenen Spiel-Loop Task: {e}")
+        self.game_loop_task = None # Referenz entfernen
 
-        # 2. Client-Verbindungen schließen
+        # --- Timer werden von der Factory verwaltet, hier nichts zu tun ---
+
+        # 2. Schließe aktiv Verbindungen zu allen noch verbundenen Clients.
+        logger.debug(f"Tisch '{self.table_name}': Schließe verbleibende Client-Verbindungen.")
         tasks = []
         for player in self.players:
             if isinstance(player, Client) and player.is_connected:
-                 tasks.append(asyncio.create_task(player.close_connection()))
+                 logger.debug(f"Schließe Verbindung für Client {player.player_name} auf Tisch '{self.table_name}'.")
+                 tasks.append(asyncio.create_task(
+                     player.close_connection(code=WSCloseCode.GOING_AWAY, message='Tisch wird geschlossen'.encode('utf-8'))
+                 ))
         if tasks:
+            # Warte auf das Schließen der Verbindungen.
             await asyncio.gather(*tasks, return_exceptions=True)
 
-        # 3. Interne Zustände leeren (optional)
+        # 3. Interne Datenstrukturen leeren (optional, hilft dem Garbage Collector).
         self.players = [None] * self.MAX_PLAYERS
         self._clients.clear()
-        logger.info(f"GameEngine Cleanup beendet für Tisch: '{self.table_name}'")
+        self.private_states.clear() # Liste leeren
 
-    # --- Platzhalter für die eigentliche Spiellogik ---
-    # async def _run_game(self):
+        logger.info(f"GameEngine Cleanup für Tisch '{self.table_name}' beendet.")
+
+    # --- Platzhalter für die eigentliche Spiel-Loop Coroutine ---
+    # async def _run_game_loop(self):
     #    try:
-    #        logger.info(f"[{self.table_name}] Game loop started.")
-    #        # ... Kartenausgabe ...
-    #        # ... Schupfen ...
-    #        # ... Tichu ansagen ...
-    #        # ... Runden-Loop (Stiche spielen) ...
-    #           # Spieler am Zug ermitteln
-    #           # Wenn Client: auf Aktion warten (kommt über handle_player_message)
-    #           # Wenn Agent: agent.get_action() aufrufen
-    #           # Aktion validieren & ausführen
-    #           # Zustand aktualisieren & senden
-    #           # Runden-/Spielende prüfen
-    #        # ... Spielende, Punkte zählen ...
-    #        await self._handle_game_end()
+    #        logger.info(f"[{self.table_name}] Spiel-Loop gestartet.")
+    #        # --- Phase 1: Karten austeilen ---
+    #        # self._deal_cards()
+    #        # await self._broadcast_public_state()
+    #        # for p in self.players: await self._send_private_state(p)
+    #
+    #        # --- Phase 2: Schupfen ---
+    #        # Warten auf Schupf-Aktionen von Clients / Ausführen für Agents
+    #        # Karten tauschen
+    #        # await self._broadcast_public_state() # Zeigt an, dass Schupfen beendet?
+    #        # for p in self.players: await self._send_private_state(p) # Neue Hand senden
+    #
+    #        # --- Phase 3: Tichu / Grand Tichu ansagen ---
+    #        # Warten auf Ansagen / Agents fragen
+    #
+    #        # --- Phase 4: Runden spielen (Stiche) ---
+    #        while not self.public_state.is_round_over: # Annahme: State hat so ein Flag
+    #             current_player_index = self.public_state.current_turn_index
+    #             current_player = self.players[current_player_index]
+    #
+    #             if isinstance(current_player, Client):
+    #                 # Auf Aktion von Client warten (über handle_player_message)
+    #                 # Hier ist eine Synchronisation nötig, z.B. mit asyncio.Event pro Spieler/Zug
+    #                 # turn_event = asyncio.Event()
+    #                 # self._player_turn_events[current_player_index] = turn_event
+    #                 # await turn_event.wait() # Warten bis handle_player_message das Event setzt
+    #                 pass # Platzhalter
+    #             elif isinstance(current_player, Agent):
+    #                 # Aktion von Agent holen und verarbeiten
+    #                 action = await current_player.get_action(self.public_state, self.private_states[current_player_index])
+    #                 # Verarbeite 'action' ähnlich wie in handle_player_message
+    #                 pass # Platzhalter
+    #             else: # Leerer Slot im laufenden Spiel - sollte nicht passieren
+    #                 logger.error(f"[{self.table_name}] Leerer Slot bei Index {current_player_index} während Spielzug.")
+    #                 # Nächsten Spieler bestimmen oder Fehler behandeln
+    #                 pass # Platzhalter
+    #
+    #             # --- Runden-/Spielende prüfen ---
+    #
+    #        # --- Phase 5: Rundenende, Punkte zählen ---
+    #        # self._calculate_scores()
+    #        # await self._broadcast_public_state() # Punkte mitteilen
+    #
+    #        # --- TODO: Logik für mehrere Runden / Spielende (z.B. 1000 Punkte) ---
+    #
     #    except asyncio.CancelledError:
-    #        logger.exception(f"[{self.table_name}] Game loop cancelled.")
+    #        logger.info(f"[{self.table_name}] Spiel-Loop abgebrochen.")
     #    except Exception as e:
-    #        logger.exception(f"[{self.table_name}] Error in game loop: {e}")
-    #        # Ggf. Fehler an Clients senden
+    #        logger.exception(f"[{self.table_name}] Unerwarteter Fehler im Spiel-Loop: {e}")
+    #        # TODO: Fehler an Clients melden? Spiel abbrechen?
     #    finally:
-    #        logger.info(f"[{self.table_name}] Game loop finished.")
+    #        logger.info(f"[{self.table_name}] Spiel-Loop beendet.")
+    #        # Sicherstellen, dass der State das Ende reflektiert (falls nicht schon geschehen)
+    #        # self.public_state.is_game_over = True
+    #        # await self._broadcast_public_state()
