@@ -1,9 +1,10 @@
 """
-Definiert die GameEngine-Klasse, welche die gesamte Spiellogik und den Zustand
-für einen einzelnen Tichu-Tisch kapselt und verwaltet.
+Definiert die GameEngine-Klasse, die für einen einzelnen Tisch und für die asynchrone Interaktion mit
+den Spielern an diesen Tisch zuständig ist.
 """
 
 import asyncio
+import random
 from aiohttp import WSCloseCode
 from src.common.logger import logger
 from src.players.agent import Agent
@@ -11,26 +12,26 @@ from src.players.client import Client
 from src.players.player import Player
 from src.private_state2 import PrivateState
 from src.public_state2 import PublicState
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any, Coroutine
+
+from src.lib.cards import Card, CardLabel, deck, stringify_cards, parse_cards
+from src.lib.combinations import CombinationType, Combination, build_combinations
+#from src.lib.rules import can_player_announce_tichu, can_player_bomb  # Beispiel für Regelfunktionen
+#from src.lib.scoring import calculate_round_scores
 
 
 class GameEngine:
     """
-    Verwaltet die Spiellogik, den Zustand und die Spieler eines einzelnen Tichu-Tisches.
+    Steuert den Spielablauf und verwaltet den Spielzustand eines Tichu-Tisches.
 
-    Diese Klasse ist verantwortlich für:
-    - Nachverfolgung der Spieler (Clients und Agents) am Tisch.
-    - Verwaltung des öffentlichen und privaten Spielzustands.
-    - Verarbeitung von Spieleraktionen (über `handle_player_message`).
-    - Durchführung der KI-Ersetzung (über `replace_player_with_agent`).
-    - Bereitstellung von Informationen für die GameFactory (über `is_empty_of_humans`).
-    - Verwaltung des Spielablaufs (zukünftig über `_run_game_loop`).
-    - Aufräumen von Ressourcen beim Schließen des Tisches (über `cleanup`).
-
-    Sie enthält *keine* Logik zur Timer-Verwaltung für Disconnects; dies
-    wird von der GameFactory gehandhabt.
+    Es wird asynchron auf eine Aktion der Spieler gewartet.
+    Die Clients (Menschen) werden über eine Websocket-Verbindung asynchron über Ereignisse informiert.
+    Die Agenten (KI-gesteuert) werden direkt aufgerufen, wenn diese am Zug sind.
     """
+
+    # Konstanten
     MAX_PLAYERS = 4  #: Die maximale Anzahl von Spielern an einem Tichu-Tisch.
+    DEFAULT_REQUEST_TIMEOUT = 30.0  # Sekunden Timeout für Client-Antworten
 
     def __init__(self, table_name: str):
         """

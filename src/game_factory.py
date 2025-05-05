@@ -1,5 +1,5 @@
 """
-Definiert die GameFactory-Klasse, die für die Verwaltung aller laufenden Tichu-Spiele (GameEngine-Instanzen)
+Definiert die GameFactory-Klasse, die für die Verwaltung aller laufenden GameEngine-Instanzen
 und für das Handling von Verbindungsanfragen und Spieler-Disconnect-Timern zuständig ist.
 """
 

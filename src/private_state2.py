@@ -19,7 +19,7 @@ from src.lib.cards import Card, CardLabel
 
 
 @dataclass
-class PrivateState2:
+class PrivateState:
     """
     Datencontainer für den privaten Zustand eines Tichu-Spielers.
 
@@ -57,15 +57,15 @@ class PrivateState2:
         :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
         """
         # Konvertiere interne Kartenlisten in String-Labels für die Ausgabe.
-        hand_cards_labels = stringify_card_list_func(self.hand_cards)
-        received_schupf_cards_labels = stringify_card_list_func(self.received_schupf_cards)
-        given_schupf_cards_labels = stringify_card_list_func(self.given_schupf_cards)
+        hand_card_labels = stringify_card_list_func(self.hand_cards)
+        received_schupf_card_labels = stringify_card_list_func(self.received_schupf_cards)
+        given_schupf_card_labels = stringify_card_list_func(self.given_schupf_cards)
 
         return {
             "playerIndex": self.player_index,
-            "handCards": hand_cards_labels,
-            "receivedSchupfCards": received_schupf_cards_labels,
-            "givenSchupfCards": given_schupf_cards_labels,
+            "handCards": hand_card_labels,
+            "receivedSchupfCards": received_schupf_card_labels,
+            "givenSchupfCards": given_schupf_card_labels,
             "canAnnounceTichu": self.can_announce_tichu,
             "canBomb": self.can_bomb,
             # Weitere private Infos könnten hierhin, z.B. Infos über bekannte Karten anderer Spieler?

@@ -26,11 +26,13 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
     """
     Behandelt eingehende WebSocket-Verbindungen.
 
-    Diese Funktion wird für jede neue WebSocket-Verbindung aufgerufen.
-    Sie initialisiert die Verbindung, leitet die Verbindungsanfrage
-    an die GameFactory weiter, um den Spieler einem Tisch zuzuordnen,
-    und verwaltet dann den Nachrichtenfluss zwischen Client und Server
-    während der Lebenszeit der Verbindung.
+    Aufgaben des Händlers:
+    - Verbindung aufbauen.
+    - Die Verbindungsanfrage an factory.handle_connection_request übergeben.
+    - Bei Erfolg dei Nachrichtenschleife starten.
+    - Eingehende Nachrichten (die Antworten auf Anfragen sind) an den Client weiterleiten.
+    - Eingehende Nachrichten (die proaktive Aktionen sind) an die Engine weiterleiten.
+    - Die Factory über den Verbindungsabbruch informieren.
 
     :param request: Das aiohttp Request-Objekt, das die initiale HTTP-Anfrage enthält.
     :type request: web.Request

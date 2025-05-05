@@ -25,7 +25,7 @@ from src.lib.combinations import Combination
 # trick_figure (alte Bedeutung): Ersetzt durch last_combination_details.
 
 @dataclass
-class PublicState2:
+class PublicState:
     """
     Datencontainer für den öffentlichen Zustand eines Tichu-Spiels.
 
@@ -109,16 +109,16 @@ class PublicState2:
         :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
         """
         # Konvertiere Kartenlisten in String-Labels für die Ausgabe
-        last_played_cards_labels = stringify_card_list_func(self.last_played_cards_internal) if self.last_played_cards_internal else None
-        played_cards_labels = stringify_card_list_func(self.played_cards_in_round_internal)
+        last_played_card_labels = stringify_card_list_func(self.last_played_cards_internal) if self.last_played_cards_internal else None
+        played_card_labels = stringify_card_list_func(self.played_cards_in_round_internal)
 
         # Konvertiere Trick History für die Ausgabe
         trick_history_labels = []
         for p_idx, cards_internal, combo_info in self.current_trick_history:
-            cards_labels = stringify_card_list_func(cards_internal) if cards_internal else None
+            card_labels = stringify_card_list_func(cards_internal) if cards_internal else None
             # Konvertiere Enum zu seinem Namen (String) für JSON
             combo_info_serializable = (combo_info[0].name, combo_info[1], combo_info[2]) if combo_info else None
-            trick_history_labels.append((p_idx, cards_labels, combo_info_serializable))
+            trick_history_labels.append((p_idx, card_labels, combo_info_serializable))
 
         # Konvertiere finale Rundenergebnisse (Liste von Zahlen)
         round_scores_final_serializable = self.round_scores_final
@@ -140,13 +140,13 @@ class PublicState2:
             "roundLoserIndex": self.round_loser_index,
             "roundDoubleVictory": self.round_double_victory,
             "roundAnnouncements": self.round_announcements,
-            "lastPlayedCards": last_played_cards_labels,
+            "lastPlayedCards": last_played_card_labels,
             "lastCombinationDetails": (self.last_combination_details[0].name, self.last_combination_details[1], self.last_combination_details[2]) if self.last_combination_details else None,
             "lastPlayerIndex": self.last_player_index,
             "currentTrickHistory": trick_history_labels,
             "currentTrickPoints": self.current_trick_points,
             "numCardsInHand": self.num_cards_in_hand,
-            "playedCardsInRound": played_cards_labels,
+            "playedCardsInRound": played_card_labels,
             "wishActiveValue": self.wish_active_value,
             "dragonTrickRecipient": self.dragon_trick_recipient,
             "currentPhase": self.current_phase,
