@@ -119,11 +119,11 @@ class GameFactory:
         if existing_client:  # Reconnect-Fall
             logger.info(f"Factory: Behandle Reconnect für {existing_client.player_name} ({existing_client.player_id}) auf Tisch '{table_name}'.")
             client_obj = existing_client
-            client_obj.update_websocket(websocket) # Bestehendes Objekt mit neuem WebSocket aktualisieren
+            client_obj.update_websocket(websocket, engine._interrupt_events) # Bestehendes Objekt mit neuem WebSocket aktualisieren
         else:  # Neuer Spieler
             logger.info(f"Factory: Erstelle neues Client-Objekt für {player_name} (ID: {player_id_from_params or 'neu'}) für Tisch '{table_name}'.")
             # Nutze übergebene ID oder generiere neue
-            client_obj = Client(player_name, websocket, player_id_from_params)
+            client_obj = Client(player_name, websocket, engine._interrupt_events, player_id_from_params)
 
         # --- Schritt 5: Beitritt bei Engine bestätigen ---
         try:

@@ -87,23 +87,39 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
                     # Versuche, die Textnachricht als JSON zu parsen.
                     data = json.loads(msg.data)
                     logger.debug(f"Empfangen TEXT von {client.player_name}: {data}") # Log nach erfolgreichem Parsen
-                    # Leite die geparsten Daten zur Verarbeitung an die GameEngine weiter.
-                    await engine.handle_player_message(client, data)
+
+                    # Grundlegende Typ-Prüfung
+                    if not isinstance(data, dict):
+                        logger.warning(f"Handler: Ungültiges Nachrichtenformat (kein dict) von {client.player_name}: {data}")
+                        await client.notify("error", {"message": "Ungültiges Nachrichtenformat."})
+                        continue  # Nächste Nachricht
+
+                    response_to = data.get("response_to")  # Ist es eine Antwort auf eine Anfrage?
+                    action = data.get("action")  # Ist es eine proaktive Aktion?
+                    payload = data.get("payload", {})  # Die Nutzdaten
+
+                    if response_to:
+                        # Nachricht ist eine Antwort -> an Client.receive_response leiten
+                        logger.debug(f"Handler: Leite Antwort auf '{response_to}' an Client {client.player_name} weiter.")
+                        client.receive_response(response_to, payload)  # Annahme: payload enthält die relevanten Antwortdaten
+                    elif action:
+                        # Nachricht ist eine proaktive Aktion -> an Engine.handle_player_message leiten
+                        # (oder an eine dedizierte Methode wie handle_proactive_action)
+                        logger.debug(f"Handler: Leite proaktive Aktion '{action}' an Engine für Tisch '{engine.table_name}' weiter.")
+                        # Leite die geparsten Daten zur Verarbeitung an die GameEngine weiter.
+                        await engine.handle_player_message(client, data)
+                    else:
+                        # Nachricht hat weder 'response_to' noch 'action' -> unbekanntes Format
+                        logger.warning(f"Unbekanntes Nachrichtenformat von {client.player_name} (weder Antwort noch Aktion): {data}")
+                        await client.notify("error", {"message": "Unbekanntes Nachrichtenformat."})
                 except json.JSONDecodeError:
                     # Fehler beim Parsen von JSON. Informiere Client.
                     logger.exception(f"Ungültiges JSON von {client.player_name}: {msg.data}")
-                    try:
-                        await client.notify("error", {"message": "Ungültiges JSON Format"})
-                    except Exception as e:
-                        logger.exception(f"Fehler beim Senden der Fehlermeldung ab {client.player_name}: {e}")
+                    await client.notify("error", {"message": "Ungültiges JSON Format"})
                 except Exception as send_e:
                     logger.exception(f"Fehler bei Verarbeitung der Nachricht von {client.player_name}: {send_e}")
-                    try:
-                        # Sende generische Fehlermeldung an Client.
-                        await client.notify("error", {"message": "Fehler bei Verarbeitung Ihrer Anfrage."})
-                    except Exception as send_e:
-                        # Fehler beim Senden der Fehlermeldung loggen.
-                        logger.exception(f"Senden der Fehlermeldung an {client.player_name} fehlgeschlagen: {send_e}")
+                    # Sende generische Fehlermeldung an Client.
+                    await client.notify("error", {"message": "Fehler bei Verarbeitung Ihrer Anfrage."})
 
             elif msg.type == WSMsgType.BINARY:
                 # Binäre Nachrichten werden aktuell nicht erwartet.

@@ -10,7 +10,7 @@ from src.common.rand import Random
 from src.players.player import Player
 from src.private_state2 import PrivateState
 from src.public_state2 import PublicState
-from typing import Optional
+from typing import Optional, Dict, List
 
 
 class Client(Player):
@@ -23,28 +23,30 @@ class Client(Player):
     und später durch Nachrichten vom Client ersetzt werden müssen.
     """
 
-    def __init__(self, player_name: str, websocket: web.WebSocketResponse, player_id: Optional[str] = None, seed: Optional[int] = None):
+    def __init__(self, player_name: str,
+                 websocket: web.WebSocketResponse,
+                 interrupt_events: Dict[str, asyncio.Event],
+                 player_id: Optional[str] = None,
+                 seed: Optional[int] = None):
         """
         Initialisiert einen neuen Client-Spieler.
 
         :param player_name: Der Name des Spielers.
         :param websocket: Das WebSocketResponse-Objekt der initialen Verbindung.
+        :param interrupt_events: Ein Dictionary mit den asyncio.Event-Objekten der Engine für Interrupts.
         :param player_id: Optionale, feste ID für den Spieler (für Reconnects). Wenn None, wird eine UUID generiert.
         :param seed: Optionaler Seed für den internen Zufallsgenerator (für Tests).
         """
-        # Rufe Konstruktor der Basisklasse auf (validiert auch Namen).
         super().__init__(player_name, player_id=player_id)
-        #: Das aktive WebSocket-Objekt.
         self._websocket: Optional[web.WebSocketResponse] = websocket
-        #: Interner Verbindungsstatus.
-        self._is_connected: bool = True
-        #: Zufallsgenerator-Instanz.
-        self._random = Random(seed)
-
+        self._interrupt_events: Dict[str, asyncio.Event] = interrupt_events
+        self._is_connected: bool = True  # Interner Verbindungsstatus
+        self._random = Random(seed)  # Zufallsgenerator
+        self._pending_requests: Dict[str, asyncio.Future] = {}
         logger.debug(f"Client '{self.player_name}' (ID: {self.player_id}) erstellt und initial verbunden.")
 
     @property
-    def is_connected(self) -> bool:
+    def is_connected(self) -> bool:  # todo: was unterscheidet das von not websocket.closed?
         """
         Gibt zurück, ob der Client aktuell als verbunden gilt.
 
@@ -54,7 +56,7 @@ class Client(Player):
         """
         return self._is_connected and self._websocket is not None and not self._websocket.closed
 
-    def update_websocket(self, new_websocket: web.WebSocketResponse):
+    def update_websocket(self, new_websocket: web.WebSocketResponse, interrupt_events: Dict[str, asyncio.Event]):
         """
         Aktualisiert die WebSocket-Verbindung bei einem Reconnect.
 
@@ -62,10 +64,18 @@ class Client(Player):
         sich erneut verbindet.
 
         :param new_websocket: Das neue WebSocketResponse-Objekt.
+        :param interrupt_events: Die (potenziell neuen) Interrupt-Events der Engine.
         """
         logger.info(f"Aktualisiere WebSocket für Client {self.player_name} ({self.player_id}).")
         self._websocket = new_websocket
+        self._interrupt_events = interrupt_events
         self._is_connected = True # Markiere wieder als verbunden
+        # Wenn der Client sich wieder verbindet, während er auf eine Antwort wartete, sollte die alte Anfrage ungültig sein.
+        for request_type, future in list(self._pending_requests.items()):  # list() für Kopie
+            if not future.done():
+                logger.warning(f"Client {self.player_name}: Breche alte Anfrage '{request_type}' wegen Reconnect ab.")
+                future.cancel()
+            self._pending_requests.pop(request_type, None)
 
     def mark_as_disconnected(self, reason: str = "Verbindung geschlossen"):
         """
@@ -140,6 +150,43 @@ class Client(Player):
                 logger.debug(f"Senden an {self.player_name} übersprungen. Status: _is_connected={self._is_connected}, _websocket.closed={self._websocket.closed}")
             # else: # Kein Logging, wenn _websocket None ist (normal nach disconnect)
             #    pass
+
+    def receive_response(self, request_type: str, response_data: dict):
+        """
+        Wird vom websocket_handler aufgerufen, wenn eine Antwort vom Browser eintrifft,
+        die zu einer vorherigen Anfrage gehört.
+        Setzt die entsprechende Future, um die wartende Methode aufzuwecken.
+
+        :param request_type: Der Typ der ursprünglichen Anfrage (z.B. "request_combination").
+                             Muss vom Client in der Antwort mitgesendet werden (z.B. im Feld "response_to").
+        :param response_data: Die Nutzdaten der Antwort vom Client.
+        """
+        if request_type in self._pending_requests:
+            future = self._pending_requests[request_type]
+            if not future.done():
+                future.set_result(response_data)
+                logger.debug(f"Client {self.player_name}: Antwort für '{request_type}' an wartende Methode weitergeleitet.")
+            else:
+                # Die Future wurde bereits gesetzt (z.B. Timeout, Cancelled) oder die Antwort kam zu spät.
+                logger.warning(f"Client {self.player_name}: Antwort für bereits abgeschlossene/abgebrochene Anfrage '{request_type}' erhalten: {response_data}")
+        else:
+            # Keine wartende Anfrage für diesen Typ gefunden.
+            logger.warning(f"Client {self.player_name}: Unerwartete Antwort für '{request_type}' erhalten (keine passende wartende Anfrage): {response_data}")
+
+    # --- Platzhalter für die wartenden Methoden (combination, schupf etc.) ---
+    # Diese müssen wir später implementieren, um self._interrupt_events und
+    # self._pending_requests zu nutzen.
+
+    # --- Platzhalter für Hilfsmethoden ---
+    # noinspection PyMethodMayBeStatic
+    def _serialize_action_space(self, action_space: list[tuple]) -> List[Dict]:
+        # PLATZHALTER
+        return [{"action": "pass_turn"}]
+
+    # noinspection PyMethodMayBeStatic
+    def _parse_combination_response(self, response_data: dict, action_space: list[tuple]) -> tuple:
+        # PLATZHALTER
+        return "pass_turn", None
 
     # ------------------------------------------------------
     # Entscheidungen

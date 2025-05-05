@@ -242,10 +242,7 @@ class GameEngine:
 
         state_dict = private_state.to_dict()
         logger.debug(f"Tisch '{self.table_name}': Sende Private State Update an {player.player_name}: {state_dict}")
-        try:
-            await player.notify("private_state_update", state_dict)
-        except Exception as e:
-            logger.warning(f"Tisch '{self.table_name}': Fehler beim Senden des Private State an {player.player_name}: {e}")
+        await player.notify("private_state_update", state_dict)
 
     async def handle_player_message(self, client: Client, message: dict):
         """
@@ -264,15 +261,6 @@ class GameEngine:
         if not client.is_connected or client.player_index is None:
             logger.warning(f"Tisch '{self.table_name}': Ignoriere Nachricht von nicht verbundenem/zugewiesenem Client {client.player_name}")
             return
-
-        if not isinstance(message, dict):
-            logger.error(f"Tisch '{self.table_name}': Ungültiger Nachrichtentyp von {client.player_name} empfangen. Erwartet: dict, Bekommen: {type(message)}. Nachricht: {message}")
-            try:
-                # Informiere den Client über das ungültige Format.
-                await client.notify("error", {"message": "Ungültiges Nachrichtenformat (kein Objekt)."})
-            except Exception as e:
-                logger.warning(f"Tisch '{self.table_name}': Fehler beim Senden an {client.player_name}: {e}")
-            return  # Verarbeitung für diese ungültige Nachricht abbrechen
 
         action_type = message.get("action")
         payload = message.get("payload", {})
