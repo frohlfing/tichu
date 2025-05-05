@@ -32,9 +32,33 @@ class HeuristicAgent(Agent):
     # Entscheidungen
     # ------------------------------------------------------
 
-    # Welche Karten an die Mitspieler abgeben?
-    # return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner
-    def schupf(self, pub: PublicState, priv: PrivateState) -> list[tuple]:
+    # todo u.U. die Berechnung im Thread laufen lassen, um die asynchrone Nachrichtenschleife nicht zu blockieren:
+    # import asyncio
+    # import time
+    # from concurrent.futures import Future, ThreadPoolExecutor, ProcessPoolExecutor
+    #
+    # def blocking_function() -> int:
+    #     # Eine blockierende Funktion, die zwei Sekunden wartet und dann 42 zurückgibt
+    #     time.sleep(2)
+    #     return 42
+    #
+    # async def combination(...):
+    #   loop = asyncio.get_running_loop()
+    #   with ThreadPoolExecutor() as pool:
+    #       # Ausführen der blockierenden Funktion im Thread
+    #       future: Future = loop.run_in_executor(pool, blocking_function)
+    #       result: int = await future
+
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> list[tuple]:
+        """
+        Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
+
+        Muss von Subklassen implementiert werden.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: Die Liste der Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
+        """
         schupfed = [None, None, None]
         for i in [2, 1, 3]:  # erst die Karte für den Partner aussuchen, dann für die Gegner
             p = (priv.player_index + i) % 4  # Index in kanonische Form
@@ -106,8 +130,17 @@ class HeuristicAgent(Agent):
                 schupfed[i - 1] = preferred[self._random.integer(0, length)]
         return schupfed
 
-    # Tichu ansagen?
-    def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
+    async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
+        """
+        Fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
+
+        Muss von Subklassen implementiert werden.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :param grand: True, wenn nach Grand Tichu gefragt wird, False für kleines Tichu.
+        :return: True, wenn angesagt wird, sonst False.
+        """
         if sum(pub.announcements) > 0:
             announcement = False  # Falls ein Mitspieler ein Tichu angesagt hat, sagen wir nichts an!
         else:
@@ -130,10 +163,17 @@ class HeuristicAgent(Agent):
             announcement = q >= min_q
         return announcement
 
-    # Welche Kombination soll gespielt werden?
-    # action_space: Mögliche Kombinationen (inklusiv Passen; Passen steht an erster Stelle)
-    # return: Ausgewählte Kombination (Karten, (Typ, Länge, Wert))
-    def combination(self, pub: PublicState, priv: PrivateState, action_space: list[tuple]) -> tuple:
+    async def combination(self, pub: PublicState, priv: PrivateState, action_space: list[tuple]) -> tuple:
+        """
+        Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
+
+        Muss von Subklassen implementiert werden.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :param action_space: Mögliche Kombinationen (inklusiv Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
+        :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0)).
+        """
         action_len = len(action_space)
         assert action_len > 0
         if action_len == 1:
@@ -281,8 +321,17 @@ class HeuristicAgent(Agent):
         return best_combi
 
     # Welcher Kartenwert wird gewünscht?
-    # return: Wert zw. 2 und 14
-    def wish(self, pub: PublicState, priv: PrivateState) -> int:
+    # return: Der gewünschte Kartenwert (2-14).
+    async def wish(self, pub: PublicState, priv: PrivateState) -> int:
+        """
+        Fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
+
+        Muss von Subklassen implementiert werden.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: Der gewünschte Kartenwert (2-14).
+        """
         values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 
         t, n, value = pub.trick_figure
@@ -310,9 +359,16 @@ class HeuristicAgent(Agent):
         assert 2 <= wish <= 14, "Der Wunsch muss zw. 2 und 14 (As) liegen."
         return wish
 
-    # Welcher Gegner soll den Drachen bekommen?
-    # return: Nummer des Gegners
-    def gift(self, pub: PublicState, priv: PrivateState) -> int:
+    async def gift(self, pub: PublicState, priv: PrivateState) -> int:
+        """
+        Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
+
+        Muss von Subklassen implementiert werden.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: Der Index (0-3) des Gegners, der den Stich erhält.
+        """
         # Der Spieler mit den meisten Handkarten kriegt den Drachen.
         right = pub.number_of_cards[priv.opponent_right]
         left = pub.number_of_cards[priv.opponent_left]

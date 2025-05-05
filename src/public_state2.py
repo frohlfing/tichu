@@ -9,7 +9,7 @@ Die Logik zur Änderung des Zustands befindet sich in der GameEngine oder ausgel
 
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Dict, Any
-from src.lib.cards import Card
+from src.lib.cards import Card, stringify_cards
 from src.lib.combinations import Combination
 
 
@@ -99,23 +99,22 @@ class PublicState:
     current_phase: str = "setup"  # Aktuelle Phase des Spiels (z.B. "lobby", "dealing", "schupfing", "playing").
 
 
-    def to_dict(self, stringify_card_list_func) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Konvertiert den Zustand in ein Dictionary für JSON-Serialisierung.
 
         Verwendet eine übergebene Funktion zur Konvertierung interner Karten in ihre String-Label-Repräsentation.
 
-        :param stringify_card_list_func: Funktion wie `stringify_cards` aus `src.lib.cards`, die `List[Card]` in `List[CardLabel]` umwandelt.
         :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
         """
         # Konvertiere Kartenlisten in String-Labels für die Ausgabe
-        last_played_card_labels = stringify_card_list_func(self.last_played_cards_internal) if self.last_played_cards_internal else None
-        played_card_labels = stringify_card_list_func(self.played_cards_in_round_internal)
+        last_played_card_labels = stringify_cards(self.last_played_cards_internal) if self.last_played_cards_internal else None
+        played_card_labels = stringify_cards(self.played_cards_in_round_internal)
 
         # Konvertiere Trick History für die Ausgabe
         trick_history_labels = []
         for p_idx, cards_internal, combo_info in self.current_trick_history:
-            card_labels = stringify_card_list_func(cards_internal) if cards_internal else None
+            card_labels = stringify_cards(cards_internal) if cards_internal else None
             # Konvertiere Enum zu seinem Namen (String) für JSON
             combo_info_serializable = (combo_info[0].name, combo_info[1], combo_info[2]) if combo_info else None
             trick_history_labels.append((p_idx, card_labels, combo_info_serializable))

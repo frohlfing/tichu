@@ -27,10 +27,12 @@ class GameFactory:
         """
         #: Dictionary, das aktive Spiele über ihren Tischnamen verwaltet.
         #: Schlüssel: table_name (str), Wert: GameEngine-Instanz.
-        self.games: Dict[str, GameEngine] = {}
+        self._games: Dict[str, GameEngine] = {}
+
         #: Dictionary zur Verwaltung der laufenden Disconnect-Timer.
         #: Schlüssel: player_id (str), Wert: Tupel (asyncio.TimerHandle, table_name).
         self._disconnect_timers: Dict[str, Tuple[asyncio.TimerHandle, str]] = {}
+
         #: Zeit in Sekunden, nach der ein getrennter Spieler durch eine KI ersetzt wird.
         self._ki_takeover_delay: float = 20.0  # TODO: Konfigurierbar machen? (z.B. über config.py)
 
@@ -44,12 +46,12 @@ class GameFactory:
         :param table_name: Der Name des Tisches.
         :return: Die GameEngine-Instanz für diesen Tisch.
         """
-        if table_name not in self.games:
+        if table_name not in self._games:
             logger.info(f"Erstelle neues Spiel für Tisch: '{table_name}'")
             # Erstellt die Engine (ohne Timer-Verwaltung in der Engine selbst)
-            self.games[table_name] = GameEngine(table_name)
+            self._games[table_name] = GameEngine(table_name)
             # Kein separater Cleanup-Task mehr benötigt, da Cleanup nach Timer-Ablauf erfolgt.
-        return self.games[table_name]
+        return self._games[table_name]
 
     async def handle_connection_request(self, websocket: web.WebSocketResponse, params: dict, remote_addr: Optional[str]) -> Tuple[Optional[Client], Optional[GameEngine]]:
         """
@@ -117,13 +119,13 @@ class GameFactory:
         # --- Schritt 4: Client-Objekt erstellen oder aktualisieren ---
         client_obj: Client
         if existing_client:  # Reconnect-Fall
-            logger.info(f"Factory: Behandle Reconnect für {existing_client.player_name} ({existing_client.player_id}) auf Tisch '{table_name}'.")
+            logger.info(f"Factory: Behandle Reconnect für {existing_client._player_name} ({existing_client._player_id}) auf Tisch '{table_name}'.")
             client_obj = existing_client
-            client_obj.update_websocket(websocket, engine._interrupt_events) # Bestehendes Objekt mit neuem WebSocket aktualisieren
+            client_obj.update_websocket(websocket, engine.interrupt_events) # Bestehendes Objekt mit neuem WebSocket aktualisieren
         else:  # Neuer Spieler
             logger.info(f"Factory: Erstelle neues Client-Objekt für {player_name} (ID: {player_id_from_params or 'neu'}) für Tisch '{table_name}'.")
             # Nutze übergebene ID oder generiere neue
-            client_obj = Client(player_name, websocket, engine._interrupt_events, player_id_from_params)
+            client_obj = Client(player_name, websocket, engine.interrupt_events, player_id_from_params)
 
         # --- Schritt 5: Beitritt bei Engine bestätigen ---
         try:
@@ -139,24 +141,24 @@ class GameFactory:
 
         # --- Schritt 6: Erfolgreichen (Re)Connect melden (bricht Timer ab) ---
         # Wichtig: Nachdem der Beitritt bei der Engine erfolgreich war.
-        self.notify_player_connect_or_reconnect(table_name, client_obj.player_id, client_obj.player_name)
+        self.notify_player_connect_or_reconnect(table_name, client_obj._player_id, client_obj._player_name)
 
         # --- Schritt 7: Bestätigung an Client senden ---
         try:
             # Sende alle notwendigen Informationen an den Client zurück.
             await client_obj.notify("joined_table", {
-                "message": f"Erfolgreich Tisch '{table_name}' beigetreten als '{client_obj.player_name}' an Position {slot_index}.",
+                "message": f"Erfolgreich Tisch '{table_name}' beigetreten als '{client_obj._player_name}' an Position {slot_index}.",
                 "tableName": table_name,
-                "playerName": client_obj.player_name,
-                "playerId": client_obj.player_id, # Client muss seine ID kennen!
+                "playerName": client_obj._player_name,
+                "playerId": client_obj._player_id, # Client muss seine ID kennen!
                 "playerIndex": slot_index
             })
         except Exception as e:
             # Wenn das Senden fehlschlägt, ist die Verbindung meist eh schon weg.
-            logger.warning(f"Factory: Senden der Beitrittsbestätigung an {client_obj.player_name} fehlgeschlagen: {e}. Verbindungsproblem wahrscheinlich.")
+            logger.warning(f"Factory: Senden der Beitrittsbestätigung an {client_obj._player_name} fehlgeschlagen: {e}. Verbindungsproblem wahrscheinlich.")
             # Keine direkte Aktion hier, der `finally` Block im Handler wird es merken.
 
-        logger.info(f"Factory: Spieler {client_obj.player_name} ({client_obj.player_id}) erfolgreich Tisch '{table_name}' zugeordnet (von {remote_addr_str}).")
+        logger.info(f"Factory: Spieler {client_obj._player_name} ({client_obj._player_id}) erfolgreich Tisch '{table_name}' zugeordnet (von {remote_addr_str}).")
         # Gib die erstellten/gefundenen Objekte an den Handler zurück.
         return client_obj, engine
 
@@ -185,7 +187,7 @@ class GameFactory:
         :param player_name: Name des Spielers (für Logging).
         """
         # Prüfe, ob der Tisch (noch) existiert.
-        if table_name not in self.games:
+        if table_name not in self._games:
             logger.warning(f"Factory: Disconnect für Spieler {player_name} ({player_id}) auf Tisch '{table_name}' gemeldet, aber Tisch nicht gefunden.")
             return
         # Prüfe, ob bereits ein Timer läuft (verhindert doppelte Timer).
@@ -238,7 +240,7 @@ class GameFactory:
         :param player_id: ID des Spielers, der ersetzt werden soll.
         :param table_name: Name des betroffenen Tisches.
         """
-        engine = self.games.get(table_name)
+        engine = self._games.get(table_name)
         if not engine:
             # Die Engine existiert nicht mehr (wurde vielleicht schon entfernt).
             logger.warning(f"Factory: KI-Ersetzung für Spieler ID {player_id} auf Tisch '{table_name}' nicht möglich, Tisch existiert nicht mehr.")
@@ -274,9 +276,9 @@ class GameFactory:
 
         :param table_name: Der Name des zu entfernenden Tisches.
         """
-        if table_name in self.games:
+        if table_name in self._games:
             logger.info(f"Factory: Entferne Spieltisch: '{table_name}'")
-            game_engine = self.games.pop(table_name) # Entferne aus dem Dictionary
+            game_engine = self._games.pop(table_name) # Entferne aus dem Dictionary
             try:
                 await game_engine.cleanup() # Rufe die Aufräum-Methode der Engine auf
             except Exception as e:
@@ -303,13 +305,13 @@ class GameFactory:
                  self._cancel_disconnect_timer(player_id) # Bricht ab und entfernt aus Dict
 
         # 2. Fahre alle noch aktiven Game Engines herunter (ruft deren cleanup Methode).
-        if self.games:
-            logger.info(f"Fahre {len(self.games)} aktive Game Engines herunter...")
+        if self._games:
+            logger.info(f"Fahre {len(self._games)} aktive Game Engines herunter...")
             # Starte alle cleanups parallel und warte darauf.
-            await asyncio.gather(*[asyncio.create_task(e.cleanup()) for e in self.games.values()], return_exceptions=True)
+            await asyncio.gather(*[asyncio.create_task(e.cleanup()) for e in self._games.values()], return_exceptions=True)
         else:
             logger.info("Keine aktiven Game Engines zum Herunterfahren vorhanden.")
 
         # 3. Leere das Game-Dictionary.
-        self.games.clear()
+        self._games.clear()
         logger.info("GameFactory Shutdown abgeschlossen.")

@@ -73,7 +73,7 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
             return ws  # Handler beenden.
 
         # Erfolgreich verbunden und zugeordnet.
-        logger.info(f"Handler: Client {client.player_name} ({client.player_id}) erfolgreich Tisch '{engine.table_name}' zugeordnet.")
+        logger.info(f"Handler: Client {client._player_name} ({client._player_id}) erfolgreich Tisch '{engine.table_name}' zugeordnet.")
 
         # Haupt-Nachrichtenschleife: Warten auf und Verarbeiten von Client-Nachrichten.
         msg: WSMessage
@@ -81,16 +81,16 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
             if msg.type == WSMsgType.TEXT:
                 # Ignoriere Nachrichten, wenn der Client intern bereits als getrennt markiert ist.
                 if not client.is_connected:
-                    logger.warning(f"Handler: Nachricht von {client.player_name} empfangen, obwohl intern als disconnected markiert.")
+                    logger.warning(f"Handler: Nachricht von {client._player_name} empfangen, obwohl intern als disconnected markiert.")
                     break  # Schleife verlassen -> finally wird ausgeführt.
                 try:
                     # Versuche, die Textnachricht als JSON zu parsen.
                     data = json.loads(msg.data)
-                    logger.debug(f"Empfangen TEXT von {client.player_name}: {data}") # Log nach erfolgreichem Parsen
+                    logger.debug(f"Empfangen TEXT von {client._player_name}: {data}") # Log nach erfolgreichem Parsen
 
                     # Grundlegende Typ-Prüfung
                     if not isinstance(data, dict):
-                        logger.warning(f"Handler: Ungültiges Nachrichtenformat (kein dict) von {client.player_name}: {data}")
+                        logger.warning(f"Handler: Ungültiges Nachrichtenformat (kein dict) von {client._player_name}: {data}")
                         await client.notify("error", {"message": "Ungültiges Nachrichtenformat."})
                         continue  # Nächste Nachricht
 
@@ -100,7 +100,7 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
 
                     if response_to:
                         # Nachricht ist eine Antwort -> an Client.receive_response leiten
-                        logger.debug(f"Handler: Leite Antwort auf '{response_to}' an Client {client.player_name} weiter.")
+                        logger.debug(f"Handler: Leite Antwort auf '{response_to}' an Client {client._player_name} weiter.")
                         client.receive_response(response_to, payload)  # Annahme: payload enthält die relevanten Antwortdaten
                     elif action:
                         # Nachricht ist eine proaktive Aktion -> an Engine.handle_player_message leiten
@@ -110,46 +110,46 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
                         await engine.handle_player_message(client, data)
                     else:
                         # Nachricht hat weder 'response_to' noch 'action' -> unbekanntes Format
-                        logger.warning(f"Unbekanntes Nachrichtenformat von {client.player_name} (weder Antwort noch Aktion): {data}")
+                        logger.warning(f"Unbekanntes Nachrichtenformat von {client._player_name} (weder Antwort noch Aktion): {data}")
                         await client.notify("error", {"message": "Unbekanntes Nachrichtenformat."})
                 except json.JSONDecodeError:
                     # Fehler beim Parsen von JSON. Informiere Client.
-                    logger.exception(f"Ungültiges JSON von {client.player_name}: {msg.data}")
+                    logger.exception(f"Ungültiges JSON von {client._player_name}: {msg.data}")
                     await client.notify("error", {"message": "Ungültiges JSON Format"})
                 except Exception as send_e:
-                    logger.exception(f"Fehler bei Verarbeitung der Nachricht von {client.player_name}: {send_e}")
+                    logger.exception(f"Fehler bei Verarbeitung der Nachricht von {client._player_name}: {send_e}")
                     # Sende generische Fehlermeldung an Client.
                     await client.notify("error", {"message": "Fehler bei Verarbeitung Ihrer Anfrage."})
 
             elif msg.type == WSMsgType.BINARY:
                 # Binäre Nachrichten werden aktuell nicht erwartet.
-                logger.warning(f"Empfangen unerwartete BINARY Daten von {client.player_name or remote_addr}")
+                logger.warning(f"Empfangen unerwartete BINARY Daten von {client._player_name or remote_addr}")
                 # Ignorieren oder spezifische Logik hinzufügen, falls benötigt.
 
             elif msg.type == WSMsgType.ERROR:
                 # aiohttp meldet einen internen WebSocket-Fehler.
-                logger.error(f'WebSocket Fehler für {client.player_name or "unbekannt"}: {ws.exception()}')
+                logger.error(f'WebSocket Fehler für {client._player_name or "unbekannt"}: {ws.exception()}')
                 break  # Schleife verlassen -> finally wird ausgeführt.
 
             elif msg.type == WSMsgType.CLOSE:
                 # Der Client hat die Verbindung aktiv geschlossen (normaler Vorgang).
-                logger.info(f"WebSocket CLOSE Nachricht von {client.player_name or 'unbekannt'} empfangen.")
+                logger.info(f"WebSocket CLOSE Nachricht von {client._player_name or 'unbekannt'} empfangen.")
                 break  # Schleife verlassen -> finally wird ausgeführt.
 
     except asyncio.CancelledError:
         # Der Server wird heruntergefahren (z.B. durch Signal).
-        client_name_log = client.player_name if client else remote_addr
+        client_name_log = client._player_name if client else remote_addr
         logger.info(f"WebSocket Handler für {client_name_log} abgebrochen (Server Shutdown).")
         raise  # Wichtig: CancelledError weitergeben für sauberes Beenden.
     except Exception as e:
         # Fängt unerwartete Fehler während der Verbindung oder im Handler ab.
-        client_name_log = client.player_name if client else "unbekannt"
+        client_name_log = client._player_name if client else "unbekannt"
         logger.exception(f"Unerwarteter Fehler im WebSocket Handler für {client_name_log} von {remote_addr}: {e}")
     finally:
         # Dieser Block wird immer ausgeführt, wenn der Handler endet
         # (durch normalen Close, Fehler, CancelledError, etc.).
-        client_name_log = client.player_name if client else 'N/A'
-        client_id_log = client.player_id if client else 'N/A'
+        client_name_log = client._player_name if client else 'N/A'
+        client_id_log = client._player_id if client else 'N/A'
         table_name_log = engine.table_name if engine else 'N/A'
         logger.info(f"WebSocket Verbindung schließt für {client_name_log} ({client_id_log}) von {remote_addr}, Tisch: '{table_name_log}'")
 
@@ -157,7 +157,7 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
         # Dies geschieht nur, wenn Client und Engine erfolgreich initialisiert wurden.
         if client and engine:
             # Ruft die synchrone Methode in der Factory auf.
-            factory.notify_player_disconnect(engine.table_name, client.player_id, client.player_name)
+            factory.notify_player_disconnect(engine.table_name, client._player_id, client._player_name)
         # else: # Optional: Loggen, wenn Client/Engine nicht vorhanden waren
         #    if not client: logger.debug(f"Kein Client-Objekt im finally-Block für {remote_addr} vorhanden.")
         #    if not engine: logger.debug(f"Keine Engine-Referenz im finally-Block für {remote_addr} vorhanden.")

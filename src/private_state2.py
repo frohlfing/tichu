@@ -9,13 +9,8 @@ befindet sich in der GameEngine oder ausgelagerten Regelfunktionen.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Dict, Any
-
-# Importiere Typ-Aliase aus den entsprechenden Modulen
-from src.lib.cards import Card, CardLabel
-# Kombinationen und Partitionen werden hier nicht direkt gespeichert,
-# aber die Typen könnten für zukünftige Erweiterungen nützlich sein.
-# from src.lib.combinations import Combination
+from src.lib.cards import Card, stringify_cards
+from typing import List, Dict, Any
 
 
 @dataclass
@@ -47,19 +42,18 @@ class PrivateState:
     can_bomb: bool = True  # Kann und darf der Spieler aktuell eine Bombe werfen?
 
 
-    def to_dict(self, stringify_card_list_func) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Konvertiert den Zustand in ein Dictionary für JSON-Serialisierung.
 
         Verwendet eine übergebene Funktion zur Konvertierung interner Karten in ihre String-Label-Repräsentation.
 
-        :param stringify_card_list_func: Funktion wie `stringify_cards` aus `src.lib.cards`, die `List[Card]` in `List[CardLabel]` umwandelt.
         :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
         """
         # Konvertiere interne Kartenlisten in String-Labels für die Ausgabe.
-        hand_card_labels = stringify_card_list_func(self.hand_cards)
-        received_schupf_card_labels = stringify_card_list_func(self.received_schupf_cards)
-        given_schupf_card_labels = stringify_card_list_func(self.given_schupf_cards)
+        hand_card_labels = stringify_cards(self.hand_cards)
+        received_schupf_card_labels = stringify_cards(self.received_schupf_cards)
+        given_schupf_card_labels = stringify_cards(self.given_schupf_cards)
 
         return {
             "playerIndex": self.player_index,

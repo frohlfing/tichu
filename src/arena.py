@@ -9,6 +9,8 @@ from time import time
 from typing import Optional
 
 
+# todo Datei und Klasse dokumentieren (reStructedText)
+
 class Arena:
     # In der Arena können Agenten gegeneinander antreten.
 
