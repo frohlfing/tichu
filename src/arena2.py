@@ -20,7 +20,7 @@ async def _run_game(table_name: str, agents: list[Agent], seed: Optional[int], p
         engine = GameEngine(table_name, default_agents=agents, seed=seed)
 
         # Starte das Spiel
-        await engine.run_game_loop(pub=pub, privs=privs)
+        await engine.run_game_loop(pub=pub, privs=privs, break_time=0)
 
         # Warte auf das Ende des game_loop_tasks
         if engine.game_loop_task:

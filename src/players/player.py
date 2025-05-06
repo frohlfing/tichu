@@ -35,7 +35,6 @@ class Player:
         self._player_id: str = player_id or str(uuid.uuid4())
 
         #: Spielerposition am Tisch (0-3), wird von der GameEngine gesetzt.
-        # todo ist auch in PrivateState, könnte hier raus, oder in PrivateState rausnehmen, oder redundant halten?
         self.player_index: Optional[int] = None
 
     def __repr__(self) -> str:
