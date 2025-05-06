@@ -2,8 +2,12 @@ import random
 from typing import Any, Optional
 
 
-# Random ist für Multiprocessing ausgelegt. Der Zufallsgenerator wird hier erst initialisiert, wenn die erste
-# Zufallszahl benötigt wird. Sonst würde beim Multiprocessing jeder Unterprozess die gleichen Zufallszahlen generieren!
+# Random ist für Multiprocessing ausgelegt.
+#
+# Beim Multiprocessing würde jeder Unterprozess die gleichen Zufallszahlen generieren,
+# wenn bereits vor dem Prozess-Fork der Zufallsgenerator initialisiert wird! Die Prozesse hätten alle denselben Seed.
+# Daher wird der interne Zufallsgenerator mit dem Seed erst initialisiert, wenn die erste Zufallszahl benötigt wird.
+
 
 class Random:
     def __init__(self, seed: int = None):

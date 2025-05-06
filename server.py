@@ -73,7 +73,7 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
             return ws  # Handler beenden.
 
         # Erfolgreich verbunden und zugeordnet.
-        logger.info(f"Handler: Client {client._player_name} ({client._player_id}) erfolgreich Tisch '{engine.table_name}' zugeordnet.")
+        logger.info(f"Handler: Client {client._player_name} ({client._player_id}) erfolgreich Tisch '{engine._table_name}' zugeordnet.")
 
         # Haupt-Nachrichtenschleife: Warten auf und Verarbeiten von Client-Nachrichten.
         msg: WSMessage
@@ -105,7 +105,7 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
                     elif action:
                         # Nachricht ist eine proaktive Aktion -> an Engine.handle_player_message leiten
                         # (oder an eine dedizierte Methode wie handle_proactive_action)
-                        logger.debug(f"Handler: Leite proaktive Aktion '{action}' an Engine für Tisch '{engine.table_name}' weiter.")
+                        logger.debug(f"Handler: Leite proaktive Aktion '{action}' an Engine für Tisch '{engine._table_name}' weiter.")
                         # Leite die geparsten Daten zur Verarbeitung an die GameEngine weiter.
                         await engine.handle_player_message(client, data)
                     else:
@@ -150,14 +150,14 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
         # (durch normalen Close, Fehler, CancelledError, etc.).
         client_name_log = client._player_name if client else 'N/A'
         client_id_log = client._player_id if client else 'N/A'
-        table_name_log = engine.table_name if engine else 'N/A'
+        table_name_log = engine._table_name if engine else 'N/A'
         logger.info(f"WebSocket Verbindung schließt für {client_name_log} ({client_id_log}) von {remote_addr}, Tisch: '{table_name_log}'")
 
         # Informiere die Factory über den Disconnect, damit der Timer gestartet werden kann.
         # Dies geschieht nur, wenn Client und Engine erfolgreich initialisiert wurden.
         if client and engine:
             # Ruft die synchrone Methode in der Factory auf.
-            factory.notify_player_disconnect(engine.table_name, client._player_id, client._player_name)
+            factory.notify_player_disconnect(engine._table_name, client._player_id, client._player_name)
         # else: # Optional: Loggen, wenn Client/Engine nicht vorhanden waren
         #    if not client: logger.debug(f"Kein Client-Objekt im finally-Block für {remote_addr} vorhanden.")
         #    if not engine: logger.debug(f"Keine Engine-Referenz im finally-Block für {remote_addr} vorhanden.")

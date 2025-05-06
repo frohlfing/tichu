@@ -1,5 +1,5 @@
 import config
-from src.arena import Arena
+from src.arena2 import Arena
 from src.players.agent import Agent
 from src.players.random_agent import RandomAgent
 

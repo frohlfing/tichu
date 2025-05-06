@@ -33,7 +33,6 @@ class PublicState:
 
     :ivar table_name: Der Name des Tisches.
     :ivar player_names: Die Namen der Spieler an den Slots 0-3.
-    :ivar player_connected_status: Gibt an, ob der Client an dem Slot verbunden ist.
     :ivar current_turn_index: Index des Spielers, der am Zug ist (-1 vor Rundenbeginn).
     :ivar round_start_player_index: Index des Spielers, der Mah Jong hatte (-1 vor Rundenbeginn).
     :ivar trick_leader_index: Index des Spielers, der den aktuellen Stich eröffnet hat (-1 bei leerem Stich).
@@ -61,7 +60,6 @@ class PublicState:
     # --- Tisch- und Spielerinformationen ---
     table_name: str = "Unbekannter Tisch"  # Der Name des Tisches.
     player_names: List[Optional[str]] = field(default_factory=lambda: [None] * 4)  # Die Namen der Spieler an den Slots 0-3.
-    player_connected_status: List[bool] = field(default_factory=lambda: [False] * 4)  # Gibt an, ob der Client an dem Slot verbunden ist.
     current_turn_index: int = -1  # Index des Spielers, der am Zug ist (-1 vor Rundenbeginn).
     round_start_player_index: int = -1  # Index des Spielers, der Mah Jong hatte (-1 vor Rundenbeginn).
     trick_leader_index: int = -1  # Index des Spielers, der den aktuellen Stich eröffnet hat (-1 bei leerem Stich).
@@ -125,7 +123,6 @@ class PublicState:
         return {
             "tableName": self.table_name,
             "playerNames": self.player_names,
-            "playerConnectedStatus": self.player_connected_status,
             "currentTurnIndex": self.current_turn_index,
             "roundStartPlayerIndex": self.round_start_player_index,
             "trickLeaderIndex": self.trick_leader_index,
