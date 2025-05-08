@@ -3,10 +3,11 @@ Definiert die Client-Klasse für die Interaktion mit einem menschlichen Spieler 
 """
 
 import asyncio
+import json
 import time
-from aiohttp import web, WSCloseCode
+from aiohttp import WSMsgType, WSCloseCode, WSMessage
 from aiohttp.web import WebSocketResponse
-from src.common.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError
+from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import Card, stringify_cards, parse_cards
@@ -29,7 +30,7 @@ class Client(Player):
 
     def __init__(self, name: str,
                  websocket: WebSocketResponse,
-                 interrupt_events: Dict[str, asyncio.Event],
+                 interrupt_event: asyncio.Event,  # todo nah Player verlager. Agent könnten auch schonmal await benutzen
                  session: Optional[str] = None,
                  seed: Optional[int] = None):
         """
@@ -37,13 +38,13 @@ class Client(Player):
 
         :param name: Der Name des Spielers.
         :param websocket: Das WebSocketResponse-Objekt der initialen Verbindung.
-        :param interrupt_events: Ein Dictionary mit den asyncio.Event-Objekten der Engine für Interrupts.
+        :param interrupt_event: Das globale Interrupt-Event.
         :param session: (Optional) Aktuelle Session des Spielers. Wenn None, wird eine Session generiert.
         :param seed: (Optional) Seed für den internen Zufallsgenerator (für Tests).
         """
         super().__init__(name, session=session)
-        self._websocket: Optional[WebSocketResponse] = websocket
-        self._interrupt_events: Dict[str, asyncio.Event] = interrupt_events
+        self._websocket = websocket
+        self._interrupt_event = interrupt_event
         self._random = Random(seed)  # Zufallsgenerator
         self._pending_requests: Dict[str, asyncio.Future] = {}  # noch nicht vom Spieler beantwortete Websocket-Anfragen
         self._is_connected: bool = True  # interner Verbindungsstatus todo wird das benötigt?
@@ -54,312 +55,61 @@ class Client(Player):
 
         Versucht, die WebSocket-Verbindung serverseitig aktiv und sauber zu schließen.
         """
-        # Nur versuchen, wenn ein aktives, nicht geschlossenes WebSocket vorhanden ist.
         if self._websocket and not self._websocket.closed:
-            logger.debug(f"Schließe WebSocket für Client {self._name} aktiv.")
+            logger.debug(f"Schließe WebSocket für Client {self._name}.")
             try:
-                code = WSCloseCode.GOING_AWAY  # siehe RFC 6455
-                message = "Verbindung wird geschlossen".encode('utf-8')  # Nachricht (als Bytes), die mit dem Close Frame gesendet wird
-                await self._websocket.close(code=code, message=message)
+                await self._websocket.close(code=WSCloseCode.GOING_AWAY, message="Verbindung wird geschlossen".encode('utf-8'))
             except Exception as e:
                 logger.exception(f"Fehler beim Schließen der WebSocket-Verbindung für {self._name}: {e}")
         self.mark_as_disconnected(reason="Expliziter close_connection Aufruf")
 
-    async def message_loop(self) -> None:
-        """
-        Verarbeitet so lange Nachrichten von der Websocket, bis die Verbindung abbricht
-
-        Die Nachrichtenschleife wird im Kontext des Websocket-Handlers aufgerufen. Wenn die Methode verlassen wird,
-        wird die Verbindung mit der Gegenstelle geschlossen, falls diese noch offen sein sollte.
-        """
-        while True:
-            try:
-                # auf eine Nachricht warten
-                message = await self.websocket.recv()
-                try:
-                    data = json.loads(message)
-                except JSONDecodeError:
-                    # der JSON-String ist nicht korrekt formatiert
-                    logger.error(f"{self._engine.get_world_name()}, Player {self._nickname}: Invalid Json: {message}")
-                    continue
-
-                # Message-Type auslesen
-                message_type_name = data.get("type")
-                if not hasattr(ClientMessageType, message_type_name):
-                    logger.error(f"{self._engine.get_world_name()}, Player {self._nickname}: Invalid message type: {message_type_name}")
-                    continue
-                message_type: ClientMessageType = getattr(ClientMessageType, message_type_name)
-
-                # Spieler verlässt das Spiel
-                if message_type == ClientMessageType.LEAVE:
-                    break  # Nachrichtenschleife verlassen (dadurch wird die Verbindung mit der Gegenstelle geschlossen)
-
-                # Spieler fordert Aktion an
-                elif message_type == ClientMessageType.ACTION:
-                    # Aktion auslesen
-                    action_name = data.get("action")
-                    if not hasattr(Action, action_name):
-                        logger.error(f"{self._engine.get_world_name()}, Player {self._nickname}: Invalid action: {action_name}")
-                        continue
-                    action: Action = getattr(Action, action_name)
-
-                    # Parameter deserialisieren
-                    params = data.get("parameters", {})
-                    assert isinstance(params, dict)
-                    if "cards" in params:
-                        params["cards"] = CardCollection.deserialize(params["cards"])
-                    if "combination" in params:
-                        params["combination"] = CardCombination.deserialize(params["combination"])
-
-                    # Aktion zwischenspeichern
-                    await self.queue.put((action, params))
-                    if action in [Action.GRAND, Action.TICHU, Action.BOMB]:
-                        # todo sicherstellen, dass der Spieler auch tatsächlich die Aktion durchführen darf
-                        self._engine.interrupt(self.canonical_chair)
-
-                # Message-Type übersehen?
-                else:
-                    assert False, f"message type {message_type} unprocessed"
-
-            except ConnectionClosed:
-                logger.debug(f"{self._engine.get_world_name()}, Player {self._nickname}: Connection closed.")
-                break
-
-    def set_websocket(self, new_websocket: WebSocketResponse):
-        """
-        Übernimmt die WebSocket-Verbindung.
-
-        :param new_websocket: Das neue WebSocketResponse-Objekt.
-        """
-        logger.info(f"Aktualisiere WebSocket für Client {self._name} ({self._session}).")
-        self._websocket = new_websocket
-        self._is_connected = True  # Markiere wieder als verbunden
-        # Über die alte Verbindung noch Anfragen offen sind, diese verwerfen.
-        for request_type, future in list(self._pending_requests.items()):
-            if not future.done():
-                logger.warning(f"Client {self._name}: Breche alte Anfrage '{request_type}' wegen Reconnect ab.")
-                future.cancel()
-            self._pending_requests.pop(request_type, None)
-
-    def mark_as_disconnected(self, reason: str = "Verbindung geschlossen"):
-        """
-        Markiert den Client intern als getrennt.
-
-        Wird aufgerufen, wenn die Verbindung verloren geht oder explizit
-        geschlossen wird. Setzt das interne Flag und entfernt die WebSocket-Referenz.
-
-        :param reason: Der Grund für die Trennung (für Logging).
-        """
-        # Nur ausführen, wenn der Client aktuell als verbunden gilt.
-        if self._is_connected:
-            logger.info(f"Markiere Client {self._name} ({self._session}) als getrennt. Grund: {reason}")
-            self._is_connected = False
-            self._websocket = None # WebSocket-Referenz entfernen
-
     # ------------------------------------------------------
-    # Benachrichtigung
+    # Ereignis-Handler
     # ------------------------------------------------------
 
-    async def notify(self, message_type: str, data: dict):
+    async def on_notify(self, msg_type: str, payload: dict):
         """
-        Sendet eine Benachrichtigung (z.B. Spielzustand, Event, Fehler)
-        als JSON über die WebSocket-Verbindung an den Client.
+        Wird aufgerufen, wenn eine Nachricht vom Server eingetroffen ist.
 
-        :param message_type: Der Typ der Nachricht (z.B. "public_state_update").
-        :param data: Die Nutzdaten der Nachricht als Dictionary.
+        Die Nachricht wird über die WebSocket-Verbindung an die Gegenstelle weitergeleitet.
+
+        :param msg_type: Der Typ der Nachricht.
+        :param payload: Die Nutzdaten der Nachricht als Dictionary.
         """
         if not self._is_connected or self._websocket is None or self._websocket.closed:
             # Client nicht verbunden
             if self._websocket is not None:
-                logger.debug(f"Nachricht {message_type} an {self._name} konnte nicht übermittelt werden. Keine Verbindung.")
+                logger.debug(f"Nachricht {msg_type} an {self._name} konnte nicht übermittelt werden. Keine Verbindung.")
             return
 
-        # Standardisiertes Nachrichtenformat {type: ..., payload: ...}
-        message = {"type": message_type, "payload": data}
+        message = {"type": msg_type, "payload": payload}
         try:
             # Sende die Nachricht als JSON. aiohttp kümmert sich um die Serialisierung.
             logger.debug(f"Sende Nachricht an {self._name}: {message}")
             await self._websocket.send_json(message)
         except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
             # Fehler beim Senden deuten meist auf eine unterbrochene Verbindung hin.
-            logger.warning(f"Senden der Nachricht {message_type} an {self._name} fehlgeschlagen: {e}")
+            logger.warning(f"Senden der Nachricht {msg_type} an {self._name} fehlgeschlagen: {e}")
             # Markiere den Client intern als getrennt, damit keine weiteren Sendeversuche erfolgen.
             self.mark_as_disconnected(reason=f"Sendefehler: {e}")
         except Exception as e:
             # Andere unerwartete Fehler beim Senden.
-            logger.exception(f"Unerwarteter Fehler beim Senden der Nachricht {message_type} an {self._name}: {e}")
+            logger.exception(f"Unerwarteter Fehler beim Senden der Nachricht {msg_type} an {self._name}: {e}")
             self.mark_as_disconnected(reason=f"Unerwarteter Sendefehler: {e}")
 
-    async def _ask(self, request_type: str, context_payload: Optional[dict] = None, timeout: float = DEFAULT_REQUEST_TIMEOUT) -> dict|None:
+    async def on_websocket_message(self, msg_type: str, payload: dict):
         """
-        Sendet eine Anfrage an den Client und wartet auf dessen Antwort oder einen Interrupt.
+        Wird aufgerufen, wenn eine Nachricht von der Gegenstelle empfangen wurde.
 
-        :param request_type: Eindeutiger Bezeichner für die Art der Anfrage (z.B. "request_combination", "request_schupf").
-        :param context_payload: Zusätzliche Daten, die mit der Anfrage an den Client gesendet werden (z.B. mögliche Aktionen).
-        :param timeout: Maximale Wartezeit in Sekunden.
-        :return: Das 'payload'-Dictionary aus der Antwort des Clients bei Erfolg.
-        :raises ClientDisconnectedError: Wenn der Client nicht verbunden ist.
-        :raises PlayerInterruptError: Wenn die Anfrage durch ein Engine-Event unterbrochen wird.
-        :raises PlayerTimeoutError: Wenn der Client nicht innerhalb des Timeouts antwortet.
-        :raises asyncio.CancelledError: Wenn der wartende Task extern abgebrochen wird.
-        :raises PlayerInteractionError: Bei anderen Fehlern während des Sendevorgangs oder Wartens.
+        :param msg_type: Der Typ der Nachricht.
+        :param payload: Die Nutzdaten der Nachricht als Dictionary.
         """
-        # --- 1. Prüfen, ob Client verbunden ist ---
-        if not self._is_connected or self._websocket is None or self._websocket.closed:
-            logger.warning(f"Client {self.name}: Aktion '{request_type}' nicht möglich (nicht verbunden).")
-            raise ClientDisconnectedError(f"Client {self.name} ist nicht verbunden.")
-
-        logger.debug(f"Client {self.name}: Starte Anfrage '{request_type}'.")
-
-        # --- 2. Future erstellen und registrieren ---
-        if request_type in self._pending_requests:
-            logger.warning(f"Client {self.name}: Überschreibe bereits laufende Anfrage für '{request_type}'.")
-            old_future = self._pending_requests[request_type]
-            if not old_future.done():
-                old_future.cancel("Neue Anfrage ersetzt alte")
-        loop = asyncio.get_running_loop()
-        response_future = loop.create_future()
-        self._pending_requests[request_type] = response_future
-
-        # --- 3. Anfrage senden ---
-        request_data = {"type": "request_action", "payload": {"request": request_type, "timeout": timeout}}
-        if context_payload:
-            request_data["payload"]["context"] = context_payload  # Kontext in Payload verschachteln
-        try:
-            logger.debug(f"Sende Anfrage an {self.name}: {request_data}")
-            # Direkter Aufruf von send_json hier
-            await self._websocket.send_json(request_data)
-        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
-            # Senden fehlgeschlagen (Verbindungsfehler)
-            logger.warning(f"Senden der Anfrage '{request_type}' an {self.name} fehlgeschlagen (Verbindungsfehler): {e}. Markiere als getrennt.")
-            self.mark_as_disconnected(reason=f"Sendefehler bei Anfrage: {e}")
-            # noinspection PyAsyncCall
-            self._pending_requests.pop(request_type, None)  # Future entfernen
-            raise ClientDisconnectedError(f"Senden der Anfrage '{request_type}' fehlgeschlagen.") from e
-        except Exception as e:
-            # Andere Fehler beim Senden (z.B. Serialisierung)
-            logger.exception(f"Unerwarteter Fehler beim Senden der Anfrage '{request_type}' an {self.name}: {e}")
-            self.mark_as_disconnected(reason=f"Unerwarteter Sendefehler bei Anfrage: {e}")
-            # noinspection PyAsyncCall
-            self._pending_requests.pop(request_type, None)  # Future entfernen
-            raise PlayerInteractionError(f"Fehler beim Senden der Anfrage '{request_type}': {e}") from e
-
-        # --- 4. Auf Antwort oder Interrupt warten ---
-        wait_tasks = [
-            asyncio.create_task(response_future, name=f"ClientResp_{self.player_index}_{request_type}"),
-            *[asyncio.create_task(event.wait(), name=f"Interrupt_{name}")
-              for name, event in self._interrupt_events.items()]
-        ]
-        pending: set[asyncio.Task] = set()
-        start_time = time.monotonic()
-        try:
-            # Warte auf das erste Ereignis
-            done, pending = await asyncio.wait(wait_tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
-
-            # --- 5. Ergebnis auswerten ---
-            interrupted = False
-            # Zuerst auf Interrupts prüfen
-            for name, event in self._interrupt_events.items():
-                interrupt_task_name = f"Interrupt_{name}"
-                done_task = next((t for t in done if t.get_name() == interrupt_task_name), None)
-                if done_task:
-                    elapsed = time.monotonic() - start_time
-                    logger.info(f"Client {self.name}: Warten auf '{request_type}' nach {elapsed:.1f}s unterbrochen durch Engine-Event '{name}'.")
-                    raise PlayerInterruptError(interrupt_type=name)
-
-            # Wenn kein Interrupt, prüfe Antwort-Future oder Timeout
-            if not interrupted:
-                if response_future in done:
-                    # Antwort erhalten
-                    response_data = response_future.result()  # Das ist das Payload-Dict von receive_response
-                    logger.debug(f"Client {self.name}: Antwort für '{request_type}' erfolgreich empfangen.")
-                    return response_data  # Erfolg! Gib rohes Payload zurück.
-                elif not done:
-                    # Timeout
-                    elapsed = time.monotonic() - start_time
-                    logger.warning(f"Client {self.name}: Timeout ({elapsed:.1f}s > {timeout}s) beim Warten auf Antwort für '{request_type}'.")
-                    raise PlayerTimeoutError(f"Timeout bei '{request_type}' für Spieler {self.name}")
-                else:
-                    # Unerwarteter Zustand (sollte nicht passieren)
-                    finished_tasks_names = [t.get_name() for t in done]
-                    logger.error(f"Client {self.name}: Unerwarteter Zustand nach asyncio.wait für '{request_type}'. Fertige Tasks: {finished_tasks_names}")
-                    raise PlayerInteractionError(f"Unerwarteter Wartezustand bei '{request_type}'")
-
-        except asyncio.CancelledError as e:  # Shutdown
-            logger.info(f"Client {self.name}: Warten auf '{request_type}' extern abgebrochen.")
-            raise e
-        except ClientDisconnectedError as e:
-            logger.info(f"Client {self.name}: Verbindungsabbruch. Warten auf '{request_type}' abgebrochen.")
-            raise e
-        except Exception as e:
-            logger.exception(f"Client {self.name}: Kritischer Fehler während des Wartens auf '{request_type}': {e}")
-            raise PlayerInteractionError(f"Unerwarteter Fehler bei '{request_type}': {e}") from e
-        finally:
-            # --- 6. Aufräumen ---
-            logger.debug(f"Client {self.name}: Räume Warte-Tasks für '{request_type}' auf.")
-            for task in pending:
-                if not task.done(): task.cancel()
-                try:
-                    await asyncio.wait_for(task, timeout=0.1)
-                except (asyncio.CancelledError, asyncio.TimeoutError):
-                    pass
-                except Exception as cleanup_e:
-                    logger.error(f"Fehler beim Aufräumen von Task {task.get_name()}: {cleanup_e}")
-            # Entferne die Future für diese Anfrage aus dem Tracking
-            # noinspection PyAsyncCall
-            self._pending_requests.pop(request_type, None)
-
-        # Diese Methode sollte bei Erfolg durch 'return response_data' verlassen werden oder durch eine Exception.
-        # Falls wir hier landen, ist was schiefgelaufen.
-        logger.error(f"Client {self.name}: _ask für '{request_type}' endet unerwartet ohne Ergebnis oder Exception.")
-        raise PlayerInteractionError(f"Unbekannter Fehler in _ask für '{request_type}'")
-
-    def receive_response(self, request_type: str, response_data: dict):
-        """
-        Wird vom websocket_handler aufgerufen, wenn eine Antwort vom Browser eintrifft,
-        die zu einer vorherigen Anfrage gehört.
-        Setzt die entsprechende Future, um die wartende Methode aufzuwecken.
-
-        :param request_type: Der Typ der ursprünglichen Anfrage (z.B. "request_combination").
-                             Muss vom Client in der Antwort mitgesendet werden (z.B. im Feld "response_to").
-        :param response_data: Die Nutzdaten der Antwort vom Client.
-        """
-        if request_type in self._pending_requests:
-            future = self._pending_requests[request_type]
-            if not future.done():
-                future.set_result(response_data)
-                logger.debug(f"Client {self._name}: Antwort für '{request_type}' an wartende Methode weitergeleitet.")
-            else:
-                # Die Future wurde bereits gesetzt (z.B. Timeout, Cancelled) oder die Antwort kam zu spät.
-                logger.warning(f"Client {self._name}: Antwort für bereits abgeschlossene/abgebrochene Anfrage '{request_type}' erhalten: {response_data}")
+        if msg_type == "ping":
+            logger.info(f"{self._name}: ping")
+            await self.on_notify("pong", {"message": f"{payload}"})
         else:
-            # Keine wartende Anfrage für diesen Typ gefunden.
-            logger.warning(f"Client {self._name}: Unerwartete Antwort für '{request_type}' erhalten (keine passende wartende Anfrage): {response_data}")
-
-    # noinspection PyMethodMayBeStatic
-    def _serialize_action_space(self, action_space: list[tuple]) -> List[Dict]:
-        """Konvertiert den internen action_space in ein serialisierbares Format für den Client."""
-        # Input z.B.: [('play_cards', [(13,1), (13,2)], (PAIR, 2, 13)), ('pass_turn', None, (PASS,0,0))]
-        # Output z.B.: [{"action": "play_cards", "cards": ["SK", "BK"], "combo_type": "PAIR", "combo_rank": 13}, {"action": "pass_turn"}]
-        serialized = []
-        if not action_space:
-            return []
-        for action_tuple in action_space:
-            action_name = action_tuple[0]
-            if action_name == "play_cards":
-                cards_internal: Optional[List[Card]] = action_tuple[1]
-                combo_details: Optional[Combination] = action_tuple[2]
-                if cards_internal and combo_details:
-                    serialized.append({
-                        "action": "play_cards",
-                        "cards": stringify_cards(cards_internal),  # Konvertiere zu Labels
-                        "combo_type": combo_details[0].name,  # Enum-Name
-                        "combo_rank": combo_details[2]  # Rang
-                    })
-            elif action_name == "pass_turn":
-                serialized.append({"action": "pass_turn"})
-            # Füge hier ggf. andere Aktionen hinzu
-        return serialized
+            logger.warning(f"Gegenstelle von {self._name} hat invalide Daten gesendet: {payload}")
+            await self.on_notify("error", {"message": "Invalide Daten."})
 
     # ------------------------------------------------------
     # Entscheidungen
@@ -532,6 +282,159 @@ class Client(Player):
         """
         # TODO: Implementieren!
         return self.opponent_right_index if self._random.boolean() else self.opponent_left_index
+
+    # ------------------------------------------------------
+    # Hilfsfunktionen
+    # ------------------------------------------------------
+
+    def set_websocket(self, new_websocket: WebSocketResponse):
+        """
+        Übernimmt die WebSocket-Verbindung.
+
+        :param new_websocket: Das neue WebSocketResponse-Objekt.
+        """
+        logger.info(f"Aktualisiere WebSocket für Client {self._name} ({self._session}).")
+        self._websocket = new_websocket
+        self._is_connected = True  # Markiere wieder als verbunden
+        # Über die alte Verbindung noch Anfragen offen sind, diese verwerfen.
+        for request_type, future in list(self._pending_requests.items()):
+            if not future.done():
+                logger.warning(f"Client {self._name}: Breche alte Anfrage '{request_type}' wegen Reconnect ab.")
+                future.cancel()
+            self._pending_requests.pop(request_type, None)
+
+    def mark_as_disconnected(self, reason: str = "Verbindung geschlossen"):
+        """
+        Markiert den Client intern als getrennt.
+
+        Wird aufgerufen, wenn die Verbindung verloren geht oder explizit
+        geschlossen wird. Setzt das interne Flag und entfernt die WebSocket-Referenz.
+
+        :param reason: Der Grund für die Trennung (für Logging).
+        """
+        # Nur ausführen, wenn der Client aktuell als verbunden gilt.
+        if self._is_connected:
+            logger.info(f"Markiere Client {self._name} ({self._session}) als getrennt. Grund: {reason}")
+            self._is_connected = False
+            self._websocket = None # WebSocket-Referenz entfernen
+
+    async def _ask(self, request_type: str, context_payload: Optional[dict] = None, timeout: float = DEFAULT_REQUEST_TIMEOUT) -> dict | None:
+        """
+        Sendet eine Anfrage an den Client und wartet auf dessen Antwort.
+
+        :param request_type: Eindeutiger Bezeichner für die Art der Anfrage (z.B. "request_combination", "request_schupf").
+        :param context_payload: Zusätzliche Daten, die mit der Anfrage an den Client gesendet werden (z.B. mögliche Aktionen).
+        :param timeout: Maximale Wartezeit in Sekunden.
+        :return: Das 'payload'-Dictionary aus der Antwort des Clients bei Erfolg.
+        :raises ClientDisconnectedError: Wenn der Client nicht verbunden ist.
+        :raises PlayerInterruptError: Wenn die Anfrage durch ein Engine-Event unterbrochen wird.
+        :raises PlayerTimeoutError: Wenn der Client nicht innerhalb des Timeouts antwortet.
+        :raises asyncio.CancelledError: Wenn der wartende Task extern abgebrochen wird.
+        :raises PlayerInteractionError: Bei anderen Fehlern während des Sendevorgangs oder Wartens.
+        """
+        # --- 1. Prüfen, ob Client verbunden ist ---
+        if not self._is_connected or self._websocket is None or self._websocket.closed:
+            logger.warning(f"Client {self.name}: Aktion '{request_type}' nicht möglich (nicht verbunden).")
+            raise ClientDisconnectedError(f"Client {self.name} ist nicht verbunden.")
+
+        logger.debug(f"Client {self.name}: Starte Anfrage '{request_type}'.")
+
+        # --- 2. Anfrage senden ---
+        request_data = {"type": "request_action", "payload": {"request": request_type, "timeout": timeout}}
+        if context_payload:
+            request_data["payload"]["context"] = context_payload  # Kontext in Payload verschachteln
+        try:
+            logger.debug(f"Sende Anfrage an {self.name}: {request_data}")
+            # Direkter Aufruf von send_json hier
+            await self._websocket.send_json(request_data)
+        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+            # Senden fehlgeschlagen (Verbindungsfehler)
+            logger.warning(f"Senden der Anfrage '{request_type}' an {self.name} fehlgeschlagen (Verbindungsfehler): {e}. Markiere als getrennt.")
+            self.mark_as_disconnected(reason=f"Sendefehler bei Anfrage: {e}")
+            raise ClientDisconnectedError(f"Senden der Anfrage '{request_type}' fehlgeschlagen.") from e
+        except Exception as e:
+            # Andere Fehler beim Senden (z.B. Serialisierung)
+            logger.exception(f"Unerwarteter Fehler beim Senden der Anfrage '{request_type}' an {self.name}: {e}")
+            self.mark_as_disconnected(reason=f"Unerwarteter Sendefehler bei Anfrage: {e}")
+            raise PlayerInteractionError(f"Fehler beim Senden der Anfrage '{request_type}': {e}") from e
+
+        # --- 3. Auf Antwort warten ---
+        loop = asyncio.get_running_loop()
+        response_future = loop.create_future()
+        wait_tasks = [
+            asyncio.create_task(response_future, name=f"ClientResp_{self.player_index}_{request_type}"),
+            asyncio.create_task(self._interrupt_event.wait(), name="Interrupt"),
+        ]
+        pending: set[asyncio.Task] = set()
+        start_time = time.monotonic()
+        try:
+            done, pending = await asyncio.wait(wait_tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+
+            # --- 4. Ergebnis auswerten ---
+            if not done:
+                # Timeout
+                elapsed = time.monotonic() - start_time
+                logger.warning(f"Client {self.name}: Timeout ({elapsed:.1f}s > {timeout}s) beim Warten auf Antwort für '{request_type}'.")
+                raise PlayerTimeoutError(f"Timeout bei '{request_type}' für Spieler {self.name}")
+
+            if self._interrupt_event in done:
+                # Interrupt
+                elapsed = time.monotonic() - start_time
+                logger.info(f"Client {self.name}: Warten auf '{request_type}' nach {elapsed:.1f}s unterbrochen aufgrund Interrupt-Event.")
+                raise PlayerInterruptError()
+
+            # Antwort erhalten
+            assert response_future in done
+            response_data = response_future.result()  # Das ist das Payload-Dict von receive_response
+            logger.debug(f"Client {self.name}: Antwort für '{request_type}' erfolgreich empfangen.")
+            return response_data  # Erfolg! Gib rohes Payload zurück.
+
+        except asyncio.CancelledError as e:  # Shutdown
+            logger.info(f"Client {self.name}: Warten auf '{request_type}' extern abgebrochen.")
+            raise e
+        except ClientDisconnectedError as e:
+            logger.info(f"Client {self.name}: Verbindungsabbruch. Warten auf '{request_type}' abgebrochen.")
+            raise e
+        except Exception as e:
+            logger.exception(f"Client {self.name}: Kritischer Fehler während des Wartens auf '{request_type}': {e}")
+            raise PlayerInteractionError(f"Unerwarteter Fehler bei '{request_type}': {e}") from e
+        finally:
+            # --- 6. Aufräumen ---
+            logger.debug(f"Client {self.name}: Räume Warte-Tasks für '{request_type}' auf.")
+            for task in pending:
+                if not task.done():
+                    task.cancel()
+                try:
+                    await asyncio.wait_for(task, timeout=0.1)
+                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    pass
+                except Exception as cleanup_e:
+                    logger.error(f"Fehler beim Aufräumen von Task {task.get_name()}: {cleanup_e}")
+
+    # noinspection PyMethodMayBeStatic
+    def _serialize_action_space(self, action_space: list[tuple]) -> List[Dict]:
+        """Konvertiert den internen action_space in ein serialisierbares Format für den Client."""
+        # Input z.B.: [('play_cards', [(13,1), (13,2)], (PAIR, 2, 13)), ('pass_turn', None, (PASS,0,0))]
+        # Output z.B.: [{"action": "play_cards", "cards": ["SK", "BK"], "combo_type": "PAIR", "combo_rank": 13}, {"action": "pass_turn"}]
+        serialized = []
+        if not action_space:
+            return []
+        for action_tuple in action_space:
+            action_name = action_tuple[0]
+            if action_name == "play_cards":
+                cards_internal: Optional[List[Card]] = action_tuple[1]
+                combo_details: Optional[Combination] = action_tuple[2]
+                if cards_internal and combo_details:
+                    serialized.append({
+                        "action": "play_cards",
+                        "cards": stringify_cards(cards_internal),  # Konvertiere zu Labels
+                        "combo_type": combo_details[0].name,  # Enum-Name
+                        "combo_rank": combo_details[2]  # Rang
+                    })
+            elif action_name == "pass_turn":
+                serialized.append({"action": "pass_turn"})
+            # Füge hier ggf. andere Aktionen hinzu
+        return serialized
 
     # ------------------------------------------------------
     # Eigenschaften

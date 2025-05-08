@@ -22,8 +22,6 @@ class PlayerInteractionError(Exception):
 class ClientDisconnectedError(PlayerInteractionError):
     """
     Wird ausgelöst, wenn versucht wird, eine Aktion mit einem Client auszuführen, der nicht (mehr) verbunden ist.
-
-   :param message: Eine beschreibende Fehlermeldung.
     """
 
     def __init__(self, message="Client ist nicht verbunden", *args):
@@ -34,18 +32,8 @@ class PlayerInterruptError(PlayerInteractionError):
     """
     Wird ausgelöst, wenn eine wartende Spieleraktion durch ein Engine-internes Ereignis (z.B. Tichu-Ansage, Bombe) unterbrochen wird.
     """
-    def __init__(self, interrupt_type: str, message: str = "Spieleraktion unterbrochen", *args):
-        """
-        Initialisiert die Interrupt-Exception.
-
-        :param interrupt_type: Der Name des auslösenden Interrupt-Events (z.B. "tichu_announced").
-        :param message: Eine beschreibende Fehlermeldung.
-        """
+    def __init__(self, message: str = "Spieleraktion unterbrochen", *args):
         super().__init__(message, *args)
-        self.interrupt_type = interrupt_type #: Der Typ des Interrupts.
-
-    def __str__(self) -> str:
-        return f"{super().__str__()} (Typ: {self.interrupt_type})"
 
 
 class PlayerTimeoutError(PlayerInteractionError, asyncio.TimeoutError):

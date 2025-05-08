@@ -3,25 +3,26 @@ Definiert die Spiellogik.
 """
 
 import asyncio
-from aiohttp import WSCloseCode
-from src.common.errors import PlayerTimeoutError, ClientDisconnectedError, PlayerResponseError
+
+from src.lib.combinations import FIGURE_DRA, FIGURE_DOG, build_action_space, FIGURE_PASS
+from src.lib.errors import PlayerTimeoutError, ClientDisconnectedError, PlayerResponseError
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import Card, deck
+from src.lib.cards import deck, CARD_MAH
 from src.players.agent import Agent
 from src.players.client import Client
 from src.players.player import Player
 from src.players.random_agent import RandomAgent
 from src.private_state2 import PrivateState
 from src.public_state2 import PublicState
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 
 class GameEngine:
     """
     Steuert den Spielablauf eines Tisches.
 
     :ivar game_loop_task: Der asyncio Task, der die Hauptspielschleife ausführt.
-    :ivar interrupt_events: Dictionary für globale Interrupts.
+    :ivar interrupt_event: globales Interrupt.
     """
 
     def __init__(self, table_name: str, default_agents: Optional[List[Agent]] = None, seed: Optional[int] = None):
@@ -68,18 +69,11 @@ class GameEngine:
 
         # Referenz auf den Hintergrund-Task `_run_game_loop`
         self.game_loop_task: Optional[asyncio.Task] = None
-        self._player_action_futures: Dict[int, asyncio.Future] = {} # Intern für Client-Warten
 
-        # Flag für laufenden Interrupt
-        self._interrupt_in_progress: bool = False
-        self._interrupting_player_index: Optional[int] = None
-
-        # Interrupt-Events
-        self.interrupt_events: Dict[str, asyncio.Event] = {
-            "tichu_announced": asyncio.Event(),
-            "bomb_played": asyncio.Event(),
-            "game_abort_request": asyncio.Event(), # Beispiel
-        }
+        # Interrupt-Event
+        self.interrupt_event: asyncio.Event = asyncio.Event()
+        self._interrupt_player_index: Optional[int] = None
+        self._interrupt_reason: Optional[str] = None
 
         # Zufallsgenerator, geeignet für Multiprocessing
         self._random = Random(seed)
@@ -93,11 +87,11 @@ class GameEngine:
         """
         Bereinigt Ressourcen dieser Instanz.
 
-        Bricht laufende Tasks ab und schließt verbleibende Client-Verbindungen.
+        Bricht laufende Tasks ab und ruft dann die `cleanup`-Funktion aller Player-Instanzen auf.
         """
-        logger.info(f"Räume GameEngine für Tisch '{self._table_name}' auf...")
+        logger.info(f"Bereinige Tisch '{self._table_name}'...")
 
-        # 1. Breche den Haupt-Spiel-Loop Task ab, falls er läuft.
+        # breche den Haupt-Spiel-Loop Task ab, falls er läuft.
         if self.game_loop_task and not self.game_loop_task.done():
             logger.debug(f"Tisch '{self._table_name}': Breche Spiel-Loop Task ab.")
             self.game_loop_task.cancel()
@@ -112,51 +106,14 @@ class GameEngine:
                  logger.error(f"Tisch '{self._table_name}': Fehler beim Warten auf abgebrochenen Spiel-Loop Task: {e}")
         self.game_loop_task = None # Referenz entfernen
 
-        # --- Timer werden von der Factory verwaltet, hier nichts zu tun ---
+        # alle Spieler-Instanzen bereinigen (parallel)
+        await asyncio.gather(*[asyncio.create_task(p.cleanup()) for p in self._players], return_exceptions=True)
 
-        # 2. Schließe aktiv Verbindungen zu allen noch verbundenen Clients.
-        logger.debug(f"Tisch '{self._table_name}': Schließe verbleibende Client-Verbindungen.")
-        tasks = []
-        for player in self._players:
-            if isinstance(player, Client) and player.is_connected:
-                 logger.debug(f"Schließe Verbindung für Client {player.player_name} auf Tisch '{self._table_name}'.")
-                 tasks.append(asyncio.create_task(
-                     player.cleanup()
-                 ))
-        if tasks:
-            # Warte auf das Schließen der Verbindungen.
-            await asyncio.gather(*tasks, return_exceptions=True)
-
-        # 3. Interne Datenstrukturen leeren (optional, hilft dem Garbage Collector).
-        self._players = [None] * 4
-        self._private_states.clear() # Liste leeren
-
-        logger.info(f"GameEngine Cleanup für Tisch '{self._table_name}' beendet.")
+        logger.info(f"Bereinigung des Tisches '{self._table_name}' beendet.")
 
     # ------------------------------------------------------
     # Partie spielen
     # ------------------------------------------------------
-
-    async def _check_start_game(self):
-       """
-       Prüft, ob alle Spielerplätze belegt sind und startet ggf. die Spiel-Logik.
-       """
-       # Sind alle 4 Slots belegt (egal ob Client oder Agent)?
-       if all(p is not None for p in self._players):
-           # Ist der Spiel-Loop noch nicht gestartet oder bereits beendet?
-           if self.game_loop_task is None or self.game_loop_task.done():
-               logger.info(f"Tisch '{self._table_name}': Alle Spieler bereit. Starte Spiel-Loop.")
-               # --- TODO: Die eigentliche Spiel-Loop-Coroutine starten ---
-               # self.game_loop_task = asyncio.create_task(self._run_game_loop())
-               # Beispiel: Initialen Zustand senden, nachdem alle bereit sind.
-               await self._broadcast_public_state()
-           else:
-               # Spiel läuft bereits.
-               logger.debug(f"Tisch '{self._table_name}': Alle Spieler anwesend, aber Spiel-Loop läuft bereits.")
-       else:  # todo darf nicht mehr vorkommen,initial werden 4 Agenten gesetzt
-           # Es fehlen noch Spieler.
-           player_count = sum(1 for p in self._players if p is not None)
-           logger.info(f"Tisch '{self._table_name}': Warte auf {4 - player_count} weitere Spieler.")
 
     async def start_game(self):
         """
@@ -351,368 +308,86 @@ class GameEngine:
         return self._public_state
 
     # ------------------------------------------------------
-    # Nachricht an Spieler senden
+    # Client-spezifisches
     # ------------------------------------------------------
 
-    def broadcast(self, data) -> None:
+    async def join_client(self, client: Client) -> bool:
+        """
+        Lässt den Client mitspielen.
+        :param client: Der Client, der mitspielen möchte.
+        :return: True, wenn der Client einen Sitzplatz bekommen hat, ansonsten False.
+        """
+        # Sitzplatz suchen, der von der KI besetzt ist
+        available_index = -1
+        for i, p in enumerate(self._players):
+            if not isinstance(p, Client):
+                available_index = i
+                break
+        if available_index == -1:
+            return False
+        self._players[available_index] = client
+        client.player_index = available_index
+        return True
+
+    async def leave_client(self, client: Client) -> None:
+        """
+        Lässt den Client gehen.
+        :param client: Der Client, der gehen will.
+        :raise ValueError: Wenn der Clients nicht gefunden werden kann.
+        """
+        index = client.player_index
+        if index < 0 or index > 3:
+            raise ValueError(f"Der Index des Spielers {client.name} ist nicht korrekt: {index}")
+        if self._players[index].session != client.session:
+            raise ValueError(f"Der Spielers {client.name} kann den Tisch {self._table_name} nicht verlassen, er sitz dort nicht.")
+        self._players[index] = self._default_agents[index]
+        client.player_index = -1
+
+    async def broadcast(self, message_type: str, data: dict) -> None:
+        """
+        Sendet eine Nachricht an alle Clients (z.B. Spielzustand, Fehler).
+
+        :param message_type: Der Typ der Nachricht.
+        :param data: Die Nutzdaten der Nachricht.
+        """
         for player in self._players:
-            player.notify("broadcast", data)
+            if isinstance(player, Client):  # todo aus performance-gründe als eigene Liste festhalten
+                await player.on_notify(message_type, data)
 
-    async def _send_private_state(self, player: Player):
+    async def on_interrupt(self, client: Client, reason: str):
         """
-        Aktualisiert und sendet den privaten Spielzustand an einen spezifischen Client.
-
-        :param player: Der Spieler (muss ein verbundener Client sein), der den Zustand erhalten soll.
-        :type player: Player
-        """
-        # Nur an verbundene Clients senden, die einen gültigen Index haben.
-        if not isinstance(player, Client) or not player.is_connected or player.player_index is None:
-            return
-
-        player_index = player.player_index
-        private_state = self._private_states[player_index]
-
-        # TODO: Private State Felder hier aktualisieren, bevor gesendet wird.
-        # Dies ist der Ort, um z.B. die Handkarten nach dem Ziehen oder Spielen zu aktualisieren.
-        # Beispiel: private_state.hand_cards = self._get_current_hand(player_index)
-
-        state_dict = private_state.to_dict()
-        logger.debug(f"Tisch '{self._table_name}': Sende Private State Update an {player.player_name}: {state_dict}")
-        await player.notify("private_state_update", state_dict)
-
-    async def _broadcast_public_state(self):
-        """
-        Aktualisiert den öffentlichen Spielzustand und sendet ihn an alle verbundenen Clients.F
-        """
-        #TODO: die Methode macht zwei Dinge Spiels:
-        # a) Spielzustand aktualisieren und b) Spielzustand per notify senden
-        # wir sollten daher daraus 2 Funktionen machen!
-        # a sollte Exception werfen, wenn irgendwas schief geht, da es wichtig ist, dass das klappt
-        # b sollte wie notify kein Exception werfen, wenn etwas schiefgeht.
-
-        # Sicherstellen, dass die Spielerliste im State aktuell ist.
-        self._public_state.player_names = [p.name for p in self._players]
-        # TODO: Weitere Felder im public_state aktualisieren, z.B.:
-        # - Aktuelle Punktzahlen
-        # - Wer ist am Zug? (current_turn_index)
-        # - Zuletzt gespielte Kombination
-        # - Angekündigte Tichu/Grand Tichu
-        # - Spielstatus (läuft, beendet)
-
-        state_dict = self._public_state.to_dict()
-        # Füge optional den Verbindungsstatus hinzu (nützlich für UI)
-        state_dict['player_connected_status'] = [
-            isinstance(p, Client) and p.is_connected for p in self._players
-        ]
-
-        logger.debug(f"Tisch '{self._table_name}': Sende Public State Update: {state_dict}")
-        tasks = []
-        # Sende den Zustand parallel an alle verbundenen Clients.
-        for player in self._players:
-            if isinstance(player, Client) and player.is_connected:
-                tasks.append(asyncio.create_task(player.notify("public_state_update", state_dict)))
-        if tasks:
-            # Warte auf das Senden, fange aber Fehler ab (falls Verbindung genau jetzt abbricht).
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for result in results:
-                if isinstance(result, Exception):
-                    logger.warning(f"Tisch '{self._table_name}': Fehler beim Senden des Public State an einen Client: {result}")
-
-    # ------------------------------------------------------
-    # Nachricht vom Spieler verarbeiten
-    # ------------------------------------------------------
-
-    # todo client-spezifische hat in der Engein nichts zu suchen
-    async def handle_player_message(self, client: Client, message: dict):
-        """
-        Verarbeitet eine eingehende Nachricht (Spielaktion) von einem Client.
-
-        Validiert die Aktion basierend auf dem aktuellen Spielzustand (z.B. wer ist am Zug)
-        und den Spielregeln. Aktualisiert den Zustand und benachrichtigt Spieler.
-
-        :param client: Der Client, der die Nachricht gesendet hat.
-        :type client: Client
-        :param message: Die als Dictionary geparste JSON-Nachricht vom Client.
-                        Erwartet typischerweise `{'action': '...', 'payload': {...}}`.
-        :type message: dict
-        """
-        # Ignoriere Nachrichten von Clients, die nicht (mehr) verbunden sind oder keinen Index haben.
-        if not client.is_connected or client.player_index is None:
-            logger.warning(f"Tisch '{self._table_name}': Ignoriere Nachricht von nicht verbundenem/zugewiesenem Client {client.player_name}")
-            return
-
-        action = message.get("action")
-        payload = message.get("payload", {})
-        player_index = client.player_index # Typ-Checker weiß jetzt, dass player_index nicht None ist.
-
-        logger.debug(f"Tisch '{self._table_name}': Empfangen Aktion '{action}' von {client.player_name} (Index: {player_index}), Payload: {payload}")
-
-        # --- Aktionen im Setup/Lobby/Game Over Modus ---
-        # Spiel kann nur gestartet werden, wenn es nicht schon läuft
-        # oder gerade initialisiert wird.
-        if self._public_state.current_phase in ["lobby", "setup", "game_over", "aborted", "error"]:
-            if action == "start_game":
-                # Host-Prüfung (Beispiel: Spieler 0)
-                host_index = 0
-                if player_index == host_index:
-                    # Prüfen, ob genügend Spieler da sind
-                    player_count = sum(1 for p in self._players if p is not None)
-                    if player_count == 4:
-                        # Starte das Spiel (startet run_game_loop als Task)
-                        await self.start_game()
-                        # Sende Bestätigung oder warte auf erstes State Update?
-                        # start_game sendet selbst keine Bestätigung.
-                        # Der erste Broadcast aus run_game_loop signalisiert den Start.
-                    else:
-                        logger.warning(f"Spielstart auf Tisch '{self._table_name}' durch Host fehlgeschlagen: Nur {player_count}/{4} Spieler.")
-                        await client.notify("error", {"message": f"Es müssen genau {4} Spieler am Tisch sein, um zu starten."})
-                else:
-                    logger.warning(f"Spielstart auf Tisch '{self._table_name}' durch Spieler {player_index} (nicht Host) abgelehnt.")
-                    await client.notify("error", {"message": "Nur der Host (Spieler 1) kann das Spiel starten."})
-                return  # Aktion behandelt
-
-            elif action == "assign_slot":  # Nur im Setup/Lobby erlaubt?
-                # TODO: Logik für Slot-Zuweisung durch Host
-                await self._process_assign_slot(client, payload)
-                return  # Aktion behandelt
-
-            # Andere Aktionen sind in diesen Phasen meist ungültig
-            else:
-                logger.warning(f"Tisch '{self._table_name}': Ungültige Aktion '{action}' in Phase '{self._public_state.current_phase}' von Spieler {player_index}.")
-                await client.notify("error", {"message": f"Aktion '{action}' ist in der aktuellen Phase '{self._public_state.current_phase}' nicht erlaubt."})
-                return  # Aktion behandelt (als ungültig)
-
-        # --- Aktionen während des Spiels ('playing', 'announcing_...') ---
-        elif self._public_state.current_phase.startswith("playing") or \
-                self._public_state.current_phase.startswith("announcing") or \
-                self._public_state.current_phase.startswith("schupfing"):  # Ggf. Phasen genauer prüfen
-
-            # Prüfen, ob eine Antwort auf eine Anfrage erwartet wird
-            # (Diese Logik ist jetzt im Client, der Handler leitet nur weiter)
-            # Wir müssen hier also nur proaktive Aktionen behandeln.
-
-            if action == "announce_tichu":
-                logger.info(f"Spieler {player_index} versucht Tichu anzusagen (proaktiv).")
-                valid = await self._process_tichu_announcement(client, payload)
-                if valid:
-                    # Interrupt auslösen & Broadcast im Erfolgsfall
-                    self.interrupt_events["tichu_announced"].set()
-                    self.interrupt_events["tichu_announced"].clear()
-                    await self._broadcast_public_state()
-                # else: Fehler wurde in _process_... gesendet
-                return  # Aktion behandelt
-
-            elif action == "request_interrupt":  # Beispiel für explizite Interrupt-Anfrage
-                interrupt_type = payload.get("type")
-                logger.info(f"Spieler {player_index} fordert Interrupt an: '{interrupt_type}'")
-                await self._handle_interrupt_request(client, interrupt_type)
-                return  # Aktion behandelt
-
-            # --- WICHTIG: Behandlung von normalen Spielzügen ---
-            # Normale Spielzüge (play_cards, pass_turn, submit_schupf_cards etc.)
-            # werden NICHT mehr hier verarbeitet. Sie kommen als *Antwort*
-            # auf eine `request_action` vom Server und werden vom websocket_handler
-            # an `client.receive_response()` weitergeleitet, was dann die Future
-            # in der wartenden `Client`-Methode (z.B. `combination`) auflöst.
-            # Daher sollten diese Actions hier nicht mehr auftauchen, wenn sie
-            # nicht proaktiv gesendet wurden (was sie nicht sollten).
-
-            elif action in ["play_cards", "pass_turn", "submit_schupf_cards", "make_wish", "gift_dragon"]:
-                logger.warning(f"Tisch '{self._table_name}': Empfing Spielzug-Aktion '{action}' von Spieler {player_index} außerhalb einer Anfrage. Ignoriere.")
-                # Optional: Fehler an Client senden
-                # await client.notify("error", {"message": "Aktion nur als Antwort auf eine Anfrage möglich."})
-                return  # Ignorieren
-
-            elif action == "ping":
-                # Ping empfangen.
-                logger.info(f"{client.player_name}: ping")
-                await client.notify("pong", {"message": f"{payload}"})
-
-            else:
-                # Unbekannte Aktion während des Spiels
-                logger.warning(f"Tisch '{self._table_name}': Unbekannte proaktive Aktion '{action}' während des Spiels von Spieler {player_index}.")
-                await client.notify("error", {"message": f"Unbekannte Aktion: {action}"})
-                return  # Aktion behandelt (als unbekannt)
-        else:
-            # Unerwartete Phase
-            logger.error(f"Tisch '{self._table_name}': handle_player_message aufgerufen in unerwarteter Phase '{self._public_state.current_phase}'.")
-            await client.notify("error", {"message": "Interner Serverfehler (ungültige Phase)."})
-
-    # ------------------------------------------------------
-    # Interrupt vom Spieler verarbeiten
-    # ------------------------------------------------------
-
-    # todo client-spezifische hat in der Engein nichts zu suchen
-    async def _handle_interrupt_request(self, client: Client, interrupt_type: Optional[str]):
-        """
-        Bearbeitet eine Interrupt-Anfrage (Bombe/Tichu) von einem Client.
+        Wird aufgerufen, wenn ein Client einen Interrupt anfordert.
 
         :param client: Der anfragende Client.
-        :param interrupt_type: Der Typ des gewünschten Interrupts ("bomb" oder "tichu").
+        :param reason: Grund für den Interrupt ("bomb" oder "tichu").
         """
-        player_index = client.player_index
-        if player_index is None: return  # Sollte nicht passieren
+        logger.info(f"Tisch '{self.table_name}': Spieler {client.name} fordert Interrupt an: '{reason}'")
 
-        logger.info(f"Tisch '{self.table_name}': Spieler {player_index} fordert Interrupt an: '{interrupt_type}'")
-
-        # --- Prüfungen ---
-        if self._interrupt_in_progress:
-            logger.warning(f"Tisch '{self.table_name}': Interrupt von Spieler {player_index} ignoriert (anderer Interrupt läuft bereits).")
-            await client.notify("error", {"message": "Ein anderer Interrupt wird gerade bearbeitet. Bitte warte."})
+        # Prüfungen
+        if self._interrupt_reason:
+            logger.warning(f"Tisch '{self.table_name}': Interrupt von Spieler {client.name} ignoriert (anderer Interrupt läuft bereits).")
+            await client.on_notify("error", {"message": "Ein anderer Interrupt wird gerade bearbeitet. Bitte warte."})
             return
 
-        # Nur während der Spielphase erlaubt? (Tichu evtl. auch vorher?)
-        if self._public_state.current_phase != "playing":
-            # Ausnahme für Tichu erlauben?
-            if interrupt_type == "tichu" and self._public_state.current_phase == "announcing_small_tichu":
-                pass  # Erlaubt
-            else:
-                logger.warning(f"Tisch '{self.table_name}': Interrupt '{interrupt_type}' von Spieler {player_index} in Phase '{self._public_state.current_phase}' nicht erlaubt.")
-                await client.notify("error", {"message": f"Aktion '{interrupt_type}' in Phase '{self._public_state.current_phase}' nicht erlaubt."})
-                return
+        # todo darf der Spieler das jetzt tun?
+        # if not ok:
+        #   return
 
-        # --- Interrupt-spezifische Logik ---
-        self._interrupt_in_progress = True  # Sperre setzen
-        self._interrupting_player_index = player_index
-        #interrupted_player_task_future: Optional[asyncio.Future] = None
-
+        # Sperre setzen
+        self._interrupt_reason = True
+        self._interrupt_player_index = client.player_index
         try:
-            if interrupt_type == "tichu":
-                # Tichu-Ansage direkt validieren und verarbeiten
-                success = await self._process_tichu_announcement(client, {})  # Payload hier leer
-                if success:
-                    # Signalisiere den wartenden Tasks, dass Tichu angesagt wurde
-                    self.interrupt_events["tichu_announced"].set()
-                    # Sende Update an alle Clients
-                    await self._broadcast_public_state()
-                # Fehler wurde in _process_tichu_announcement behandelt
-                # Tichu unterbricht nicht unbedingt den *Zug*, nur das Warten
-
-            elif interrupt_type == "bomb":
-                # --- Bomben-Logik ---
-                #priv_state = self._private_states[player_index]
-                # 1. Validieren: Hat Spieler eine Bombe? Ist Bomben erlaubt?
-                # TODO: Implementiere Regel-Funktion 'player_has_bomb(priv_state.hand_cards)'
-                # TODO: Implementiere Regel-Funktion 'can_bomb_now(self._public_state)'
-                has_bomb = True  # Platzhalter
-                can_bomb = True  # Platzhalter
-                if not has_bomb or not can_bomb:
-                    logger.warning(f"Tisch '{self.table_name}': Spieler {player_index} kann keine Bombe spielen.")
-                    await client.notify("error", {"message": "Du kannst jetzt keine Bombe spielen."})
-                    # Sperre muss wieder aufgehoben werden!
-                    self._interrupt_in_progress = False
-                    self._interrupting_player_index = None
-                    return
-
-                # 2. Alten Zug ggf. unterbrechen: Signalisiere anderen wartenden Tasks
-                logger.info(f"Tisch '{self.table_name}': Spieler {player_index} initiiert Bomben-Interrupt.")
-                self.interrupt_events["bomb_played"].set()  # Signalisiere Interrupt
-
-                # 3. Bomben-Auswahl vom Client anfordern
-                try:
-                    # TODO: Erstelle action_space nur mit Bomben des Spielers
-                    #bomb_action_space = []  # Platzhalter
-                    # Fordere Client zur Auswahl auf
-                    # Annahme: Client hat Methode 'bomb', die ähnlich wie 'combination' funktioniert
-                    bomb_action_tuple = ()  # await client.bomb(self._public_state, priv_state, bomb_action_space)  #todo client.bomb implementieren
-
-                    # TODO: Verarbeite bomb_action_tuple
-                    #       - Validiere die gewählte Bombe erneut
-                    #       - Rufe _process_stich_action auf (oder eine spezielle _process_bomb_action)
-                    #         Diese aktualisiert State, History, Punkte etc.
-                    #       - Setze current_turn_index auf den Bomber
-                    #       - Lösche den Interrupt-Status des Stichs
-                    logger.info(f"Bombe {bomb_action_tuple} von Spieler {player_index} verarbeitet (PLATZHALTER).")
-                    await self._broadcast_public_state()  # Sende neuen Zustand
-
-                except (PlayerTimeoutError, ClientDisconnectedError, PlayerResponseError, asyncio.CancelledError) as e:
-                    logger.error(f"Tisch '{self.table_name}': Fehler/Timeout bei Bomben-Auswahl von Spieler {player_index}: {e}")
-                    # TODO: Was tun? Interrupt abbrechen? Spieler bestrafen?
-                    # Vorerst: Interrupt abbrechen, ursprünglicher Spieler ist weiter dran?
-                    await client.notify("error", {"message": "Fehler bei Bomben-Auswahl."})
-                except Exception as e:
-                    logger.exception(f"Unerwarteter Fehler bei Bomben-Auswahl von Spieler {player_index}: {e}")
-                    await client.notify("error", {"message": "Interner Fehler bei Bomben-Auswahl."})
-
-                # Interrupt ist beendet, Event zurücksetzen
-                self.interrupt_events["bomb_played"].clear()
-
-            else:
-                logger.warning(f"Tisch '{self.table_name}': Unbekannter Interrupt-Typ angefordert: '{interrupt_type}'")
-                await client.notify("error", {"message": f"Unbekannter Interrupt-Typ: {interrupt_type}"})
-
+            # Signalisiere den wartenden Tasks, dass Tichu angesagt wurde
+            self.interrupt_event.set()
         except Exception as e:
-            # Fange allgemeine Fehler während der Interrupt-Verarbeitung ab
-            logger.exception(f"Tisch '{self.table_name}': Kritischer Fehler bei Interrupt-Verarbeitung ({interrupt_type}) für Spieler {player_index}: {e}")
-            # noinspection PyBroadException
-            try:
-                await client.notify("error", {"message": "Interner Fehler bei Interrupt-Verarbeitung."})
-            except Exception:
-                pass
+            logger.exception(f"Tisch '{self.table_name}': Fehler bei Interrupt-Verarbeitung für Spieler {client.name}: {e}")
+            await client.on_notify("error", {"message": "Interner Fehler bei Interrupt-Verarbeitung."})
         finally:
-            # Stelle sicher, dass die Sperre immer aufgehoben wird
-            self._interrupt_in_progress = False
-            self._interrupting_player_index = None
-            logger.debug(f"Interrupt-Verarbeitung für Spieler {player_index} beendet.")
-
-    # todo client-spezifische hat in der Engein nichts zu suchen
-    async def _process_tichu_announcement(self, client: Client, _payload: dict) -> bool:
-        """
-        Validiert und verarbeitet eine Tichu-Ansage (klein oder groß).
-        Wird von handle_player_message oder _handle_interrupt_request aufgerufen.
-
-        :param client: Der Client, der Tichu ansagen möchte.
-        :param _payload: Die Daten aus der Client-Nachricht (kann leer sein).
-        :return: True bei Erfolg, False bei Fehler (Fehlermeldung wird an Client gesendet).
-        """
-        player_index = client.player_index
-        if player_index is None: return False  # Client nicht korrekt zugewiesen
-
-        priv_state = self._private_states[player_index]
-        is_grand_attempt = self._public_state.current_phase == "announcing_grand_tichu"
-        # is_small_attempt = self._public_state.current_phase in ["announcing_small_tichu", "playing"]  # Oder genauer?
-
-        logger.info(f"Tisch '{self.table_name}': Verarbeite Tichu-Anfrage von Spieler {player_index} (Grand: {is_grand_attempt}).")
-
-        # --- Validierung ---
-        # 1. Bereits angesagt?
-        if self._public_state.announcements[player_index] > 0:
-            logger.warning(f"Spieler {player_index} hat bereits Tichu angesagt.")
-            await client.notify("error", {"message": "Du hast bereits Tichu angesagt."})
-            return False
-
-        # 2. Richtige Phase?
-        # Annahme: can_player_announce_tichu prüft Phase, Kartenanzahl etc.
-        # Die Funktion muss wissen, ob es um Grand oder Small geht.
-        can_announce = True  # can_player_announce_tichu(self._public_state, priv_state, grand=is_grand_attempt)  # todo can_player_announce_tichu implementieren
-        if not can_announce:
-            msg = "Grand Tichu kann nur nach den ersten 8 Karten angesagt werden." if is_grand_attempt else "Tichu kann nur vor deinem ersten ausgespielten Zug angesagt werden."
-            logger.warning(f"Ungültiger Tichu-Versuch von Spieler {player_index}: {msg}")
-            await client.notify("error", {"message": msg})
-            return False
-
-        # --- Wenn gültig: Zustand aktualisieren ---
-        tichu_type = 2 if is_grand_attempt else 1
-        self._public_state.announcements[player_index] = tichu_type
-
-        type_str = "Grand Tichu" if is_grand_attempt else "Tichu"
-        logger.info(f"Tisch '{self.table_name}': {type_str}-Ansage von Spieler {player_index} akzeptiert.")
-
-        # Sende KEINEN Broadcast hier. Das macht der Aufrufer (handle_player_message),
-        # nachdem das Interrupt-Event ggf. gesetzt wurde.
-        return True  # Erfolg
-
-    # ------------------------------------------------------
-    # Datenaufbereitung
-    # ------------------------------------------------------
-
-    def total_score(self, team_index: int) -> int:
-        """
-        Berechnet den Gesamtpunktestand der Partie für das angegebene Team.
-        :param team_index: 0 == Team 20 oder 1 == Team 31
-        :return: Gesamtpunktestand
-        """
-        return sum(self._public_state.game_score[team_index])
+            # todo hier noch nicht die Sperre aufrufen. Das muss in run_game_loop passieren!
+            # Sperre aufheben
+            self._interrupt_reason = False
+            self._interrupt_player_index = None
+            logger.debug(f"Interrupt-Verarbeitung für Spieler {client.name} beendet.")
 
     # ------------------------------------------------------
     # Hilfsfunktionen
@@ -730,39 +405,19 @@ class GameEngine:
                 return p
         return None
 
-    async def replace_player(self, player: Player) -> None:
-        # Ersetzt den Spieler am gegebenen Sitzplatz
-        # todo
-
-        assert player.get_world_name() == self._world_name
-        chair = player.canonical_chair
-        old_player = self._players[chair]
-        self._players[chair] = player
-        player.assign_secret_state(old_player)
-
-        if isinstance(old_player, Agent):
-            assert old_player in self._agents
-            self._agents.remove(old_player)
-        else:
-            assert isinstance(old_player, Client) and old_player in self._clients
-            self._clients.remove(old_player)
-
-        if isinstance(player, Agent):
-            assert player not in self._agents
-            self._agents.append(player)
-        else:
-            assert isinstance(player, Client) and player not in self._clients
-            self._clients.append(player)
-
-        del old_player
-        logger.info(f"{self._world_name}: Player {player.nickname} joined")
-
-
     def _shuffle_deck(self):
         """
         Mischt das Kartendeck.
         """
         self._random.shuffle(self._mixed_deck)
+
+    def total_score(self, team_index: int) -> int:
+        """
+        Berechnet den Gesamtpunktestand der Partie für das angegebene Team.
+        :param team_index: 0 == Team 20 oder 1 == Team 31
+        :return: Gesamtpunktestand
+        """
+        return sum(self._public_state.game_score[team_index])
 
     # ------------------------------------------------------
     # Eigenschaften

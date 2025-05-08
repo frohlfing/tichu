@@ -58,15 +58,6 @@ class Player:
     # Benachrichtigung
     # ------------------------------------------------------
 
-    async def notify(self, message_type: str, data: dict):
-        """
-        Verarbeitet eine Benachrichtigung vom Server (unidirektionale, z.B. Spielzustand, Fehler).
-
-        :param message_type: Der Typ der Nachricht.
-        :param data: Die Nutzdaten der Nachricht.
-        """
-        pass
-
     # ------------------------------------------------------
     # Entscheidungen
     # ------------------------------------------------------

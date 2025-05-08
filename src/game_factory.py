@@ -23,13 +23,14 @@ class GameFactory:
         """
         Bereinigt Ressourcen dieser Instanz.
 
-        Fährt die GameFactory und alle zugehörigen Spiele und Timer sauber herunter.
+        Ruft die `cleanup`-Funktion aller GameEngine-Instanzen auf.
         """
         if self._engines:
-            logger.info(f"Fahre {len(self._engines)} aktive Game Engines herunter...")
-            # Starte alle cleanups parallel und warte darauf.
+            logger.info(f"Bereinige {len(self._engines)} aktive Game-Engines...")
+            # alle GameEngine-Instanzen bereinigen (parallel)
             await asyncio.gather(*[asyncio.create_task(e.cleanup()) for e in self._engines.values()], return_exceptions=True)
             self._engines.clear()
+            logger.info(f"Bereinigung der Game-Engines beendet.")
 
     def get_or_create_engine(self, table_name: str) -> GameEngine:
         """
