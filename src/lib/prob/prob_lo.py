@@ -7,6 +7,7 @@ from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET,
 from src.lib.prob.tables_lo import load_table_lo
 from time import time
 
+# todo Dokumentieren (reStructuredText)
 
 # -----------------------------------------------------------------------------
 # Wahrscheinlichkeitsberechnung p_low

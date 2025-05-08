@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-Haupt-Server-Skript für die Tichu Webanwendung.
 
-Startet einen aiohttp-Server, der einen WebSocket-Endpunkt bereitstellt,
-über den Clients (Spieler) mit dem Spiel interagieren können.
-Verwaltet den Server-Lebenszyklus und Signal-Handling für sauberes Beenden.
+# todo alles überarbeiten
+
+"""
+Webserver für Tichu.
+
+Startet einen aiohttp-Server, der einen WebSocket-Endpunkt bereitstellt, über den Clients (Spieler) mit dem Spiel
+interagieren können. Verwaltet den Server-Lebenszyklus und Signal-Handling für sauberes Beenden.
 """
 
 import asyncio
@@ -14,55 +15,50 @@ import json
 import os
 import signal
 import sys
-from aiohttp import web, WSMsgType, WSCloseCode, WSMessage
-from src.common.logger import logger  # Eigenes Logger-Modul
-from src.game_engine2 import GameEngine  # Spiel-Logik-Klasse
-from src.game_factory import GameFactory  # Verwaltung der Spiele
-from src.players.client import Client  # Spieler-Repräsentation (Mensch)
+from aiohttp import WSMsgType, WSCloseCode, WSMessage
+from aiohttp.web import Application, AppRunner, Request, WebSocketResponse, TCPSite
+from src.common.logger import logger
+from src.game_engine2 import GameEngine
+from src.game_factory import GameFactory
+from src.lobby import Lobby
+from src.players.client import Client
 from typing import Optional
 
 
-async def websocket_handler(request: web.Request) -> web.WebSocketResponse | None:
+async def websocket_handler(request: Request) -> WebSocketResponse | None:
     """
     Behandelt eingehende WebSocket-Verbindungen.
 
     Aufgaben des Händlers:
     - Verbindung aufbauen.
     - Die Verbindungsanfrage an factory.handle_connection_request übergeben.
-    - Bei Erfolg dei Nachrichtenschleife starten.
-    - Eingehende Nachrichten (die Antworten auf Anfragen sind) an den Client weiterleiten.
-    - Eingehende Nachrichten (die proaktive Aktionen sind) an die Engine weiterleiten.
+    - Bei Erfolg die Nachrichtenschleife starten.
+    - Eingehende Nachrichten, die Antworten auf Anfragen sind, an den Client weiterleiten.
+    - Eingehende Nachrichten, die Interrupts auslösen sollen, an die Engine weiterleiten.
     - Die Factory über den Verbindungsabbruch informieren.
 
     :param request: Das aiohttp Request-Objekt, das die initiale HTTP-Anfrage enthält.
-    :type request: web.Request
     :return: Das aiohttp WebSocketResponse-Objekt, das die Verbindung repräsentiert.
-    :rtype: web.WebSocketResponse
     """
-    ws = web.WebSocketResponse()
+    # Websocket
+    ws = WebSocketResponse()
     try:
-        # prepare() führt den WebSocket-Handshake durch.
-        # Kann Exceptions werfen, z.B. bei Handshake-Fehlern.
-        await ws.prepare(request)
+        await ws.prepare(request)  # führt den WebSocket-Handshake durch
     except Exception as e:
-        # Loggen des Fehlers, wenn der Handshake fehlschlägt.
         logger.exception(f"WebSocket Handshake fehlgeschlagen für {request.remote}: {e}")
-        return ws  # Rückgabe des ws-Objekts ist notwendig, auch wenn prepare fehlschlägt.
+        return ws
 
-    # Zugriff auf die zentrale GameFactory über den App-Kontext.
+    lobby: Lobby = request.app['lobby']
     factory: GameFactory = request.app['game_factory']
-    # Query-Parameter aus der Verbindungs-URL extrahieren.
     params = request.query  # z.B. ?playerName=Frank&tableName=Tisch1[&playerId=UUID...]
-    # Client-Adresse für Logging. request.remote ist hier verfügbar.
-    remote_addr = request.remote
+    remote_addr = request.remote  # Client-Adresse für Logging
     logger.info(f"WebSocket Verbindung hergestellt von {remote_addr} mit Parametern: {params}")
 
     client: Optional[Client] = None
     engine: Optional[GameEngine] = None
-
     try:
-        # Die Factory verarbeitet die Logik für Beitritt/Reconnect.
-        client, engine = await factory.handle_connection_request(ws, dict(params), remote_addr)
+        # Die Lobby verarbeitet die Logik für Beitritt/Reconnect.
+        client, engine = await lobby.handle_connection_request(ws, dict(params), remote_addr)
 
         # Wenn die Factory None zurückgibt, wurde die Verbindung abgelehnt.
         if client is None or engine is None:
@@ -73,7 +69,7 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
             return ws  # Handler beenden.
 
         # Erfolgreich verbunden und zugeordnet.
-        logger.info(f"Handler: Client {client._player_name} ({client._player_id}) erfolgreich Tisch '{engine._table_name}' zugeordnet.")
+        logger.info(f"Handler: Client {client.name} ({client.uuid}) erfolgreich Tisch '{engine.table_name}' zugeordnet.")
 
         # Haupt-Nachrichtenschleife: Warten auf und Verarbeiten von Client-Nachrichten.
         msg: WSMessage
@@ -81,16 +77,16 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
             if msg.type == WSMsgType.TEXT:
                 # Ignoriere Nachrichten, wenn der Client intern bereits als getrennt markiert ist.
                 if not client.is_connected:
-                    logger.warning(f"Handler: Nachricht von {client._player_name} empfangen, obwohl intern als disconnected markiert.")
+                    logger.warning(f"Handler: Nachricht von {client.name} empfangen, obwohl intern als disconnected markiert.")
                     break  # Schleife verlassen -> finally wird ausgeführt.
                 try:
                     # Versuche, die Textnachricht als JSON zu parsen.
                     data = json.loads(msg.data)
-                    logger.debug(f"Empfangen TEXT von {client._player_name}: {data}") # Log nach erfolgreichem Parsen
+                    logger.debug(f"Empfangen TEXT von {client.name}: {data}") # Log nach erfolgreichem Parsen
 
                     # Grundlegende Typ-Prüfung
                     if not isinstance(data, dict):
-                        logger.warning(f"Handler: Ungültiges Nachrichtenformat (kein dict) von {client._player_name}: {data}")
+                        logger.warning(f"Handler: Ungültiges Nachrichtenformat (kein dict) von {client.name}: {data}")
                         await client.notify("error", {"message": "Ungültiges Nachrichtenformat."})
                         continue  # Nächste Nachricht
 
@@ -100,64 +96,64 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse | Non
 
                     if response_to:
                         # Nachricht ist eine Antwort -> an Client.receive_response leiten
-                        logger.debug(f"Handler: Leite Antwort auf '{response_to}' an Client {client._player_name} weiter.")
+                        logger.debug(f"Handler: Leite Antwort auf '{response_to}' an Client {client.name} weiter.")
                         client.receive_response(response_to, payload)  # Annahme: payload enthält die relevanten Antwortdaten
                     elif action:
                         # Nachricht ist eine proaktive Aktion -> an Engine.handle_player_message leiten
                         # (oder an eine dedizierte Methode wie handle_proactive_action)
-                        logger.debug(f"Handler: Leite proaktive Aktion '{action}' an Engine für Tisch '{engine._table_name}' weiter.")
+                        logger.debug(f"Handler: Leite proaktive Aktion '{action}' an Engine für Tisch '{engine.table_name}' weiter.")
                         # Leite die geparsten Daten zur Verarbeitung an die GameEngine weiter.
                         await engine.handle_player_message(client, data)
                     else:
                         # Nachricht hat weder 'response_to' noch 'action' -> unbekanntes Format
-                        logger.warning(f"Unbekanntes Nachrichtenformat von {client._player_name} (weder Antwort noch Aktion): {data}")
+                        logger.warning(f"Unbekanntes Nachrichtenformat von {client.name} (weder Antwort noch Aktion): {data}")
                         await client.notify("error", {"message": "Unbekanntes Nachrichtenformat."})
                 except json.JSONDecodeError:
                     # Fehler beim Parsen von JSON. Informiere Client.
-                    logger.exception(f"Ungültiges JSON von {client._player_name}: {msg.data}")
+                    logger.exception(f"Ungültiges JSON von {client.name}: {msg.data}")
                     await client.notify("error", {"message": "Ungültiges JSON Format"})
                 except Exception as send_e:
-                    logger.exception(f"Fehler bei Verarbeitung der Nachricht von {client._player_name}: {send_e}")
+                    logger.exception(f"Fehler bei Verarbeitung der Nachricht von {client.name}: {send_e}")
                     # Sende generische Fehlermeldung an Client.
                     await client.notify("error", {"message": "Fehler bei Verarbeitung Ihrer Anfrage."})
 
             elif msg.type == WSMsgType.BINARY:
                 # Binäre Nachrichten werden aktuell nicht erwartet.
-                logger.warning(f"Empfangen unerwartete BINARY Daten von {client._player_name or remote_addr}")
+                logger.warning(f"Empfangen unerwartete BINARY Daten von {client.name or remote_addr}")
                 # Ignorieren oder spezifische Logik hinzufügen, falls benötigt.
 
             elif msg.type == WSMsgType.ERROR:
                 # aiohttp meldet einen internen WebSocket-Fehler.
-                logger.error(f'WebSocket Fehler für {client._player_name or "unbekannt"}: {ws.exception()}')
+                logger.error(f'WebSocket Fehler für {client.name or "unbekannt"}: {ws.exception()}')
                 break  # Schleife verlassen -> finally wird ausgeführt.
 
             elif msg.type == WSMsgType.CLOSE:
                 # Der Client hat die Verbindung aktiv geschlossen (normaler Vorgang).
-                logger.info(f"WebSocket CLOSE Nachricht von {client._player_name or 'unbekannt'} empfangen.")
+                logger.info(f"WebSocket CLOSE Nachricht von {client.name or 'unbekannt'} empfangen.")
                 break  # Schleife verlassen -> finally wird ausgeführt.
 
     except asyncio.CancelledError:
         # Der Server wird heruntergefahren (z.B. durch Signal).
-        client_name_log = client._player_name if client else remote_addr
+        client_name_log = client.name if client else remote_addr
         logger.info(f"WebSocket Handler für {client_name_log} abgebrochen (Server Shutdown).")
         raise  # Wichtig: CancelledError weitergeben für sauberes Beenden.
     except Exception as e:
         # Fängt unerwartete Fehler während der Verbindung oder im Handler ab.
-        client_name_log = client._player_name if client else "unbekannt"
+        client_name_log = client.name if client else "unbekannt"
         logger.exception(f"Unerwarteter Fehler im WebSocket Handler für {client_name_log} von {remote_addr}: {e}")
     finally:
         # Dieser Block wird immer ausgeführt, wenn der Handler endet
         # (durch normalen Close, Fehler, CancelledError, etc.).
-        client_name_log = client._player_name if client else 'N/A'
-        client_id_log = client._player_id if client else 'N/A'
-        table_name_log = engine._table_name if engine else 'N/A'
+        client_name_log = client.name if client else 'N/A'
+        client_id_log = client.uuid if client else 'N/A'
+        table_name_log = engine.table_name if engine else 'N/A'
         logger.info(f"WebSocket Verbindung schließt für {client_name_log} ({client_id_log}) von {remote_addr}, Tisch: '{table_name_log}'")
 
         # Informiere die Factory über den Disconnect, damit der Timer gestartet werden kann.
         # Dies geschieht nur, wenn Client und Engine erfolgreich initialisiert wurden.
         if client and engine:
             # Ruft die synchrone Methode in der Factory auf.
-            factory.notify_player_disconnect(engine._table_name, client._player_id, client._player_name)
+            factory.notify_player_disconnect(engine.table_name, client.uuid, client.name)
         # else: # Optional: Loggen, wenn Client/Engine nicht vorhanden waren
         #    if not client: logger.debug(f"Kein Client-Objekt im finally-Block für {remote_addr} vorhanden.")
         #    if not engine: logger.debug(f"Keine Engine-Referenz im finally-Block für {remote_addr} vorhanden.")
@@ -183,11 +179,13 @@ async def main():
     Hält den Server am Laufen, bis ein Shutdown-Signal empfangen wird.
     """
     # aiohttp Anwendung erstellen.
-    app = web.Application()
+    app = Application()
 
     # GameFactory Instanz erstellen und im App-Kontext speichern.
     # Dadurch ist sie für Handler über request.app['game_factory'] zugänglich.
+    lobby = Lobby()
     factory = GameFactory()
+    app['lobby'] = lobby
     app['game_factory'] = factory
 
     # Route für den WebSocket-Endpunkt '/ws' hinzufügen und mit dem Handler verknüpfen.
@@ -216,10 +214,10 @@ async def main():
             signal.signal(signal.SIGINT, shutdown)
 
     # Server mit AppRunner und TCPSite starten für mehr Kontrolle.
-    runner = web.AppRunner(app)
+    runner = AppRunner(app)
     await runner.setup()
     # Server an Host und Port aus der Konfiguration binden.
-    site = web.TCPSite(runner, config.HOST, config.PORT)
+    site = TCPSite(runner, config.HOST, config.PORT)
 
     try:
         # Starte den Server und beginne, auf Verbindungen zu lauschen.

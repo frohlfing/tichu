@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+
+# TODO alles überarbeiten
+
 import config
 import asyncio
 import json

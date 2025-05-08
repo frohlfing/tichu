@@ -1,7 +1,9 @@
+#!/usr/bin/env python
+
 import math
 from collections import Counter
-from scipy.special import comb
-from scipy.stats import hypergeom
+# from scipy.special import comb
+# from scipy.stats import hypergeom
 # noinspection PyProtectedMember
 from src.lib.cards import _cardlabels, _cardlabels_index
 from src.lib.cards import *
@@ -92,15 +94,6 @@ def remove_combinations():
 def binomial_math(n, k):
     return math.comb(n, k)
 
-def binomial_scipy(n, k):
-    return comb(n, k)
-
-def binomial_scipy_exact(n, k):
-    return comb(n, k, exact=True)
-
-def binomial_scipy_int(n, k):
-    return int(comb(n, k))
-
 def binomial_manual(n, k):
     if k < 0 or k > n:
         return 0
@@ -116,21 +109,12 @@ def binomial_benchmark(n=56, k=14):
     number = 1000  # Anzahl der Wiederholungen
     print(f"\nn={n}, k={k}")
     print("math", binomial_math(n, k))
-    print("scipy", binomial_scipy(n, k))
-    print("scipy int", binomial_scipy_int(n, k))
-    print("scipy exact", binomial_scipy_exact(n, k))
     print("manual", binomial_manual(n, k))
 
     time_math = timeit(lambda: binomial_math(n, k), number=number)
-    time_scipy = timeit(lambda: binomial_scipy(n, k), number=number)
-    time_scipy_int = timeit(lambda: binomial_scipy_int(n, k), number=number)
-    time_scipy_exact = timeit(lambda: binomial_scipy_exact(n, k), number=number)
     time_manual = timeit(lambda: binomial_manual(n, k), number=number)
 
     print(f"math: {time_math:.6f} Sekunden")
-    print(f"scipy: {time_scipy:.6f} Sekunden")
-    print(f"scipy int: {time_scipy_int:.6f} Sekunden")
-    print(f"scipy exact: {time_scipy_exact:.6f} Sekunden")
     print(f"manual: {time_manual:.6f} Sekunden")
 
     # math: 0.000093 Sekunden
@@ -153,18 +137,6 @@ def hypergeometric_math(N, n, M, k):
     return math.comb(M, k) * math.comb(N - M, n - k) / math.comb(N, n)
 
 # noinspection PyPep8Naming
-def hypergeometric_scipy(N, n, M, k):
-    return hypergeom.pmf(k, N, M, n)
-
-# noinspection PyPep8Naming
-def hypergeometric_scipy_comb(N, n, M, k):
-    return comb(M, k) * comb(N - M, n - k) / comb(N, n)
-
-# noinspection PyPep8Naming
-def hypergeometric_scipy_exact(N, n, M, k):
-    return comb(M, k, exact=True) * comb(N - M, n - k, exact=True) / comb(N, n, exact=True)
-
-# noinspection PyPep8Naming
 def hypergeometric_manual(N, n, M, k):
     return binomial_manual(M, k) * binomial_manual(N - M, n - k) / binomial_manual(N, n)
 
@@ -173,21 +145,12 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
     number = 1000  # Anzahl der Wiederholungen
     print(f"\nN={N}, n={n}, M={M}, k={k}")
     print("math", hypergeometric_math(N, n, M, k))
-    print("scipy", hypergeometric_scipy(N, n, M, k))
-    print("scipy comb", hypergeometric_scipy_comb(N, n, M, k))
-    print("scipy exact", hypergeometric_scipy_exact(N, n, M, k))
     print("manual", hypergeometric_manual(N, n, M, k))
 
     time_math = timeit(lambda: hypergeometric_math(N, n, M, k), number=number)
-    time_scipy = timeit(lambda: hypergeometric_scipy(N, n, M, k), number=number)
-    time_scipy_comb = timeit(lambda: hypergeometric_scipy_comb(N, n, M, k), number=number)
-    time_scipy_exact = timeit(lambda: hypergeometric_scipy_exact(N, n, M, k), number=number)
     time_manual = timeit(lambda: hypergeometric_manual(N, n, M, k), number=number)
 
     print(f"math: {time_math:.6f} Sekunden")
-    print(f"scipy: {time_scipy:.6f} Sekunden")
-    print(f"scipy comb: {time_scipy_comb:.6f} Sekunden")
-    print(f"scipy exact: {time_scipy_exact:.6f} Sekunden")
     print(f"manual: {time_manual:.6f} Sekunden")
 
     # math: 0.000233 Sekunden

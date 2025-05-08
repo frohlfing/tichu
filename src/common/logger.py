@@ -1,3 +1,5 @@
+# todo Datei Dokumentieren (reStructuredText)
+
 __all__ = "logger",
 
 import config
@@ -6,7 +8,6 @@ import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
 from typing import TextIO, Optional
-
 
 # https://xsnippet.org/359377/
 

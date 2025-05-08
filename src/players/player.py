@@ -1,41 +1,38 @@
 """
 Definiert die abstrakte Basisklasse `Player` für alle Spieler im Tichu-Spiel.
 """
-
-import uuid
+from src.common.logger import logger
 from src.private_state2 import PrivateState
 from src.public_state2 import PublicState
 from typing import Optional
+from uuid import uuid4
 
 
 class Player:
     """
-    Abstrakte Basisklasse für einen Spieler (Mensch oder KI).
+    Die Abstrakte Basisklasse für einen Spieler (Mensch oder KI).
 
     Definiert die grundlegenden Eigenschaften und Methoden, die jeder Spieler haben muss.
 
-    :ivar player_index: Der Index des Spielers am Tisch (0-3) oder None. Dieser Wert wird von der GameEngine gesetzt.
+    :ivar player_index: Der Index des Spielers am Tisch (0 bis 3, None == Spieler sitzt noch nicht am Tisch).
     """
 
-    def __init__(self, player_name: str, player_id: Optional[str] = None):
+    def __init__(self, name: str, uuid: Optional[str] = None):
         """
         Initialisiert einen neuen Spieler.
 
-        :param player_name: Der Name des Spielers. Wird bereinigt (Leerzeichen entfernt). Darf nicht leer sein.
-        :param player_id: Eine optionale, vorgegebene Spieler-ID. Wenn None, wird eine neue UUID generiert.
+        :param name: Der Name des Spielers. Wird bereinigt (Leerzeichen entfernt). Darf nicht leer sein.
+        :param uuid: (Optional) Die global eindeutige ID des Spielers. Wenn None, wird eine neue UUID generiert.
         :raises ValueError: Wenn der `player_name` leer ist.
         """
         #: Der Name des Spielers.
-        name_stripped = player_name.strip() if player_name else ""
+        name_stripped = name.strip() if name else ""
         if not name_stripped:
             raise ValueError("Spielername darf nicht leer sein.")
-        self._player_name: str = name_stripped
-
-        #: Eindeutige Spieler-ID (UUID).
-        self._player_id: str = player_id or str(uuid.uuid4())
-
-        #: Spielerposition am Tisch (0-3), wird von der GameEngine gesetzt.
-        self.player_index: Optional[int] = None
+        self._name: str = name_stripped
+        self._uuid: str = uuid or str(uuid4())
+        self.player_index: Optional[int] = None  # wird von der GameEngine gesetzt
+        logger.debug(f"Player '{self._name}' (UUID: {self._uuid}) erstellt.")
 
     def __repr__(self) -> str:
         """
@@ -43,30 +40,26 @@ class Player:
 
         :return: String-Repräsentation (z.B. "Client(name='Alice', id='...')").
         """
-        return f"{self.__class__.__name__}(name='{self.player_name}', id='{self.player_id}')"
+        return f"{self.__class__.__name__}(name='{self._name}', id='{self._uuid}')"
 
-    # Entfernen oder Zweck klären. Falls benötigt, sollte sie wahrscheinlich abstrakt sein.
     def reset_round(self):  # pragma: no cover
         """
-        Setzt spielrundenspezifische Werte zurück. (Aktuell nicht implementiert)
+        Setzt spielrundenspezifische Werte zurück.
         """
-        # raise NotImplementedError
-        pass # Vorerst keine Aktion
+        pass
 
     # ------------------------------------------------------
-    # Benachrichtigungen (Abstrakt)
+    # Benachrichtigung
     # ------------------------------------------------------
 
     async def notify(self, message_type: str, data: dict):
         """
         Verarbeitet eine Benachrichtigung vom Server (unidirektionale, z.B. Spielzustand, Fehler).
 
-        Muss von Subklassen implementiert werden.
-
         :param message_type: Der Typ der Nachricht.
         :param data: Die Nutzdaten der Nachricht.
         """
-        raise NotImplementedError
+        pass
 
     # ------------------------------------------------------
     # Entscheidungen
@@ -177,19 +170,19 @@ class Player:
     # ------------------------------------------------------
 
     @property
-    def name(self) -> str:
+    def class_name(self) -> str:
         """Gibt den Klassennamen zurück (z.B. 'Client', 'Agent')."""
         return type(self).__name__
 
     @property
-    def player_name(self) -> str:
+    def name(self) -> str:
         """Der Name des Spielers."""
-        return self._player_name
+        return self._name
 
     @property
-    def player_id(self) -> str:
-        """Die eindeutige ID des Spielers (UUID)."""
-        return self._player_id
+    def uuid(self) -> str:
+        """Die global eindeutige ID des Spielers."""
+        return self._uuid
 
     # Index des Partners
     @property

@@ -7,13 +7,15 @@ __all__ = "Card", "CardLabel", \
 
 from typing import Tuple
 
+# todo Dokumentieren (reStructuredText)
+
 # -----------------------------------------------------------------------------
 # Spielkarten
 # -----------------------------------------------------------------------------
 
 # Typ-Alias für eine Karte
 Card = Tuple[int, int]  # Wert, Farbe
-CardLabel = str  # z.B. "R2"
+CardLabel = str  # z.B. "R2"  # todo notwendig?
 
 
 # Sonderkarten

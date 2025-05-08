@@ -3,8 +3,8 @@ Glossar
 
 - Spieler und Teams
 
-Die Spieler werden gegen den Uhrzeigersinn mit 0 beginnend durchnummeriert. Spieler 0 und 1 bildet das Team 10 sowie
-Spieler 2 und 3 das Team 32. Ein Spieler hat 3 Mitspieler. Der Mitspieler gegenüber ist der Partner, die beiden anderen 
+Die Spieler werden gegen den Uhrzeigersinn mit 0 beginnend durchnummeriert. Spieler 0 und 2 bildet das Team 20 sowie
+Spieler 1 und 3 das Team 31. Ein Spieler hat 3 Mitspieler. Der Mitspieler gegenüber ist der Partner, die beiden anderen 
 Mitspieler sind rechter und linker Gegner.
 
 - Spielzug (turn): Ein Spieler spielt eine Kartenkombination aus oder passt
@@ -92,3 +92,12 @@ Eine Partie besteht aus mehreren Runden und endet, wenn ein Team mindestens 1000
 - Ein Fullhouse darf nicht aus einer 4er-Bombe mit Phönix gebildet werden (Drilling und Pärchen dürfen nicht den gleichen Rang haben).
 
 - Der Wunsch muss zwar erfüllt werden, wenn man am Zug ist (sofern möglich), aber nicht in dem Moment, wenn man eine Bombe wirft.
+
+
+-----------------------------
+## Die Begriffe "rating" und "ranking"
+
+- "rating" wird oft verwendet, um eine **Bewertung** oder eine numerische Einschätzung zu repräsentieren. Zum Beispiel könnte ein Elo-Rating in Schach oder ein Skill-Rating in einem Spiel eine Zahl sein, die die Stärke eines Spielers widerspiegelt.
+
+- "ranking" bezieht sich eher auf eine **Platzierung** in einer Liste oder Rangordnung. Es zeigt, wo jemand im Vergleich zu anderen steht, z. B. „Platz 1 von 100“.
+

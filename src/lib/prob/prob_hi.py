@@ -8,6 +8,8 @@ from src.lib.prob.tables_hi import load_table_hi
 from time import time
 from timeit import timeit
 
+# todo Dokumentieren (reStructuredText)
+
 # -----------------------------------------------------------------------------
 # Wahrscheinlichkeitsberechnung p_high
 # -----------------------------------------------------------------------------

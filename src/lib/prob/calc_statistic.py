@@ -1,5 +1,9 @@
 __all__ = "calc_statistic"
 
+# todo alles Überprüfen und bei Bedarf korrigieren
+
+# todo Dokumentieren (reStructuredText)
+
 # p_lo  # Wahrscheinlichkeit, dass die Kombination überstochen zu werden
 # p_hi  # Wahrscheinlichkeit, mit der Kombination überstochen zu werden
 # p_an = 1 - p_hi  # Wahrscheinlichkeit, mit der Kombination das Anspielrecht zu erhalten

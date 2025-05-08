@@ -7,6 +7,8 @@ import config
 import math
 from src.lib.combinations import stringify_figure, remove_combinations
 
+# todo Dokumentieren (reStructuredText)
+
 # -----------------------------------------------------------------------------
 # Partitionen
 # -----------------------------------------------------------------------------

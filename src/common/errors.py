@@ -1,5 +1,8 @@
-import asyncio
+"""
+Definiert die anwendungsspezifischen Laufzeitfehler.
+"""
 
+import asyncio
 
 # class ImmutableError(Exception):
 #     # Ausnahme für unveränderliche Objekte.

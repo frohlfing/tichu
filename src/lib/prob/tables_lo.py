@@ -8,6 +8,8 @@ from os import path, mkdir
 from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_type
 from time import time
 
+# todo Dokumentieren (reStructuredText)
+
 # -----------------------------------------------------------------------------
 # Generierung von Hilfstabellen für die Wahrscheinlichkeitsberechnung p_low
 # -----------------------------------------------------------------------------

@@ -6,12 +6,13 @@ from typing import Optional
 
 
 class RandomAgent(Agent):
-    # Zufallsagent
-    #
-    # Die Entscheidungen werden zufällig getroffen.
+    """
+    Repräsentiert einen Agenten, der seine Entscheidungen zufällig trifft.
 
-    def __init__(self, player_name: Optional[str] = None, player_id: Optional[str] = None, seed: int = None):
-        super().__init__(player_name, player_id=player_id)
+    Erbt von der Basisklasse `Agent`.
+    """
+    def __init__(self, name: Optional[str] = None, uuid: Optional[str] = None, seed: int = None):
+        super().__init__(name, uuid=uuid)
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
 
     # ------------------------------------------------------

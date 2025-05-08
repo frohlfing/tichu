@@ -9,6 +9,8 @@ import enum
 from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in
 from typing import Tuple
 
+# todo Dokumentieren (reStructuredText)
+
 # -----------------------------------------------------------------------------
 # Kartenkombinationen
 # -----------------------------------------------------------------------------
