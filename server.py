@@ -18,59 +18,113 @@ import sys
 from aiohttp import WSMsgType, WSCloseCode, WSMessage
 from aiohttp.web import Application, AppRunner, Request, WebSocketResponse, TCPSite
 from src.common.logger import logger
-from src.game_engine2 import GameEngine
 from src.game_factory import GameFactory
-from src.lobby import Lobby
+from _dev.altkram.lobby import Lobby
 from src.players.client import Client
-from typing import Optional
 
 
 async def websocket_handler(request: Request) -> WebSocketResponse | None:
     """
     Behandelt eingehende WebSocket-Verbindungen.
 
-    Aufgaben des Händlers:
-    - Verbindung aufbauen.
-    - Die Verbindungsanfrage an factory.handle_connection_request übergeben.
-    - Bei Erfolg die Nachrichtenschleife starten.
-    - Eingehende Nachrichten, die Antworten auf Anfragen sind, an den Client weiterleiten.
-    - Eingehende Nachrichten, die Interrupts auslösen sollen, an die Engine weiterleiten.
-    - Die Factory über den Verbindungsabbruch informieren.
-
     :param request: Das aiohttp Request-Objekt, das die initiale HTTP-Anfrage enthält.
     :return: Das aiohttp WebSocketResponse-Objekt, das die Verbindung repräsentiert.
     """
-    # Websocket
+    lobby: Lobby = request.app['lobby']
+    factory: GameFactory = request.app['game_factory']
+
+    # WebSocket-Handshake durchführen
     ws = WebSocketResponse()
     try:
-        await ws.prepare(request)  # führt den WebSocket-Handshake durch
+        await ws.prepare(request)
     except Exception as e:
         logger.exception(f"WebSocket Handshake fehlgeschlagen für {request.remote}: {e}")
         return ws
 
-    lobby: Lobby = request.app['lobby']
-    factory: GameFactory = request.app['game_factory']
-    params = request.query  # z.B. ?playerName=Frank&tableName=Tisch1[&playerId=UUID...]
-    remote_addr = request.remote  # Client-Adresse für Logging
+    # Query-String auslesen
+    params = request.query  # z.B. ?playerName=Frank&tableName=Tisch1[&session=UUID]
+    remote_addr = request.remote if request.remote else "Unbekannt"  # Client-Adresse
     logger.info(f"WebSocket Verbindung hergestellt von {remote_addr} mit Parametern: {params}")
 
-    client: Optional[Client] = None
-    engine: Optional[GameEngine] = None
+    # Referenz auf die Game-Engine holen, Client anlegen und der Engine zuordnen
+    session = params.get("session")
+    if session:
+        engine = factory.get_engine_by_session(session)
+        client = engine.get_player_by_session(session) if engine else None
+        if isinstance(client, Client) and not client.is_connected:
+            client.set_websocket(ws)
+        else:
+            error_message = "Query-Parameter 'session' fehlerhaft."
+            logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
+            await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
+            return ws
+        logger.info(f"Client {client.name} (Session {client.session}) erfolgreich wiederverbunden.")
+    else:
+        try:
+            engine = factory.get_or_create_engine(params.get("tableName"))
+            client = Client(params.get("playerName"), websocket=ws, interrupt_events=engine.interrupt_events, session=session) if engine else None
+        except ValueError:
+            error_message = "Query-Parameter 'playerName' oder 'tableName' fehlerhaft."
+            logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
+            await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
+            return ws
+
+        # Sitzplatz suchen, der von der KI besetzt ist (diesen werden wir kapern)
+        available_index = -1
+        for i, p in enumerate(engine.players):
+            if not isinstance(p, Client):
+                available_index = i
+                break
+        if available_index == -1:
+            error_message = f"Kein freier Platz am Tisch '{engine.table_name}'."
+            logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
+            await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
+            return ws
+
+        # Sitzplatz zuordnen
+        client.player_index = available_index
+        await engine.replace_player(client)
+        logger.info(f"Client {client.name} (Session {client.session}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {client.player_index} zugeordnet.")
+
+    # Bestätigung an den Client senden
     try:
-        # Die Lobby verarbeitet die Logik für Beitritt/Reconnect.
-        client, engine = await lobby.handle_connection_request(ws, dict(params), remote_addr)
+        await client.notify("joined_table", {
+            "playerName": client.name,
+            "tableName": engine.table_name,
+            "playerIndex": client.player_index,
+            "session": client.session,
+        })
+    except Exception as e:
+        logger.warning(f"Senden der Beitrittsbestätigung an {client.name} fehlgeschlagen: {e}.")
+        return ws
 
-        # Wenn die Factory None zurückgibt, wurde die Verbindung abgelehnt.
-        if client is None or engine is None:
-            logger.warning(f"Verbindung von {remote_addr} wurde von der Factory abgelehnt oder konnte nicht zugeordnet werden.")
-            # Die Factory sollte ws bereits geschlossen haben, aber zur Sicherheit prüfen.
-            if not ws.closed:
-                await ws.close(code=WSCloseCode.ABNORMAL_CLOSURE, message="Verbindung abgelehnt".encode('utf-8'))
-            return ws  # Handler beenden.
+    # solange Nachrichten von der Websocket verarbeiten, bis die Verbindung abbricht oder der Benutzer absichtlich geht
+    try:
+        await client.message_loop()
+    except Exception as e:
+        logger.exception(f"{engine.table_name}, Spieler {client.name}: Unerwarteter Fehler in der Nachrichtenschleife: {e}")
 
-        # Erfolgreich verbunden und zugeordnet.
-        logger.info(f"Handler: Client {client.name} ({client.uuid}) erfolgreich Tisch '{engine.table_name}' zugeordnet.")
+    # bei Verbindungsabbruch etwas warten, vielleicht schlüpft der Benutzer erneut in sein altes Ich
+    if not websocket.open:
+        logger.debug(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Timer started...")
+        await asyncio.sleep(config.KICK_OUT_TIME)
+        if client.websocket.id != websocket.id:
+            logger.debug(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich inzwischen wieder verbunden.")
+            return ws  # der Client wurde inzwischen innerhalb eines anderen Aufrufs des Websocket-Händlers übernommen
+        logger.debug(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich nicht wieder verbunden.")
 
+    # Gibt es noch andere Clients?
+    number_of_clients = sum(1 for chair in range(4) if isinstance(engine.get_player(chair), Client))
+    if number_of_clients > 1:
+        # ja, es gibt weitere Clients
+        agent = default_agent(client.canonical_chair, engine)
+        await engine.replace_player(agent)  # client in der Engine durch die KI ersetzen, andere wollen ja weiterspielen
+    else:
+        # es war der letzte Client
+        factory.remove_engine(engine)  # Engine entfernen
+
+
+    try:
         # Haupt-Nachrichtenschleife: Warten auf und Verarbeiten von Client-Nachrichten.
         msg: WSMessage
         async for msg in ws:
@@ -145,7 +199,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         # Dieser Block wird immer ausgeführt, wenn der Handler endet
         # (durch normalen Close, Fehler, CancelledError, etc.).
         client_name_log = client.name if client else 'N/A'
-        client_id_log = client.uuid if client else 'N/A'
+        client_id_log = client.session if client else 'N/A'
         table_name_log = engine.table_name if engine else 'N/A'
         logger.info(f"WebSocket Verbindung schließt für {client_name_log} ({client_id_log}) von {remote_addr}, Tisch: '{table_name_log}'")
 
@@ -153,7 +207,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         # Dies geschieht nur, wenn Client und Engine erfolgreich initialisiert wurden.
         if client and engine:
             # Ruft die synchrone Methode in der Factory auf.
-            factory.notify_player_disconnect(engine.table_name, client.uuid, client.name)
+            factory.notify_player_disconnect(engine.table_name, client.session, client.name)
         # else: # Optional: Loggen, wenn Client/Engine nicht vorhanden waren
         #    if not client: logger.debug(f"Kein Client-Objekt im finally-Block für {remote_addr} vorhanden.")
         #    if not engine: logger.debug(f"Keine Engine-Referenz im finally-Block für {remote_addr} vorhanden.")
@@ -232,8 +286,8 @@ async def main():
     finally:
         # Wird immer ausgeführt, auch bei Fehlern oder Abbruch.
         logger.info("Fahre Server herunter...")
-        # Führe zuerst den Shutdown der Factory aus (bricht Timer ab, räumt Engines auf).
-        await factory.shutdown()
+        # Führe zuerst die Cleanup-Operationen der Factory aus (räumt Engines auf).
+        await factory.cleanup()
         # Stoppe dann den aiohttp Listener (nimmt keine neuen Verbindungen mehr an).
         await site.stop()
         # Räume die aiohttp AppRunner Ressourcen auf.

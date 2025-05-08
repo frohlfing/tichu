@@ -2,8 +2,8 @@ import unittest
 from src.lib.cards import *
 from src.lib.combinations import *
 from src.players.heuristic_agent import HeuristicAgent
-from src.private_state import PrivateState
-from src.public_state import PublicState
+from _dev.altkram.private_state import PrivateState
+from _dev.altkram.public_state import PublicState
 
 
 class TestHeuristicAgent(unittest.TestCase):

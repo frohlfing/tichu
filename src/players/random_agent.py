@@ -1,7 +1,7 @@
 from src.common.rand import Random
 from src.players.agent import Agent
-from src.private_state import PrivateState
-from src.public_state import PublicState
+from _dev.altkram.private_state import PrivateState
+from _dev.altkram.public_state import PublicState
 from typing import Optional
 
 
@@ -11,8 +11,15 @@ class RandomAgent(Agent):
 
     Erbt von der Basisklasse `Agent`.
     """
-    def __init__(self, name: Optional[str] = None, uuid: Optional[str] = None, seed: int = None):
-        super().__init__(name, uuid=uuid)
+    def __init__(self, name: Optional[str] = None, session: Optional[str] = None, seed: int = None):
+        """
+        Initialisiert einen neuen Agenten.
+
+        :param name: (Optional) Name für den Agenten. Wenn None, wird einer generiert.
+        :param session: (Optional) Aktuelle Session des Agenten. Wenn None, wird eine Session generiert.
+        :param seed: (Optional) Seed für den internen Zufallsgenerator (für Tests).
+        """
+        super().__init__(name, session=session)
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
 
     # ------------------------------------------------------

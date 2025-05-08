@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from src.lib.cards import Card, stringify_cards
 from typing import List, Dict, Any
 
-
 @dataclass
 class PrivateState:
     """

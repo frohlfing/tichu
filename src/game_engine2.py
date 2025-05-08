@@ -16,8 +16,6 @@ from src.private_state2 import PrivateState
 from src.public_state2 import PublicState
 from typing import List, Dict, Optional, Tuple
 
-# todo alles überarbeiten
-
 class GameEngine:
     """
     Steuert den Spielablauf eines Tisches.
@@ -31,7 +29,7 @@ class GameEngine:
         Initialisiert eine neue GameEngine für einen gegebenen Tischnamen.
 
         :param table_name: Der Name des Spieltisches (eindeutiger Identifikator).
-        :param default_agents: Optional: Liste mit 4 Agenten als Standard/Fallback.
+        :param default_agents: (Optional) Liste mit 4 Agenten als Standard/Fallback. Wenn None, werden RandomAgent-Instanzen verwendet.
         :param seed: (Optional) Seed für den internen Zufallsgenerator (für Tests).
         :raises ValueError: Wenn Parameter nicht ok sind.
         """
@@ -93,9 +91,8 @@ class GameEngine:
 
     async def cleanup(self):
         """
-        Bereinigt Ressourcen dieser GameEngine Instanz.
+        Bereinigt Ressourcen dieser Instanz.
 
-        Wird von der `GameFactory` aufgerufen, bevor die Engine-Instanz aus dem Speicher entfernt wird.
         Bricht laufende Tasks ab und schließt verbleibende Client-Verbindungen.
         """
         logger.info(f"Räume GameEngine für Tisch '{self._table_name}' auf...")
@@ -124,7 +121,7 @@ class GameEngine:
             if isinstance(player, Client) and player.is_connected:
                  logger.debug(f"Schließe Verbindung für Client {player.player_name} auf Tisch '{self._table_name}'.")
                  tasks.append(asyncio.create_task(
-                     player.close_connection(code=WSCloseCode.GOING_AWAY, message='Tisch wird geschlossen'.encode('utf-8'))
+                     player.cleanup()
                  ))
         if tasks:
             # Warte auf das Schließen der Verbindungen.
@@ -721,13 +718,45 @@ class GameEngine:
     # Hilfsfunktionen
     # ------------------------------------------------------
 
-    # todo client-spezifische hat in der Engein nichts zu suchen
-    def _get_client_by_id(self, uuid: str) -> Optional[Client]:
-        """Gibt den Client anhand der UUID zurück."""
+    def get_player_by_session(self, session: str) -> Optional[Player]:
+        """
+        Gibt den Spieler anhand der Session zurück.
+
+        :param session: Die Session des Spielers.
+        :return: Die Player-Instanz falls die Session existiert, sonst None.
+        """
         for p in self._players:
-            if p.uuid == uuid and isinstance(p, Client):
+            if p.session == session:
                 return p
         return None
+
+    async def replace_player(self, player: Player) -> None:
+        # Ersetzt den Spieler am gegebenen Sitzplatz
+        # todo
+
+        assert player.get_world_name() == self._world_name
+        chair = player.canonical_chair
+        old_player = self._players[chair]
+        self._players[chair] = player
+        player.assign_secret_state(old_player)
+
+        if isinstance(old_player, Agent):
+            assert old_player in self._agents
+            self._agents.remove(old_player)
+        else:
+            assert isinstance(old_player, Client) and old_player in self._clients
+            self._clients.remove(old_player)
+
+        if isinstance(player, Agent):
+            assert player not in self._agents
+            self._agents.append(player)
+        else:
+            assert isinstance(player, Client) and player not in self._clients
+            self._clients.append(player)
+
+        del old_player
+        logger.info(f"{self._world_name}: Player {player.nickname} joined")
+
 
     def _shuffle_deck(self):
         """
@@ -745,7 +774,7 @@ class GameEngine:
         return self._table_name
 
     @property
-    def players(self) -> List[Optional[Player]]:
+    def players(self) -> List[Player]:
         return self._players # Rückgabe der Liste (Änderungen extern möglich, aber nicht vorgesehen)
 
     @property

@@ -1,8 +1,8 @@
 import unittest
 from src.lib.cards import *
 from src.players.random_agent import RandomAgent
-from src.private_state import PrivateState
-from src.public_state import PublicState
+from _dev.altkram.private_state import PrivateState
+from _dev.altkram.public_state import PublicState
 
 
 class TestRandomAgent(unittest.TestCase):

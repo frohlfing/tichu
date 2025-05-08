@@ -56,10 +56,10 @@ class Lobby:
         """
         player_name = params.get("playerName", f"Anon_{str(uuid.uuid4())[:4]}") # Standardname, falls nicht angegeben
         table_name = params.get("tableName")
-        player_id_from_params = params.get("playerId") # Für Reconnect
+        session_from_params = params.get("session") # Für Reconnect
 
         remote_addr_str = str(remote_addr) if remote_addr else "Unbekannt"
-        logger.info(f"Factory: Verarbeite Verbindungsanfrage von {remote_addr_str}: Spieler='{player_name}', Tisch='{table_name}', ID='{player_id_from_params}'")
+        logger.info(f"Factory: Verarbeite Verbindungsanfrage von {remote_addr_str}: Spieler='{player_name}', Tisch='{table_name}', ID='{session_from_params}'")
 
         # --- Schritt 1: Parameter validieren ---
         if not table_name:
@@ -79,7 +79,7 @@ class Lobby:
 
         # --- Schritt 3: Slot prüfen / Reconnect-Info holen (Engine fragen) ---
         try:
-            slot_index, existing_client, error_msg = engine.check_reconnect_or_find_slot(player_id_from_params, player_name)
+            slot_index, existing_client, error_msg = engine.check_reconnect_or_find_slot(session_from_params, player_name)
         except Exception as e:
             logger.exception(f"Factory: Kritischer Fehler bei check_reconnect_or_find_slot für Tisch '{table_name}': {e}")
             error_message = 'Serverfehler bei der Slot-Prüfung'
@@ -100,13 +100,13 @@ class Lobby:
         # --- Schritt 4: Client-Objekt erstellen oder aktualisieren ---
         client_obj: Client
         if existing_client:  # Reconnect-Fall
-            logger.info(f"Factory: Behandle Reconnect für {existing_client._name} ({existing_client._uuid}) auf Tisch '{table_name}'.")
+            logger.info(f"Factory: Behandle Reconnect für {existing_client._name} ({existing_client._session}) auf Tisch '{table_name}'.")
             client_obj = existing_client
-            client_obj.update_websocket(websocket, engine.interrupt_events) # Bestehendes Objekt mit neuem WebSocket aktualisieren
+            client_obj.reconnected(websocket, engine.interrupt_events) # Bestehendes Objekt mit neuem WebSocket aktualisieren
         else:  # Neuer Spieler
-            logger.info(f"Factory: Erstelle neues Client-Objekt für {player_name} (ID: {player_id_from_params or 'neu'}) für Tisch '{table_name}'.")
+            logger.info(f"Factory: Erstelle neues Client-Objekt für {player_name} (ID: {session_from_params or 'neu'}) für Tisch '{table_name}'.")
             # Nutze übergebene ID oder generiere neue
-            client_obj = Client(player_name, websocket, engine.interrupt_events, player_id_from_params)
+            client_obj = Client(player_name, websocket, engine.interrupt_events, session_from_params)
 
         # --- Schritt 5: Beitritt bei Engine bestätigen ---
         try:
@@ -122,7 +122,7 @@ class Lobby:
 
         # --- Schritt 6: Erfolgreichen (Re)Connect melden (bricht Timer ab) ---
         # Wichtig: Nachdem der Beitritt bei der Engine erfolgreich war.
-        self.notify_player_connect_or_reconnect(table_name, client_obj._uuid, client_obj._name)
+        self.notify_player_connect_or_reconnect(table_name, client_obj._session, client_obj._name)
 
         # --- Schritt 7: Bestätigung an Client senden ---
         try:
@@ -131,7 +131,7 @@ class Lobby:
                 "message": f"Erfolgreich Tisch '{table_name}' beigetreten als '{client_obj._name}' an Position {slot_index}.",
                 "tableName": table_name,
                 "playerName": client_obj._name,
-                "playerId": client_obj._uuid, # Client muss seine ID kennen!
+                "session": client_obj._session, # Client muss seine ID kennen!
                 "playerIndex": slot_index
             })
         except Exception as e:
@@ -139,6 +139,6 @@ class Lobby:
             logger.warning(f"Factory: Senden der Beitrittsbestätigung an {client_obj._name} fehlgeschlagen: {e}. Verbindungsproblem wahrscheinlich.")
             # Keine direkte Aktion hier, der `finally` Block im Handler wird es merken.
 
-        logger.info(f"Factory: Spieler {client_obj._name} ({client_obj._uuid}) erfolgreich Tisch '{table_name}' zugeordnet (von {remote_addr_str}).")
+        logger.info(f"Factory: Spieler {client_obj._name} ({client_obj._session}) erfolgreich Tisch '{table_name}' zugeordnet (von {remote_addr_str}).")
         # Gib die erstellten/gefundenen Objekte an den Handler zurück.
         return client_obj, engine

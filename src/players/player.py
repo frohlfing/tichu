@@ -17,12 +17,12 @@ class Player:
     :ivar player_index: Der Index des Spielers am Tisch (0 bis 3, None == Spieler sitzt noch nicht am Tisch).
     """
 
-    def __init__(self, name: str, uuid: Optional[str] = None):
+    def __init__(self, name: str, session: Optional[str] = None):
         """
         Initialisiert einen neuen Spieler.
 
         :param name: Der Name des Spielers. Wird bereinigt (Leerzeichen entfernt). Darf nicht leer sein.
-        :param uuid: (Optional) Die global eindeutige ID des Spielers. Wenn None, wird eine neue UUID generiert.
+        :param session: (Optional) Aktuelle Session des Spielers. Wenn None, wird eine Session generiert.
         :raises ValueError: Wenn der `player_name` leer ist.
         """
         #: Der Name des Spielers.
@@ -30,17 +30,23 @@ class Player:
         if not name_stripped:
             raise ValueError("Spielername darf nicht leer sein.")
         self._name: str = name_stripped
-        self._uuid: str = uuid or str(uuid4())
+        self._session: str = session if session else str(uuid4())
         self.player_index: Optional[int] = None  # wird von der GameEngine gesetzt
-        logger.debug(f"Player '{self._name}' (UUID: {self._uuid}) erstellt.")
+        logger.debug(f"Player '{self._name}' (Session: {self._session}) erstellt.")
 
     def __repr__(self) -> str:
         """
         Gibt eine repräsentative Zeichenkette für das Player-Objekt zurück.
 
-        :return: String-Repräsentation (z.B. "Client(name='Alice', id='...')").
+        :return: String-Repräsentation (z.B. "Agent(name='Alice', session='...')").
         """
-        return f"{self.__class__.__name__}(name='{self._name}', id='{self._uuid}')"
+        return f"{self.__class__.__name__}(name='{self._name}', session='{self._session}')"
+
+    async def cleanup(self):
+        """
+        Bereinigt Ressourcen dieser Instanz.
+        """
+        pass
 
     def reset_round(self):  # pragma: no cover
         """
@@ -180,9 +186,9 @@ class Player:
         return self._name
 
     @property
-    def uuid(self) -> str:
-        """Die global eindeutige ID des Spielers."""
-        return self._uuid
+    def session(self) -> str:
+        """Die aktuelle Session des Spielers."""
+        return self._session
 
     # Index des Partners
     @property

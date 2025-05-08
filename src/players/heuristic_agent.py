@@ -6,8 +6,8 @@ from src.lib.combinations import build_action_space, remove_combinations, FIGURE
 from src.lib.partitions import partition_quality, filter_playable_combinations, filter_playable_partitions
 from src.lib.prob import calc_statistic
 from src.players.agent import Agent
-from src.private_state import PrivateState
-from src.public_state import PublicState
+from _dev.altkram.private_state import PrivateState
+from _dev.altkram.public_state import PublicState
 from typing import Optional
 
 # todo Datei Dokumentieren (reStructuredText)
@@ -20,14 +20,21 @@ class HeuristicAgent(Agent):
 
     Erbt von der Basisklasse `Agent`.
     """
-
-    def __init__(self, name: Optional[str] = None, uuid: Optional[str] = None,
+    def __init__(self, name: Optional[str] = None, session: Optional[str] = None,
                  grand_quality: list[float] = config.HEURISTIC_TICHU_QUALITY, seed: int = None):
-        super().__init__(name, uuid=uuid)
+        """
+        Initialisiert einen neuen Agenten.
+
+        :param name: (Optional) Name für den Agenten. Wenn None, wird einer generiert.
+        :param session: (Optional) Aktuelle Session des Agenten. Wenn None, wird eine Session generiert.
+        :param grand_quality: (Optional) Mindestwert für die Güte bei der Tichu-Ansage (kleines, großes).
+        :param seed: (Optional) Seed für den internen Zufallsgenerator (für Tests).
+        """
+        super().__init__(name, session=session)
+        self._quality = grand_quality
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
         self.__statistic: dict = {}  # Statistische Häufigkeit der Kombinationen (wird erst berechnet, wenn benötigt)
         self._statistic_key: tuple = ()  # Spieler und Anzahl Handkarten, für die die Statistik berechnet wurde
-        self._quality = grand_quality  # Mindestwert für die Güte bei der Tichu-Ansage (kleines, großes)
 
     def reset_round(self):  # pragma: no cover
         self.__statistic = {}

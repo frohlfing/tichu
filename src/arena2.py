@@ -70,7 +70,7 @@ class Arena:
         self._init_pubs = pubs
         self._init_privs = privs
         self._worker = worker
-        self._seed = seed  # todo vermultich kann ich direkt die Engine initialisiert werden, wenn der Spielzustand kein Member von der Engine sein muss.
+        self._seed = seed
         self._stop_event = Manager().Event() if worker > 1 else asyncio.Event()  # Event zum Unterbrechen der Partie
         #self._progbar = Progbar(max_games, stateful_metrics=["Wins", "Lost", "Draws"])
         # Statistik
@@ -80,7 +80,6 @@ class Arena:
         self._rounds: int = 0  # Rundenzähler über alle Partien
         self._tricks: int = 0  # Stichzähler über alle Partien
         self._rating = [0, 0, 0]  # Kumulative Bewertung des Teams 20 (Anzahl Partien gewonnenen, verloren, unentschieden)
-        logger.info("Arena initialisiert.")
 
     def run(self):
         """
@@ -101,7 +100,6 @@ class Arena:
             #     self._update(p.get())
             pool.close()  # verhindert, dass weitere Aufgaben an den Pool gesendet werden
             pool.join()  # warten, bis die Worker-Prozesse beendet sind
-
         else:  # worker == 1
             for game_index in range(self._max_games):
                 self._update(self._play_game(game_index))

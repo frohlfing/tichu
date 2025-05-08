@@ -7,12 +7,6 @@ from typing import List, Optional, Tuple, Dict, Any
 from src.lib.cards import Card, stringify_cards
 from src.lib.combinations import Combination
 
-# todo: Nicht übernommene Felder aus altem PublicState
-# _history (im Sinne aller Züge der Runde): Wird implizit durch played_cards abgedeckt oder muss separat geführt werden, falls detaillierter benötigt.
-# _trick_counter (Statistik): Kann von der Arena/Engine extern gezählt werden.
-
-
-
 @dataclass
 class PublicState:
     """

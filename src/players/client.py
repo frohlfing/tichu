@@ -5,6 +5,7 @@ Definiert die Client-Klasse für die Interaktion mit einem menschlichen Spieler 
 import asyncio
 import time
 from aiohttp import web, WSCloseCode
+from aiohttp.web import WebSocketResponse
 from src.common.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError
 from src.common.logger import logger
 from src.common.rand import Random
@@ -27,9 +28,9 @@ class Client(Player):
     """
 
     def __init__(self, name: str,
-                 websocket: web.WebSocketResponse,
+                 websocket: WebSocketResponse,
                  interrupt_events: Dict[str, asyncio.Event],
-                 uuid: Optional[str] = None,
+                 session: Optional[str] = None,
                  seed: Optional[int] = None):
         """
         Initialisiert einen neuen Client.
@@ -37,32 +38,104 @@ class Client(Player):
         :param name: Der Name des Spielers.
         :param websocket: Das WebSocketResponse-Objekt der initialen Verbindung.
         :param interrupt_events: Ein Dictionary mit den asyncio.Event-Objekten der Engine für Interrupts.
-        :param uuid: Optionale, feste ID für den Spieler (für Reconnects). Wenn None, wird eine UUID generiert.
-        :param seed: Optionaler Seed für den internen Zufallsgenerator (für Tests).
+        :param session: (Optional) Aktuelle Session des Spielers. Wenn None, wird eine Session generiert.
+        :param seed: (Optional) Seed für den internen Zufallsgenerator (für Tests).
         """
-        super().__init__(name, uuid=uuid)
-        self._websocket: Optional[web.WebSocketResponse] = websocket
+        super().__init__(name, session=session)
+        self._websocket: Optional[WebSocketResponse] = websocket
         self._interrupt_events: Dict[str, asyncio.Event] = interrupt_events
         self._random = Random(seed)  # Zufallsgenerator
         self._pending_requests: Dict[str, asyncio.Future] = {}  # noch nicht vom Spieler beantwortete Websocket-Anfragen
         self._is_connected: bool = True  # interner Verbindungsstatus todo wird das benötigt?
 
-    def update_websocket(self, new_websocket: web.WebSocketResponse, interrupt_events: Dict[str, asyncio.Event]):
+    async def cleanup(self):
         """
-        Aktualisiert die WebSocket-Verbindung bei einem Reconnect.
+        Bereinigt Ressourcen dieser Instanz.
 
-        Wird von der `GameFactory` aufgerufen, wenn ein bekannter Spieler
-        sich erneut verbindet.
+        Versucht, die WebSocket-Verbindung serverseitig aktiv und sauber zu schließen.
+        """
+        # Nur versuchen, wenn ein aktives, nicht geschlossenes WebSocket vorhanden ist.
+        if self._websocket and not self._websocket.closed:
+            logger.debug(f"Schließe WebSocket für Client {self._name} aktiv.")
+            try:
+                code = WSCloseCode.GOING_AWAY  # siehe RFC 6455
+                message = "Verbindung wird geschlossen".encode('utf-8')  # Nachricht (als Bytes), die mit dem Close Frame gesendet wird
+                await self._websocket.close(code=code, message=message)
+            except Exception as e:
+                logger.exception(f"Fehler beim Schließen der WebSocket-Verbindung für {self._name}: {e}")
+        self.mark_as_disconnected(reason="Expliziter close_connection Aufruf")
+
+    async def message_loop(self) -> None:
+        """
+        Verarbeitet so lange Nachrichten von der Websocket, bis die Verbindung abbricht
+
+        Die Nachrichtenschleife wird im Kontext des Websocket-Handlers aufgerufen. Wenn die Methode verlassen wird,
+        wird die Verbindung mit der Gegenstelle geschlossen, falls diese noch offen sein sollte.
+        """
+        while True:
+            try:
+                # auf eine Nachricht warten
+                message = await self.websocket.recv()
+                try:
+                    data = json.loads(message)
+                except JSONDecodeError:
+                    # der JSON-String ist nicht korrekt formatiert
+                    logger.error(f"{self._engine.get_world_name()}, Player {self._nickname}: Invalid Json: {message}")
+                    continue
+
+                # Message-Type auslesen
+                message_type_name = data.get("type")
+                if not hasattr(ClientMessageType, message_type_name):
+                    logger.error(f"{self._engine.get_world_name()}, Player {self._nickname}: Invalid message type: {message_type_name}")
+                    continue
+                message_type: ClientMessageType = getattr(ClientMessageType, message_type_name)
+
+                # Spieler verlässt das Spiel
+                if message_type == ClientMessageType.LEAVE:
+                    break  # Nachrichtenschleife verlassen (dadurch wird die Verbindung mit der Gegenstelle geschlossen)
+
+                # Spieler fordert Aktion an
+                elif message_type == ClientMessageType.ACTION:
+                    # Aktion auslesen
+                    action_name = data.get("action")
+                    if not hasattr(Action, action_name):
+                        logger.error(f"{self._engine.get_world_name()}, Player {self._nickname}: Invalid action: {action_name}")
+                        continue
+                    action: Action = getattr(Action, action_name)
+
+                    # Parameter deserialisieren
+                    params = data.get("parameters", {})
+                    assert isinstance(params, dict)
+                    if "cards" in params:
+                        params["cards"] = CardCollection.deserialize(params["cards"])
+                    if "combination" in params:
+                        params["combination"] = CardCombination.deserialize(params["combination"])
+
+                    # Aktion zwischenspeichern
+                    await self.queue.put((action, params))
+                    if action in [Action.GRAND, Action.TICHU, Action.BOMB]:
+                        # todo sicherstellen, dass der Spieler auch tatsächlich die Aktion durchführen darf
+                        self._engine.interrupt(self.canonical_chair)
+
+                # Message-Type übersehen?
+                else:
+                    assert False, f"message type {message_type} unprocessed"
+
+            except ConnectionClosed:
+                logger.debug(f"{self._engine.get_world_name()}, Player {self._nickname}: Connection closed.")
+                break
+
+    def set_websocket(self, new_websocket: WebSocketResponse):
+        """
+        Übernimmt die WebSocket-Verbindung.
 
         :param new_websocket: Das neue WebSocketResponse-Objekt.
-        :param interrupt_events: Die (potenziell neuen) Interrupt-Events der Engine.
         """
-        logger.info(f"Aktualisiere WebSocket für Client {self._name} ({self._uuid}).")
+        logger.info(f"Aktualisiere WebSocket für Client {self._name} ({self._session}).")
         self._websocket = new_websocket
-        self._interrupt_events = interrupt_events
-        self._is_connected = True # Markiere wieder als verbunden
-        # Wenn der Client sich wieder verbindet, während er auf eine Antwort wartete, sollte die alte Anfrage ungültig sein.
-        for request_type, future in list(self._pending_requests.items()):  # list() für Kopie
+        self._is_connected = True  # Markiere wieder als verbunden
+        # Über die alte Verbindung noch Anfragen offen sind, diese verwerfen.
+        for request_type, future in list(self._pending_requests.items()):
             if not future.done():
                 logger.warning(f"Client {self._name}: Breche alte Anfrage '{request_type}' wegen Reconnect ab.")
                 future.cancel()
@@ -79,30 +152,9 @@ class Client(Player):
         """
         # Nur ausführen, wenn der Client aktuell als verbunden gilt.
         if self._is_connected:
-            logger.info(f"Markiere Client {self._name} ({self._uuid}) als getrennt. Grund: {reason}")
+            logger.info(f"Markiere Client {self._name} ({self._session}) als getrennt. Grund: {reason}")
             self._is_connected = False
             self._websocket = None # WebSocket-Referenz entfernen
-
-    async def close_connection(self, code: int = WSCloseCode.GOING_AWAY, message: bytes = b'Verbindung wird geschlossen'):
-        """
-        Versucht, die WebSocket-Verbindung serverseitig aktiv und sauber zu schließen.
-
-        Markiert den Client danach intern als getrennt.
-
-        :param code: Der WebSocket Close Code (siehe RFC 6455).
-        :param message: Eine optionale Nachricht (als Bytes), die mit dem Close Frame gesendet wird.
-        """
-        # Nur versuchen, wenn ein aktives, nicht geschlossenes WebSocket vorhanden ist.
-        if self._websocket and not self._websocket.closed:
-            logger.debug(f"Schließe WebSocket für Client {self._name} aktiv.")
-            try:
-                # Sende Close Frame an den Client.
-                await self._websocket.close(code=code, message=message)
-            except Exception as e:
-                # Fehler beim Senden des Close Frames (z.B. Verbindung bereits tot).
-                logger.warning(f"Ausnahme beim aktiven Schließen des WebSockets für {self._name}: {e}")
-        # Markiere den Client auf jeden Fall intern als getrennt.
-        self.mark_as_disconnected(reason="Expliziter close_connection Aufruf")
 
     # ------------------------------------------------------
     # Benachrichtigung
