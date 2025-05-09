@@ -15,16 +15,16 @@ class PrivateState:
 
     :ivar player_index: Der Index dieses Spielers am Tisch (zwischen 0 und 3).
     :ivar hand_cards: Die aktuellen Handkarten des Spielers (absteigend sortiert, z.B. [(8,3), (2,4), (0,1)].
-    :ivar received_schupf_cards: Die drei Karten, die der Spieler beim Schupfen vom rechten Gegner, Partner und linken Gegner erhalten hat.
     :ivar given_schupf_cards: Die drei Karten, die der Spieler zum Schupfen an den rechten Gegner, Partner und linken Gegner abgegeben hat.
+    :ivar received_schupf_cards: Die drei Karten, die der Spieler beim Schupfen vom rechten Gegner, Partner und linken Gegner erhalten hat.
     """
     # --- Spielerinformationen ---
     player_index: int = -1
 
     # --- Information über die aktuelle Runde ---
     hand_cards: List[Card] = field(default_factory=list)
-    received_schupf_cards: List[Card] = field(default_factory=list)
-    given_schupf_cards: List[Card] = field(default_factory=list)
+    given_schupf_cards: List[Card] = field(default_factory=list)  # todo in kanonischer Form definieren ([Spieler 0 bis 3], wobei given_schupf_cards[player_index] immer None ist)
+    received_schupf_cards: List[Card] = field(default_factory=list)  # todo in kanonischer Form definieren ([Spieler 0 bis 3], wobei received_schupf_cards[player_index] immer None ist)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -37,6 +37,6 @@ class PrivateState:
         return {
             "playerIndex": self.player_index,
             "handCards": stringify_cards(self.hand_cards),
-            "receivedSchupfCards": stringify_cards(self.received_schupf_cards),
             "givenSchupfCards": stringify_cards(self.given_schupf_cards),
+            "receivedSchupfCards": stringify_cards(self.received_schupf_cards),
         }

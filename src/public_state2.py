@@ -23,9 +23,9 @@ class PublicState:
     :ivar announcements: Angekündigtes Tichu pro Spieler [Spieler 0-3] (0 == keine Ansage, 1 == kleines, 2 == großes Tichu)
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt)
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == noch niemand).
-    :ivar trick_owner_index: Index des Spielers, der die letzte Kombination gespielt hat (-1 == leerer Stich).
+    :ivar trick_owner_index: Index des Spielers, der die letzte Kombination gespielt hat, also Besitzer des Stichs ist (-1 == leerer Stich).
     :ivar trick_cards: Die Karten der letzten Kombination im Stich [Card, ...].
-    :ivar trick_combination: Typ, Länge und Wert der letzten Kombination im aktuellen Stich ((0,0,0) == leerer Stich)
+    :ivar trick_combination: Typ, Länge und Wert des aktuellen Stichs ((0,0,0) == leerer Stich)
     :ivar trick_points: Punkte des aktuellen Stichs.
     :ivar round_history: Spielverlauf der aktuellen Runde [(player_index, [Card, ...], Combination), ...]. # todo in Stiche unterteilen
     :ivar points: Punktestand der aktuellen Runde pro Spieler [Spieler 0-3].

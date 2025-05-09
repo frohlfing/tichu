@@ -16,7 +16,7 @@ from typing import Tuple
 # -----------------------------------------------------------------------------
 
 # Enum für Kombinationstypen
-class CombinationType(enum.IntEnum):
+class CombinationType(enum.IntEnum):  # todo überall konsequent verwenden
     PASS = 0  # Passen
     SINGLE = 1  # Einzelkarte
     PAIR = 2  # Paar
@@ -27,10 +27,10 @@ class CombinationType(enum.IntEnum):
     BOMB = 7  # Vierer-Bombe oder Farbbombe
 
 # Typ-Alias für eine Kombination
-Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)
+Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)  # todo überall konsequent verwenden
 
 
-# Figur-Typen
+# Figur-Typen  # todo statt dessen CombinationType verwenden
 PASS = 0       # Passen
 SINGLE = 1     # Einzelkarte
 PAIR = 2       # Paar
@@ -47,6 +47,7 @@ FIGURE_MAH = (1, 1, 1)
 FIGURE_DRA = (1, 1, 15)
 FIGURE_PHO = (1, 1, 16)
 
+# todo prüfen, ob wir das tatsächlich brauchen
 # Alle möglichen Figuren
 _figures = (  # Index → figure == (Typ, Länge, Rang)
     # Passen - PASS
@@ -90,6 +91,7 @@ _figures = (  # Index → figure == (Typ, Länge, Rang)
     (7, 13, 14),
 )
 
+# todo prüfen, ob wir das tatsächlich brauchen
 # wie figures.index(figure), aber schneller!
 _figures_index = {  # figure == (Typ, Länge, Rang) → Index
     # Passen - PASS
@@ -133,6 +135,7 @@ _figures_index = {  # figure == (Typ, Länge, Rang) → Index
     (7, 13, 14): 226,
 }
 
+# todo prüfen, ob wir das tatsächlich brauchen
 _figurelabels = (
     # PASS
     "Passen",
@@ -175,6 +178,7 @@ _figurelabels = (
     "13erBombeA",
 )
 
+# todo prüfen, ob wir das tatsächlich brauchen
 # wie figurelabels.index(label), aber schneller
 _figurelabels_index = {
     # PASS

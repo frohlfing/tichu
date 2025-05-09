@@ -14,8 +14,8 @@ from typing import Tuple
 # -----------------------------------------------------------------------------
 
 # Typ-Alias für eine Karte
-Card = Tuple[int, int]  # Wert, Farbe
-CardLabel = str  # z.B. "R2"  # todo notwendig?
+Card = Tuple[int, int]  # Wert, Farbe   # todo überall konsequent verwenden
+CardLabel = str  # z.B. "R2"  # todo wieder rausnehmen
 
 
 # Sonderkarten

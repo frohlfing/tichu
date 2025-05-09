@@ -3,10 +3,10 @@ Definiert die Spiellogik.
 """
 
 import asyncio
-from src.lib.combinations import FIGURE_DRA, FIGURE_DOG, build_action_space, FIGURE_PASS, build_combinations, remove_combinations
+from src.lib.combinations import FIGURE_DRA, FIGURE_DOG, build_action_space, FIGURE_PASS, build_combinations, remove_combinations, CombinationType, FIGURE_PHO, FIGURE_MAH, SINGLE
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import deck, CARD_MAH
+from src.lib.cards import deck, CARD_MAH, Card, is_wish_in, sum_card_points, CARD_DRA, other_cards
 from src.lib.partitions import remove_partitions
 from src.players.agent import Agent
 from src.players.client import Client
@@ -67,9 +67,6 @@ class GameEngine:
 
         # Zufallsgenerator, geeignet für Multiprocessing
         self._random = Random(seed)
-
-        # Kopie des sortiertem Standarddecks - wird jede Runde neu durchgemischt
-        self._mixed_deck = list(deck)
 
         logger.info(f"GameEngine für Tisch '{table_name}' erstellt.")
 
@@ -154,6 +151,9 @@ class GameEngine:
             for i, priv in enumerate(privs):
                 priv.player_index = i
 
+            # Kopie des sortiertem Standarddecks - wird jede Runde neu durchgemischt
+            mixed_deck = list(deck)
+            
             # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhautpt Clients im Spiel sind
             # todo testen, ob das wirklich relevant ist
             clients_joined = any(isinstance(p, Client) for p in self._players)
@@ -163,35 +163,27 @@ class GameEngine:
                 # Neue Runde...
 
                 # öffentlichen Spielzustand zurücksetzen
-                pub.reset_round()
+                self.reset_public_state_for_round(pub)
 
                 # privaten Spielzustand zurücksetzen
                 for priv in privs:
-                    priv._hand = []
-                    priv._schupfed = []
-                    priv._combination_cache = []
-                    priv._partition_cache = []
-                    priv._partitions_aborted = True
+                    self.reset_private_state_for_round(priv)
 
                 # Agents zurücksetzen
-                for agent in self._agents:
+                for agent in self._players:
                     agent.reset_round()
 
                 # Karten mischen
-                pub.shuffle_cards()
+                self.shuffle_cards(mixed_deck)
 
                 # Karten aufnehmen, erst 8 dann alle
                 first = self._random.integer(0, 4)  # wählt zufällig eine Zahl zwischen 0 und 3
                 for n in (8, 14):
                     # Karten verteilen
                     for player in range(0, 4):
-                        cards = pub.deal_out(player, n)
-                        priv = privs[player]
-                        priv._hand = cards
-                        priv._schupfed = []
-                        priv._combination_cache = []
-                        priv._partition_cache = []
-                        pub.set_number_of_cards(player, n)
+                        cards = self.deal_out(mixed_deck, player, n)
+                        self.take_cards(privs[player], cards)
+                        self.set_number_of_cards(pub, player, n)
                     if clients_joined: 
                         await self.broadcast("")
 
@@ -199,48 +191,48 @@ class GameEngine:
                     for i in range(0, 4):
                         player = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                         grand = n == 8  # großes Tichu?
-                        if not pub.announcements[player] and self._agents[player].announce(pub, privs[player], grand):
-                            pub.announce(player, grand)
+                        if not pub.announcements[player] and await self._players[player].announce(pub, privs[player], grand):
+                            self.announce(pub, player, grand)
                             if clients_joined: 
                                 await self.broadcast("")
 
                 # jetzt müssen die Spieler schupfen
                 schupfed = [None, None, None, None]
                 for player in range(0, 4):
-                    schupfed[player] = privs[player].schupf(self._agents[player].schupf(pub, privs[player]))
-                    assert privs[player].number_of_cards == 11
-                    pub.set_number_of_cards(player, 11)
+                    schupfed[player] = self.schupf(privs[player], await self._players[player].schupf(pub, privs[player]))
+                    assert len(privs[player].hand_cards) == 11
+                    self.set_number_of_cards(pub, player, 11)
                 if clients_joined: 
                     await self.broadcast("")
 
                 # die abgegebenen Karten der Mitspieler aufnehmen
                 for player in range(0, 4):
-                    privs[player].take_schupfed_cards([schupfed[giver][player] for giver in range(0, 4)])
-                    assert privs[player].number_of_cards == 14
-                    pub.set_number_of_cards(player, 14)
-                    if privs[player].has_mahjong:
-                        pub.set_start_player(player)  # Startspieler bekannt geben
+                    self.take_schupfed_cards(privs[player], [schupfed[giver][player] for giver in range(0, 4)])
+                    assert len(privs[player].hand_cards) == 14
+                    self.set_number_of_cards(pub, player, 14)
+                    if CARD_MAH in privs[player].hand_cards:
+                        self.set_start_player(pub, player)  # Startspieler bekannt geben
                 if clients_joined: 
                     await self.broadcast("")
 
                 # los geht's - das eigentliche Spiel kann beginnen...
-                assert 0 <= pub.current_player_index <= 3
-                while not pub.is_done:
-                    priv = privs[pub.current_player_index]
-                    agent = self._agents[pub.current_player_index]
-                    assert pub.num_hand_cards[priv.player_index] == len(priv._hand)
+                assert 0 <= pub.current_turn_index <= 3
+                while not pub.is_round_over:
+                    priv = privs[pub.current_turn_index]
+                    agent = self._players[pub.current_turn_index]
+                    assert pub.num_hand_cards[priv.player_index] == len(priv.hand_cards)
                     assert 0 <= pub.num_hand_cards[priv.player_index] <= 14
                     if clients_joined: 
                         await self.broadcast("")
 
                     # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
-                    if pub.trick_player_index == priv.player_index and pub.trick_figure != FIGURE_DOG:  # der Hund bleibt aber immer liegen
-                        if not pub.double_victory and pub.trick_figure == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
+                    if pub.trick_owner_index == priv.player_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt aber immer liegen
+                        if not pub.double_victory and pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                             opponent = agent.gift(pub, priv)
                             assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                         else:
                             opponent = -1
-                        pub.clear_trick(opponent)
+                        self.clear_trick(pub, opponent)
                         if clients_joined: 
                             await self.broadcast("")
 
@@ -249,50 +241,37 @@ class GameEngine:
                         # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf Tichu angesagt werden
                         if pub.num_hand_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
                             if agent.announce(pub, priv):
-                                pub.announce(priv.player_index)
+                                self.announce(pub, priv.player_index)
                                 if clients_joined: 
                                     await self.broadcast("")
 
                         # Kombination auswählen
-                        if not priv._combination_cache and priv._hand:
-                            priv._combination_cache = build_combinations(priv._hand)
-                        action_space = build_action_space(priv._combination_cache, pub.trick_figure, pub.wish_value)
-                        combi = agent.combination(pub, priv, action_space)
-                        assert pub.num_hand_cards[priv.player_index] == len(priv._hand)
+                        if not priv._combination_cache and priv.hand_cards:
+                            priv._combination_cache = build_combinations(priv.hand_cards)
+                        action_space = build_action_space(priv._combination_cache, pub.trick_combination, pub.wish_value)
+                        combi = await agent.combination(pub, priv, action_space)
+                        assert pub.num_hand_cards[priv.player_index] == len(priv.hand_cards)
                         assert combi[1][1] <= pub.num_hand_cards[priv.player_index] <= 14
 
-                        # Kombination ausspielen -  play(combi)
-                        if combi[1] != FIGURE_PASS:
-                            # Handkarten aktualisieren
-                            priv._hand = [card for card in priv._hand if card not in combi[0]]
-                            if priv._combination_cache:
-                                # das Entfernen der Kombinationen ist im Schnitt ca. 1.25-mal schneller als neu zu berechnen
-                                priv._combination_cache = remove_combinations(priv._combination_cache, combi[0])
-                            if priv._partition_cache:
-                                if priv._partitions_aborted:
-                                    # Die Berechnung aller Partitionen wurde abgebrochen, da es zu viele gibt. Daher kann die Liste
-                                    # nicht aktualisiert werden, sondern muss neu berechnet werden.
-                                    priv._partition_cache = []
-                                # das ist schneller, als alle Partitionen erneut zu berechnen
-                                priv._partition_cache = remove_partitions(priv.partitions, combi[0])
-
-                        assert len(priv._hand) == pub.num_hand_cards[priv.player_index] - combi[1][1]
-                        pub.play(combi)
-                        assert pub.num_hand_cards[priv.player_index] == len(priv._hand)
+                        # Kombination ausspielen
+                        self.play_priv(priv, combi)
+                        assert len(priv.hand_cards) == pub.num_hand_cards[priv.player_index] - combi[1][1]
+                        self.play_pub(pub, combi)
+                        assert pub.num_hand_cards[priv.player_index] == len(priv.hand_cards)
                         if clients_joined: 
                             await self.broadcast("")
 
                         if combi[1] != FIGURE_PASS:
                             # Spiel vorbei?
-                            if pub.is_done:
+                            if pub.is_round_over:
                                 # Spiel ist vorbei; letzten Stich abräumen und fertig!
-                                assert pub.trick_player_index == priv.player_index
-                                if not pub.double_victory and pub.trick_figure == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
-                                    opponent = agent.gift(pub, priv)
+                                assert pub.trick_owner_index == priv.player_index
+                                if not pub.double_victory and pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
+                                    opponent = await agent.gift(pub, priv)
                                     assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                                 else:
                                     opponent = -1
-                                pub.clear_trick(opponent)
+                                self.clear_trick(pub, opponent)
                                 if clients_joined: 
                                     await self.broadcast("")
                                 break
@@ -300,14 +279,14 @@ class GameEngine:
                             # falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden
                             if CARD_MAH in combi[0]:
                                 assert pub.wish_value == 0
-                                wish = agent.wish(pub, priv)
+                                wish = await agent.wish(pub, priv)
                                 assert 2 <= wish <= 14
-                                pub.set_wish(wish)
+                                self.set_wish(pub, wish)
                                 if clients_joined: 
                                     await self.broadcast("")
 
                     # nächster Spieler ist an der Reihe
-                    pub.step()
+                    self.turn(pub)
 
             logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {sum(pub.game_score[0])}, Team 31: {sum(pub.game_score[1])}")
             if clients_joined:
@@ -337,6 +316,355 @@ class GameEngine:
             self.game_loop_task = None  # Referenz aufheben
 
         return pub
+
+    # ------------------------------------------------------
+    # PublicState modifizieren
+    # ------------------------------------------------------
+    
+    @staticmethod
+    def reset_public_state_for_round(pub: PublicState):  # pragma: no cover
+        """
+        Spielzustand für eine neue Runde zurücksetzen
+        :param pub: Öffentlicher Spielzustand
+        """
+        pub.current_turn_index = -1
+        pub.start_player_index = -1
+        pub.num_hand_cards = [0, 0, 0, 0]
+        pub.played_cards = []
+        pub.announcements = [0, 0, 0, 0]
+        pub.wish_value = 0
+        pub.dragon_recipient = -1
+        pub.trick_owner_index = -1
+        pub.trick_combination = (CombinationType.PASS, 0, 0)
+        pub.trick_points = 0
+        pub.round_history = []
+        pub.points = [0, 0, 0, 0]
+        pub.winner_index = -1
+        pub.loser_index = -1
+        pub.is_round_over = False
+        pub.double_victory = False
+    
+    # @staticmethod
+    # def number_of_players(pub: PublicState) -> int:
+    #     """
+    #     Anzahl Spieler, die noch im Rennen sind.
+    #     :param pub: Öffentlicher Spielzustand
+    #     """
+    #     return sum(1 for n in pub.num_hand_cards if n > 0)
+
+    def shuffle_cards(self, cards: List[Card]) -> None:
+        """
+        Karten mischen
+        :param cards: Kartendeck
+        """
+        self._random.shuffle(cards)
+
+    @staticmethod
+    def deal_out(cards: List[Card], player_index: int, n: int) -> List[Card]:
+        """
+        Karten austeilen
+        :param cards: Kartendeck
+        :param player_index: Index des Spielers (0 bis 3)
+        :param n: Anzahl Karten (8 oder 14)
+        :return: Die ausgeteilten Karten, absteigend sortiert.
+        """
+        offset = player_index * 14
+        return sorted(cards[offset:offset + n], reverse=True)
+
+    @staticmethod
+    def set_start_player(pub: PublicState, player_index: int):  # pragma: no cover
+        """
+        Startspieler bekannt geben
+        :param pub: Öffentlicher Spielzustand
+        :param player_index: Index des Spielers (0 bis 3)
+        """
+        assert not pub.is_round_over
+        assert 0 <= player_index <= 3
+        assert pub.start_player_index == -1
+        pub.start_player_index = player_index
+        assert pub.current_turn_index == -1
+        pub.current_turn_index = player_index
+
+    @staticmethod
+    def set_number_of_cards(pub: PublicState, player_index: int, n: int):  # pragma: no cover
+        """
+        Anzahl der Handkarten angeben
+        :param pub: Öffentlicher Spielzustand
+        :param player_index: Der Index des Spielers. 
+        :param n: Anzahl Handkarten des Spielers
+        """
+        assert not pub.is_round_over
+        assert 0 <= player_index <= 3
+        assert (pub.num_hand_cards[player_index] == 0 and n == 8) or \
+               (pub.num_hand_cards[player_index] == 8 and n == 14) or \
+               (pub.num_hand_cards[player_index] == 14 and n == 11) or \
+               (pub.num_hand_cards[player_index] == 11 and n == 14)
+        pub.num_hand_cards[player_index] = n
+
+    @staticmethod
+    def announce(pub: PublicState, player_index: int, grand: bool = False):  # pragma: no cover
+        """
+        Tichu ansagen
+        :param pub: Öffentlicher Spielzustand
+        :param player_index: Der Index des Spielers, der Tichu angesagt hat. 
+        :param grand: True, wenn Grand Tichu angesagt wurde.
+        """
+        assert not pub.is_round_over
+        assert 0 <= player_index <= 3
+        assert pub.announcements[player_index] == 0
+        assert (grand and pub.num_hand_cards[player_index] == 8 and pub.start_player_index == -1) or (not grand and pub.num_hand_cards[player_index] == 14)
+        pub.announcements[player_index] = 2 if grand else 1
+
+    @staticmethod
+    def play_pub(pub: PublicState, combi: tuple):
+        """
+        Kombination spielen
+        :param pub: Öffentlicher Spielzustand
+        :param combi: Ausgewählte Kombination (Karten, (Typ, Länge, Wert)) 
+        """
+        assert not pub.is_round_over
+        assert pub.current_turn_index != -1
+        pub.round_history.append((pub.current_turn_index, combi))  # todo: in Stiche unterteilen
+        if combi[1] == FIGURE_PASS:
+            return
+
+        # Gespielte Karten merken
+        assert not set(combi[0]).intersection(pub.played_cards)  # darf keine Schnittmenge bilden
+        pub.played_cards += combi[0]
+
+        # Anzahl Handkarten aktualisieren
+        assert combi[1][1] == len(combi[0])
+        assert pub.num_hand_cards[pub.current_turn_index] >= combi[1][1]
+        pub.num_hand_cards[pub.current_turn_index] -= combi[1][1]
+
+        # Wunsch erfüllt?
+        assert pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
+        if pub.wish_value > 0 and is_wish_in(pub.wish_value, combi[0]):
+            assert CARD_MAH in pub.played_cards
+            pub.wish_value = -pub.wish_value
+
+        # Stich aktualisieren
+        pub.trick_owner_index = pub.current_turn_index
+        if combi[1] == FIGURE_PHO:
+            assert pub.trick_combination == (0, 0, 0) or pub.trick_combination[0] == SINGLE
+            assert pub.trick_combination != FIGURE_DRA  # Phönix auf Drache geht nicht
+            # Der Phönix ist eigentlich um 0.5 größer als der Stich, aber gleichsetzen geht auch (Anspiel == 1).
+            if pub.trick_combination[2] == 0:  # Anspiel oder Hund?
+                pub.trick_combination = FIGURE_MAH
+        else:
+            pub.trick_combination = combi[1]
+        pub.trick_points += sum_card_points(combi[0])
+        assert -25 <= pub.trick_points <= 125
+
+        # Runde beendet?
+        if pub.num_hand_cards[pub.current_turn_index] == 0:
+            number_of_players = sum(1 for n in pub.num_hand_cards if n > 0)  # Anzahl Spieler, die noch im Rennen sind
+            assert 1 <= number_of_players <= 3
+            if number_of_players == 3:
+                assert pub.winner_index == -1
+                pub.winner_index = pub.current_turn_index
+            elif number_of_players == 2:
+                assert 0 <= pub.winner_index <= 3
+                if (pub.current_turn_index + 2) % 4 == pub.winner_index:  # Doppelsieg?
+                    pub.is_round_over = True
+                    pub.double_victory = True
+            elif number_of_players == 1:
+                pub.is_round_over = True
+                for player in range(0, 4):
+                    if pub.num_hand_cards[player] > 0:
+                        assert pub.loser_index == -1
+                        pub.loser_index = player
+                        break
+
+    @staticmethod
+    def set_wish(pub: PublicState, wish: int):  # pragma: no cover
+        """
+        Wunsch äußern
+        :param pub: Öffentlicher Spielzustand
+        :param wish: Der gewünschte Kartenwert. 
+        """
+        assert not pub.is_round_over
+        assert 2 <= wish <= 14
+        assert CARD_MAH in pub.played_cards
+        assert pub.wish_value == 0
+        pub.wish_value = wish
+
+    @staticmethod
+    def clear_trick(pub: PublicState, opponent: int = -1):
+        """
+        Stich abräumen
+        :param pub: Öffentlicher Spielzustand
+        :param opponent: opponent: Nummer des Gegners, falls der Stich verschenkt werden muss, ansonsten -1 
+        """
+        # Sicherstellen, dass die Funktion nicht zweimal aufgerufen wird, sondern nur, wenn ein Stich abgeräumt werden kann.
+        assert pub.trick_owner_index != -1
+        assert pub.trick_owner_index == pub.current_turn_index
+        assert pub.trick_combination != (0, 0, 0)
+
+        if pub.double_victory:
+            # Doppelsieg! Die Karten müssen nicht gezählt werden.
+            assert pub.is_round_over
+            assert 0 <= pub.winner_index <= 3
+            assert sum(1 for n in pub.num_hand_cards if n > 0) == 2
+            pub.points = [0, 0, 0, 0]
+            pub.points[pub.winner_index] = 200
+        else:
+            # Stich abräumen
+            if opponent != -1:
+                # Verschenken
+                assert opponent in ((1, 3) if pub.trick_owner_index in (0, 2) else (0, 2))
+                assert CARD_DRA in pub.played_cards
+                assert pub.dragon_recipient == -1
+                pub.dragon_recipient = opponent
+                pub.points[opponent] += pub.trick_points
+                assert -25 <= pub.points[opponent] <= 125
+            else:
+                # Selbst kassieren
+                pub.points[pub.trick_owner_index] += pub.trick_points
+                assert -25 <= pub.points[pub.trick_owner_index] <= 125
+
+            # Runde vorbei?
+            if pub.is_round_over:
+                # Der letzte Spieler gibt seine Handkarten an das gegnerische Team.
+                assert 0 <= pub.loser_index <= 3
+                leftover_points = 100 - sum_card_points(pub.played_cards)
+                assert leftover_points == sum_card_points(other_cards(pub.played_cards))
+                pub.points[(pub.loser_index + 1) % 4] += leftover_points
+                # Der letzte Spieler übergibt seine Stiche an den Spieler, der zuerst fertig wurde.
+                assert pub.winner_index >= 0
+                pub.points[pub.winner_index] += pub.points[pub.loser_index]
+                pub.points[pub.loser_index] = 0
+                assert sum(pub.points) == 100
+                assert -25 <= pub.points[0] <= 125
+                assert -25 <= pub.points[1] <= 125
+                assert -25 <= pub.points[2] <= 125
+                assert -25 <= pub.points[3] <= 125
+
+        pub.trick_owner_index = -1
+        pub.trick_combination = (CombinationType.PASS, 0, 0)
+        pub.trick_points = 0
+        pub.trick_counter += 1
+
+        # Runde vorbei? Dann Bonus-Punkte berechnen und Gesamt-Punktestand aktualisieren
+        if pub.is_round_over:
+            # Bonus für Tichu-Ansage
+            for player in range(0, 4):
+                if pub.announcements[player]:
+                    if player == pub.winner_index:
+                        pub.points[player] += 100 * pub.announcements[player]
+                    else:
+                        pub.points[player] -= 100 * pub.announcements[player]
+
+            # Score (Gesamt-Punktestand der aktuellen Episode)
+            pub.game_score[0] += pub.points[0] + pub.points[2]
+            pub.game_score[1] += pub.points[1] + pub.points[3]
+            pub.round_counter += 1
+
+    @staticmethod
+    def turn(pub: PublicState):
+        """
+        Nächsten Spieler auswählen        
+        :param pub: Öffentlicher Spielzustand
+        """
+        assert not pub.is_round_over
+        assert 0 <= pub.current_turn_index <= 3
+        if pub.trick_combination == FIGURE_DOG and pub.trick_owner_index == pub.current_turn_index:
+            pub.current_turn_index = (pub.current_turn_index + 2) % 4
+        else:
+            pub.current_turn_index = (pub.current_turn_index + 1) % 4
+
+    # ------------------------------------------------------
+    # PrivateState modifizieren
+    # ------------------------------------------------------
+    
+    @staticmethod
+    def reset_private_state_for_round(priv: PrivateState):  # pragma: no cover
+        """
+        Alles für eine neue Runde zurücksetzen.
+        
+        :param priv: Privater Spielzustand
+        """
+        priv.hand_cards = []
+        priv.given_schupf_cards = []
+        priv._combination_cache = []  # todo priv hat kein Cache
+        priv._partition_cache = []  # todo priv hat kein Cache
+        priv._partitions_aborted = True  # todo priv hat das Feld nicht
+
+    @staticmethod
+    def take_cards(priv: PrivateState, cards: List[Card]):
+        """
+        Handkarten für eine neue Runde aufnehmen
+        
+        :param priv: Privater Spielzustand
+        :param cards: Karten, die aufgenommen werden sollen (8 oder 14 Karten).
+        """
+        n = len(cards)
+        assert n == 8 or n == 14
+        priv.hand_cards = cards
+        priv.given_schupf_cards = []
+        priv._combination_cache = []  # todo priv hat kein Cache
+        priv._partition_cache = []  # todo priv hat kein Cache
+
+    @staticmethod
+    def schupf(priv: PrivateState, schupfed: list[tuple]) -> list[tuple]:
+        """ 
+        Tauschkarten an die Mitspieler abgeben
+        
+        :param priv: Privater Spielzustand
+        :param schupfed: Tauschkarte für rechten Gegner, Karte für Partner, Karte für linken Gegner
+        :return: Tauschkarten für Spieler 0 bis 3, kanonische Form (der eigene Spieler kriegt nichts, also None)
+        """
+        # Karten abgeben
+        assert len(schupfed) == 3
+        priv._schupfed = schupfed
+        assert len(priv.hand_cards) == 14
+        priv._hand = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
+        priv._combination_cache = []  # todo priv hat kein Cache
+        priv._partition_cache = []  # todo priv hat kein Cache
+        assert len(priv.hand_cards) == 11
+        cards = [None, None, None, None]
+        for i in range(0, 3):
+            cards[(priv.player_index + i + 1) % 4] = priv.given_schupf_cards[i]
+        # todo: priv.received_schupf_cards aktualisieren
+        return cards
+
+    @staticmethod
+    def take_schupfed_cards(priv: PrivateState, cards: list[tuple]):
+        """
+        Tauschkarten der Mitspieler aufnehmen
+        
+        :param priv: Privater Spielzustand
+        :param cards: Tauschkarten der Spieler 0 bis 3 (None steht für keine Karte; eigener Spieler)
+        """
+        assert len(priv.hand_cards) == 11
+        assert not set(cards).intersection(priv.hand_cards)  # darf keine Schnittmenge bilden
+        priv.hand_cards += [card for card in cards if card is not None]
+        priv.hand_cards.sort(reverse=True)
+        priv._combination_cache = []  # todo priv hat kein Cache
+        priv._partition_cache = []  # todo priv hat kein Cache
+        assert len(priv.hand_cards) == 14
+
+    @staticmethod
+    def play_priv(priv: PrivateState, combi: tuple):
+        """
+        Kombination ausspielen (oder passen)
+        
+        :param priv: Privater Spielzustand
+        :param combi: Ausgewählte Kombination (Karten, (Typ, Länge, Wert)) 
+        """
+        if combi[1] != FIGURE_PASS:
+            # Handkarten aktualisieren
+            priv.hand_cards = [card for card in priv.hand_cards if card not in combi[0]]
+            if priv._combination_cache: # todo priv hat kein Cache
+                # das Entfernen der Kombinationen ist im Schnitt ca. 1.25-mal schneller als neu zu berechnen
+                priv._combination_cache = remove_combinations(priv._combination_cache, combi[0])  # todo priv hat kein Cache
+            if priv._partition_cache: # todo priv hat kein Cache
+                if priv._partitions_aborted: # todo priv hat kein Cache
+                    # Die Berechnung aller Partitionen wurde abgebrochen, da es zu viele gibt. Daher kann die Liste
+                    # nicht aktualisiert werden, sondern muss neu berechnet werden.
+                    priv._partition_cache = []
+                # das ist schneller, als alle Partitionen erneut zu berechnen
+                priv._partition_cache = remove_partitions(priv.partitions, combi[0])  # todo priv hat kein Cache
 
     # ------------------------------------------------------
     # Client-spezifisches
@@ -448,12 +776,6 @@ class GameEngine:
             if p.session == session:
                 return p
         return None
-
-    def _shuffle_deck(self):
-        """
-        Mischt das Kartendeck.
-        """
-        self._random.shuffle(self._mixed_deck)
 
     # ------------------------------------------------------
     # Eigenschaften
