@@ -154,6 +154,10 @@ class GameEngine:
             for i, priv in enumerate(privs):
                 priv.player_index = i
 
+            # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhautpt Clients im Spiel sind
+            # todo testen, ob das wirklich relevant ist
+            clients_joined = any(isinstance(p, Client) for p in self._players)
+            
             # Partie spielen
             while sum(pub.game_score[0]) < 1000 and sum(pub.game_score[1]) < 1000:  # noch nicht game over?
                 # Neue Runde...
@@ -188,7 +192,8 @@ class GameEngine:
                         priv._combination_cache = []
                         priv._partition_cache = []
                         pub.set_number_of_cards(player, n)
-                    await self.broadcast("")
+                    if clients_joined: 
+                        await self.broadcast("")
 
                     # Tichu ansagen?
                     for i in range(0, 4):
@@ -196,7 +201,8 @@ class GameEngine:
                         grand = n == 8  # großes Tichu?
                         if not pub.announcements[player] and self._agents[player].announce(pub, privs[player], grand):
                             pub.announce(player, grand)
-                            await self.broadcast("")
+                            if clients_joined: 
+                                await self.broadcast("")
 
                 # jetzt müssen die Spieler schupfen
                 schupfed = [None, None, None, None]
@@ -204,7 +210,8 @@ class GameEngine:
                     schupfed[player] = privs[player].schupf(self._agents[player].schupf(pub, privs[player]))
                     assert privs[player].number_of_cards == 11
                     pub.set_number_of_cards(player, 11)
-                await self.broadcast("")
+                if clients_joined: 
+                    await self.broadcast("")
 
                 # die abgegebenen Karten der Mitspieler aufnehmen
                 for player in range(0, 4):
@@ -213,42 +220,46 @@ class GameEngine:
                     pub.set_number_of_cards(player, 14)
                     if privs[player].has_mahjong:
                         pub.set_start_player(player)  # Startspieler bekannt geben
-                await self.broadcast("")
+                if clients_joined: 
+                    await self.broadcast("")
 
                 # los geht's - das eigentliche Spiel kann beginnen...
                 assert 0 <= pub.current_player_index <= 3
                 while not pub.is_done:
                     priv = privs[pub.current_player_index]
                     agent = self._agents[pub.current_player_index]
-                    assert pub.number_of_cards[priv.player_index] == len(priv._hand)
-                    assert 0 <= pub.number_of_cards[priv.player_index] <= 14
-                    await self.broadcast("")
+                    assert pub.num_hand_cards[priv.player_index] == len(priv._hand)
+                    assert 0 <= pub.num_hand_cards[priv.player_index] <= 14
+                    if clients_joined: 
+                        await self.broadcast("")
 
                     # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
                     if pub.trick_player_index == priv.player_index and pub.trick_figure != FIGURE_DOG:  # der Hund bleibt aber immer liegen
-                        if not pub.double_win and pub.trick_figure == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
+                        if not pub.double_victory and pub.trick_figure == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                             opponent = agent.gift(pub, priv)
                             assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                         else:
                             opponent = -1
                         pub.clear_trick(opponent)
-                        await self.broadcast("")
+                        if clients_joined: 
+                            await self.broadcast("")
 
                     # hat der Spieler noch Karten?
-                    if pub.number_of_cards[priv.player_index] > 0:
+                    if pub.num_hand_cards[priv.player_index] > 0:
                         # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf Tichu angesagt werden
-                        if pub.number_of_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
+                        if pub.num_hand_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
                             if agent.announce(pub, priv):
                                 pub.announce(priv.player_index)
-                                await self.broadcast("")
+                                if clients_joined: 
+                                    await self.broadcast("")
 
                         # Kombination auswählen
                         if not priv._combination_cache and priv._hand:
                             priv._combination_cache = build_combinations(priv._hand)
-                        action_space = build_action_space(priv._combination_cache, pub.trick_figure, pub.wish)
+                        action_space = build_action_space(priv._combination_cache, pub.trick_figure, pub.wish_value)
                         combi = agent.combination(pub, priv, action_space)
-                        assert pub.number_of_cards[priv.player_index] == len(priv._hand)
-                        assert combi[1][1] <= pub.number_of_cards[priv.player_index] <= 14
+                        assert pub.num_hand_cards[priv.player_index] == len(priv._hand)
+                        assert combi[1][1] <= pub.num_hand_cards[priv.player_index] <= 14
 
                         # Kombination ausspielen -  play(combi)
                         if combi[1] != FIGURE_PASS:
@@ -265,38 +276,42 @@ class GameEngine:
                                 # das ist schneller, als alle Partitionen erneut zu berechnen
                                 priv._partition_cache = remove_partitions(priv.partitions, combi[0])
 
-                        assert len(priv._hand) == pub.number_of_cards[priv.player_index] - combi[1][1]
+                        assert len(priv._hand) == pub.num_hand_cards[priv.player_index] - combi[1][1]
                         pub.play(combi)
-                        assert pub.number_of_cards[priv.player_index] == len(priv._hand)
-                        await self.broadcast("")
+                        assert pub.num_hand_cards[priv.player_index] == len(priv._hand)
+                        if clients_joined: 
+                            await self.broadcast("")
 
                         if combi[1] != FIGURE_PASS:
                             # Spiel vorbei?
                             if pub.is_done:
                                 # Spiel ist vorbei; letzten Stich abräumen und fertig!
                                 assert pub.trick_player_index == priv.player_index
-                                if not pub.double_win and pub.trick_figure == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
+                                if not pub.double_victory and pub.trick_figure == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                                     opponent = agent.gift(pub, priv)
                                     assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                                 else:
                                     opponent = -1
                                 pub.clear_trick(opponent)
-                                await self.broadcast("")
+                                if clients_joined: 
+                                    await self.broadcast("")
                                 break
 
                             # falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden
                             if CARD_MAH in combi[0]:
-                                assert pub.wish == 0
+                                assert pub.wish_value == 0
                                 wish = agent.wish(pub, priv)
                                 assert 2 <= wish <= 14
                                 pub.set_wish(wish)
-                                await self.broadcast("")
+                                if clients_joined: 
+                                    await self.broadcast("")
 
                     # nächster Spieler ist an der Reihe
                     pub.step()
 
             logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {sum(pub.game_score[0])}, Team 31: {sum(pub.game_score[1])}")
-            #await self.broadcast("public_state", pub)
+            if clients_joined:
+                await self.broadcast_state(pub, privs)
 
             # Partie abgeschlossen
             return pub
@@ -306,7 +321,7 @@ class GameEngine:
             pub.current_phase = "aborted"
             # noinspection PyBroadException
             try:
-                await self.broadcast("public_state", pub)
+                await self.broadcast_state(pub, privs)
             except Exception:
                 pass
         except Exception as e:
@@ -314,7 +329,7 @@ class GameEngine:
             pub.current_phase = "error"
             # noinspection PyBroadException
             try:
-                await self.broadcast("public_state", pub)
+                await self.broadcast_state(pub, privs)
             except Exception:
                 pass
         finally:
@@ -366,13 +381,22 @@ class GameEngine:
         :param message_type: Der Typ der Nachricht.
         :param payload: (Optional) Die Nutzdaten der Nachricht.
         """
-        #f not self._num_clients:  # todo aus Performance-Gründen für die Arena wäre es hier besser, die Anzahl der Clients zu kennen!
-        #    return
         if payload is None:
             payload = {}
         for player in self._players:
             if isinstance(player, Client):  
                 await player.on_notify(message_type, payload)
+
+    async def broadcast_state(self, pub: PublicState, privs: List[PrivateState]) -> None:
+        """
+        Sendet den aktuellen Spielzustand an alle Clients.
+
+        :param pub: Öffentlicher Spielzustand
+        :param privs: Private Spielzustände 
+        """
+        for player in self._players:
+            if isinstance(player, Client):  
+                await player.on_notify("state", {"pub": pub, "priv": privs[player.player_index]})
 
     async def on_interrupt(self, client: Client, reason: str):
         """
