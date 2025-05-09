@@ -228,7 +228,7 @@ class GameEngine:
                     # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
                     if pub.trick_owner_index == priv.player_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt aber immer liegen
                         if not pub.double_victory and pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
-                            opponent = agent.gift(pub, priv)
+                            opponent = await agent.gift(pub, priv)
                             assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                         else:
                             opponent = -1
@@ -240,7 +240,7 @@ class GameEngine:
                     if pub.num_hand_cards[priv.player_index] > 0:
                         # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf Tichu angesagt werden
                         if pub.num_hand_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
-                            if agent.announce(pub, priv):
+                            if await agent.announce(pub, priv):
                                 self.announce(pub, priv.player_index)
                                 if clients_joined: 
                                     await self.broadcast("")

@@ -146,7 +146,7 @@ class Player:
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'wish' implementieren.")
 
-    async def gift(self, pub: PublicState, priv: PrivateState) -> int:
+    async def gift(self, pub: PublicState, priv: PrivateState) -> int:  # todo besseren Namen finden
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 
