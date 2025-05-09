@@ -3,10 +3,11 @@ Definiert die Client-Klasse für die Interaktion mit einem menschlichen Spieler 
 """
 
 import asyncio
-import json
 import time
-from aiohttp import WSMsgType, WSCloseCode, WSMessage
+from aiohttp import WSCloseCode
 from aiohttp.web import WebSocketResponse
+
+import config
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError
 from src.common.logger import logger
 from src.common.rand import Random
@@ -30,7 +31,7 @@ class Client(Player):
 
     def __init__(self, name: str,
                  websocket: WebSocketResponse,
-                 interrupt_event: asyncio.Event,  # todo nah Player verlager. Agent könnten auch schonmal await benutzen
+                 interrupt_event: asyncio.Event,  # todo nach Player verlager. Agent könnten auch schonmal await benutzen und dann brauchen die das interrupt_event
                  session: Optional[str] = None,
                  seed: Optional[int] = None):
         """
@@ -46,8 +47,10 @@ class Client(Player):
         self._websocket = websocket
         self._interrupt_event = interrupt_event
         self._random = Random(seed)  # Zufallsgenerator
-        self._pending_requests: Dict[str, asyncio.Future] = {}  # noch nicht vom Spieler beantwortete Websocket-Anfragen
-        self._is_connected: bool = True  # interner Verbindungsstatus todo wird das benötigt?
+        # todo es wird immer nur eine Anfrage gestellt. Bevor die nicht beantwortet ist, wird keine zweite gestellt.
+        #  Daher reicht es nur ein Future festzuhalten: self._pending_requests: Optional[asyncio.Future] = None
+        self._pending_requests: Dict[str, asyncio.Future] = {}  # noch nicht von der Gegenstelle beantwortete Websocket-Anfragen
+        #self._is_connected: bool = True  # interner Verbindungsstatus
 
     async def cleanup(self):
         """
@@ -61,7 +64,7 @@ class Client(Player):
                 await self._websocket.close(code=WSCloseCode.GOING_AWAY, message="Verbindung wird geschlossen".encode('utf-8'))
             except Exception as e:
                 logger.exception(f"Fehler beim Schließen der WebSocket-Verbindung für {self._name}: {e}")
-        self.mark_as_disconnected(reason="Expliziter close_connection Aufruf")
+        #self.mark_as_disconnected(reason="Expliziter close_connection Aufruf")
 
     # ------------------------------------------------------
     # Ereignis-Handler
@@ -76,26 +79,22 @@ class Client(Player):
         :param msg_type: Der Typ der Nachricht.
         :param payload: Die Nutzdaten der Nachricht als Dictionary.
         """
-        if not self._is_connected or self._websocket is None or self._websocket.closed:
+        #if not self._is_connected or self._websocket is None or self._websocket.closed:
+        if self._websocket.closed:
             # Client nicht verbunden
-            if self._websocket is not None:
-                logger.debug(f"Nachricht {msg_type} an {self._name} konnte nicht übermittelt werden. Keine Verbindung.")
+            logger.debug(f"Nachricht {msg_type} an {self._name} konnte nicht übermittelt werden. Keine Verbindung.")
             return
 
         message = {"type": msg_type, "payload": payload}
         try:
-            # Sende die Nachricht als JSON. aiohttp kümmert sich um die Serialisierung.
             logger.debug(f"Sende Nachricht an {self._name}: {message}")
             await self._websocket.send_json(message)
         except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
-            # Fehler beim Senden deuten meist auf eine unterbrochene Verbindung hin.
             logger.warning(f"Senden der Nachricht {msg_type} an {self._name} fehlgeschlagen: {e}")
-            # Markiere den Client intern als getrennt, damit keine weiteren Sendeversuche erfolgen.
-            self.mark_as_disconnected(reason=f"Sendefehler: {e}")
+            #self.mark_as_disconnected(reason=f"Sendefehler: {e}")
         except Exception as e:
-            # Andere unerwartete Fehler beim Senden.
             logger.exception(f"Unerwarteter Fehler beim Senden der Nachricht {msg_type} an {self._name}: {e}")
-            self.mark_as_disconnected(reason=f"Unerwarteter Sendefehler: {e}")
+            #self.mark_as_disconnected(reason=f"Unerwarteter Sendefehler: {e}")
 
     async def on_websocket_message(self, msg_type: str, payload: dict):
         """
@@ -104,6 +103,21 @@ class Client(Player):
         :param msg_type: Der Typ der Nachricht.
         :param payload: Die Nutzdaten der Nachricht als Dictionary.
         """
+        if msg_type == "response":  # Antwort auf einer vorherigen Anfrage (die mittels _ask() gestellt wurde)
+            request_type = payload.get("request_type")  # der Typ der ursprünglichen Anfrage
+            response_data = payload.get("response_data")  # Die Nutzdaten der Antwort.
+            if request_type in self._pending_requests:
+                future = self._pending_requests[request_type]
+                if not future.done():
+                    future.set_result(response_data)
+                    logger.debug(f"Client {self._name}: Antwort für '{request_type}' an wartende Methode weitergeleitet.")
+                else:
+                    # Die Future wurde bereits gesetzt (z.B. Timeout, Cancelled) oder die Antwort kam zu spät.
+                    logger.warning(f"Client {self._name}: Antwort für bereits abgeschlossene/abgebrochene Anfrage '{request_type}' erhalten: {response_data}")
+            else:
+                # Keine wartende Anfrage für diesen Typ gefunden.
+                logger.warning(f"Client {self._name}: Unerwartete Antwort für '{request_type}' erhalten (keine passende wartende Anfrage): {response_data}")
+
         if msg_type == "ping":
             logger.info(f"{self._name}: ping")
             await self.on_notify("pong", {"message": f"{payload}"})
@@ -113,6 +127,8 @@ class Client(Player):
 
     # ------------------------------------------------------
     # Entscheidungen
+    # todo dieser Abschnitt ist noch nicht umgesetzt.
+    #  Es fehlt eine klare Definition, wie die Nachrichten aufgebaut sein müssen.
     # ------------------------------------------------------
 
     async def schupf(self, pub: PublicState, priv: PrivateState) -> Tuple[Card, Card, Card]:
@@ -125,31 +141,31 @@ class Client(Player):
         :param priv: Der private Spielzustand.
         :return: Die Liste der Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
         """
-        request_type = "request_schupf_cards"
-        try:
-            # Kontext ist hier nicht unbedingt nötig, Client sieht seine Hand
-            raw_response_payload = await self._ask(request_type)
-            # raw_response_payload ist z.B. {"to_left": "RK", "to_partner": "G5", "to_right": "S2"}
-            logger.debug(f"Parsing schupf response: {raw_response_payload}")  # Debugging
+        # TODO: Implementieren!
+        raise PlayerResponseError(f"Ungültige Antwort auf 'foo': bar")
+        #return (13, 4), (5, 3), (2, 1)  # dummy-Werte ersetzen
 
-            # Parse und validiere die Rohdaten
-            # TODO: Implementieren!
-            # Parst und validiert die Schupf-Antwort des Clients
-            # 1. Extrahiere die drei Karten-Labels aus raw_response_payload.
-            # 2. Prüfe, ob genau drei Labels vorhanden sind.
-            # 3. Parse die Labels mit parse_cards in interne Card-Tupel.
-            # 4. Prüfe, ob alle drei geparsten Karten in der current_hand des Spielers vorkommen.
-            # 5. Wenn alles gültig: schupf_tuple = (card_left, card_partner, card_right)
-            if not raw_response_payload:
-                raise PlayerResponseError(f"Ungültige Antwort auf '{request_type}': {raw_response_payload}")
-            schupf_tuple = (13,4), (5,3), (2,1)  # TODO dummy-Werte ersetzen
-
-            logger.info(f"Client {self.name}: Schupf-Karten erfolgreich gewählt.")
-            return schupf_tuple
-
-        except PlayerInteractionError as e:
-            logger.warning(f"Client {self.name}: Interaktionsfehler bei '{request_type}': {e}")
-            raise e
+        # request_type = "request_schupf_cards"
+        # try:
+        #     # Kontext ist hier nicht unbedingt nötig, Client sieht seine Hand
+        #     raw_response_payload = await self._ask(request_type)
+        #     # raw_response_payload ist z.B. {"to_left": "RK", "to_partner": "G5", "to_right": "S2"}
+        #     logger.debug(f"Parsing schupf response: {raw_response_payload}")  # Debugging
+        #
+        #     # Parst und validiert die Schupf-Antwort des Clients
+        #     # 1. Extrahiere die drei Karten-Labels aus raw_response_payload.
+        #     # 2. Prüfe, ob genau drei Labels vorhanden sind.
+        #     # 3. Parse die Labels mit parse_cards in interne Card-Tupel.
+        #     # 4. Prüfe, ob alle drei geparsten Karten in der current_hand des Spielers vorkommen.
+        #     # 5. Wenn alles gültig: schupf_tuple = (card_left, card_partner, card_right)
+        #     if not raw_response_payload:
+        #         raise PlayerResponseError(f"Ungültige Antwort auf '{request_type}': {raw_response_payload}")
+        #     schupf_tuple = (13,4), (5,3), (2,1)  # dummy-Werte ersetzen
+        #     logger.info(f"Client {self.name}: Schupf-Karten erfolgreich gewählt.")
+        #     return schupf_tuple
+        # except PlayerInteractionError as e:
+        #     logger.warning(f"Client {self.name}: Interaktionsfehler bei '{request_type}': {e}")
+        #     raise e
 
     async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
         """
@@ -174,28 +190,30 @@ class Client(Player):
         :param action_space: Mögliche Kombinationen (inklusiv Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0))
         """
-        # Eindeutiger Schlüssel für diese Anfrageart
-        request_type = "request_combination"
-        try:
-            # Bereite Kontext vor (mögliche Aktionen serialisieren)
-            serializable_actions = self._serialize_action_space(action_space)
-            context = {"possible_actions": serializable_actions}
-
-            # Rufe _ask auf und warte auf die Rohdaten der Antwort
-            raw_response_payload = await self._ask(request_type, context)  # Fängt Timeout/Interrupt/Disconnect ab
-
-            # Parse und validiere die Rohdaten
-            action_tuple = self._parse_combination_response(raw_response_payload, action_space)
-            if action_tuple is None:
-                # Parsing/Validierung fehlgeschlagen
-                raise PlayerResponseError(f"Ungültige Antwort auf '{request_type}': {raw_response_payload}")
-
-            logger.info(f"Client {self.name}: Kombination '{action_tuple[0]}' erfolgreich gewählt.")
-            return action_tuple
-
-        except PlayerInteractionError as e:  # Fängt Timeout, Interrupt, Disconnect, ResponseError
-            logger.warning(f"Client {self.name}: Interaktionsfehler bei '{request_type}': {e}")
-            raise e
+        # TODO: Implementieren!
+        return action_space[self._random.integer(0, len(action_space))]
+        # Beispielimplementierung:
+        # # Eindeutiger Schlüssel für diese Anfrageart
+        # request_type = "request_combination"
+        # try:
+        #     # Bereite Kontext vor (mögliche Aktionen serialisieren)
+        #     serializable_actions = self._serialize_action_space(action_space)
+        #     context = {"possible_actions": serializable_actions}
+        #
+        #     # Rufe _ask auf und warte auf die Rohdaten der Antwort
+        #     raw_response_payload = await self._ask(request_type, context)  # Fängt Timeout/Interrupt/Disconnect ab
+        #
+        #     # Parse und validiere die Rohdaten
+        #     action_tuple = self._parse_combination_response(raw_response_payload, action_space)
+        #     if action_tuple is None:
+        #         # Parsing/Validierung fehlgeschlagen
+        #         raise PlayerResponseError(f"Ungültige Antwort auf '{request_type}': {raw_response_payload}")
+        #
+        #     logger.info(f"Client {self.name}: Kombination '{action_tuple[0]}' erfolgreich gewählt.")
+        #     return action_tuple
+        # except PlayerInteractionError as e:  # Fängt Timeout, Interrupt, Disconnect, ResponseError
+        #     logger.warning(f"Client {self.name}: Interaktionsfehler bei '{request_type}': {e}")
+        #     raise e
 
     def _parse_combination_response(self, response_data: dict, original_action_space: list[tuple]) -> Optional[tuple]:
         """
@@ -295,7 +313,7 @@ class Client(Player):
         """
         logger.info(f"Aktualisiere WebSocket für Client {self._name} ({self._session}).")
         self._websocket = new_websocket
-        self._is_connected = True  # Markiere wieder als verbunden
+        #self._is_connected = True  # markiere als verbunden
         # Über die alte Verbindung noch Anfragen offen sind, diese verwerfen.
         for request_type, future in list(self._pending_requests.items()):
             if not future.done():
@@ -303,28 +321,28 @@ class Client(Player):
                 future.cancel()
             self._pending_requests.pop(request_type, None)
 
-    def mark_as_disconnected(self, reason: str = "Verbindung geschlossen"):
-        """
-        Markiert den Client intern als getrennt.
+    # def mark_as_disconnected(self, reason: str = "Verbindung geschlossen"):
+    #     """
+    #     Markiert den Client intern als getrennt.
+    #
+    #     Wird aufgerufen, wenn die Verbindung verloren geht oder explizit
+    #     geschlossen wird. Setzt das interne Flag und entfernt die WebSocket-Referenz.
+    #
+    #     :param reason: Der Grund für die Trennung (für Logging).
+    #     """
+    #     # Nur ausführen, wenn der Client aktuell als verbunden gilt.
+    #     if self._is_connected:
+    #         logger.info(f"Markiere Client {self._name} ({self._session}) als getrennt. Grund: {reason}")
+    #         self._is_connected = False
+    #         self._websocket = None # WebSocket-Referenz entfernen
 
-        Wird aufgerufen, wenn die Verbindung verloren geht oder explizit
-        geschlossen wird. Setzt das interne Flag und entfernt die WebSocket-Referenz.
-
-        :param reason: Der Grund für die Trennung (für Logging).
-        """
-        # Nur ausführen, wenn der Client aktuell als verbunden gilt.
-        if self._is_connected:
-            logger.info(f"Markiere Client {self._name} ({self._session}) als getrennt. Grund: {reason}")
-            self._is_connected = False
-            self._websocket = None # WebSocket-Referenz entfernen
-
-    async def _ask(self, request_type: str, context_payload: Optional[dict] = None, timeout: float = DEFAULT_REQUEST_TIMEOUT) -> dict | None:
+    async def _ask(self, request_type: str, context_payload: Optional[dict] = None, timeout: float = config.DEFAULT_REQUEST_TIMEOUT) -> dict | None:
         """
         Sendet eine Anfrage an den Client und wartet auf dessen Antwort.
 
         :param request_type: Eindeutiger Bezeichner für die Art der Anfrage (z.B. "request_combination", "request_schupf").
         :param context_payload: Zusätzliche Daten, die mit der Anfrage an den Client gesendet werden (z.B. mögliche Aktionen).
-        :param timeout: Maximale Wartezeit in Sekunden.
+        :param timeout: Maximale Wartezeit in Sekunden (0 == unbegrenzt).
         :return: Das 'payload'-Dictionary aus der Antwort des Clients bei Erfolg.
         :raises ClientDisconnectedError: Wenn der Client nicht verbunden ist.
         :raises PlayerInterruptError: Wenn die Anfrage durch ein Engine-Event unterbrochen wird.
@@ -333,13 +351,24 @@ class Client(Player):
         :raises PlayerInteractionError: Bei anderen Fehlern während des Sendevorgangs oder Wartens.
         """
         # --- 1. Prüfen, ob Client verbunden ist ---
-        if not self._is_connected or self._websocket is None or self._websocket.closed:
+        #if not self._is_connected or self._websocket is None or self._websocket.closed:
+        if self._websocket.closed:
             logger.warning(f"Client {self.name}: Aktion '{request_type}' nicht möglich (nicht verbunden).")
             raise ClientDisconnectedError(f"Client {self.name} ist nicht verbunden.")
 
         logger.debug(f"Client {self.name}: Starte Anfrage '{request_type}'.")
 
-        # --- 2. Anfrage senden ---
+        # --- 2. Future erstellen und registrieren ---
+        if request_type in self._pending_requests:
+            logger.warning(f"Client {self.name}: Überschreibe bereits laufende Anfrage für '{request_type}'.")
+            old_future = self._pending_requests[request_type]
+            if not old_future.done():
+                old_future.cancel("Neue Anfrage ersetzt alte")
+        loop = asyncio.get_running_loop()
+        response_future = loop.create_future()
+        self._pending_requests[request_type] = response_future
+
+        # --- 3. Anfrage senden ---
         request_data = {"type": "request_action", "payload": {"request": request_type, "timeout": timeout}}
         if context_payload:
             request_data["payload"]["context"] = context_payload  # Kontext in Payload verschachteln
@@ -348,17 +377,19 @@ class Client(Player):
             # Direkter Aufruf von send_json hier
             await self._websocket.send_json(request_data)
         except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
-            # Senden fehlgeschlagen (Verbindungsfehler)
             logger.warning(f"Senden der Anfrage '{request_type}' an {self.name} fehlgeschlagen (Verbindungsfehler): {e}. Markiere als getrennt.")
-            self.mark_as_disconnected(reason=f"Sendefehler bei Anfrage: {e}")
+            #self.mark_as_disconnected(reason=f"Sendefehler bei Anfrage: {e}")
+            # noinspection PyAsyncCall
+            self._pending_requests.pop(request_type, None)  # Future entfernen
             raise ClientDisconnectedError(f"Senden der Anfrage '{request_type}' fehlgeschlagen.") from e
         except Exception as e:
-            # Andere Fehler beim Senden (z.B. Serialisierung)
             logger.exception(f"Unerwarteter Fehler beim Senden der Anfrage '{request_type}' an {self.name}: {e}")
-            self.mark_as_disconnected(reason=f"Unerwarteter Sendefehler bei Anfrage: {e}")
+            #self.mark_as_disconnected(reason=f"Unerwarteter Sendefehler bei Anfrage: {e}")
+            # noinspection PyAsyncCall
+            self._pending_requests.pop(request_type, None)  # Future entfernen
             raise PlayerInteractionError(f"Fehler beim Senden der Anfrage '{request_type}': {e}") from e
 
-        # --- 3. Auf Antwort warten ---
+        # --- 4. Auf Antwort warten ---
         loop = asyncio.get_running_loop()
         response_future = loop.create_future()
         wait_tasks = [
@@ -370,7 +401,7 @@ class Client(Player):
         try:
             done, pending = await asyncio.wait(wait_tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
 
-            # --- 4. Ergebnis auswerten ---
+            # --- 5. Ergebnis auswerten ---
             if not done:
                 # Timeout
                 elapsed = time.monotonic() - start_time
@@ -410,6 +441,9 @@ class Client(Player):
                     pass
                 except Exception as cleanup_e:
                     logger.error(f"Fehler beim Aufräumen von Task {task.get_name()}: {cleanup_e}")
+            # Entferne die Future für diese Anfrage aus dem Tracking
+            # noinspection PyAsyncCall
+            self._pending_requests.pop(request_type, None)
 
     # noinspection PyMethodMayBeStatic
     def _serialize_action_space(self, action_space: list[tuple]) -> List[Dict]:
@@ -441,12 +475,11 @@ class Client(Player):
     # ------------------------------------------------------
 
     @property
-    def is_connected(self) -> bool:  # todo: was unterscheidet das von not websocket.closed?
+    def is_connected(self) -> bool:
         """
         Gibt zurück, ob der Client aktuell als verbunden gilt.
 
-        Prüft sowohl das interne Flag als auch den Zustand des WebSocket-Objekts.
-
         :return: True, wenn verbunden, sonst False.
         """
-        return self._is_connected and self._websocket is not None and not self._websocket.closed
+        #return self._is_connected and self._websocket is not None and not self._websocket.closed
+        return not self._websocket.closed

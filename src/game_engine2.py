@@ -3,19 +3,18 @@ Definiert die Spiellogik.
 """
 
 import asyncio
-
-from src.lib.combinations import FIGURE_DRA, FIGURE_DOG, build_action_space, FIGURE_PASS
-from src.lib.errors import PlayerTimeoutError, ClientDisconnectedError, PlayerResponseError
+from src.lib.combinations import FIGURE_DRA, FIGURE_DOG, build_action_space, FIGURE_PASS, build_combinations, remove_combinations
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import deck, CARD_MAH
+from src.lib.partitions import remove_partitions
 from src.players.agent import Agent
 from src.players.client import Client
 from src.players.player import Player
 from src.players.random_agent import RandomAgent
 from src.private_state2 import PrivateState
 from src.public_state2 import PublicState
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 class GameEngine:
     """
@@ -57,15 +56,6 @@ class GameEngine:
 
         # aktuelle Spielerliste
         self._players: List[Player] = list(self._default_agents)
-
-        # öffentlicher Spielzustand, sichtbar für alle Spieler am Tisch
-        self._public_state: PublicState = PublicState(
-            table_name = self.table_name,
-            player_names = [p.name for p in self._players],
-        )
-
-        # Liste der privaten Spielzustände, einer für jede Spielerposition (Index 0-3)
-        self._private_states: List[PrivateState] = [PrivateState(player_index=i) for i in range(4)]
 
         # Referenz auf den Hintergrund-Task `_run_game_loop`
         self.game_loop_task: Optional[asyncio.Task] = None
@@ -126,43 +116,46 @@ class GameEngine:
         logger.info(f"[{self.table_name}] Starte Hintergrund-Task für eine neue Partie.")
         self.game_loop_task = asyncio.create_task(self.run_game_loop(), name=f"Game Loop '{self.table_name}'")
 
-    async def run_game_loop(self, pub: Optional[PublicState] = None, privs: Optional[List[PrivateState]] = None, break_time = 5) -> PublicState|None:
+    async def run_game_loop(self, pub: Optional[PublicState] = None, privs: Optional[List[PrivateState]] = None, _break_time = 5) -> PublicState|None:
         """
         Steuert den Spielablauf einer Partie.
+        
+        todo PlayerInterruptError muss hier im jedem Turn abgefangen werden.
+         Nennen wir den Spieler, der den Interrupt anfordert, "Interrupter".  
+         Wenn Interrupter seine beabsichtigte Aktion (Bombe werfen oder Tichu ansagen) nicht durchführen kann oder darf, kriegt er nur eine Fehlermeldung zurück.
+         Ansonsten wird das Interrupt-Event gesetzt, so das der Spieler, der gerade am Zug ist, die Entscheidungsfindung abbricht.
+         Der Interrupter wird aufgefordert, die Aktion durchzuführen. Danach wird die Runde wie gehabt fortgesetzt.
 
-        :param pub: (Optional) Öffentlicher Spielzustand. Änderungen extern möglich, aber nicht vorgesehen.
-        :param privs: (Optional) Private Spielzustände (müssen 4 sein). Änderungen extern möglich, aber nicht vorgesehen.
-        :param break_time: Pause in Sekunden zwischen den Runden.
+        :param pub: (Optional) Öffentlicher Spielzustand (sichtbar für alle Spieler am Tisch). Änderungen extern möglich, aber nicht vorgesehen.
+        :param privs: (Optional) Private Spielzustände (für jeden Spieler einen). Änderungen extern möglich, aber nicht vorgesehen.
+        :param _break_time: Pause in Sekunden zwischen den Runden.
         :return: Der öffentliche Spielzustand.
         :raises ValueError: Wenn Parameter nicht ok sind.
         """
         try:
             logger.info(f"[{self.table_name}] Starte neue Partie...")
 
-            # --- PublicState initialisieren ---
-            self._public_state = PublicState(
-                table_name=self.table_name,
-                player_names=[p.name for p in self._players],
-                current_phase="playing"
-            )
+            # öffentlicher Spielzustand initialisieren
             if pub:
                 logger.debug(f"[{self.table_name}] Verwende übergebenen PublicState.")
-                self._public_state = pub
+            else:
+                pub = PublicState()
+            pub.table_name = self.table_name
+            pub.player_names = [p.name for p in self._players]
+            pub.current_phase = "playing"
 
-            # --- PrivateState initialisieren ---
-            self._private_states = [PrivateState(player_index=i) for i in range(4)]
+            # privaten Spielzustände initialisieren
             if privs:
-                logger.debug(f"[{self.table_name}] Verwende übergebene PrivateStates.")
                 if len(privs) != 4:
                     raise ValueError(f"Die Anzahl der Einträge in `privs` muss genau 4 sein.")
-                # Sitzplätze der Reihe nach vergeben (0 bis 3)
-                for i, priv in enumerate(privs):
-                    priv.player_index = i
-                self._private_states = privs
+                logger.debug(f"[{self.table_name}] Verwende übergebene PrivateStates.")
+            else:
+                privs = [PrivateState() for _ in range(4)]
+            for i, priv in enumerate(privs):
+                priv.player_index = i
 
-            # --- Partie-Schleife (analog zu alten game_engine_.play_episode) ---
-            # Zugriff auf public_state über self._public_state
-            while not self.is_game_over:
+            # Partie spielen
+            while sum(pub.game_score[0]) < 1000 and sum(pub.game_score[1]) < 1000:  # noch nicht game over?
                 # Neue Runde...
 
                 # öffentlichen Spielzustand zurücksetzen
@@ -170,7 +163,11 @@ class GameEngine:
 
                 # privaten Spielzustand zurücksetzen
                 for priv in privs:
-                    priv.reset_round()
+                    priv._hand = []
+                    priv._schupfed = []
+                    priv._combination_cache = []
+                    priv._partition_cache = []
+                    priv._partitions_aborted = True
 
                 # Agents zurücksetzen
                 for agent in self._agents:
@@ -185,9 +182,13 @@ class GameEngine:
                     # Karten verteilen
                     for player in range(0, 4):
                         cards = pub.deal_out(player, n)
-                        privs[player].take_cards(cards)
+                        priv = privs[player]
+                        priv._hand = cards
+                        priv._schupfed = []
+                        priv._combination_cache = []
+                        priv._partition_cache = []
                         pub.set_number_of_cards(player, n)
-                    self.broadcast("")
+                    await self.broadcast("")
 
                     # Tichu ansagen?
                     for i in range(0, 4):
@@ -195,7 +196,7 @@ class GameEngine:
                         grand = n == 8  # großes Tichu?
                         if not pub.announcements[player] and self._agents[player].announce(pub, privs[player], grand):
                             pub.announce(player, grand)
-                            self.broadcast("")
+                            await self.broadcast("")
 
                 # jetzt müssen die Spieler schupfen
                 schupfed = [None, None, None, None]
@@ -203,7 +204,7 @@ class GameEngine:
                     schupfed[player] = privs[player].schupf(self._agents[player].schupf(pub, privs[player]))
                     assert privs[player].number_of_cards == 11
                     pub.set_number_of_cards(player, 11)
-                self.broadcast("")
+                await self.broadcast("")
 
                 # die abgegebenen Karten der Mitspieler aufnehmen
                 for player in range(0, 4):
@@ -212,16 +213,16 @@ class GameEngine:
                     pub.set_number_of_cards(player, 14)
                     if privs[player].has_mahjong:
                         pub.set_start_player(player)  # Startspieler bekannt geben
-                self.broadcast("")
+                await self.broadcast("")
 
                 # los geht's - das eigentliche Spiel kann beginnen...
                 assert 0 <= pub.current_player_index <= 3
                 while not pub.is_done:
                     priv = privs[pub.current_player_index]
                     agent = self._agents[pub.current_player_index]
-                    assert pub.number_of_cards[priv.player_index] == priv.number_of_cards
+                    assert pub.number_of_cards[priv.player_index] == len(priv._hand)
                     assert 0 <= pub.number_of_cards[priv.player_index] <= 14
-                    self.broadcast("")
+                    await self.broadcast("")
 
                     # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
                     if pub.trick_player_index == priv.player_index and pub.trick_figure != FIGURE_DOG:  # der Hund bleibt aber immer liegen
@@ -231,7 +232,7 @@ class GameEngine:
                         else:
                             opponent = -1
                         pub.clear_trick(opponent)
-                        self.broadcast("")
+                        await self.broadcast("")
 
                     # hat der Spieler noch Karten?
                     if pub.number_of_cards[priv.player_index] > 0:
@@ -239,20 +240,35 @@ class GameEngine:
                         if pub.number_of_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
                             if agent.announce(pub, priv):
                                 pub.announce(priv.player_index)
-                                self.broadcast("")
+                                await self.broadcast("")
 
                         # Kombination auswählen
-                        action_space = build_action_space(priv.combinations, pub.trick_figure, pub.wish)
+                        if not priv._combination_cache and priv._hand:
+                            priv._combination_cache = build_combinations(priv._hand)
+                        action_space = build_action_space(priv._combination_cache, pub.trick_figure, pub.wish)
                         combi = agent.combination(pub, priv, action_space)
-                        assert pub.number_of_cards[priv.player_index] == priv.number_of_cards
+                        assert pub.number_of_cards[priv.player_index] == len(priv._hand)
                         assert combi[1][1] <= pub.number_of_cards[priv.player_index] <= 14
 
-                        # Kombination ausspielen
-                        priv.play(combi)
-                        assert priv.number_of_cards == pub.number_of_cards[priv.player_index] - combi[1][1]
+                        # Kombination ausspielen -  play(combi)
+                        if combi[1] != FIGURE_PASS:
+                            # Handkarten aktualisieren
+                            priv._hand = [card for card in priv._hand if card not in combi[0]]
+                            if priv._combination_cache:
+                                # das Entfernen der Kombinationen ist im Schnitt ca. 1.25-mal schneller als neu zu berechnen
+                                priv._combination_cache = remove_combinations(priv._combination_cache, combi[0])
+                            if priv._partition_cache:
+                                if priv._partitions_aborted:
+                                    # Die Berechnung aller Partitionen wurde abgebrochen, da es zu viele gibt. Daher kann die Liste
+                                    # nicht aktualisiert werden, sondern muss neu berechnet werden.
+                                    priv._partition_cache = []
+                                # das ist schneller, als alle Partitionen erneut zu berechnen
+                                priv._partition_cache = remove_partitions(priv.partitions, combi[0])
+
+                        assert len(priv._hand) == pub.number_of_cards[priv.player_index] - combi[1][1]
                         pub.play(combi)
-                        assert pub.number_of_cards[priv.player_index] == priv.number_of_cards
-                        self.broadcast("")
+                        assert pub.number_of_cards[priv.player_index] == len(priv._hand)
+                        await self.broadcast("")
 
                         if combi[1] != FIGURE_PASS:
                             # Spiel vorbei?
@@ -265,7 +281,7 @@ class GameEngine:
                                 else:
                                     opponent = -1
                                 pub.clear_trick(opponent)
-                                self.broadcast("")
+                                await self.broadcast("")
                                 break
 
                             # falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden
@@ -274,38 +290,38 @@ class GameEngine:
                                 wish = agent.wish(pub, priv)
                                 assert 2 <= wish <= 14
                                 pub.set_wish(wish)
-                                self.broadcast("")
+                                await self.broadcast("")
 
                     # nächster Spieler ist an der Reihe
                     pub.step()
 
-            logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {self.total_score(0)}, Team 31: {self.total_score(1)}")
-            #await self._broadcast_public_state()
+            logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {sum(pub.game_score[0])}, Team 31: {sum(pub.game_score[1])}")
+            #await self.broadcast("public_state", pub)
 
-            # Episode abgeschlossen
+            # Partie abgeschlossen
             return pub
 
         except asyncio.CancelledError:
             logger.info(f"[{self.table_name}] Spiel-Loop extern abgebrochen.")
-            self._public_state.current_phase = "aborted"
+            pub.current_phase = "aborted"
             # noinspection PyBroadException
             try:
-                await self._broadcast_public_state()
+                await self.broadcast("public_state", pub)
             except Exception:
                 pass
         except Exception as e:
             logger.exception(f"[{self.table_name}] Kritischer Fehler im Spiel-Loop: {e}")
-            self._public_state.current_phase = "error"
+            pub.current_phase = "error"
             # noinspection PyBroadException
             try:
-                await self._broadcast_public_state()
+                await self.broadcast("public_state", pub)
             except Exception:
                 pass
         finally:
             logger.info(f"[{self.table_name}] Spiel-Loop definitiv beendet.")
             self.game_loop_task = None  # Referenz aufheben
 
-        return self._public_state
+        return pub
 
     # ------------------------------------------------------
     # Client-spezifisches
@@ -343,20 +359,24 @@ class GameEngine:
         self._players[index] = self._default_agents[index]
         client.player_index = -1
 
-    async def broadcast(self, message_type: str, data: dict) -> None:
+    async def broadcast(self, message_type: str, payload: Optional[dict] = None) -> None:
         """
-        Sendet eine Nachricht an alle Clients (z.B. Spielzustand, Fehler).
+        Sendet eine Nachricht an alle Clients.
 
         :param message_type: Der Typ der Nachricht.
-        :param data: Die Nutzdaten der Nachricht.
+        :param payload: (Optional) Die Nutzdaten der Nachricht.
         """
+        #f not self._num_clients:  # todo aus Performance-Gründen für die Arena wäre es hier besser, die Anzahl der Clients zu kennen!
+        #    return
+        if payload is None:
+            payload = {}
         for player in self._players:
-            if isinstance(player, Client):  # todo aus performance-gründe als eigene Liste festhalten
-                await player.on_notify(message_type, data)
+            if isinstance(player, Client):  
+                await player.on_notify(message_type, payload)
 
     async def on_interrupt(self, client: Client, reason: str):
         """
-        Wird aufgerufen, wenn ein Client einen Interrupt anfordert.
+        Wird aufgerufen, wenn ein Client einen Interrupt anfordert (er meldet sich und sagt "Halt").
 
         :param client: Der anfragende Client.
         :param reason: Grund für den Interrupt ("bomb" oder "tichu").
@@ -411,14 +431,6 @@ class GameEngine:
         """
         self._random.shuffle(self._mixed_deck)
 
-    def total_score(self, team_index: int) -> int:
-        """
-        Berechnet den Gesamtpunktestand der Partie für das angegebene Team.
-        :param team_index: 0 == Team 20 oder 1 == Team 31
-        :return: Gesamtpunktestand
-        """
-        return sum(self._public_state.game_score[team_index])
-
     # ------------------------------------------------------
     # Eigenschaften
     # ------------------------------------------------------
@@ -431,23 +443,4 @@ class GameEngine:
     @property
     def players(self) -> List[Player]:
         return self._players # Rückgabe der Liste (Änderungen extern möglich, aber nicht vorgesehen)
-
-    @property
-    def is_game_over(self) -> bool:
-        """Gibt an, ob die Partie beendet ist."""
-        return self.total_score(0) >= 1000 or self.total_score(1) >= 1000
-
-    @property
-    def number_of_players(self) -> int:  # todo anderen Bezeichner finden
-        """Anzahl Spieler, die noch im Rennen sind."""
-        return sum(1 for n in self._public_state.num_hand_cards if n > 0)
-
-    @property
-    def public_state(self) -> PublicState:
-        """Öffentlicher Spielzustand. Änderungen extern möglich, aber nicht vorgesehen."""
-        return self._public_state
-
-    @property
-    def private_states(self) -> List[PrivateState]:
-        """Private Spielzustände. Änderungen extern möglich, aber nicht vorgesehen."""
-        return self._private_states
+    

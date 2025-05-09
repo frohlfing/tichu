@@ -107,7 +107,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     if msg_type == "interrupt":  # explizite Interrupt-Anfrage
                         await engine.on_interrupt(client, payload.get("reason"))
                     else:
-                        client.on_websocket_message(msg_type, payload)
+                        await client.on_websocket_message(msg_type, payload)
 
                 except json.JSONDecodeError:
                     logger.exception(f"Ungültiges JSON von {client.name}: {msg.data}")

@@ -63,6 +63,9 @@ SECRET_KEY = getenv("SECRET_KEY", "secret")
 # Wartezeit nach einem Verbindungsabbruch bis zum Rauswurf in Sekunden
 KICK_OUT_TIME = int(getenv("KICK_OUT_TIME", 15))
 
+# Maximale Wartezeit für Anfragen an den Client in Sekunden (0 == unbegrenzt)
+DEFAULT_REQUEST_TIMEOUT = 0
+
 # Anzahl Prozesse für die Arena
 ARENA_WORKER = int(getenv("ARENA_WORKER", 1))
 

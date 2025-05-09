@@ -26,7 +26,7 @@ async def _run_game(table_name: str, agents: list[Agent], seed: Optional[int], p
     :param privs: (Optional) Private Spielzustände (müssen 4 sein).
     """
     try:
-        engine = GameEngine(table_name, default_agents=agents, seed=seed)
+        engine = GameEngine(table_name, default_agents=agents, seed=seed)  # todo als Member anlegen!
         pub = await engine.run_game_loop(pub=pub, privs=privs, break_time=0)
         return pub
     except Exception as e:

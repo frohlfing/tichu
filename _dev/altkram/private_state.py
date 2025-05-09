@@ -125,13 +125,13 @@ class PrivateState:
     def schupfed(self) -> list[tuple]:  # pragma: no cover
         return self._schupfed
 
-    # Hat der Spieler den MahJong?
+    # Hat der Spieler den MahJong?F
     @property
     def has_mahjong(self) -> bool:
         return CARD_MAH in self._hand
 
     # Kombinationsmöglichkeiten der Hand, also [(Karten, (Typ, Länge, Wert)), ...] (zuerst die besten)
-    @property
+    @propertyF
     def combinations(self) -> list[tuple]:
         if not self._combination_cache and self._hand:
             self._combination_cache = build_combinations(self._hand)

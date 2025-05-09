@@ -31,7 +31,7 @@ class Player:
             raise ValueError("Spielername darf nicht leer sein.")
         self._name: str = name_stripped
         self._session: str = session if session else str(uuid4())
-        self.player_index: Optional[int] = None  # wird von der GameEngine gesetzt
+        self.player_index: Optional[int] = None  # wird von der GameEngine gesetzt  todo in index umbenennen
         logger.debug(f"Player '{self._name}' (Session: {self._session}) erstellt.")
 
     def __repr__(self) -> str:
@@ -84,11 +84,8 @@ class Player:
     #     welche Art von Aktion gerade erforderlich ist. Aktuell nicht primär verwendet.
     #
     #     :param public_state: Der öffentliche Spielzustand.
-    #     :type public_state: PublicState
     #     :param private_state: Der private Zustand dieses Spielers.
-    #     :type private_state: PrivateState
     #     :return: Ein Dictionary, das die gewählte Aktion beschreibt.
-    #     :rtype: Optional[dict]
     #     :raises NotImplementedError: Wenn die Methode nicht von der Subklasse überschrieben wurde.
     #     """
     #     raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'get_action' implementieren, wenn Variante (a) verwendet wird.")
