@@ -6,8 +6,8 @@ __all__ = "CombinationType", "Combination", \
     "build_action_space",
 
 import enum
-from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in
-from typing import Tuple
+from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in, Card, Cards
+from typing import Tuple, List
 
 # todo Dokumentieren (reStructuredText)
 
@@ -369,7 +369,7 @@ def get_figure(cards: list, trick_value: int, shift_phoenix: bool = False) -> tu
 #
 # hand: Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)]
 # return: [(Karten, (Typ, Länge, Rang)), ...]
-def build_combinations(hand: list[tuple]) -> list[tuple]:
+def build_combinations(hand: list[tuple]) -> List[Tuple[Cards, Combination]]:
     has_phoenix = CARD_PHO in hand
     arr = [[], [], [], [], [], [], [], []]  # pro Type ein Array
     n = len(hand)
@@ -501,7 +501,7 @@ def build_combinations(hand: list[tuple]) -> list[tuple]:
             else:
                 v = cards[0][0]  # Rang der ersten Karte
             # Kombination speichern
-            result.append((cards, (t, len(cards), v)))
+            result.append((cards, (CombinationType(t), len(cards), v)))
 
     return result
 
@@ -521,7 +521,7 @@ def remove_combinations(combis: list[tuple], cards: list[tuple]):
 # trick_figure: Typ, Länge, Rang des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
 # unfulfilled_wish: Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt)
 # return: ([], (0,0,0)) für Passen sofern möglich + mögliche Kombinationen aus combis
-def build_action_space(combis: list[tuple], trick_figure: tuple, unfulfilled_wish: int) -> list[tuple]:
+def build_action_space(combis: List[Tuple[List[Card], Combination]], trick_figure: tuple, unfulfilled_wish: int) -> List[Tuple[List[Card], Combination]]:
     assert 0 <= trick_figure[0] <= 7
     assert 0 <= trick_figure[1] <= 14
     assert 0 <= trick_figure[2] <= 15

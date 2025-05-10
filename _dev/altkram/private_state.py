@@ -131,7 +131,7 @@ class PrivateState:
         return CARD_MAH in self._hand
 
     # Kombinationsmöglichkeiten der Hand, also [(Karten, (Typ, Länge, Wert)), ...] (zuerst die besten)
-    @propertyF
+    @property
     def combinations(self) -> list[tuple]:
         if not self._combination_cache and self._hand:
             self._combination_cache = build_combinations(self._hand)

@@ -2,9 +2,11 @@
 Definiert die abstrakte Basisklasse `Player` für alle Spieler im Tichu-Spiel.
 """
 from src.common.logger import logger
+from src.lib.cards import Card
+from src.lib.combinations import Combination
 from src.private_state2 import PrivateState
 from src.public_state2 import PublicState
-from typing import Optional
+from typing import Optional, Tuple, List
 from uuid import uuid4
 
 
@@ -119,7 +121,7 @@ class Player:
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'announce' implementieren.")
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: list[tuple]) -> tuple:
+    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[List[Card], Combination]]) -> Tuple[List[Card], Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
@@ -178,19 +180,16 @@ class Player:
         """Die aktuelle Session des Spielers."""
         return self._session
 
-    # Index des Partners
     @property
     def partner_index(self) -> int:
         """Der Index des Partners (0-3)."""
         return (self.player_index + 2) % 4
 
-    # Index des rechten Gegners
     @property
     def opponent_right_index(self) -> int:
         """Der Index des rechten Gegners (0-3)."""
         return (self.player_index + 1) % 4
 
-    # Index des linken Gegners
     @property
     def opponent_left_index(self) -> int:
         """Der Index des linken Gegners (0-3)."""

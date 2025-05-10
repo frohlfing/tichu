@@ -1,14 +1,15 @@
 import config
 import math
 from src.common.rand import Random
-from src.lib.cards import CARD_DOG, CARD_MAH
-from src.lib.combinations import build_action_space, remove_combinations, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, SINGLE, STREET, BOMB
+from src.lib.cards import CARD_DOG, CARD_MAH, Card
+from src.lib.combinations import build_action_space, remove_combinations, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, SINGLE, STREET, BOMB, Combination
 from src.lib.partitions import partition_quality, filter_playable_combinations, filter_playable_partitions
 from src.lib.prob import calc_statistic
 from src.players.agent import Agent
 from _dev.altkram.private_state import PrivateState
 from _dev.altkram.public_state import PublicState
-from typing import Optional
+from typing import Optional, List, Tuple
+
 
 # todo Datei Dokumentieren (reStructuredText)
 
@@ -175,7 +176,7 @@ class HeuristicAgent(Agent):
             announcement = q >= min_q
         return announcement
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: list[tuple]) -> tuple:
+    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[List[Card], Combination]]) -> Tuple[List[Card], Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 

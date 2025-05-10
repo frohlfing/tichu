@@ -1,8 +1,10 @@
 from src.common.rand import Random
+from src.lib.cards import Card
+from src.lib.combinations import Combination
 from src.players.agent import Agent
 from _dev.altkram.private_state import PrivateState
 from _dev.altkram.public_state import PublicState
-from typing import Optional
+from typing import Optional, List, Tuple
 
 
 class RandomAgent(Agent):
@@ -52,7 +54,7 @@ class RandomAgent(Agent):
         """
         return self._random.choice([True, False], [1, 19] if grand else [1, 9])
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: list[tuple]) -> tuple:
+    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[List[Card], Combination]]) -> Tuple[List[Card], Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 

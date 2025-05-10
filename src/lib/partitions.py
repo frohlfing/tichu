@@ -1,17 +1,24 @@
-__all__ = "build_partitions", "remove_partitions", \
+__all__ = "Partition", \
+    "build_partitions", "remove_partitions", \
     "filter_playable_partitions", "filter_playable_combinations", \
     "stringify_partition", \
     "partition_quality",
 
+from typing import List, Tuple
+
 import config
 import math
-from src.lib.combinations import stringify_figure, remove_combinations
+
+from src.lib.cards import Cards
+from src.lib.combinations import stringify_figure, remove_combinations, Combination
 
 # todo Dokumentieren (reStructuredText)
 
 # -----------------------------------------------------------------------------
 # Partitionen
 # -----------------------------------------------------------------------------
+
+Partition = List[Tuple[Cards, Combination]]  # todo überall konsequent verwenden
 
 # Berechnet die Partitionen, die mit den verfügbaren Kombinationen gebildet werden können.
 #
@@ -52,8 +59,8 @@ def build_partitions(partitions: list[list[tuple]], combis: list[tuple], counter
 
 # partitions: Partitionen
 # cards: Karten, die entfernt werden sollen
-# return: [(Karten, (Typ, Länge, Wert)), ...]
-def remove_partitions(partitions: list[list[tuple]], cards: list[tuple]) -> list[list[tuple]]:
+# return: Neue Liste der Partitionen
+def remove_partitions(partitions: List[Partition], cards: Cards) -> List[Partition]:
     new_partitions = []
     for partition in partitions:
         new_partition = []

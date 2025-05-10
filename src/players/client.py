@@ -181,7 +181,7 @@ class Client(Player):
         # TODO: Implementieren!
         return self._random.choice([True, False], [1, 19] if grand else [1, 9])
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: list[tuple]) -> tuple:
+    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[List[Card], Combination]]) -> Tuple[List[Card], Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 

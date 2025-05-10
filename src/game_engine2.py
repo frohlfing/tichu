@@ -3,18 +3,17 @@ Definiert die Spiellogik.
 """
 
 import asyncio
-from src.lib.combinations import FIGURE_DRA, FIGURE_DOG, build_action_space, FIGURE_PASS, build_combinations, remove_combinations, CombinationType, FIGURE_PHO, FIGURE_MAH, SINGLE
+from src.lib.combinations import FIGURE_DRA, FIGURE_DOG, build_action_space, FIGURE_PASS, CombinationType, FIGURE_PHO, FIGURE_MAH, SINGLE, Combination
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import deck, CARD_MAH, Card, is_wish_in, sum_card_points, CARD_DRA, other_cards
-from src.lib.partitions import remove_partitions
 from src.players.agent import Agent
 from src.players.client import Client
 from src.players.player import Player
 from src.players.random_agent import RandomAgent
 from src.private_state2 import PrivateState
 from src.public_state2 import PublicState
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 class GameEngine:
     """
@@ -154,12 +153,12 @@ class GameEngine:
             # Kopie des sortiertem Standarddecks - wird jede Runde neu durchgemischt
             mixed_deck = list(deck)
             
-            # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhautpt Clients im Spiel sind
+            # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
             # todo testen, ob das wirklich relevant ist
             clients_joined = any(isinstance(p, Client) for p in self._players)
             
             # Partie spielen
-            while sum(pub.game_score[0]) < 1000 and sum(pub.game_score[1]) < 1000:  # noch nicht game over?
+            while not pub.is_game_over:
                 # Neue Runde...
 
                 # öffentlichen Spielzustand zurücksetzen
@@ -220,8 +219,8 @@ class GameEngine:
                 while not pub.is_round_over:
                     priv = privs[pub.current_turn_index]
                     agent = self._players[pub.current_turn_index]
-                    assert pub.num_hand_cards[priv.player_index] == len(priv.hand_cards)
-                    assert 0 <= pub.num_hand_cards[priv.player_index] <= 14
+                    assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
+                    assert 0 <= pub.count_hand_cards[priv.player_index] <= 14
                     if clients_joined: 
                         await self.broadcast("")
 
@@ -237,27 +236,25 @@ class GameEngine:
                             await self.broadcast("")
 
                     # hat der Spieler noch Karten?
-                    if pub.num_hand_cards[priv.player_index] > 0:
+                    if pub.count_hand_cards[priv.player_index] > 0:
                         # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf Tichu angesagt werden
-                        if pub.num_hand_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
+                        if pub.count_hand_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
                             if await agent.announce(pub, priv):
                                 self.announce(pub, priv.player_index)
                                 if clients_joined: 
                                     await self.broadcast("")
 
                         # Kombination auswählen
-                        if not priv._combination_cache and priv.hand_cards:
-                            priv._combination_cache = build_combinations(priv.hand_cards)
-                        action_space = build_action_space(priv._combination_cache, pub.trick_combination, pub.wish_value)
+                        action_space = build_action_space(priv.combinations, pub.trick_combination, pub.wish_value)
                         combi = await agent.combination(pub, priv, action_space)
-                        assert pub.num_hand_cards[priv.player_index] == len(priv.hand_cards)
-                        assert combi[1][1] <= pub.num_hand_cards[priv.player_index] <= 14
+                        assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
+                        assert combi[1][1] <= pub.count_hand_cards[priv.player_index] <= 14
 
                         # Kombination ausspielen
                         self.play_priv(priv, combi)
-                        assert len(priv.hand_cards) == pub.num_hand_cards[priv.player_index] - combi[1][1]
+                        assert len(priv.hand_cards) == pub.count_hand_cards[priv.player_index] - combi[1][1]
                         self.play_pub(pub, combi)
-                        assert pub.num_hand_cards[priv.player_index] == len(priv.hand_cards)
+                        assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
                         if clients_joined: 
                             await self.broadcast("")
 
@@ -288,7 +285,8 @@ class GameEngine:
                     # nächster Spieler ist an der Reihe
                     self.turn(pub)
 
-            logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {sum(pub.game_score[0])}, Team 31: {sum(pub.game_score[1])}")
+            score20, score31 = pub.total_score
+            logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {score20}, Team 31: {score31}")
             if clients_joined:
                 await self.broadcast_state(pub, privs)
 
@@ -329,7 +327,7 @@ class GameEngine:
         """
         pub.current_turn_index = -1
         pub.start_player_index = -1
-        pub.num_hand_cards = [0, 0, 0, 0]
+        pub.count_hand_cards = [0, 0, 0, 0]
         pub.played_cards = []
         pub.announcements = [0, 0, 0, 0]
         pub.wish_value = 0
@@ -344,14 +342,6 @@ class GameEngine:
         pub.is_round_over = False
         pub.double_victory = False
     
-    # @staticmethod
-    # def number_of_players(pub: PublicState) -> int:
-    #     """
-    #     Anzahl Spieler, die noch im Rennen sind.
-    #     :param pub: Öffentlicher Spielzustand
-    #     """
-    #     return sum(1 for n in pub.num_hand_cards if n > 0)
-
     def shuffle_cards(self, cards: List[Card]) -> None:
         """
         Karten mischen
@@ -395,11 +385,11 @@ class GameEngine:
         """
         assert not pub.is_round_over
         assert 0 <= player_index <= 3
-        assert (pub.num_hand_cards[player_index] == 0 and n == 8) or \
-               (pub.num_hand_cards[player_index] == 8 and n == 14) or \
-               (pub.num_hand_cards[player_index] == 14 and n == 11) or \
-               (pub.num_hand_cards[player_index] == 11 and n == 14)
-        pub.num_hand_cards[player_index] = n
+        assert (pub.count_hand_cards[player_index] == 0 and n == 8) or \
+               (pub.count_hand_cards[player_index] == 8 and n == 14) or \
+               (pub.count_hand_cards[player_index] == 14 and n == 11) or \
+               (pub.count_hand_cards[player_index] == 11 and n == 14)
+        pub.count_hand_cards[player_index] = n
 
     @staticmethod
     def announce(pub: PublicState, player_index: int, grand: bool = False):  # pragma: no cover
@@ -412,11 +402,11 @@ class GameEngine:
         assert not pub.is_round_over
         assert 0 <= player_index <= 3
         assert pub.announcements[player_index] == 0
-        assert (grand and pub.num_hand_cards[player_index] == 8 and pub.start_player_index == -1) or (not grand and pub.num_hand_cards[player_index] == 14)
+        assert (grand and pub.count_hand_cards[player_index] == 8 and pub.start_player_index == -1) or (not grand and pub.count_hand_cards[player_index] == 14)
         pub.announcements[player_index] = 2 if grand else 1
 
     @staticmethod
-    def play_pub(pub: PublicState, combi: tuple):
+    def play_pub(pub: PublicState, combi: Tuple[List[Card], Combination]):
         """
         Kombination spielen
         :param pub: Öffentlicher Spielzustand
@@ -434,8 +424,8 @@ class GameEngine:
 
         # Anzahl Handkarten aktualisieren
         assert combi[1][1] == len(combi[0])
-        assert pub.num_hand_cards[pub.current_turn_index] >= combi[1][1]
-        pub.num_hand_cards[pub.current_turn_index] -= combi[1][1]
+        assert pub.count_hand_cards[pub.current_turn_index] >= combi[1][1]
+        pub.count_hand_cards[pub.current_turn_index] -= combi[1][1]
 
         # Wunsch erfüllt?
         assert pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
@@ -457,21 +447,21 @@ class GameEngine:
         assert -25 <= pub.trick_points <= 125
 
         # Runde beendet?
-        if pub.num_hand_cards[pub.current_turn_index] == 0:
-            number_of_players = sum(1 for n in pub.num_hand_cards if n > 0)  # Anzahl Spieler, die noch im Rennen sind
-            assert 1 <= number_of_players <= 3
-            if number_of_players == 3:
+        if pub.count_hand_cards[pub.current_turn_index] == 0:
+            n = pub.count_active_players
+            assert 1 <= n <= 3
+            if n == 3:
                 assert pub.winner_index == -1
                 pub.winner_index = pub.current_turn_index
-            elif number_of_players == 2:
+            elif n == 2:
                 assert 0 <= pub.winner_index <= 3
                 if (pub.current_turn_index + 2) % 4 == pub.winner_index:  # Doppelsieg?
                     pub.is_round_over = True
                     pub.double_victory = True
-            elif number_of_players == 1:
+            elif n == 1:
                 pub.is_round_over = True
                 for player in range(0, 4):
-                    if pub.num_hand_cards[player] > 0:
+                    if pub.count_hand_cards[player] > 0:
                         assert pub.loser_index == -1
                         pub.loser_index = player
                         break
@@ -505,7 +495,7 @@ class GameEngine:
             # Doppelsieg! Die Karten müssen nicht gezählt werden.
             assert pub.is_round_over
             assert 0 <= pub.winner_index <= 3
-            assert sum(1 for n in pub.num_hand_cards if n > 0) == 2
+            assert sum(1 for n in pub.count_hand_cards if n > 0) == 2
             pub.points = [0, 0, 0, 0]
             pub.points[pub.winner_index] = 200
         else:
@@ -556,8 +546,10 @@ class GameEngine:
                         pub.points[player] -= 100 * pub.announcements[player]
 
             # Score (Gesamt-Punktestand der aktuellen Episode)
-            pub.game_score[0] += pub.points[0] + pub.points[2]
-            pub.game_score[1] += pub.points[1] + pub.points[3]
+
+            score20, score31 = pub.total_score
+            pub.game_score[0] += score20
+            pub.game_score[1] += score31
             pub.round_counter += 1
 
     @staticmethod
@@ -586,9 +578,6 @@ class GameEngine:
         """
         priv.hand_cards = []
         priv.given_schupf_cards = []
-        priv._combination_cache = []  # todo priv hat kein Cache
-        priv._partition_cache = []  # todo priv hat kein Cache
-        priv._partitions_aborted = True  # todo priv hat das Feld nicht
 
     @staticmethod
     def take_cards(priv: PrivateState, cards: List[Card]):
@@ -602,8 +591,6 @@ class GameEngine:
         assert n == 8 or n == 14
         priv.hand_cards = cards
         priv.given_schupf_cards = []
-        priv._combination_cache = []  # todo priv hat kein Cache
-        priv._partition_cache = []  # todo priv hat kein Cache
 
     @staticmethod
     def schupf(priv: PrivateState, schupfed: list[tuple]) -> list[tuple]:
@@ -618,9 +605,7 @@ class GameEngine:
         assert len(schupfed) == 3
         priv._schupfed = schupfed
         assert len(priv.hand_cards) == 14
-        priv._hand = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
-        priv._combination_cache = []  # todo priv hat kein Cache
-        priv._partition_cache = []  # todo priv hat kein Cache
+        priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
         assert len(priv.hand_cards) == 11
         cards = [None, None, None, None]
         for i in range(0, 3):
@@ -640,8 +625,6 @@ class GameEngine:
         assert not set(cards).intersection(priv.hand_cards)  # darf keine Schnittmenge bilden
         priv.hand_cards += [card for card in cards if card is not None]
         priv.hand_cards.sort(reverse=True)
-        priv._combination_cache = []  # todo priv hat kein Cache
-        priv._partition_cache = []  # todo priv hat kein Cache
         assert len(priv.hand_cards) == 14
 
     @staticmethod
@@ -655,16 +638,6 @@ class GameEngine:
         if combi[1] != FIGURE_PASS:
             # Handkarten aktualisieren
             priv.hand_cards = [card for card in priv.hand_cards if card not in combi[0]]
-            if priv._combination_cache: # todo priv hat kein Cache
-                # das Entfernen der Kombinationen ist im Schnitt ca. 1.25-mal schneller als neu zu berechnen
-                priv._combination_cache = remove_combinations(priv._combination_cache, combi[0])  # todo priv hat kein Cache
-            if priv._partition_cache: # todo priv hat kein Cache
-                if priv._partitions_aborted: # todo priv hat kein Cache
-                    # Die Berechnung aller Partitionen wurde abgebrochen, da es zu viele gibt. Daher kann die Liste
-                    # nicht aktualisiert werden, sondern muss neu berechnet werden.
-                    priv._partition_cache = []
-                # das ist schneller, als alle Partitionen erneut zu berechnen
-                priv._partition_cache = remove_partitions(priv.partitions, combi[0])  # todo priv hat kein Cache
 
     # ------------------------------------------------------
     # Client-spezifisches
@@ -789,4 +762,3 @@ class GameEngine:
     @property
     def players(self) -> List[Player]:
         return self._players # Rückgabe der Liste (Änderungen extern möglich, aber nicht vorgesehen)
-    

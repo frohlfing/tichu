@@ -4,7 +4,7 @@ Definiert die Datenstruktur für den öffentlichen Spielzustand.
 
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Dict, Any
-from src.lib.cards import Card, stringify_cards
+from src.lib.cards import Card, stringify_cards, other_cards
 from src.lib.combinations import Combination
 
 @dataclass
@@ -18,7 +18,7 @@ class PublicState:
     :ivar player_names: Die Namen der 4 Spieler [Spieler 0-3].
     :ivar current_turn_index: Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest).
-    :ivar num_hand_cards: Anzahl der Handkarten pro Spieler [Spieler 0-3].
+    :ivar count_hand_cards: Anzahl der Handkarten pro Spieler [Spieler 0-3].
     :ivar played_cards: Bereits gespielte Karten in der aktuellen Runde [Card, ...].
     :ivar announcements: Angekündigtes Tichu pro Spieler [Spieler 0-3] (0 == keine Ansage, 1 == kleines, 2 == großes Tichu)
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt)
@@ -28,24 +28,24 @@ class PublicState:
     :ivar trick_combination: Typ, Länge und Wert des aktuellen Stichs ((0,0,0) == leerer Stich)
     :ivar trick_points: Punkte des aktuellen Stichs.
     :ivar round_history: Spielverlauf der aktuellen Runde [(player_index, [Card, ...], Combination), ...]. # todo in Stiche unterteilen
-    :ivar points: Punktestand der aktuellen Runde pro Spieler [Spieler 0-3].
+    :ivar points: Bisher kassierte Punkte in der aktuellen Runde pro Spieler [Spieler 0-3].
     :ivar winner_index: Index des Spielers, der zuerst in der aktuellen Runde fertig wurde (-1 == alle Spieler sind noch dabei).
     :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == Runde läuft noch oder wurde mit Doppelsieg beendet).
-    :ivar is_round_over: Gibt an, ob die aktuelle Runde beendet ist.
-    :ivar double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
+    :ivar is_round_over: Gibt an, ob die aktuelle Runde beendet ist.  # todo könnte man auch berechnen
+    :ivar double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.  # todo könnte man auch berechnen
     :ivar game_score: Punktetabelle der Partie [Team 20, Team 31] (pro Team eine Liste von Punkten).
     :ivar round_counter: Anzahl der abgeschlossenen Runden (nur für statistische Zwecke). # todo kann aus game_ccore ermittelt werden
     :ivar trick_counter: Anzahl der abgeräumten Stiche in der aktuellen Runde (nur für statistische Zwecke). # todo kann aus round_history ermittelt werden
     :ivar current_phase: # Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
     """
     # --- Tisch- und Spielerinformationen ---
-    table_name: str = "Unbekannter Tisch"
+    table_name: str = ""
     player_names: List[Optional[str]] = field(default_factory=lambda: [None, None, None, None])
 
     # --- Information über die aktuelle Runde ---
     current_turn_index: int = -1
     start_player_index: int = -1
-    num_hand_cards: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
+    count_hand_cards: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
     played_cards: List[Card] = field(default_factory=list)
     announcements: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
     wish_value: int = 0
@@ -54,7 +54,8 @@ class PublicState:
     trick_cards: List[Card] = field(default_factory=lambda: [])
     trick_combination: Combination = field(default_factory=lambda: [0, 0, 0])
     trick_points: int = 0
-    round_history: List[Tuple[int, Optional[List[Card]], Optional[Combination]]] = field(default_factory=list)  # todo
+    #round_history: List[Tuple[int, Optional[List[Card]], Optional[Combination]]] = field(default_factory=list)  # todo
+    round_history: List[Tuple[int, Tuple[List[Card], Combination]]] = field(default_factory=list)  # todo
     points: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
     winner_index: int = -1
     loser_index: int = -1
@@ -71,7 +72,6 @@ class PublicState:
     # --- Spielphase ---
     current_phase: str = "setup"
 
-
     def to_dict(self) -> Dict[str, Any]:
         """
         Konvertiert den Zustand in ein Dictionary für JSON-Serialisierung.
@@ -85,7 +85,7 @@ class PublicState:
             "playerNames": self.player_names,
             "currentTurnIndex": self.current_turn_index,
             "startPlayerIndex": self.start_player_index,
-            "numHandCards": self.num_hand_cards,
+            "countHandCards": self.count_hand_cards,
             "playedCards": stringify_cards(self.played_cards),
             "announcements": self.announcements,
             "wishValue": self.wish_value,
@@ -105,3 +105,31 @@ class PublicState:
             "trickCounter": self.trick_counter,
             "currentPhase": self.current_phase,
         }
+
+    @property
+    def count_active_players(self) -> int:
+        """
+        Anzahl Spieler, die noch im Rennen sind.
+        """
+        return sum(1 for n in self.count_hand_cards if n > 0)
+
+    @property
+    def unplayed_cards(self) -> List[Card]:  # pragma: no cover
+        """Nicht gespielte Karten (in aufsteigender Reihenfolge)"""
+        return other_cards(self.played_cards)
+
+    @property
+    def points_per_team(self) -> Tuple[int, int]:
+        """Bisher kassierte Punkte in der aktuellen Runde für Team 20 und Team 31"""
+        return self.points[2] + self.points[0], self.points[3] + self.points[1]
+
+    @property
+    def total_score(self) -> Tuple[int, int]:
+        """Gesamtpunktestand der Partie für Team 20 und Team 31"""
+        return sum(self.game_score[0]), sum(self.game_score[1])
+
+    @property
+    def is_game_over(self) -> bool:
+        """Gibt an, ob die Partie beendet ist."""
+        score20, score31 = self.total_score
+        return score20 >= 1000 or score31 >= 1000

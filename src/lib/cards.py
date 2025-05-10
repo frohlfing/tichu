@@ -1,11 +1,11 @@
-__all__ = "Card", "CardLabel", \
+__all__ = "Card", "Cards", \
     "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
     "deck", \
     "parse_cards", "stringify_cards", \
     "ranks_to_vector", "cards_to_vector", \
     "is_wish_in", "sum_card_points", "other_cards",
 
-from typing import Tuple
+from typing import Tuple, List
 
 # todo Dokumentieren (reStructuredText)
 
@@ -15,8 +15,9 @@ from typing import Tuple
 
 # Typ-Alias für eine Karte
 Card = Tuple[int, int]  # Wert, Farbe   # todo überall konsequent verwenden
-CardLabel = str  # z.B. "R2"  # todo wieder rausnehmen
 
+# Typ-Alias für mehrere Karten
+Cards = List[Card]  # todo überall konsequent verwenden
 
 # Sonderkarten
 #   (Wert, Farbe)
@@ -190,7 +191,13 @@ def sum_card_points(cards: list[tuple]) -> int:
     return sum([_card_points[card[0]] for card in cards])
 
 
-# Listet die übrigen Karten auf
-# Die Reihenfolge entspricht dem Kartendeck (also aufsteigend).
-def other_cards(cards: list[tuple]) -> list[tuple]:
+def other_cards(cards: list[tuple]) -> List[Card]:
+    """
+    Listet die Karten auf, die nicht in cards vorkommen.
+
+    Die Reihenfolge entspricht dem Kartendeck (also aufsteigend).
+
+    :param cards: Die Karten, aus denen die fehlenden Karten ermittelt werden.
+    :return: Die Karten, die nicht in cards vorkommen.
+    """
     return [card for card in deck if card not in cards]
