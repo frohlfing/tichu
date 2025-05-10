@@ -6,13 +6,12 @@ import asyncio
 import config
 from multiprocessing import Pool, Manager, cpu_count
 from src.common.logger import logger
-from src.game_engine2 import GameEngine
+from src.game_engine import GameEngine
 from src.players.agent import Agent
-from src.private_state2 import PrivateState
-from src.public_state2 import PublicState
+from src.private_state import PrivateState
+from src.public_state import PublicState
 from time import time
 from typing import Optional, List
-
 
 async def _run_game(table_name: str, agents: list[Agent], seed: Optional[int], pub: Optional[PublicState], privs: Optional[List[PrivateState]]) -> Optional[PublicState]:
     """

@@ -1,6 +1,6 @@
 # --- Am Ende von src/public_state2.py (oder in separater Datei) ---
 from src.lib.combinations import CombinationType
-from src.public_state2 import PublicState
+from src.public_state import PublicState
 import pickle
 
 if __name__ == "__main__":

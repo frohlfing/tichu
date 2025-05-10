@@ -4,7 +4,7 @@ Definiert die GameFactory-Klasse, die für die Verwaltung aller GameEngine-Insta
 
 import asyncio
 from src.common.logger import logger
-from src.game_engine2 import GameEngine
+from src.game_engine import GameEngine
 from typing import Dict, Optional
 
 class GameFactory:

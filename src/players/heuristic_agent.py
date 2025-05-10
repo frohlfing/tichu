@@ -1,17 +1,17 @@
 """
-Definiert die Heuristik-Agenten..
+Definiert die Heuristik-Agenten.
 """
 
 import config
 import math
 from src.common.rand import Random
-from src.lib.cards import CARD_DOG, CARD_MAH, Card
-from src.lib.combinations import build_action_space, remove_combinations, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, SINGLE, STREET, BOMB, Combination
+from src.lib.cards import Cards, CARD_DOG, CARD_MAH
+from src.lib.combinations import Combination, build_action_space, remove_combinations, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, SINGLE, STREET, BOMB
 from src.lib.partitions import partition_quality, filter_playable_combinations, filter_playable_partitions
 from src.lib.prob import calc_statistic
 from src.players.agent import Agent
-from src.private_state2 import PrivateState
-from src.public_state2 import PublicState
+from src.private_state import PrivateState
+from src.public_state import PublicState
 from typing import Optional, List, Tuple
 
 # todo Datei Dokumentieren (reStructuredText)
@@ -65,7 +65,7 @@ class HeuristicAgent(Agent):
     #       future: Future = loop.run_in_executor(pool, blocking_function)
     #       result: int = await future
 
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> list[tuple]:
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -83,39 +83,39 @@ class HeuristicAgent(Agent):
                 if pub.announcements[priv.player_index] > pub.announcements[p]:
                     # Ich hab ein größeres Tichu angesagt als mein Partner.
                     # Wenn möglich kriegt der Partner den Hund zugeschoben.
-                    if CARD_DOG in priv.hand:
+                    if CARD_DOG in priv.hand_cards:
                         preferred = [CARD_DOG]
                     # Ansonsten kriegt der Partner eine Karte bis 10
                     max_value = 10  # Höchster Kartenwert, der zur Abgabe in Betracht kommt
                     while not preferred:
-                        preferred = [(v, c) for v, c in priv.hand if c > 0 and v <= max_value]
+                        preferred = [(v, c) for v, c in priv.hand_cards if c > 0 and v <= max_value]
                         if not preferred:
                             assert max_value < 14, "Keine Schupfkarte für den Partner gefunden."
                             max_value += 1  # wir müssen wohl höherwertige Karten in Betracht ziehen
                 elif pub.announcements[p] > pub.announcements[priv.player_index]:
                     # Mein Partner hat ein größeres Tichu angesagt als ich.
                     # Wenn möglich kriegt der Partner den Phönix, Drachen, Mah Jong oder ein As.
-                    v = priv.hand[0][0]  # die Handkarten sind absteigend sortiert; die erste ist die beste
+                    v = priv.hand_cards[0][0]  # die Handkarten sind absteigend sortiert; die erste ist die beste
                     if v == 1 or v >= 14:
-                        preferred = [priv.hand[0]]
+                        preferred = [priv.hand_cards[0]]
                     # Ansonsten kriegt der Partner eine Karte ab Bube
                     min_value = 11  # Bube
                     while not preferred:
-                        preferred = [(v, c) for v, c in priv.hand if c > 0 and v >= min_value]
+                        preferred = [(v, c) for v, c in priv.hand_cards if c > 0 and v >= min_value]
                         if not preferred:
                             assert min_value > 2, "Keine Schupfkarte für den Partner gefunden."
                             min_value -= 1  # wir müssen wohl niederwertige Karten in Betracht ziehen
                 else:  # Weder ich noch mein Partner haben ein Tichu angesagt.
-                    preferred = list(priv.hand)  # Alle Handkarten werden betrachtet.
+                    preferred = list(priv.hand_cards)  # Alle Handkarten werden betrachtet.
             else:  # Gegner
                 # Der Gegner kriegt den Hund, sofern vorhanden (aber nur, wenn mein Partner kein Tichu angesagt hat)
-                if CARD_DOG in priv.hand and CARD_DOG not in schupfed and not pub.announcements[2]:
+                if CARD_DOG in priv.hand_cards and CARD_DOG not in schupfed and not pub.announcements[2]:
                     if pub.announcements[p] or (i == 3):  # bevorzugt derjenige, der ein Tichu angekündigt hat
                         preferred = [CARD_DOG]
                 # Ansonsten kriegt der Gegner eine Karte bis 10
                 max_value = 10  # Höchster Kartenwert, der zur Abgabe in Betracht kommt
                 while not preferred:
-                    preferred = [(v, c) for v, c in priv.hand if c > 0 and v <= max_value and (v, c) not in schupfed]
+                    preferred = [(v, c) for v, c in priv.hand_cards if c > 0 and v <= max_value and (v, c) not in schupfed]
                     if not preferred:
                         assert max_value < 14, "Keine Schupfkarte für den Gegner gefunden."
                         max_value += 1  # die Handkarten sind zu gut; es müssen höhere Karten in Betracht gezogen werden
@@ -164,8 +164,8 @@ class HeuristicAgent(Agent):
             min_q = self._quality[int(grand)]
 
             # Falls wir am Zug sind, spielbare Kombinationen ermitteln (ansonsten ist der Aktionsraum leer)
-            my_turn = pub.current_player_index == priv.player_index or (pub.start_player_index == -1 and CARD_MAH in priv.hand)
-            action_space = build_action_space(priv.combinations, pub.trick_figure, pub.wish) if my_turn else []
+            my_turn = pub.current_turn_index == priv.player_index or (pub.start_player_index == -1 and CARD_MAH in priv.hand_cards)
+            action_space = build_action_space(priv.combinations, pub.trick_combination, pub.wish_value) if my_turn else []
 
             # Kürzeste Partition bewerten
             len_min = 14
@@ -179,7 +179,7 @@ class HeuristicAgent(Agent):
             announcement = q >= min_q
         return announcement
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[List[Card], Combination]]) -> Tuple[List[Card], Combination]:
+    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
@@ -196,22 +196,23 @@ class HeuristicAgent(Agent):
             return action_space[0]  # es gibt nur diese mögliche Aktion
 
         can_skip = action_space[0][1] == FIGURE_PASS
-        partner = priv.partner
-        opp_right = priv.opponent_right
-        opp_left = priv.opponent_left
+        partner = priv.partner_index
+        opp_right = priv.opponent_right_index
+        opp_left = priv.opponent_left_index
 
         # Ist noch keiner fertig geworden und hab ich ein größeres Tichu angesagt als die anderen? Oder der Partner?
         a = pub.announcements
-        has_tichu = pub.winner == -1 and a[priv.player_index] > max(a[partner], a[opp_right], a[opp_left])
-        has_partner_tichu = pub.winner == -1 and a[partner] > max(a[priv.player_index], a[opp_right], a[opp_left])
+        has_tichu = pub.winner_index == -1 and a[priv.player_index] > max(a[partner], a[opp_right], a[opp_left])
+        has_partner_tichu = pub.winner_index == -1 and a[partner] > max(a[priv.player_index], a[opp_right], a[opp_left])
 
         # Kann der rechte Gegner im nächsten Zug seine restlichen Karten ablegen?
-        trick_len = pub.trick_figure[2]
-        right_opp_can_win = 0 < pub.number_of_cards[opp_right] < 6 and pub.number_of_cards[opp_right] == trick_len
+        trick_len = pub.trick_combination[2]
+        count_hand_cards = pub.count_hand_cards
+        right_opp_can_win = 0 < count_hand_cards[opp_right] < 6 and count_hand_cards[opp_right] == trick_len
 
         # Können und wollen wir fertig werden?
         for cards, figure in action_space:
-            if figure[1] == pub.number_of_cards[priv.player_index]:
+            if figure[1] == count_hand_cards[priv.player_index]:
                 # Wir könnten alle restlichen Karten ablegen.
                 if has_partner_tichu and not right_opp_can_win and can_skip:
                     # Der Partner hat ein Tichu angesagt und der rechte Gegner kann nicht fertig werden.
@@ -219,9 +220,9 @@ class HeuristicAgent(Agent):
                 return cards, figure  # wir legen alle Handkarten ab
 
         # Können und wollen wir passen, damit der Partner den Stich bekommt?
-        if pub.trick_player_index == partner and can_skip:
+        if pub.trick_owner_index == partner and can_skip:
             # Der Partner hat den Stich und wir könnten passen
-            if not has_tichu and not right_opp_can_win and pub.number_of_cards[partner] > 0:
+            if not has_tichu and not right_opp_can_win and count_hand_cards[partner] > 0:
                 # Wir haben kein Tichu angesagt und der Gegner kann nicht gewinnen und der Partner hat noch Karten.
                 return action_space[0]  # Wir passen (bzw. machen nichts), um den Partner nicht zu überstechen.
 
@@ -238,7 +239,7 @@ class HeuristicAgent(Agent):
             # Als Fallback bilden wir für jede gültige Aktion eine neue Partition, die neben der jeweiligen Aktion
             # nur aus Einzel-Kombinationen besteht.
             for cards, figure in action_space:
-                singles = [([card], (SINGLE, 1, card[0])) for card in priv.hand if card not in cards]
+                singles = [([card], (SINGLE, 1, card[0])) for card in priv.hand_cards if card not in cards]
                 partitions.append([(cards, figure)] + singles)
 
         # Als Zweites suchen wir die kürzeste Partition, da wir mit dieser vermutlich am schnellsten fertig werden.
@@ -274,11 +275,11 @@ class HeuristicAgent(Agent):
                 # Können wir Schluss machen (haben wir nur noch max. 2 Kombinationen)?
                 could_win = len(best_partition) <= 2
                 # Hat der Gegner, der an der Reihe ist, weniger als 6 Handkarten?
-                m = pub.number_of_cards[pub.current_player_index]
-                opp_could_win = pub.current_player_index in (opp_right, opp_left) and m < 6
+                m = count_hand_cards[pub.current_turn_index]
+                opp_could_win = pub.current_turn_index in (opp_right, opp_left) and m < 6
                 # Würden die Gegner 40 Punkte oder mehr kriegen?
-                b1 = pub.trick_player_index in (priv.player_index, partner) and pub.trick_figure == FIGURE_DRA
-                b2 = pub.trick_player_index in (opp_right, opp_left) and pub.trick_figure != FIGURE_DRA
+                b1 = pub.trick_owner_index in (priv.player_index, partner) and pub.trick_combination == FIGURE_DRA
+                b2 = pub.trick_owner_index in (opp_right, opp_left) and pub.trick_combination != FIGURE_DRA
                 opp_win_trick = pub.trick_points >= 40 and (b1 or b2)
                 # Ist mindestens ein Kriterium erfüllt?
                 if could_win or opp_could_win or opp_win_trick:
@@ -350,7 +351,7 @@ class HeuristicAgent(Agent):
         """
         values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 
-        t, n, value = pub.trick_figure
+        t, n, value = pub.trick_combination
         if t == STREET:
             # Wenn eine Straße gespielt wurde, wird Junge, Dame, König oder As bevorzugt, da diese für den Gegner
             # besser als Einzelkarte, Paar oder Drilling zu verwenden wäre.
@@ -359,7 +360,7 @@ class HeuristicAgent(Agent):
             # Ansonsten werden Werte bevorzugt, die sich noch vollständig in den Händen der Mitspieler befinden und
             # nicht an den Partner geschoben wurde. Das verringert das Bombenrisiko etwas.
             preferred = []
-            excl = priv.hand + pub.played_cards + [priv.schupfed[1]]
+            excl = priv.hand_cards + pub.played_cards + [priv.given_schupf_cards[1]]
             for v in range(2, 15):
                 if (v, 1) not in excl and (v, 2) not in excl and (v, 3) not in excl and (v, 4) not in excl:
                     preferred.append(v)
@@ -367,7 +368,7 @@ class HeuristicAgent(Agent):
             values = preferred
 
         # Wert bevorzugen, der an den nachfolgenden Gegner geschoben wurde. So mobben wir unseren Partner nicht.
-        value, color = priv.schupfed[0]
+        value, color = priv.given_schupf_cards[0]
         if value in values:
             values = [value]
 
@@ -386,20 +387,22 @@ class HeuristicAgent(Agent):
         :return: Der Index (0-3) des Gegners, der den Stich erhält.
         """
         # Der Spieler mit den meisten Handkarten kriegt den Drachen.
-        right = pub.number_of_cards[priv.opponent_right]
-        left = pub.number_of_cards[priv.opponent_left]
+        count_hand_cards = pub.count_hand_cards
+        right = count_hand_cards[priv.opponent_right_index]
+        left = count_hand_cards[priv.opponent_left_index]
         if right > left:
-            opp = priv.opponent_right
+            opp = priv.opponent_right_index
         elif right < left:
-            opp = priv.opponent_left
+            opp = priv.opponent_left_index
         else:
-            opp = priv.opponent_right if self._random.integer(0, 2) == 1 else priv.opponent_left
+            opp = priv.opponent_right_index if self._random.integer(0, 2) == 1 else priv.opponent_left_index
         return opp
 
     # Wahrscheinlichkeit, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können
     def _statistic(self, pub: PublicState, priv: PrivateState) -> dict:
-        key = (priv.player_index, priv.hand, pub.number_of_cards)
+        n = pub.count_hand_cards
+        key = (priv.player_index, priv.hand_cards, n)
         if self._statistic_key != key:
             self._statistic_key = key
-            self.__statistic = calc_statistic(priv.player_index, priv.hand, priv.combinations, pub.number_of_cards, pub.trick_figure, pub.unplayed_cards)
+            self.__statistic = calc_statistic(priv.player_index, priv.hand_cards, priv.combinations, n, pub.trick_combination, pub.unplayed_cards)
         return self.__statistic

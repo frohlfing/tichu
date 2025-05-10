@@ -3,11 +3,11 @@ Definiert einen Zufallsagenten.
 """
 
 from src.common.rand import Random
-from src.lib.cards import Card
+from src.lib.cards import Cards
 from src.lib.combinations import Combination
 from src.players.agent import Agent
-from src.private_state2 import PrivateState
-from src.public_state2 import PublicState
+from src.private_state import PrivateState
+from src.public_state import PublicState
 from typing import Optional, List, Tuple
 
 class RandomAgent(Agent):
@@ -31,7 +31,7 @@ class RandomAgent(Agent):
     # Entscheidungen
     # ------------------------------------------------------
 
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> list[tuple]:
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -57,7 +57,7 @@ class RandomAgent(Agent):
         """
         return self._random.choice([True, False], [1, 19] if grand else [1, 9])
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[List[Card], Combination]]) -> Tuple[List[Card], Combination]:
+    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 

@@ -3,10 +3,10 @@ Definiert die abstrakte Basisklasse `Player` für alle Spieler im Tichu-Spiel.
 """
 
 from src.common.logger import logger
-from src.lib.cards import Card
+from src.lib.cards import Cards
 from src.lib.combinations import Combination
-from src.private_state2 import PrivateState
-from src.public_state2 import PublicState
+from src.private_state import PrivateState
+from src.public_state import PublicState
 from typing import Optional, Tuple, List
 from uuid import uuid4
 
@@ -58,44 +58,10 @@ class Player:
         pass
 
     # ------------------------------------------------------
-    # Benachrichtigung
-    # ------------------------------------------------------
-
-    # ------------------------------------------------------
     # Entscheidungen
     # ------------------------------------------------------
 
-    # TODO: Überlegung zu Aktions-Varianten:
-    # Variante a) Eine einzige `get_action`-Methode: Der Spieler (insbesondere Agent) muss
-    #              selbst anhand des Spielzustands erkennen, welche Art von Entscheidung
-    #              gerade ansteht (Schupfen, Tichu, Kombi spielen, Wunsch, Drachen).
-    #              Flexibler für komplexe KIs, aber erfordert mehr Logik im Spieler.
-    # Variante b) Spezifische Methoden (`schupf`, `announce`, etc.): Die GameEngine
-    #              ruft explizit die passende Methode auf, wenn eine bestimmte
-    #              Entscheidung benötigt wird. Einfacher für die Spielerimplementierung,
-    #              aber die Engine muss den Spielablauf detaillierter steuern.
-    # Aktuelles Design: Variante b) wird von Client/Agent implementiert (als Platzhalter).
-    # Die Signaturen sind hier definiert, Subklassen müssen sie implementieren.
-
-    # Variante a) Player muss wissen, was zu tun ist und entscheidet
-
-    # async def get_action(self, public_state: PublicState, private_state: PrivateState) -> Optional[dict]:
-    #     """
-    #     Fordert den Spieler auf, die nächste Aktion basierend auf dem Kontext zu bestimmen.
-    #
-    #     Diese Methode ist für ein Design gedacht, bei dem der Spieler selbst entscheidet,
-    #     welche Art von Aktion gerade erforderlich ist. Aktuell nicht primär verwendet.
-    #
-    #     :param public_state: Der öffentliche Spielzustand.
-    #     :param private_state: Der private Zustand dieses Spielers.
-    #     :return: Ein Dictionary, das die gewählte Aktion beschreibt.
-    #     :raises NotImplementedError: Wenn die Methode nicht von der Subklasse überschrieben wurde.
-    #     """
-    #     raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'get_action' implementieren, wenn Variante (a) verwendet wird.")
-
-    # --- Variante b) Spezifische Entscheidungen ---
-
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> list[tuple]:
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -122,7 +88,7 @@ class Player:
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'announce' implementieren.")
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[List[Card], Combination]]) -> Tuple[List[Card], Combination]:
+    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 

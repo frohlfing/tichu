@@ -8,7 +8,6 @@ from src.lib.combinations import build_combinations, Combination
 from src.lib.partitions import build_partitions, Partition
 from typing import List, Dict, Any, Tuple
 
-
 @dataclass
 class PrivateState:
     """

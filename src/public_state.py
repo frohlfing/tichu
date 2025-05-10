@@ -3,9 +3,9 @@ Definiert die Datenstruktur für den öffentlichen Spielzustand.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Dict, Any
 from src.lib.cards import Card, stringify_cards, other_cards
 from src.lib.combinations import Combination
+from typing import List, Optional, Tuple, Dict, Any
 
 @dataclass
 class PublicState:
@@ -63,7 +63,7 @@ class PublicState:
     double_victory: bool = False
 
     # --- Information über die Partie ---
-    game_score: List[List[int]] = field(default_factory=lambda: [[0], [0]])
+    game_score: List[List[int]] = field(default_factory=lambda: [[], []])
 
     # --- Statistik ---
     round_counter: int = 0

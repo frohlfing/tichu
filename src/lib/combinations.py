@@ -28,7 +28,7 @@ class CombinationType(enum.IntEnum):  # todo überall konsequent verwenden
 
 # Typ-Alias für eine Kombination
 Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)  # todo überall konsequent verwenden
-
+Combinations = List[Tuple[Cards, Combination]]  # todo missverständlich? Wenn nicht, überall konsequent verwenden
 
 # Figur-Typen  # todo statt dessen CombinationType verwenden
 PASS = 0       # Passen

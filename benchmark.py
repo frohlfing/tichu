@@ -316,13 +316,13 @@ def sync_vs_async_benchmark():
     sync_duration = time.time() - start
 
     # Benchmark für asynchrone Funktion
-    async def run_async():
+    async def run_async2():
         start = time.time()
         for _ in range(number):
             await async_func2()
         return time.time() - start
 
-    async_duration = asyncio.run(run_async())
+    async_duration = asyncio.run(run_async2())
 
     print("Funktionsaufruf und Berechnung einer Zufallszahl:")
     print(f"Sync : {sync_duration:.3f} µs / Aufruf")

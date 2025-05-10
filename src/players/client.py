@@ -7,14 +7,16 @@ import config
 import time
 from aiohttp import WSCloseCode
 from aiohttp.web import WebSocketResponse
-from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import Card, stringify_cards, parse_cards
+# noinspection PyUnresolvedReferences
+from src.lib.cards import Card, Cards, stringify_cards, parse_cards
 from src.lib.combinations import Combination
+# noinspection PyUnresolvedReferences
+from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError
 from src.players.player import Player
-from src.private_state2 import PrivateState
-from src.public_state2 import PublicState
+from src.private_state import PrivateState
+from src.public_state import PublicState
 from typing import Optional, Dict, List, Tuple
 
 class Client(Player):
@@ -126,7 +128,7 @@ class Client(Player):
     #  Es fehlt eine klare Definition, wie die Nachrichten aufgebaut sein müssen.
     # ------------------------------------------------------
 
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> Tuple[Card, Card, Card]:
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -137,7 +139,7 @@ class Client(Player):
         :return: Die Liste der Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
         """
         # TODO: Implementieren!
-        raise PlayerResponseError(f"Ungültige Antwort auf 'foo': bar")
+        raise NotImplementedError
         #return (13, 4), (5, 3), (2, 1)  # dummy-Werte ersetzen
 
         # request_type = "request_schupf_cards"
@@ -176,7 +178,7 @@ class Client(Player):
         # TODO: Implementieren!
         return self._random.choice([True, False], [1, 19] if grand else [1, 9])
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[List[Card], Combination]]) -> Tuple[List[Card], Combination]:
+    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
@@ -210,65 +212,65 @@ class Client(Player):
         #     logger.warning(f"Client {self.name}: Interaktionsfehler bei '{request_type}': {e}")
         #     raise e
 
-    def _parse_combination_response(self, response_data: dict, original_action_space: list[tuple]) -> Optional[tuple]:
-        """
-        Parst die Antwort des Clients, validiert sie gegen den ursprünglichen action_space
-        und gibt das interne Aktions-Tupel zurück oder None bei ungültiger Antwort.
-        """
-        # Input z.B.: {"action": "play_cards", "payload": {"cards": ["SK", "BK"]}}
-        # Output z.B.: ('play_cards', [(13,1), (13,2)], (PAIR, 2, 13)) oder ('pass_turn', None, ...)
-        # TODO: Implementieren!
-        # 1. Extrahiere action und payload aus response_data.
-        # 2. Wenn action == "play_cards":
-        #    a. Parse die card_labels im payload mit parse_cards in interne Card-Tupel.
-        #    b. Finde die entsprechende Aktion im original_action_space, die genau diese Karten enthält.
-        #       (Achtung: Reihenfolge der Karten könnte anders sein, Sets vergleichen?)
-        #    c. Wenn gefunden -> Gib das Tupel aus original_action_space zurück.
-        #    d. Wenn nicht gefunden -> Ungültig, return None.
-        # 3. Wenn action == "pass_turn":
-        #    a. Finde die ('pass_turn', ...) Aktion im original_action_space.
-        #    b. Wenn gefunden -> Gib dieses Tupel zurück.
-        #    c. Wenn nicht gefunden (sollte nicht passieren) -> Ungültig, return None.
-        # 4. Andere Aktionen -> Ungültig, return None.
-
-        client_action = response_data.get("action")
-        client_payload = response_data.get("payload", {})
-
-        if client_action == "pass_turn":
-            # Finde die Pass-Aktion im Action Space
-            pass_action = next((a for a in original_action_space if a[0] == "pass_turn"), None)
-            if pass_action:
-                return pass_action
-            else:
-                logger.error(f"Client {self._name} wählte 'pass_turn', aber das war nicht im Action Space: {original_action_space}")
-                return None  # Ungültig
-
-        elif client_action == "play_cards":
-            card_labels = client_payload.get("cards", [])
-            if not card_labels:
-                logger.warning(f"Client {self._name} wählte 'play_cards' ohne Karten.")
-                return None  # Ungültig
-            try:
-                # Konvertiere Labels zu internen Karten und sortiere für Vergleich
-                played_cards_internal = sorted(parse_cards(" ".join(card_labels)), reverse=True)
-            except Exception as e:
-                logger.warning(f"Client {self._name} sendete ungültige Karten-Labels: {card_labels} -> {e}")
-                return None  # Ungültig
-
-            # Finde die passende Aktion im Action Space
-            for action_tuple in original_action_space:
-                if action_tuple[0] == "play_cards":
-                    space_cards_internal = sorted(action_tuple[1], reverse=True)
-                    # Vergleiche die sortierten Listen/Sets der Karten
-                    if played_cards_internal == space_cards_internal:
-                        return action_tuple  # Gültige Aktion gefunden!
-
-            # Wenn keine Übereinstimmung gefunden wurde
-            logger.warning(f"Client {self._name} spielte Karten {card_labels}, die nicht im Action Space waren: {original_action_space}")
-            return None  # Ungültig
-        else:
-            logger.warning(f"Client {self._name} sendete unbekannte Aktion in Antwort: {client_action}")
-            return None  # Ungültig
+    # def _parse_combination_response(self, response_data: dict, original_action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
+    #     """
+    #     Parst die Antwort des Clients, validiert sie gegen den ursprünglichen action_space
+    #     und gibt das interne Aktions-Tupel zurück oder None bei ungültiger Antwort.
+    #     """
+    #     # Input z.B.: {"action": "play_cards", "payload": {"cards": ["SK", "BK"]}}
+    #     # Output z.B.: ('play_cards', [(13,1), (13,2)], (PAIR, 2, 13)) oder ('pass_turn', None, ...)
+    #     # TODO: Implementieren!
+    #     # 1. Extrahiere action und payload aus response_data.
+    #     # 2. Wenn action == "play_cards":
+    #     #    a. Parse die card_labels im payload mit parse_cards in interne Card-Tupel.
+    #     #    b. Finde die entsprechende Aktion im original_action_space, die genau diese Karten enthält.
+    #     #       (Achtung: Reihenfolge der Karten könnte anders sein, Sets vergleichen?)
+    #     #    c. Wenn gefunden -> Gib das Tupel aus original_action_space zurück.
+    #     #    d. Wenn nicht gefunden -> Ungültig, return None.
+    #     # 3. Wenn action == "pass_turn":
+    #     #    a. Finde die ('pass_turn', ...) Aktion im original_action_space.
+    #     #    b. Wenn gefunden -> Gib dieses Tupel zurück.
+    #     #    c. Wenn nicht gefunden (sollte nicht passieren) -> Ungültig, return None.
+    #     # 4. Andere Aktionen -> Ungültig, return None.
+    #
+    #     client_action = response_data.get("action")
+    #     client_payload = response_data.get("payload", {})
+    #
+    #     if client_action == "pass_turn":
+    #         # Finde die Pass-Aktion im Action Space
+    #         pass_action = next((a for a in original_action_space if a[0] == "pass_turn"), None)
+    #         if pass_action:
+    #             return pass_action
+    #         else:
+    #             logger.error(f"Client {self._name} wählte 'pass_turn', aber das war nicht im Action Space: {original_action_space}")
+    #             return None  # Ungültig
+    #
+    #     elif client_action == "play_cards":
+    #         card_labels = client_payload.get("cards", [])
+    #         if not card_labels:
+    #             logger.warning(f"Client {self._name} wählte 'play_cards' ohne Karten.")
+    #             return None  # Ungültig
+    #         try:
+    #             # Konvertiere Labels zu internen Karten und sortiere für Vergleich
+    #             played_cards_internal = sorted(parse_cards(" ".join(card_labels)), reverse=True)
+    #         except Exception as e:
+    #             logger.warning(f"Client {self._name} sendete ungültige Karten-Labels: {card_labels} -> {e}")
+    #             return None  # Ungültig
+    #
+    #         # Finde die passende Aktion im Action Space
+    #         for action_tuple in original_action_space:
+    #             if action_tuple[0] == "play_cards":
+    #                 space_cards_internal = sorted(action_tuple[1], reverse=True)
+    #                 # Vergleiche die sortierten Listen/Sets der Karten
+    #                 if played_cards_internal == space_cards_internal:
+    #                     return action_tuple  # Gültige Aktion gefunden!
+    #
+    #         # Wenn keine Übereinstimmung gefunden wurde
+    #         logger.warning(f"Client {self._name} spielte Karten {card_labels}, die nicht im Action Space waren: {original_action_space}")
+    #         return None  # Ungültig
+    #     else:
+    #         logger.warning(f"Client {self._name} sendete unbekannte Aktion in Antwort: {client_action}")
+    #         return None  # Ungültig
 
     async def wish(self, pub: PublicState, priv: PrivateState) -> int:
         """

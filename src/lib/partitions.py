@@ -4,13 +4,11 @@ __all__ = "Partition", \
     "stringify_partition", \
     "partition_quality",
 
-from typing import List, Tuple
-
 import config
 import math
-
 from src.lib.cards import Cards
 from src.lib.combinations import stringify_figure, remove_combinations, Combination
+from typing import List, Tuple, Optional
 
 # todo Dokumentieren (reStructuredText)
 
@@ -31,7 +29,7 @@ Partition = List[Tuple[Cards, Combination]]  # todo überall konsequent verwende
 # curr: Die aktuell noch unvollständige Partition, für die passende Kombinationen gesucht werden.
 # deep: Suchtiefe
 # Rückgabe: True, wenn alle möglichen Partitionen berechnet wurden. False, wenn es mehr als partitions_max_len Partitionen gibt.
-def build_partitions(partitions: list[list[tuple]], combis: list[tuple], counter: int, maxlen=config.PARTITIONS_MAXLEN, curr: list = None, deep=0) -> bool:
+def build_partitions(partitions: List[Partition], combis: List[Tuple[Cards, Combination]], counter: int, maxlen=config.PARTITIONS_MAXLEN, curr: Optional[Partition] = None, deep=0) -> bool:
     if len(partitions) == maxlen:
         return False  # es gibt zu viele Möglichkeiten, wir brechen ab
 
@@ -80,7 +78,7 @@ def remove_partitions(partitions: List[Partition], cards: Cards) -> List[Partiti
 
 
 # Ermittelt Partitionen, die mindestens eine spielbare Kombination haben
-def filter_playable_partitions(partitions: list[list[tuple]], action_space: list[tuple]) -> list[list[tuple]]:
+def filter_playable_partitions(partitions: List[Partition], action_space: List[Tuple[Cards, Combination]]) -> List[Partition]:
     new_partitions = []
     for partition in partitions:
         for combi in partition:
@@ -91,7 +89,7 @@ def filter_playable_partitions(partitions: list[list[tuple]], action_space: list
 
 
 # Ermittelt die spielbaren Kartenkombinationen
-def filter_playable_combinations(partition: list[tuple], action_space: list[tuple]) -> list[tuple]:
+def filter_playable_combinations(partition: Partition, action_space: List[Tuple[Cards, Combination]]) -> List[Tuple[Cards, Combination]]:
     combis = []
     for combi in partition:
         if combi in action_space:
@@ -100,11 +98,11 @@ def filter_playable_combinations(partition: list[tuple], action_space: list[tupl
 
 
 # Wandelt die Partition in ein Label um
-def stringify_partition(partition: list[tuple]) -> str:
+def stringify_partition(partition: Partition) -> str:
     return " ".join([stringify_figure(combi[1]) for combi in partition])
 
 
-# Schätzt die Güte der gegebener Partition
+# Schätzt, die Güte der gegebener Partition
 #
 # Die Güte ist ein Maß für die Qualität der Partition. Je häufiger wir das Anspielrecht erhalten, desto größer ist
 # der Wert. Je häufiger wir das Anspielrecht verlieren, desto kleiner ist der Wert. Kombinationen, mir der wir
@@ -117,7 +115,7 @@ def stringify_partition(partition: list[tuple]) -> str:
 # action_space: spielbare Aktionen (leer, wenn die Partition jetzt nicht gespielt werden darf)
 # statistic: Ergebnis von combinations.calc_statistic()
 # return: Güte im Wertebereich [-1, 1]
-def partition_quality(partition: list[tuple], action_space: list[tuple], statistic: dict) -> float:
+def partition_quality(partition: Partition, action_space: List[Tuple[Cards, Combination]], statistic: dict) -> float:
 
     # !!!!!!!!!!!!!!!!!! Neue Beschreibung  !!!!!!!!!!!!!!!!!!!
     #

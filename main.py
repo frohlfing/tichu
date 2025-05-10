@@ -5,8 +5,11 @@ Startet eine Arena und lässt Agenten gegeneinander spielen.
 """
 
 import config
-from src.arena2 import Arena
+config.LOG_LEVEL = "WARNING"
+
+from src.arena import Arena
 from src.players.agent import Agent
+from src.players.heuristic_agent import HeuristicAgent
 from src.players.random_agent import RandomAgent
 
 
@@ -53,7 +56,15 @@ if __name__ == "__main__":
         RandomAgent(),
         RandomAgent(),
         RandomAgent(),
-    ], 1, verbose=True)
+    ], 10, verbose=True)
+
+
+    run_battle([
+        HeuristicAgent(),
+        RandomAgent(),
+        RandomAgent(),
+        RandomAgent(),
+    ], 10, verbose=True)
 
 # Interpreter-Options, um Asserts zu ignorieren:
 # -O

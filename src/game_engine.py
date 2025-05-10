@@ -3,16 +3,16 @@ Definiert die Spiellogik.
 """
 
 import asyncio
-from src.lib.combinations import FIGURE_DRA, FIGURE_DOG, build_action_space, FIGURE_PASS, CombinationType, FIGURE_PHO, FIGURE_MAH, SINGLE, Combination
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import deck, CARD_MAH, Card, is_wish_in, sum_card_points, CARD_DRA, other_cards
+from src.lib.cards import Card, Cards, deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH
+from src.lib.combinations import Combination, CombinationType, build_action_space, FIGURE_DRA, FIGURE_DOG, FIGURE_PASS, FIGURE_PHO, FIGURE_MAH, SINGLE
 from src.players.agent import Agent
 from src.players.client import Client
 from src.players.player import Player
 from src.players.random_agent import RandomAgent
-from src.private_state2 import PrivateState
-from src.public_state2 import PublicState
+from src.private_state import PrivateState
+from src.public_state import PublicState
 from typing import List, Optional, Tuple
 
 class GameEngine:
@@ -161,6 +161,7 @@ class GameEngine:
             # Partie spielen
             while not pub.is_game_over:
                 # Neue Runde...
+                #logger.debug(f"Runde {pub.round_counter}")
 
                 # öffentlichen Spielzustand zurücksetzen
                 self.reset_public_state_for_round(pub)
@@ -546,11 +547,12 @@ class GameEngine:
                     else:
                         pub.points[player] -= 100 * pub.announcements[player]
 
-            # Score (Gesamt-Punktestand der aktuellen Episode)
-
-            score20, score31 = pub.total_score
-            pub.game_score[0] += score20
-            pub.game_score[1] += score31
+            # Ergebnis der Runde in die Punktetabelle der Partie eintragen
+            #pub.game_score[0].append(pub.points[2] + pub.points[0])
+            #pub.game_score[1].append(pub.points[3] + pub.points[1])
+            points20, points31 = pub.points_per_team
+            pub.game_score[0].append(points20)
+            pub.game_score[1].append(points31)
             pub.round_counter += 1
 
     @staticmethod
@@ -594,7 +596,7 @@ class GameEngine:
         priv.given_schupf_cards = []
 
     @staticmethod
-    def schupf(priv: PrivateState, schupfed: list[tuple]) -> list[tuple]:
+    def schupf(priv: PrivateState, schupfed: Cards) -> list[tuple]:
         """ 
         Tauschkarten an die Mitspieler abgeben
         
@@ -604,7 +606,7 @@ class GameEngine:
         """
         # Karten abgeben
         assert len(schupfed) == 3
-        priv._schupfed = schupfed
+        priv.given_schupf_cards = schupfed
         assert len(priv.hand_cards) == 14
         priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
         assert len(priv.hand_cards) == 11, f"Anzahl Handkarten: {len(priv.hand_cards)}"
