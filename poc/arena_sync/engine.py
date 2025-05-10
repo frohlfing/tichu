@@ -1,11 +1,8 @@
 from src.common.rand import Random
 from src.lib.cards import CARD_MAH
 from src.lib.combinations import FIGURE_DOG, FIGURE_DRA, build_action_space, FIGURE_PASS
-from src.players.agent import Agent
-from src.players.client import Client
-from src.private_state import PrivateState
-from src.public_state import PublicState
-
+from poc.arena_sync.agent import Agent
+from poc.arena_sync.state import PublicState, PrivateState
 
 class GameEngine:
     # Spiellogik
@@ -14,7 +11,7 @@ class GameEngine:
     def __init__(self, agents: list[Agent], seed: int = None):
         assert len(agents) == 4
         self._agents = agents  # Agent 0 bis Agent 3
-        self._number_of_clients = sum([int(isinstance(agent, Client)) for agent in agents])
+        self._number_of_clients = 0
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
 
     def play_episode(self, pub: PublicState = None, privs: list[PrivateState] = None) -> PublicState:
@@ -110,6 +107,7 @@ class GameEngine:
                             self.notify_clients("")
 
                     # Kombination auswählen
+                    # noinspection PyTypeChecker
                     action_space = build_action_space(priv.combinations, pub.trick_figure, pub.wish)
                     combi = agent.combination(pub, priv, action_space)
                     assert pub.number_of_cards[priv.player_index] == priv.number_of_cards
@@ -153,9 +151,8 @@ class GameEngine:
     def notify_clients(self, _data) -> None:
         if not self._number_of_clients:
             return
-        for player in self._agents:
-            if isinstance(player, Client):
-                pass
+        for _player in self._agents:
+            pass
 
     # Zufallszahlgenerator
     @property

@@ -1,3 +1,7 @@
+"""
+Definiert die Heuristik-Agenten..
+"""
+
 import config
 import math
 from src.common.rand import Random
@@ -6,10 +10,9 @@ from src.lib.combinations import build_action_space, remove_combinations, FIGURE
 from src.lib.partitions import partition_quality, filter_playable_combinations, filter_playable_partitions
 from src.lib.prob import calc_statistic
 from src.players.agent import Agent
-from _dev.altkram.private_state import PrivateState
-from _dev.altkram.public_state import PublicState
+from src.private_state2 import PrivateState
+from src.public_state2 import PublicState
 from typing import Optional, List, Tuple
-
 
 # todo Datei Dokumentieren (reStructuredText)
 

@@ -1,10 +1,8 @@
 import config
 from multiprocessing import Pool, Manager, cpu_count
-from src.game_engine import GameEngine
-from src.players.agent import Agent
-from src.players.client import Client
-from src.private_state import PrivateState
-from src.public_state import PublicState
+from poc.arena_sync.engine import GameEngine
+from poc.arena_sync.agent import Agent
+from poc.arena_sync.state import PublicState, PrivateState
 from time import time
 from typing import Optional
 
@@ -34,7 +32,7 @@ class Arena:
         self._rounds: int = 0  # Rundenzähler über alle Episoden
         self._tricks: int = 0  # Stichzähler über alle Episoden
         self._rating = [0, 0, 0]  # Kumulative Bewertung des Teams 20 (Anzahl Partien gewonnenen, verloren, unentschieden)
-        self._number_of_clients = sum([int(isinstance(agent, Client)) for agent in agents])
+        self._number_of_clients = 0
         self._engine = GameEngine(self._agents, seed)
 
     def run(self) -> tuple:

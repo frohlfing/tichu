@@ -112,7 +112,8 @@ class GameEngine:
         logger.info(f"[{self.table_name}] Starte Hintergrund-Task für eine neue Partie.")
         self.game_loop_task = asyncio.create_task(self.run_game_loop(), name=f"Game Loop '{self.table_name}'")
 
-    async def run_game_loop(self, pub: Optional[PublicState] = None, privs: Optional[List[PrivateState]] = None, _break_time = 5) -> PublicState|None:
+    # noinspection PyUnusedLocal
+    async def run_game_loop(self, pub: Optional[PublicState] = None, privs: Optional[List[PrivateState]] = None, break_time = 5) -> PublicState|None:
         """
         Steuert den Spielablauf einer Partie.
         
@@ -124,7 +125,7 @@ class GameEngine:
 
         :param pub: (Optional) Öffentlicher Spielzustand (sichtbar für alle Spieler am Tisch). Änderungen extern möglich, aber nicht vorgesehen.
         :param privs: (Optional) Private Spielzustände (für jeden Spieler einen). Änderungen extern möglich, aber nicht vorgesehen.
-        :param _break_time: Pause in Sekunden zwischen den Runden.
+        :param break_time: Pause in Sekunden zwischen den Runden.
         :return: Der öffentliche Spielzustand.
         :raises ValueError: Wenn Parameter nicht ok sind.
         """
@@ -606,7 +607,7 @@ class GameEngine:
         priv._schupfed = schupfed
         assert len(priv.hand_cards) == 14
         priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
-        assert len(priv.hand_cards) == 11
+        assert len(priv.hand_cards) == 11, f"Anzahl Handkarten: {len(priv.hand_cards)}"
         cards = [None, None, None, None]
         for i in range(0, 3):
             cards[(priv.player_index + i + 1) % 4] = priv.given_schupf_cards[i]

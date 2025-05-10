@@ -1,6 +1,7 @@
 """
 Definiert die abstrakte Basisklasse `Player` für alle Spieler im Tichu-Spiel.
 """
+
 from src.common.logger import logger
 from src.lib.cards import Card
 from src.lib.combinations import Combination

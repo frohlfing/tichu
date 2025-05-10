@@ -2,6 +2,8 @@
 
 import math
 from collections import Counter
+
+from src.common.rand import Random
 # from scipy.special import comb
 # from scipy.stats import hypergeom
 # noinspection PyProtectedMember
@@ -14,6 +16,8 @@ from src.lib.combinations import *
 from src.lib.prob.prob_hi import possible_hands_hi
 from src.lib.prob import *
 from timeit import timeit
+import time
+import asyncio
 
 
 # from time import time
@@ -266,8 +270,69 @@ def validate_figure_benchmark():
     print(f"validate_figure2: {t:.6f} ms")
 
 
+async def async_func():
+    return 4711
+
+def sync_func():
+    return 4711
+
+random = Random()
+
+async def async_func2():
+    return random.integer(1, 100)
+
+def sync_func2():
+    return random.integer(1, 100)
+
+# Benchmark-Funktion:
+def sync_vs_async_benchmark():
+    number = 1000000
+
+    # Benchmark für synchrone Funktion
+    start = time.time()
+    for _ in range(number):
+        sync_func()
+    sync_duration = time.time() - start
+
+    # Benchmark für asynchrone Funktion
+    async def run_async():
+        start = time.time()
+        for _ in range(number):
+            await async_func()
+        return time.time() - start
+
+    async_duration = asyncio.run(run_async())
+
+    print("Nur der reine Funktionsaufruf:")
+    print(f"Sync : {sync_duration:.3f} µs / Aufruf")
+    print(f"Async: {async_duration:.3f} µs / Aufruf")
+    print(f"Diff: {async_duration - sync_duration:.3f} µs / Aufruf")
+    print()
+
+    # Benchmark für synchrone Funktion
+    start = time.time()
+    for _ in range(number):
+        sync_func2()
+    sync_duration = time.time() - start
+
+    # Benchmark für asynchrone Funktion
+    async def run_async():
+        start = time.time()
+        for _ in range(number):
+            await async_func2()
+        return time.time() - start
+
+    async_duration = asyncio.run(run_async())
+
+    print("Funktionsaufruf und Berechnung einer Zufallszahl:")
+    print(f"Sync : {sync_duration:.3f} µs / Aufruf")
+    print(f"Async: {async_duration:.3f} µs / Aufruf")
+    print(f"Diff: {async_duration - sync_duration:.3f} µs / Aufruf")
+    print(f"Async/Sync: {async_duration/sync_duration:.3f} mal langsamer")
+
+
 if __name__ == '__main__':
-    validate_figure_benchmark()
+    sync_vs_async_benchmark()
 
     #possible_hands_benchmark()
     #prob_of_hand_benchmark()

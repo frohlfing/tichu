@@ -3,11 +3,10 @@ Definiert die Client-Klasse für die Interaktion mit einem menschlichen Spieler 
 """
 
 import asyncio
+import config
 import time
 from aiohttp import WSCloseCode
 from aiohttp.web import WebSocketResponse
-
-import config
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError
 from src.common.logger import logger
 from src.common.rand import Random
@@ -17,10 +16,6 @@ from src.players.player import Player
 from src.private_state2 import PrivateState
 from src.public_state2 import PublicState
 from typing import Optional, Dict, List, Tuple
-
-# Timeout Konstante
-DEFAULT_REQUEST_TIMEOUT = 30.0  # todo notwendig? wenn ja, in die config verschieben
-
 
 class Client(Player):
     """

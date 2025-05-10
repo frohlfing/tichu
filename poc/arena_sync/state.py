@@ -1,6 +1,7 @@
 from src.common.rand import Random
 from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_MAH, CARD_DRA
-from src.lib.combinations import SINGLE, FIGURE_PASS, FIGURE_MAH, FIGURE_PHO, FIGURE_DRA, FIGURE_DOG
+from src.lib.combinations import SINGLE, FIGURE_PASS, FIGURE_MAH, FIGURE_PHO, FIGURE_DRA, FIGURE_DOG, build_combinations
+from src.lib.partitions import build_partitions
 
 
 class PublicState:
@@ -77,35 +78,6 @@ class PublicState:
         self._loser = -1
         self._is_done = False
         self._double_win = False
-
-    # # Spielzustand für eine neue Episode zurücksetzen
-    # def reset_score(self):  # pragma: no cover
-    #     self.reset_round()
-    #     self._score = [0, 0]
-    #     self._trick_counter = 0
-    #     self._round_counter = 0
-
-    # def copy(self) -> 'PublicState':
-    #     return PublicState(current_player=self._current_player,
-    #                        start_player=self._start_player,
-    #                        number_of_cards=self._number_of_cards,
-    #                        number_of_players=self._number_of_players,
-    #                        played_cards=self._played_cards,
-    #                        announcements=self._announcements,
-    #                        wish=self._wish,
-    #                        gift=self._gift,
-    #                        trick_player=self._trick_player,
-    #                        trick_figure=self._trick_figure,
-    #                        trick_points=self._trick_points,
-    #                        history=self._history,
-    #                        points=self._points,
-    #                        winner=self._winner,
-    #                        loser=self._loser,
-    #                        is_done=self._is_done,
-    #                        double_win=self._double_win,
-    #                        score=self._score,
-    #                        trick_counter=self._trick_counter,
-    #                        round_counter=self._round_counter)
 
     # Karten mischen
     def shuffle_cards(self):
@@ -396,3 +368,130 @@ class PublicState:
     @property
     def round_counter(self) -> int:  # pragma: no cover
         return self._round_counter
+
+
+class PrivateState:
+    def __init__(self,
+                 player_index: int,
+                 hand: list[tuple] = None,
+                 schupfed: list[tuple] = None,
+                 combinations: list[tuple] = None,
+                 partitions: list[list[tuple]] = None,
+                 partitions_aborted: bool = True):
+        self._player_index: int = player_index  # Index des Spielers (zw. 0 und 3)
+        # Private Observation Space:
+        self._hand: list[tuple] = hand if hand else []  # Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)]
+        self._schupfed: list[tuple] = schupfed if schupfed else []  # abgegebene Tauschkarten (für rechten Gegner, Partner und linken Gegner)
+        self._combination_cache: list[tuple] = combinations if combinations else []  # Kombinationsmöglichkeiten der Hand (wird erst berechnet, wenn benötigt)
+        self._partition_cache: list[list[tuple]] = partitions if partitions else [] # mögliche Partitionen (wird erst berechnet, wenn benötigt)
+        self._partitions_aborted: bool = partitions_aborted  # True, wenn nicht alle möglichen Partitionen berechnet worden sind
+
+    # Alles für eine neue Runde zurücksetzen
+    def reset_round(self):  # pragma: no cover
+        self._hand = []
+        self._schupfed = []
+        self._combination_cache = []
+        self._partition_cache = []
+        self._partitions_aborted = True
+
+    # Handkarten für eine neue Runde aufnehmen (und Tichu sagen, wenn man möchte)
+    # n: Anzahl Karten (8 oder 14)
+    def take_cards(self, cards: list[tuple]):
+        n = len(cards)
+        assert n == 8 or n == 14
+        self._hand = cards
+        self._schupfed = []
+        self._combination_cache = []
+        self._partition_cache = []
+
+    # Tauschkarten an die Mitspieler abgeben
+    # schupfed: Tauschkarte für rechten Gegner, Karte für Partner, Karte für linken Gegner
+    # return: Tauschkarten für Spieler 0 bis 3, kanonische Form (der eigene Spieler kriegt nichts, also None)
+    def schupf(self, schupfed: list[tuple]) -> list[tuple]:
+        # Karten abgeben
+        assert len(schupfed) == 3
+        self._schupfed = schupfed
+        assert len(self._hand) == 14
+        self._hand = [card for card in self._hand if card not in self._schupfed]
+        self._combination_cache = []
+        self._partition_cache = []
+        assert len(self._hand) == 11
+        cards = [None, None, None, None]
+        for i in range(0, 3):
+            cards[(self._player_index + i + 1) % 4] = self._schupfed[i]
+        return cards
+
+    # Tauschkarten der Mitspieler aufnehmen
+    # cards: Tauschkarten der Spieler 0 bis 3 (None steht für keine Karte; eigener Spieler)
+    def take_schupfed_cards(self, cards: list[tuple]):
+        assert len(self._hand) == 11
+        assert not set(cards).intersection(self._hand)  # darf keine Schnittmenge bilden
+        self._hand += [card for card in cards if card is not None]
+        self._hand.sort(reverse=True)
+        self._combination_cache = []
+        self._partition_cache = []
+        assert len(self._hand) == 14
+
+    # Kombination ausspielen (oder passen)
+    # combi: Ausgewählte Kombination (Karten, (Typ, Länge, Wert))
+    def play(self, combi: tuple):
+        if combi[1] != FIGURE_PASS:
+            # Handkarten aktualisieren
+            self._hand = [card for card in self._hand if card not in combi[0]]
+            self._combination_cache = []
+            self._partition_cache = []
+
+    # Nummer des Spielers
+    @property
+    def player_index(self) -> int:  # pragma: no cover
+        return self._player_index
+
+    # Nummer des Partners
+    @property
+    def partner(self) -> int:  # pragma: no cover
+        return (self._player_index + 2) % 4
+
+    # Nummer des rechten Gegners
+    @property
+    def opponent_right(self) -> int:  # pragma: no cover
+        return (self._player_index + 1) % 4
+
+    # Nummer des linken Gegners
+    @property
+    def opponent_left(self) -> int:  # pragma: no cover
+        return (self._player_index + 3) % 4
+
+    # Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)]
+    @property
+    def hand(self) -> list[tuple]:  # pragma: no cover
+        return self._hand
+
+    # Anzahl Handkarten
+    @property
+    def number_of_cards(self) -> int:  # pragma: no cover
+        return len(self._hand)
+
+    # Abgegebene Tauschkarten (für rechten Gegner, Partner und linken Gegner)
+    @property
+    def schupfed(self) -> list[tuple]:  # pragma: no cover
+        return self._schupfed
+
+    # Hat der Spieler den MahJong?F
+    @property
+    def has_mahjong(self) -> bool:
+        return CARD_MAH in self._hand
+
+    # Kombinationsmöglichkeiten der Hand, also [(Karten, (Typ, Länge, Wert)), ...] (zuerst die besten)
+    @property
+    def combinations(self) -> list[tuple]:
+        if not self._combination_cache and self._hand:
+            self._combination_cache = build_combinations(self._hand)
+        return self._combination_cache
+
+    # Mögliche Partitionen der Hand [[combi, combi, ...], ...] (zuerst die besten)
+    @property
+    def partitions(self) -> list[list[tuple]]:
+        if not self._partition_cache and self._hand:
+            self._partitions_aborted = not build_partitions(self._partition_cache, combis=self.combinations, counter=len(self._hand))
+            # reduce_partitions(self.__partitions)
+        return self._partition_cache

@@ -1,11 +1,14 @@
+"""
+Definiert einen Zufallsagenten.
+"""
+
 from src.common.rand import Random
 from src.lib.cards import Card
 from src.lib.combinations import Combination
 from src.players.agent import Agent
-from _dev.altkram.private_state import PrivateState
-from _dev.altkram.public_state import PublicState
+from src.private_state2 import PrivateState
+from src.public_state2 import PublicState
 from typing import Optional, List, Tuple
-
 
 class RandomAgent(Agent):
     """
@@ -38,7 +41,7 @@ class RandomAgent(Agent):
         :param priv: Der private Spielzustand.
         :return: Die Liste der Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
         """
-        hand = list(priv.hand)
+        hand = list(priv.hand_cards)
         return [hand.pop(self._random.integer(0, 14)), hand.pop(self._random.integer(0, 13)), hand.pop(self._random.integer(0, 12))]
 
     async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
