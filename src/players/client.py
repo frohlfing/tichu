@@ -1,5 +1,5 @@
 """
-Definiert die Client-Klasse für die Interaktion mit einem menschlichen Spieler über eine WebSocket-Verbindung.
+Definiert den serverseitigen Endpunkt der WebSocket-Verbindung für die Interaktion mit einem menschlichen Spieler.
 """
 
 import asyncio
