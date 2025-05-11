@@ -118,7 +118,7 @@ Server automatisch eine neue Runde ein (wir beginnen wieder bei Punkt 5).
 
 - type: "ping", payload: {timestamp:<timestamp>}
 
-Antwort vom Server: type: "pong", payload: {time:<timestamp>“}
+Antwort vom Server: type: "pong", payload: {timestamp:<timestamp>“}
 
 - type: "interrupt", payload: {reason:"tichu"|"bomb"}
 
