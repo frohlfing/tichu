@@ -7,28 +7,17 @@ Die Regeln stehen hier: https://cardgames.wiki/de/blog/tichu-spielen-regeln-und-
 Das System soll sowohl auf Windows 11 laufen (Entwicklungsumgebung) als auch auf einem Raspberry Pi 5 (bookworm).
 
 Es gibt zwei Betriebsarten:
-- In der Arena spielen Agenten (KI-gesteuerte Spieler) gegeneinander. Hier kommt es auf hohe Geschwindigkeit an, um möglichst 
-viele Partien zu spielen. 
-- Im Live-Betrieb spielen die Agenten mit echten Spielern. Dazu stellt ein Server eine Websocket bereit, über die der reale 
+- In der Arena spielen Agenten gegeneinander. Hier kommt es auf hohe Geschwindigkeit an, um möglichst viele Partien zu spielen. 
+Dieser Part ist bereits umgesetzt und funktioniert.
+- Im Live-Betrieb spielen die Agenten mit realen Spielern. Dazu stellt ein Server eine Websocket bereit, über die der reale 
 Spieler seine Aktionen mitteilt und die Events erhält. 
-
-
-## Entwicklungsstand
-
-Die Arena ist bereits umgesetzt, die Agenten können miteinander spielen. 
-
-Der Server für den Live-Betrieb befindet sich im Aufbau.
-
-Die Web-App (das Frontend) ist noch gar nicht umgesetzt; soll via HTML/JS/CSS umgesetzt werden. Ich hatte in Godot angefangen, 
-eine App zu entwickeln. Aber diesen Ansatz möchte ich nicht weiter verfolgen. Ich kann davon aber einen Screenshot als Vorlage 
-liefern.  
+Dieser Parte befindet sich in der Entwicklung.
 
 **Anmerkung:**
-
 - Mit "Client" ist hier der serverseitige Endpunkt der WebSocket-Verbindung gemeint. 
 Der clientseitige Endpunkt ist der "reale Spieler".
 - Mit "Agent" ist ein KI-gesteuerter Spieler gemeint.
- 
+
 
 ## Aufgabenbereiche
 
@@ -75,7 +64,6 @@ Der Spieler (Agent und Client) reagiert ausschließlich auf eine Anfrage. Die ei
 länger auf eine Antwort warten muss.
 Der Client (serverseitigen Endpunkt) leitet Benachrichtigungen und Anfragen des Servers an den realen Spieler weiter. 
 Bei einer Anfrage wartet der Client, das der Spieler darauf antwortet und gibt diese an den Server zurück.
-
 
 ## Ablauf eine Partie
 
@@ -151,6 +139,11 @@ Entscheidungsfindung.
 Während ein **regelbasierter Agent** feste Regeln befolgt und ein **heuristischer Agent** zusätzlich Wahrscheinlichkeiten 
 einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
 
+
+## Web-App
+Das Frontend soll via HTML/JS/CSS umgesetzt werden. Ich hatte in Godot angefangen, eine App zu entwickeln. 
+Aber diesen Ansatz möchte ich nicht weiter verfolgen. Ich kann davon aber einen Screenshot als Vorlage liefern.  
+ 
 
 ## TODOS
 
