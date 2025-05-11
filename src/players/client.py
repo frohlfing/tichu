@@ -67,7 +67,7 @@ class Client(Player):
     # Ereignis-Handler
     # ------------------------------------------------------
 
-    async def on_notify(self, msg_type: str, payload: dict):
+    async def on_notify(self, msg_type: str, payload: Optional[dict]=None):
         """
         Wird aufgerufen, wenn eine Nachricht vom Server eingetroffen ist.
 
@@ -76,6 +76,9 @@ class Client(Player):
         :param msg_type: Der Typ der Nachricht.
         :param payload: Die Nutzdaten der Nachricht als Dictionary.
         """
+        if payload is None:
+            payload = {}
+
         #if not self._is_connected or self._websocket is None or self._websocket.closed:
         if self._websocket.closed:
             # Client nicht verbunden
@@ -93,34 +96,24 @@ class Client(Player):
             logger.exception(f"Unerwarteter Fehler beim Senden der Nachricht {msg_type} an {self._name}: {e}")
             #self.mark_as_disconnected(reason=f"Unerwarteter Sendefehler: {e}")
 
-    async def on_websocket_message(self, msg_type: str, payload: dict):
+    async def on_websocket_response(self, action: str, data: dict):
         """
-        Wird aufgerufen, wenn eine Nachricht von der Gegenstelle empfangen wurde.
+        Wird aufgerufen, wenn eine Antwort von der Gegenstelle empfangen wurde.
 
-        :param msg_type: Der Typ der Nachricht.
-        :param payload: Die Nutzdaten der Nachricht als Dictionary.
+        :param action: Die Aktion der ursprünglichen Anfrage.
+        :param data: Die Daten der Antwort als Dictionary.
         """
-        if msg_type == "response":  # Antwort auf einer vorherigen Anfrage (die mittels _ask() gestellt wurde)
-            request_type = payload.get("request_type")  # der Typ der ursprünglichen Anfrage
-            response_data = payload.get("response_data")  # Die Nutzdaten der Antwort.
-            if request_type in self._pending_requests:
-                future = self._pending_requests[request_type]
-                if not future.done():
-                    future.set_result(response_data)
-                    logger.debug(f"Client {self._name}: Antwort für '{request_type}' an wartende Methode weitergeleitet.")
-                else:
-                    # Die Future wurde bereits gesetzt (z.B. Timeout, Cancelled) oder die Antwort kam zu spät.
-                    logger.warning(f"Client {self._name}: Antwort für bereits abgeschlossene/abgebrochene Anfrage '{request_type}' erhalten: {response_data}")
+        if action in self._pending_requests:
+            future = self._pending_requests[action]
+            if not future.done():
+                future.set_result(data)
+                logger.debug(f"Client {self._name}: Antwort für '{action}' an wartende Methode weitergeleitet.")
             else:
-                # Keine wartende Anfrage für diesen Typ gefunden.
-                logger.warning(f"Client {self._name}: Unerwartete Antwort für '{request_type}' erhalten (keine passende wartende Anfrage): {response_data}")
-
-        if msg_type == "ping":
-            logger.info(f"{self._name}: ping")
-            await self.on_notify("pong", {"message": f"{payload}"})
+                # Die Future wurde bereits gesetzt (z.B. Timeout, Cancelled) oder die Antwort kam zu spät.
+                logger.warning(f"Client {self._name}: Antwort für bereits abgeschlossene Aktion '{action}' erhalten: {data}")
         else:
-            logger.warning(f"Gegenstelle von {self._name} hat invalide Daten gesendet: {payload}")
-            await self.on_notify("error", {"message": "Invalide Daten."})
+            # Keine wartende Anfrage für diesen Typ gefunden.
+            logger.warning(f"Client {self._name}: Unerwartete Antwort für '{action}' erhalten: {data}")
 
     # ------------------------------------------------------
     # Entscheidungen

@@ -38,7 +38,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         return ws
 
     # --- 2) Query-String auslesen. ---
-    params = request.query  # z.B. ?playerName=Frank&tableName=Tisch1[&session=UUID]
+    params = request.query  # z.B. ?name=Frank&table=Tisch1[&session=UUID]
     remote_addr = request.remote if request.remote else "Unbekannt"  # Client-Adresse
     logger.info(f"WebSocket Verbindung hergestellt von {remote_addr} mit Parametern: {params}")
 
@@ -57,10 +57,10 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         logger.info(f"Client {client.name} (Session {client.session}) erfolgreich wiederverbunden.")
     else:
         try:
-            engine = factory.get_or_create_engine(params.get("tableName"))
-            client = Client(params.get("playerName"), websocket=ws, interrupt_event=engine.interrupt_event, session=session) if engine else None
+            engine = factory.get_or_create_engine(params.get("table"))
+            client = Client(params.get("name"), websocket=ws, interrupt_event=engine.interrupt_event, session=session) if engine else None
         except ValueError:
-            error_message = "Query-Parameter 'playerName' oder 'tableName' fehlerhaft."
+            error_message = "Query-Parameter 'name' oder 'table' fehlerhaft."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
@@ -73,10 +73,10 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
 
     # --- 4) Bestätigung an den Client senden. ---
     try:
-        await client.on_notify("joined_table", {
-            "playerName": client.name,
-            "tableName": engine.table_name,
-            "playerIndex": client.player_index,
+        await client.on_notify("joined", {
+            "name": client.name,
+            "table": engine.table_name,
+            "index": client.player_index,
             "session": client.session,
         })
     except Exception as e:
@@ -95,7 +95,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     break  # Schleife verlassen -> finally wird ausgeführt.
 
                 try:
-                    # Daten laden und weiterdelegieren
+                    # Nachricht laden
                     data = json.loads(msg.data)
                     logger.debug(f"Empfangen TEXT von {client.name}: {data}")
                     if not isinstance(data, dict):
@@ -104,10 +104,24 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                         continue
                     msg_type = data.get("type")  # Nachrichtentyp
                     payload = data.get("payload", {})  # Die Nutzdaten
-                    if msg_type == "interrupt":  # explizite Interrupt-Anfrage
+
+                    # Nachricht weiterdelegieren
+                    if msg_type == "bye":  # Client verlässt den Tisch
+                        break # aus der Message-Loop springen
+
+                    elif msg_type == "ping":  # Verbindungstest
+                        logger.info(f"{client.name}: ping")
+                        await client.on_notify("pong", payload)
+
+                    elif msg_type == "interrupt":  # explizite Interrupt-Anfrage
                         await engine.on_interrupt(client, payload.get("reason"))
+
+                    elif msg_type == "response":  # Antwort auf einer vorherigen Anfrage (die mittels _ask() gestellt wurde)
+                        await client.on_websocket_response(payload.get("action"), payload.get("data", {}))
+
                     else:
-                        await client.on_websocket_message(msg_type, payload)
+                        logger.error(f"Message-Type '{msg_type}' nicht erwartet")
+                        await client.on_notify("error", {"message": "Invalide Daten."})
 
                 except json.JSONDecodeError:
                     logger.exception(f"Ungültiges JSON von {client.name}: {msg.data}")

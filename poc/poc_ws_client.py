@@ -132,56 +132,42 @@ async def main_client(args):
                 # Starte den Empfangs-Task im Hintergrund
                 receive_task = asyncio.create_task(receive_messages(ws))
 
-                # Entscheide über Modus
-                if test_case_name:
-                    # Automatischer Modus
-                    interactive_mode = False
-                    await run_test_case(ws, test_case_name)
-                    # Warte nach Testfall noch kurz auf Nachrichten
-                    await asyncio.sleep(2)
-                elif interactive_mode:
-                    # Interaktiver Modus
-                    print("--- Interaktiver Modus ---")
-                    print("Gib JSON-Nachrichten ein (z.B. {\"action\":\"start_game\"}) oder 'quit' zum Beenden.")
-                    while True:
+                print("--- Interaktiver Modus ---")
+                print("Gib JSON-Nachrichten ein (z.B. {\"action\":\"start_game\"}) oder 'quit' zum Beenden.")
+                while True:
+                    try:
+                        # Asynchrone Eingabeaufforderung (verhindert Blockieren)
+                        loop = asyncio.get_running_loop()
+                        user_input = await loop.run_in_executor(None, sys.stdin.readline)
+                        user_input = user_input.strip()
+
+                        if not user_input: continue
+                        if user_input.lower() == 'quit': break
+                        if user_input.lower() == 'disconnect': # Test für Trennung
+                             print("--- Trenne Verbindung (manuell) ---")
+                             await ws.close()
+                             break
+
+                        # Versuche Eingabe als JSON zu parsen
                         try:
-                            # Asynchrone Eingabeaufforderung (verhindert Blockieren)
-                            loop = asyncio.get_running_loop()
-                            user_input = await loop.run_in_executor(None, sys.stdin.readline)
-                            user_input = user_input.strip()
-
-                            if not user_input: continue
-                            if user_input.lower() == 'quit': break
-                            if user_input.lower() == 'disconnect': # Test für Trennung
-                                 print("--- Trenne Verbindung (manuell) ---")
-                                 await ws.close()
-                                 break
-
-                            # Versuche Eingabe als JSON zu parsen
-                            try:
-                                message_data = json.loads(user_input)
-                                if isinstance(message_data, dict):
-                                    # Erwarte Struktur {"action": ..., "payload": ...} oder setze Defaults
-                                    action = message_data.get("action")
-                                    payload = message_data.get("payload", {})
-                                    if action:
-                                         await send_message(ws, {"action": action, "payload": payload})
-                                    else:
-                                         print("!!! Fehler: Nachricht muss ein 'action'-Feld enthalten.")
+                            message_data = json.loads(user_input)
+                            if isinstance(message_data, dict):
+                                # Erwarte Struktur {"action": ..., "payload": ...} oder setze Defaults
+                                action = message_data.get("action")
+                                payload = message_data.get("payload", {})
+                                if action:
+                                     await send_message(ws, {"action": action, "payload": payload})
                                 else:
-                                    print("!!! Fehler: JSON muss ein Objekt sein (z.B. {\"action\":...}).")
-                            except json.JSONDecodeError:
-                                print("!!! Fehler: Ungültiges JSON. Gib valides JSON ein oder 'quit'.")
-                            except Exception as e:
-                                 print(f"!!! Fehler beim Verarbeiten der Eingabe: {e}")
+                                     print("!!! Fehler: Nachricht muss ein 'action'-Feld enthalten.")
+                            else:
+                                print("!!! Fehler: JSON muss ein Objekt sein (z.B. {\"action\":...}).")
+                        except json.JSONDecodeError:
+                            print("!!! Fehler: Ungültiges JSON. Gib valides JSON ein oder 'quit'.")
+                        except Exception as e:
+                             print(f"!!! Fehler beim Verarbeiten der Eingabe: {e}")
 
-                        except (EOFError, KeyboardInterrupt):
-                            break # Beende bei Strg+D / Strg+C
-                else:
-                    # Nicht-interaktiv, kein Testfall -> Nur verbinden und lauschen
-                    print("--- Nur Verbinden und Lauschen (nicht-interaktiv) ---")
-                    # Warte einfach auf das Ende des Empfangs-Tasks
-                    await receive_task
+                    except (EOFError, KeyboardInterrupt):
+                        break # Beende bei Strg+D / Strg+C
 
                 # Nach dem Loop (interaktiv/testcase) oder wenn nur gelauscht wurde:
                 # Warte, bis der Server die Verbindung schließt oder ein Fehler auftritt
@@ -251,3 +237,8 @@ if __name__ == "__main__":
         asyncio.run(main_client(args))
     except KeyboardInterrupt:
         print("\nClient durch Benutzer abgebrochen.")
+
+
+
+
+

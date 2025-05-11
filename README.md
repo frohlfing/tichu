@@ -12,6 +12,7 @@ viele Partien zu spielen.
 - Im Live-Betrieb spielen die Agenten mit echten Spielern. Dazu stellt ein Server eine Websocket bereit, über die der reale 
 Spieler seine Aktionen mitteilt und die Events erhält. 
 
+
 ## Entwicklungsstand
 
 Die Arena ist bereits umgesetzt, die Agenten können miteinander spielen. 
@@ -28,6 +29,7 @@ liefern.
 Der clientseitige Endpunkt ist der "reale Spieler".
 - Mit "Agent" ist ein KI-gesteuerter Spieler gemeint.
  
+
 ## Aufgabenbereiche
 
 ### Aufgaben des WebSocket-Handlers
@@ -74,6 +76,7 @@ länger auf eine Antwort warten muss.
 Der Client (serverseitigen Endpunkt) leitet Benachrichtigungen und Anfragen des Servers an den realen Spieler weiter. 
 Bei einer Anfrage wartet der Client, das der Spieler darauf antwortet und gibt diese an den Server zurück.
 
+
 ## Ablauf eine Partie
 
 1) Grundsätzlich sendet der Client (serverseitigen Endpunkt) jedes Ereignis inkl. Spielzustand über alle aktiven Websocket-
@@ -106,6 +109,32 @@ mehr verdeckt).
 Server automatisch eine neue Runde ein (wir beginnen wieder bei Punkt 5).
 18) Wenn die Partie beendet ist, beginnen wir wieder mit Punkt 4.  
 
+
+## Definition der Websocket-Nachrichten
+
+### Proaktive Nachrichten vom realen Spieler an den Server
+
+- type: "bye"
+
+- type: "ping", payload: {timestamp:<timestamp>}
+
+Antwort vom Server: type: "pong", payload: {time:<timestamp>“}
+
+- type: "interrupt", payload: {reason:"tichu"|"bomb"}
+
+Keine Antwort vom Server
+
+### Proaktive Nachrichten vom Server an den realen Spieler
+  
+TODO: action und data spezifizieren
+
+- type: "request", payload: {action:<action> [,data:<action_data>]}
+
+Antwort vom realen Spieler:
+
+type: "response", payload: {action:<action>, data:<action_data>}
+
+
 ## Zusammenfassung der verschiedenen Agenten und ihrer Funktionsweise 
 
 - **`RandomAgent`** – Wählt zufällige Züge. 
@@ -122,10 +151,15 @@ Entscheidungsfindung.
 Während ein **regelbasierter Agent** feste Regeln befolgt und ein **heuristischer Agent** zusätzlich Wahrscheinlichkeiten 
 einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
 
+
 ## TODOS
 
-- Ws-Test-Client von Gemini abgleichen
-- von Gemini dokumentieren lassen (einmal im alten Chat und einmal im neuen Chat): Projektbeschreibung, Allgemeine Funktionsweise, Klassenhierarchie, Klassenbeschreibung, Vorschläge für Testfälle (nicht coden, nur eine todo-Liste für den Entwickler), Definition der Websocket-Nachrichten zw. Client(Browser) und Server, glossar/Definition der Begriffe
+- von Gemini dokumentieren lassen: 
+  - Projektbeschreibung
+  - Allgemeine Funktionsweise
+  - Klassenhierarchie, Klassenbeschreibung
+  - Vorschläge für Testfälle (nicht coden, nur eine todo-Liste für den Entwickler)
+  - Glossar/Definition der Begriffe
 - Test bzg Arena schreiben lassen und durchführen
 - Test bzg Server schreiben lassen und durchführen
 - Todos im code umsetzten
@@ -136,8 +170,8 @@ einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
 - Brettspielwelt-Logs aufbereiten
 - NNetAgent bauen
 
+
 ## Quellen
 
 Regeln
 https://abacusspiele.de/wp-content/uploads/2021/01/Tichu_Pocket_Regel.pdf
-
