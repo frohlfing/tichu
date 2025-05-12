@@ -1,235 +1,134 @@
-import unittest
-from src.lib.cards import *
-from src.lib.combinations import *
-from _dev.altkram.private_state import PrivateState
-from _dev.altkram.public_state import PublicState
+# tests/test_public_state.py
+"""
+Tests für die PublicState-Datenklasse.
 
+Zusammenfassung der Tests für PublicState:
+- Initialisierung:
+    - Überprüfung der korrekten Standardwerte aller Felder nach der Instanziierung.
+- Serialisierung (`to_dict`):
+    - Korrekte Umwandlung des Zustands in ein Dictionary.
+    - Korrekte Formatierung von Karten (Strings), Kombinationen (Enum-Namen) und der Stich-Historie (`tricks`).
+- Berechnete Properties:
+    - Korrekte Berechnung von `count_active_players`.
+    - Korrekte Berechnung von `points_per_team`.
+    - Korrekte Berechnung von `total_score`.
+    - Korrekte Erkennung, ob das Spiel beendet ist (`is_game_over`).
+    - (Implizit über Initialisierung/to_dict: Struktur von `tricks` als Liste von Listen von Spielzügen).
+"""
 
-class TestPublicState(unittest.TestCase):
-    def setUp(self):
-        self.pub = PublicState(seed=123)
-        self.priv = PrivateState(0)
-        
-    def test_shuffle_cards(self):
-        cards = self.pub._mixed_deck.copy()
-        self.pub.shuffle_cards()
-        self.assertNotEqual(cards, self.pub._mixed_deck, "die Karten wurden gemischt")
+import pytest
+from typing import List, Tuple
+from copy import deepcopy
 
-    def test_deal_out(self):
-        self.assertEqual("GZ RZ S9 B9 G9 R9 S8 B8", stringify_cards(self.pub.deal_out(2, 8)), "8 Karten für Spieler 2")
-        self.assertEqual("SB BB GB RB SZ BZ GZ RZ S9 B9 G9 R9 S8 B8", stringify_cards(self.pub.deal_out(2, 14)), "14 Karten für Spieler 2")
+from src.public_state import PublicState
+from src.lib.cards import Card, Cards, parse_cards, stringify_cards
+from src.lib.combinations import Combination, CombinationType, PlayInTrick, TrickHistory
 
-    def test_play(self):
-        self.pub._number_of_cards = [3, 2, 1, 0]
-        self.pub._number_of_players = 3
-        self.pub._start_player_index = 0
-        played_cards = other_cards(parse_cards("Ph RK R9 GK GZ BB BD"))
-        self.pub._played_cards = played_cards.copy()
-        self.pub._wish = 13
-        self.pub._gift = 1
-        self.pub._winner = 3
+# Fixture für einen initialisierten PublicState
+@pytest.fixture
+def initial_pub_state() -> PublicState:
+    return PublicState(
+        table_name="TestTable",
+        player_names=["Alice", "Bob", "Charlie", "David"]
+    )
 
-        # passen
-        self.pub._current_player_index = 2
-        self.pub.play(([], FIGURE_PASS))
-        self.assertEqual([3, 2, 1, 0], self.pub._number_of_cards)
-        self.assertEqual([(2, ([], FIGURE_PASS))], self.pub._history)
+def test_public_state_initialization(initial_pub_state):
+    """Testet die Standardwerte nach der Initialisierung."""
+    pub = initial_pub_state
+    assert pub.table_name == "TestTable"
+    assert pub.player_names == ["Alice", "Bob", "Charlie", "David"]
+    assert pub.current_turn_index == -1
+    assert pub.start_player_index == -1
+    assert pub.count_hand_cards == [0, 0, 0, 0]
+    assert pub.played_cards == []
+    assert pub.announcements == [0, 0, 0, 0]
+    assert pub.wish_value == 0
+    assert pub.dragon_recipient == -1
+    assert pub.trick_owner_index == -1
+    assert pub.trick_cards == [] # Hängt von Implementierung ab, ob dies noch genutzt wird
+    assert pub.trick_combination == (CombinationType.PASS, 0, 0)
+    assert pub.trick_points == 0
+    # assert pub._current_trick_plays_internal == [] # Falls in PublicState belassen
+    assert pub.tricks == [] # Vormals round_history
+    assert pub.points == [0, 0, 0, 0]
+    assert pub.winner_index == -1
+    assert pub.loser_index == -1
+    # Diese Felder könnten Properties sein:
+    # assert pub.is_round_over is False
+    # assert pub.double_victory is False
+    assert pub.game_score == [[], []]
+    assert pub.round_counter == 0
+    assert pub.trick_counter == 0
+    assert pub.current_phase == "setup" # Oder was auch immer der Default ist
 
-        # Karten legen
-        self.pub._current_player_index = 0
-        combi1 = parse_cards("RK"), (SINGLE, 1, 13)
-        self.pub.play(combi1)
-        played_cards.append((13, 1))
-        self.assertEqual(played_cards, self.pub._played_cards)
-        self.assertEqual([2, 2, 1, 0], self.pub._number_of_cards)
-        self.assertEqual(-13, self.pub._wish)
-        self.assertEqual([(2, ([], FIGURE_PASS)), (0, combi1)], self.pub._history)
-        self.assertEqual(0, self.pub._trick_player_index)
-        self.assertEqual(combi1[1], self.pub._trick_figure)
-        self.assertEqual(10, self.pub._trick_points)
+def test_public_state_to_dict(initial_pub_state):
+    """Testet die Umwandlung in ein Dictionary."""
+    pub = initial_pub_state
+    # Setze einige Werte für einen besseren Test
+    pub.current_turn_index = 1
+    pub.count_hand_cards = [10, 11, 12, 13]
+    pub.played_cards = parse_cards("S5 G5")
+    pub.trick_combination = (CombinationType.PAIR, 2, 5)
+    pub.trick_points = 10
+    pub.trick_owner_index = 0
+    # Füge einen Beispiel-Trick zur History hinzu
+    trick1_play1 = (0, parse_cards("S5 G5"), (CombinationType.PAIR, 2, 5))
+    trick1_play2 = (1, [], (CombinationType.PASS, 0, 0))
+    pub.tricks.append([trick1_play1, trick1_play2])
 
-        # Phönix als Einzelkarte ausspielen
-        self.pub._current_player_index = 1
-        combi2 = parse_cards("Ph"), FIGURE_PHO
-        self.pub.play(combi2)
-        played_cards.append((16, 0))
-        self.assertEqual(played_cards, self.pub._played_cards)
-        self.assertEqual([2, 1, 1, 0], self.pub._number_of_cards)
-        self.assertEqual([(2, ([], FIGURE_PASS)), (0, combi1), (1, combi2)], self.pub._history)
-        self.assertEqual(1, self.pub._trick_player_index)
-        self.assertEqual(combi1[1], self.pub._trick_figure)
-        self.assertEqual(-15, self.pub._trick_points)
-        self.assertEqual(3, self.pub._number_of_players)
+    pub_dict = pub.to_dict()
 
-    def test_play_done(self):
-        self.pub._number_of_cards = [1, 1, 1, 1]
-        self.pub._number_of_players = 4
-        self.pub._start_player_index = 0
-        played_cards = other_cards(parse_cards("Ph RK R9 G9"))
-        self.pub._played_cards = played_cards.copy()
-        self.pub._wish = -13
-        self.pub._gift = 1
+    assert pub_dict["tableName"] == "TestTable"
+    assert pub_dict["playerNames"] == ["Alice", "Bob", "Charlie", "David"]
+    assert pub_dict["currentTurnIndex"] == 1
+    assert pub_dict["countHandCards"] == [10, 11, 12, 13]
+    assert pub_dict["playedCards"] == "S5 G5" # Stringified
+    assert pub_dict["trickCombination"] == ("PAIR", 2, 5) # Enum Name
+    assert pub_dict["trickPoints"] == 10
+    assert pub_dict["trickOwnerIndex"] == 0
+    assert len(pub_dict["tricks"]) == 1
+    assert len(pub_dict["tricks"][0]) == 2
+    # Prüfe den ersten Spielzug im ersten Trick
+    assert pub_dict["tricks"][0][0] == (0, "S5 G5", ("PAIR", 2, 5))
+    # Prüfe den zweiten Spielzug (Passen)
+    assert pub_dict["tricks"][0][1] == (1, "", ("PASS", 0, 0))
 
-        # 1. Spieler wird fertig
-        self.pub._current_player_index = 3
-        self.pub.play((parse_cards("Ph"), FIGURE_PHO))
-        self.assertEqual(FIGURE_MAH, self.pub._trick_figure)  # Anspiel mit Phönix == Anspiel mit Mahjong
-        self.assertEqual(-25, self.pub._trick_points)
-        self.assertEqual([1, 1, 1, 0], self.pub._number_of_cards)
-        self.assertEqual(3, self.pub._number_of_players)
-        self.assertEqual(3, self.pub._winner)
-        self.assertEqual(-1, self.pub._loser)
-        self.assertFalse(self.pub._is_done)
-        self.assertFalse(self.pub._double_win)
+# --- Tests für Properties (Beispiele) ---
 
-        # 2. Spieler wird fertig
-        self.pub._current_player_index = 2
-        self.pub.play((parse_cards("R9"), (1, 1, 9)))
-        self.assertEqual([1, 1, 0, 0], self.pub._number_of_cards)
-        self.assertEqual(2, self.pub._number_of_players)
-        self.assertEqual(3, self.pub._winner)
-        self.assertEqual(-1, self.pub._loser)
-        self.assertFalse(self.pub._is_done)
-        self.assertFalse(self.pub._double_win)
+def test_public_state_count_active_players(initial_pub_state):
+    """Testet die Zählung aktiver Spieler."""
+    pub = initial_pub_state
+    assert pub.count_active_players == 0
+    pub.count_hand_cards = [5, 0, 8, 1]
+    assert pub.count_active_players == 3
+    pub.count_hand_cards = [0, 0, 0, 0]
+    assert pub.count_active_players == 0
+    pub.count_hand_cards = [1, 1, 1, 1]
+    assert pub.count_active_players == 4
 
-        # 3. Spieler wird fertig
-        self.pub._current_player_index = 1
-        self.pub.play((parse_cards("RK"), (1, 1, 13)))
-        self.assertEqual([1, 0, 0, 0], self.pub._number_of_cards)
-        self.assertEqual(1, self.pub._number_of_players)
-        self.assertEqual(3, self.pub._winner)
-        self.assertEqual(0, self.pub._loser)
-        self.assertTrue(self.pub._is_done)
-        self.assertFalse(self.pub._double_win)
+def test_public_state_points_per_team(initial_pub_state):
+    """Testet die Berechnung der Teampunkte."""
+    pub = initial_pub_state
+    pub.points = [10, 20, 30, 40] # Spieler 0, 1, 2, 3
+    # Team 20 = Spieler 2 + Spieler 0 = 30 + 10 = 40
+    # Team 31 = Spieler 3 + Spieler 1 = 40 + 20 = 60
+    assert pub.points_per_team == (40, 60)
 
-    def test_play_double_win(self):
-        self.pub._number_of_cards = [1, 1, 1, 0]
-        self.pub._number_of_players = 3
-        self.pub._start_player_index = 0
-        played_cards = other_cards(parse_cards("RK R9 G9"))
-        self.pub._played_cards = played_cards.copy()
-        self.pub._wish = -13
-        self.pub._gift = 1
-        self.pub._winner = 3
+def test_public_state_total_score(initial_pub_state):
+    """Testet die Berechnung des Gesamtspielstands."""
+    pub = initial_pub_state
+    pub.game_score = [[100, -10], [90, 110]] # Rundenpunkte Team 20, Team 31
+    # Team 20 = 100 - 10 = 90
+    # Team 31 = 90 + 110 = 200
+    assert pub.total_score == (90, 200)
 
-        # 2. Spieler wird fertig
-        self.pub._current_player_index = 1
-        self.pub.play((parse_cards("RK"), (1, 1, 13)))
-        self.assertEqual([1, 0, 1, 0], self.pub._number_of_cards)
-        self.assertEqual(2, self.pub._number_of_players)
-        self.assertEqual(3, self.pub._winner)
-        self.assertEqual(-1, self.pub._loser)
-        self.assertTrue(self.pub._is_done)
-        self.assertTrue(self.pub._double_win)
-
-    def test_clear_trick(self):
-        self.pub._current_player_index = 0
-        self.pub._trick_player_index = 0
-        self.pub._trick_figure = SINGLE, 1, 10
-        self.pub._trick_counter = 5
-        self.pub._is_done = False
-        self.pub._double_win = False
-        self.pub._number_of_players = 3
-        self.pub._announcements = [0, 0, 0, 1]
-        self.pub._trick_points = 10
-        unplayed_cards = parse_cards("RK GZ G5")  # 25 Punkte
-        self.pub._played_cards = other_cards(unplayed_cards)  # 75 Punkte (inklusiv aktuellen Stich)
-        self.pub._points = [5, 10, 20, 30]  # 65 Punkte (ohne aktuellen Stich, da noch nicht einkassiert)
-        self.pub.clear_trick()
-        self.assertEqual([15, 10, 20, 30], self.pub._points)
-        self.assertEqual([0, 0], self.pub._score)
-        self.assertEqual(-1, self.pub._gift)
-        self.assertEqual(-1, self.pub._trick_player_index)
-        self.assertEqual((0, 0, 0), self.pub._trick_figure)
-        self.assertEqual(0, self.pub._trick_points)
-        self.assertEqual(6, self.pub._trick_counter)
-
-    def test_clear_trick_gift(self):
-        self.pub._current_player_index = 0
-        self.pub._trick_player_index = 0
-        self.pub._trick_figure = FIGURE_DRA
-        self.pub._trick_counter = 5
-        self.pub._is_done = False
-        self.pub._double_win = False
-        self.pub._number_of_players = 3
-        self.pub._announcements = [0, 0, 0, 1]
-        self.pub._trick_points = 35
-        unplayed_cards = parse_cards("RK GZ G5")  # 25 Punkte
-        self.pub._played_cards = other_cards(unplayed_cards)  # 75 Punkte (inklusiv aktuellen Stich)
-        self.pub._points = [5, 10, 10, 15]  # 65 Punkte (ohne aktuellen Stich, da noch nicht einkassiert)
-        self.pub.clear_trick(opponent=1)
-        self.assertEqual([5, 45, 10, 15], self.pub._points)
-        self.assertEqual([0, 0], self.pub._score)
-        self.assertEqual(1, self.pub._gift)
-        self.assertEqual(-1, self.pub._trick_player_index)
-        self.assertEqual((0, 0, 0), self.pub._trick_figure)
-        self.assertEqual(0, self.pub._trick_points)
-        self.assertEqual(6, self.pub._trick_counter)
-
-    def test_clear_trick_done(self):
-        self.pub._current_player_index = 0
-        self.pub._trick_player_index = 0
-        self.pub._trick_figure = SINGLE, 1, 10
-        self.pub._trick_counter = 5
-        self.pub._is_done = True
-        self.pub._double_win = False
-        self.pub._number_of_players = 1
-        self.pub._winner = 3
-        self.pub._loser = 2
-        self.pub._announcements = [1, 0, 0, 1]
-        self.pub._trick_points = 10
-        unplayed_cards = parse_cards("RK GZ G5")  # 25 Punkte
-        self.pub._played_cards = other_cards(unplayed_cards)  # 75 Punkte (inklusiv aktuellen Stich)
-        self.pub._points = [5, 10, 20, 30]  # 65 Punkte (ohne aktuellen Stich, da noch nicht einkassiert)
-        self.pub.clear_trick()
-        self.assertEqual([-85, 10, 0, 175], self.pub._points)
-        self.assertEqual([-85, 185], self.pub._score)
-        self.assertEqual(-1, self.pub._gift)
-
-    def test_clear_trick_double_win(self):
-        self.pub._current_player_index = 0
-        self.pub._trick_player_index = 0
-        self.pub._trick_figure = SINGLE, 1, 10
-        self.pub._trick_counter = 5
-        self.pub._is_done = True
-        self.pub._double_win = True
-        self.pub._number_of_players = 2
-        self.pub._winner = 3
-        self.pub._announcements = [0, 0, 0, 1]
-        self.pub._trick_points = 10
-        unplayed_cards = parse_cards("RK GZ G5")  # 25 Punkte
-        self.pub._played_cards = other_cards(unplayed_cards)  # 75 Punkte (inklusiv aktuellen Stich)
-        self.pub._points = [5, 10, 20, 30]  # 65 Punkte (ohne aktuellen Stich, da noch nicht einkassiert)
-        self.pub.clear_trick()
-        self.assertEqual([0, 0, 0, 300], self.pub._points)
-        self.assertEqual([0, 300], self.pub._score)
-        self.assertEqual(-1, self.pub._gift)
-
-    def test_step(self):
-        # Hund liegt
-        self.pub._trick_figure = FIGURE_DOG
-        self.pub._trick_player_index = 0
-        self.pub._current_player_index = 0
-        self.pub.step()
-        self.assertEqual(2, self.pub._current_player_index)
-        self.pub._trick_player_index = 3
-        self.pub._current_player_index = 3
-        self.pub.step()
-        self.assertEqual(1, self.pub._current_player_index)
-
-        # kein Hund
-        self.pub._trick_figure = FIGURE_PASS
-        self.pub._current_player_index = 0
-        self.pub.step()
-        self.assertEqual(1, self.pub._current_player_index)
-        self.pub._current_player_index = 3
-        self.pub.step()
-        self.assertEqual(0, self.pub._current_player_index)
-
-    def test_points_per_team(self):
-        self.pub._points = [5, 10, 20, 40]
-        self.assertEqual([25, 50], self.pub.points_per_team)
-
-
-if __name__ == "__main__":
-    unittest.main()
+def test_public_state_is_game_over(initial_pub_state):
+    """Testet die Erkennung des Spielendes."""
+    pub = initial_pub_state
+    assert pub.is_game_over is False
+    pub.game_score = [[500], [400]]
+    assert pub.is_game_over is False
+    pub.game_score = [[500, 500], [400, 450]] # Team 20 = 1000
+    assert pub.is_game_over is True
+    pub.game_score = [[400], [1000]] # Team 31 = 1000
+    assert pub.is_game_over is True

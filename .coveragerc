@@ -13,3 +13,7 @@ omit =
 [report]
 # Zeigt die nicht abgedeckten Zeilen im Bericht an
 show_missing = True
+
+[html]
+# Ausgabeverzeichnis für HTML-Report
+directory = docs/htmlcov

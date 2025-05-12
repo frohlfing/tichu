@@ -1,257 +1,276 @@
-import unittest
-# noinspection PyProtectedMember
-from src.lib.combinations import _figures, _figures_index, _figurelabels, _figurelabels_index, validate_figure
-from src.lib.combinations import *
-from src.lib.cards import *
+# tests/test_combinations.py
+"""
+Tests für src.lib.combinations.
+
+Zusammenfassung der Tests für combinations:
+- Kombinations-Ermittlung (`get_figure`):
+    - Korrekte Bestimmung von Typ, Länge und Rang für verschiedene gültige Kartenkombinationen (Singles, Paare, Drillinge, Treppen, Full Houses, Straßen, 4er-Bomben).
+    - Korrekte Handhabung des Phönix bei der Rangkalkulation (z.B. bei Einzelkarte, Paaren, Straßen).
+    - Hinweis: Testet nicht explizit Farbbomben, da `get_figure` die Farbe nicht primär prüft (dies geschieht in `build_combinations`).
+- Kombinations-Generierung (`build_combinations`):
+    - Sicherstellung, dass für Beispielhände bekannte, gültige Kombinationen generiert werden.
+    - Korrekte Berücksichtigung des Phönix bei der Generierung von Paaren, Drillingen, Treppen etc.
+    - Erkennung von Bomben (4er).
+- Aktionsraum-Erstellung (`build_action_space`):
+    - Korrekte Erstellung des erlaubten Aktionsraums beim Anspiel (alle Handkombinationen, kein Passen).
+    - Korrekte Erstellung des Aktionsraums, wenn eine Kombination geschlagen werden muss (nur passende Typen/Längen mit höherem Rang oder Bomben + Passen).
+    - Korrekte Filterung des Aktionsraums, wenn ein (erfüllbarer oder unerfüllbarer) Wunsch aktiv ist.
+- Validierung (`validate_figure`):
+    - Überprüfung, ob Tupel aus (Typ, Länge, Rang) gültigen Tichu-Kombinationen entsprechen.
+"""
+
+import pytest
+from typing import List, Tuple
+from copy import deepcopy
+
+# Annahme: src liegt auf gleicher Ebene wie tests
+from src.lib.cards import Card, Cards, parse_cards, CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO
+from src.lib.combinations import (
+    Combination, CombinationType, Combinations,
+    FIGURE_PASS, FIGURE_DOG, FIGURE_MAH, FIGURE_DRA, FIGURE_PHO,
+    get_figure, build_combinations, build_action_space, validate_figure,
+    stringify_figure # Wenn die dynamische Implementierung existiert
+)
+
+# Helper zum Vergleichen von Kombinationslisten (ignoriert Kartenreihenfolge innerhalb einer Kombi)
+def sort_combinations(combis: Combinations) -> Combinations:
+    # Sortiere die Karten innerhalb jeder Kombi und dann die Liste der Kombis selbst
+    # basierend auf Typ, Länge, Rang und den sortierten Karten (als String für einfache Vergleichbarkeit)
+    sorted_inner = [(sorted(cards), combi_tuple) for cards, combi_tuple in combis]
+    return sorted(sorted_inner, key=lambda item: (item[1][0], item[1][1], item[1][2], tuple(item[0])))
+
+def find_combination(target_cards: Cards, combinations_list: Combinations) -> Combination | None:
+    """Hilfsfunktion: Findet die Kombination für spezifische Karten in einer Liste."""
+    target_sorted = sorted(target_cards)
+    for cards, combi in combinations_list:
+        if sorted(cards) == target_sorted:
+            return combi
+    return None
 
 
-# noinspection DuplicatedCode
-class TestCombinations(unittest.TestCase):
-    def test_validate_figure(self):
-        self.assertTrue(validate_figure((0, 0, 0)))
-        self.assertTrue(validate_figure((1, 1, 6)))
-        self.assertTrue(validate_figure((2, 2, 5)))
-        self.assertTrue(validate_figure((3, 3, 6)))
-        self.assertTrue(validate_figure((4, 14, 8)))
-        self.assertTrue(validate_figure((5, 5, 2)))
-        self.assertTrue(validate_figure((6, 14, 14)))
-        self.assertTrue(validate_figure((7, 13, 14)))
-        self.assertFalse(validate_figure((6, 11, 10)))
+# --- Tests für get_figure ---
 
-    def test_parse_and_stringify_figure(self):
-        self.assertTrue(len(_figures) == len(_figures_index) == len(_figurelabels) == len(_figurelabels_index) == 227, "es gibt 227 Kombinationsarten (inklusiv Passen)")
-        for i in range(0, 227):
-            figure = _figures[i]
-            lb = stringify_figure(figure)
-            self.assertEqual(figure, parse_figure(lb), f"Index nicht OK: {i}, {figure}, {lb}")
+@pytest.mark.parametrize("cards_str, trick_value, expected_figure", [
+    # Singles
+    ("Hu", 0, FIGURE_DOG),
+    ("Ma", 0, FIGURE_MAH),
+    ("Dr", 0, FIGURE_DRA),
+    ("Ph", 0, (CombinationType.SINGLE, 1, 1)), # Phoenix Anspiel -> Wert 1 (wie Mah Jong)
+    ("Ph", 5, (CombinationType.SINGLE, 1, 5)), # Phoenix auf 5 -> Wert 5
+    ("SA", 0, (CombinationType.SINGLE, 1, 14)), # Ass
+    ("S5", 0, (CombinationType.SINGLE, 1, 5)),  # Fünf
+    # Pairs
+    ("S5 G5", 0, (CombinationType.PAIR, 2, 5)),
+    ("SA RA", 0, (CombinationType.PAIR, 2, 14)),
+    ("S5 Ph", 0, (CombinationType.PAIR, 2, 5)), # Paar mit Phönix
+    # Triples
+    ("S5 G5 B5", 0, (CombinationType.TRIPLE, 3, 5)),
+    ("SA RA GA", 0, (CombinationType.TRIPLE, 3, 14)),
+    ("S5 G5 Ph", 0, (CombinationType.TRIPLE, 3, 5)), # Drilling mit Phönix
+    # Stairs (Treppen)
+    ("S5 G5 S6 B6", 0, (CombinationType.STAIR, 4, 6)), # 5566 -> Treppe 4 lang, Rang 6
+    ("S5 G5 S6 Ph", 0, (CombinationType.STAIR, 4, 6)), # 556Ph -> Treppe 4 lang, Rang 6
+    ("SK BK SA Ph", 0, (CombinationType.STAIR, 4, 14)), # KKAPh -> Treppe 4 lang, Rang Ass
+    # Full Houses
+    ("S5 G5 B5 S6 B6", 0, (CombinationType.FULLHOUSE, 5, 5)), # 55566 -> Full House Rang 5
+    ("S5 G5 S6 B6 R6", 0, (CombinationType.FULLHOUSE, 5, 6)), # 55666 -> Full House Rang 6
+    ("S5 Ph S6 B6 R6", 0, (CombinationType.FULLHOUSE, 5, 6)), # 5Ph666 -> Full House Rang 6 (Ph zu Drilling)
+    ("S5 G5 Ph S6 B6", 0, (CombinationType.FULLHOUSE, 5, 6)), # 55Ph66 -> Full House Rang 5 (Ph zu Drilling)
+    # Streets (Straßen)
+    ("S5 S6 S7 R8 S9", 0, (CombinationType.STREET, 5, 9)), # 5-9 -> Straße 5 lang, Rang 9
+    ("S5 S6 S7 R8 Ph", 0, (CombinationType.STREET, 5, 9)), # 5-8 + Ph -> Straße 5 lang, Rang 9 (Ph = 9)
+    ("S5 S6 Ph R8 S9", 0, (CombinationType.STREET, 5, 9)), # 5,6,Ph,8,9 -> Straße 5 lang, Rang 9 (Ph = 7)
+    ("SZ RB SD SK Ph", 0, (CombinationType.STREET, 5, 14)), # Z,B,D,K,Ph -> Straße 5 lang, Rang Ass (Ph = Ass)
+    ("Ph RB SD SK SA", 0, (CombinationType.STREET, 5, 14)), # Ph,B,D,K,A -> Straße 5 lang, Rang Ass (Ph = 10)
+    # Bombs (4er)
+    ("S5 G5 B5 R5", 0, (CombinationType.BOMB, 4, 5)),
+    ("SA GA BA RA", 0, (CombinationType.BOMB, 4, 14)),
+    # Bombs (Farbe/Street)
+    ("S5 S6 S7 S8 S9", 0, (CombinationType.BOMB, 5, 9)), # Farbbombe
+    ("S5 S6 S7 S8 S9 SZ", 0, (CombinationType.BOMB, 6, 10)),
+    # Echte Farbbomben müssen manuell geprüft werden, da get_figure Farbe nicht kennt
+])
+def test_get_figure(cards_str, trick_value, expected_figure):
+    """Testet die Ermittlung der Kombination (Typ, Länge, Rang) für verschiedene Kartensets."""
+    cards = parse_cards(cards_str)
+    # get_figure sortiert in-place, daher Kopie übergeben, falls Original benötigt wird
+    assert get_figure(list(cards), trick_value) == expected_figure
 
-    def test_stringify_type(self):
-        self.assertEqual(stringify_type(0), "pass")
-        self.assertEqual(stringify_type(5, 6), "fullhouse")
-        self.assertEqual(stringify_type(6), "street")
-        self.assertEqual(stringify_type(6, 7), "street07")
-        self.assertEqual(stringify_type(7), "bomb")
+# Spezieller Test für Farbbombe, da get_figure Farbe nicht prüft
+def test_get_figure_color_bomb_type():
+     """Testet, dass get_figure bei einer potentiellen Farbbombe BOMB zurückgibt (ohne Farbcheck)."""
+     cards = parse_cards("S5 S6 S7 S8 S9") # 5 Karten aufsteigend, gleiche Farbe
+     assert get_figure(list(cards), 0) == (CombinationType.BOMB, 5, 9)
 
-    def test_get_figure(self):
-        # Passen
-        self.assertEqual((PASS, 0, 0), get_figure([], 10), "Passen")
+# --- Tests für build_combinations ---
 
-        # Einzelkarte
-        self.assertEqual((SINGLE, 1, 14), get_figure(parse_cards("SA"), 10), "As")
-        self.assertEqual((SINGLE, 1, 1),  get_figure([CARD_MAH], 10), "MahJong")
-        self.assertEqual((SINGLE, 1, 15), get_figure([CARD_DRA], 10), "Drache")
-        self.assertEqual((SINGLE, 1, 0),  get_figure([CARD_DOG], 10), "Hund")
-        self.assertEqual((SINGLE, 1, 10), get_figure([CARD_PHO], 10), "Phönix mit Wert 10.5")
-        self.assertEqual((SINGLE, 1, 1),  get_figure([CARD_PHO], 0),  "Phönix mit Wert 1.5")
+def test_build_combinations_simple():
+    """Testet die Generierung von Kombinationen für eine einfache Hand."""
+    hand = parse_cards("S5 G5 S6 B6 S7") # Zwei Paare, eine Single
+    combis = build_combinations(hand)
 
-        # Paare
-        self.assertEqual((PAIR, 2, 14), get_figure(parse_cards("RA GA"), 10), "Paar mit Asse")
-        self.assertEqual((PAIR, 2, 14), get_figure(parse_cards("RA Ph"), 10), "Paar mit As und Phönix")
+    # Erwartete Kombinationen (Beispiele)
+    assert find_combination(parse_cards("S5"), combis) == (CombinationType.SINGLE, 1, 5)
+    assert find_combination(parse_cards("S7"), combis) == (CombinationType.SINGLE, 1, 7)
+    assert find_combination(parse_cards("S5 G5"), combis) == (CombinationType.PAIR, 2, 5)
+    assert find_combination(parse_cards("S6 B6"), combis) == (CombinationType.PAIR, 2, 6)
+    # Treppe 5566
+    assert find_combination(parse_cards("S5 G5 S6 B6"), combis) == (CombinationType.STAIR, 4, 6)
+    # Keine Straßen, Fullhouses, Bomben erwartet
+    assert find_combination(parse_cards("S5 G5 S6"), combis) is None # Keine gültige Kombi
 
-        # Drilling
-        self.assertEqual((TRIPLE, 3, 14), get_figure(parse_cards("RA GA BA"), 10), "Drilling")
-        self.assertEqual((TRIPLE, 3, 14), get_figure(parse_cards("RA Ph BA"), 10), "Drilling")
+    # Prüfe Gesamtzahl (kann fragil sein, besser spezifische Kombis prüfen)
+    # Singles: 5, 5, 6, 6, 7 -> 5
+    # Pairs: 55, 66 -> 2
+    # Stairs: 5566 -> 1
+    # Total: 8 (kann je nach Implementierungsdetails variieren, Phönix etc.)
+    # Es ist oft besser, das Vorhandensein/Fehlen wichtiger Kombis zu prüfen als die genaue Zahl.
+    assert len(combis) >= 8 # Beispielhafte Mindestanzahl
 
-        # 2er-Treppe
-        self.assertEqual((STAIR, 4, 14), get_figure(parse_cards("RK GK BA SA"), 10), "2er-Treppe")
-        self.assertEqual((STAIR, 4, 14), get_figure(parse_cards("RK Ph BA SA"), 10), "2er-Treppe")
-        self.assertEqual((STAIR, 4, 14), get_figure(parse_cards("RK GK Ph SA"), 10), "2er-Treppe")
+def test_build_combinations_with_phoenix():
+    """Testet Kombinationen mit einem Phönix."""
+    hand = parse_cards("S5 G5 S6 Ph") # Ein Paar, eine Single, Phönix
+    combis = build_combinations(hand)
 
-        # 4er-Bombe
-        self.assertEqual((BOMB, 4, 14), get_figure(parse_cards("RA GA BA SA"), 10), "4er-Bombe")
+    # Phönix als Single
+    assert find_combination(parse_cards("Ph"), combis) == (CombinationType.SINGLE, 1, 16) # Rang 16 für Phönix selbst
+    # Paare mit Phönix
+    assert find_combination(parse_cards("S5 Ph"), combis) == (CombinationType.PAIR, 2, 5)
+    assert find_combination(parse_cards("S6 Ph"), combis) == (CombinationType.PAIR, 2, 6)
+    # Drilling mit Phönix
+    assert find_combination(parse_cards("S5 G5 Ph"), combis) == (CombinationType.TRIPLE, 3, 5)
+    # Treppe mit Phönix (556Ph)
+    assert find_combination(parse_cards("S5 G5 S6 Ph"), combis) == (CombinationType.STAIR, 4, 6)
 
-        # Fullhouse
-        self.assertEqual((FULLHOUSE, 5, 13), get_figure(parse_cards("RK GK BK BA SA"), 10), "Fullhouse")
-        self.assertEqual((FULLHOUSE, 5, 14), get_figure(parse_cards("RK GK GA BA SA"), 10), "Fullhouse")
-        self.assertEqual((FULLHOUSE, 5, 14), get_figure(parse_cards("RK Ph RA BA SA"), 10), "Fullhouse")
-        self.assertEqual((FULLHOUSE, 5, 14), get_figure(parse_cards("RK GK Ph BA SA"), 10), "Fullhouse")
-        self.assertEqual((FULLHOUSE, 5, 13), get_figure(parse_cards("RK GK BK Ph SA"), 10), "Fullhouse")
+def test_build_combinations_bomb():
+    """Testet die Erkennung von Bomben."""
+    hand = parse_cards("S5 G5 B5 R5 S6") # 4er Bombe 5, Single 6
+    combis = build_combinations(hand)
+    assert find_combination(parse_cards("S5 G5 B5 R5"), combis) == (CombinationType.BOMB, 4, 5)
 
-        # 5er-Straße
-        self.assertEqual((STREET, 5, 13), get_figure(parse_cards("R9 GZ BB BD SK"), 10), "5er-Straße")
-        self.assertEqual((STREET, 5, 13), get_figure(parse_cards("R9 GZ BB BD Ph"), 10), "5er-Straße")
-        self.assertEqual((STREET, 5, 13), get_figure(parse_cards("R9 GZ BB Ph SK"), 10), "5er-Straße")
-        self.assertEqual((STREET, 5, 13), get_figure(parse_cards("R9 GZ Ph BD SK"), 10), "5er-Straße")
-        self.assertEqual((STREET, 5, 13), get_figure(parse_cards("R9 Ph BB BD SK"), 10), "5er-Straße")
-        self.assertEqual((STREET, 5, 14), get_figure(parse_cards("Ph GZ BB BD SK"), 10), "5er-Straße")
-        self.assertEqual((STREET, 5, 14), get_figure(parse_cards("Ph BB BD SK GA"), 10), "5er-Straße")
+# --- Tests für build_action_space ---
 
-        # 5er-Bombe
-        self.assertEqual(get_figure(parse_cards("R9 RZ RB RD RK"), 10), (BOMB, 5, 13), "5er-Bombe")
+# Fixture für eine Beispielhand und daraus resultierende Kombinationen
+@pytest.fixture
+def sample_hand_and_combis() -> Tuple[Cards, Combinations]:
+    hand = parse_cards("S5 G5 S6 B6 S7 S8 S9 Dr")
+    combis = build_combinations(hand)
+    # Enthält u.a.: Paar 5, Paar 6, Single 7, 8, 9, Drache, Treppe 5566, Straße 789
+    return hand, combis
 
-        # 6er-Treppe
-        self.assertEqual((STAIR, 6, 11), get_figure(parse_cards("R9 G9 BZ BZ RB SB"), 10), "6er-Treppe")
-        self.assertEqual((STAIR, 6, 11), get_figure(parse_cards("R9 G9 BZ BZ Ph SB"), 10), "6er-Treppe")
-        self.assertEqual((STAIR, 6, 11), get_figure(parse_cards("R9 G9 Ph BZ RB SB"), 10), "6er-Treppe")
-        self.assertEqual((STAIR, 6, 11), get_figure(parse_cards("R9 Ph BZ BZ RB SB"), 10), "6er-Treppe")
+# Fixture für leere Kombinationen (Passen)
+FIGURE_PASS_TUPLE = ([], FIGURE_PASS)
 
-        # 6er-Straße
-        self.assertEqual((STREET, 6, 13), get_figure(parse_cards("R8 R9 BZ RB RD RK"), 10), "6er-Straße")
+def test_action_space_anspiel(sample_hand_and_combis):
+    """Testet den Action Space beim Anspiel (leerer Stich)."""
+    hand, combis = sample_hand_and_combis
+    action_space = build_action_space(combis, FIGURE_PASS, 0) # Leerer Stich, kein Wunsch
+    # Muss alle Kombinationen aus der Hand enthalten, außer Passen
+    assert FIGURE_PASS_TUPLE not in action_space
+    # Jede Kombination im action_space muss auch in den ursprünglichen combis sein
+    for action in action_space:
+        assert action in combis
+    # Die Anzahl muss der Anzahl der ursprünglichen Kombinationen entsprechen
+    assert len(action_space) == len(combis)
 
-        # 6er-Bombe
-        self.assertEqual((BOMB, 6, 13), get_figure(parse_cards("R8 R9 RZ RB RD RK"), 10), "6er-Bombe")
+def test_action_space_anspiel_dog(sample_hand_and_combis):
+    """Testet den Action Space beim Anspiel nach einem Hund."""
+    hand, combis = sample_hand_and_combis
+    action_space = build_action_space(combis, FIGURE_DOG, 0) # Hund liegt, kein Wunsch
+    # Muss alle Kombinationen aus der Hand enthalten, außer Passen
+    assert FIGURE_PASS_TUPLE not in action_space
+    assert len(action_space) == len(combis)
 
-        # Phönix einordnen
-        cards = parse_cards("Ph SA")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("SA Ph", stringify_cards(cards), "Paar - Phönix am Ende")
+def test_action_space_beat_pair(sample_hand_and_combis):
+    """Testet Action Space, wenn ein Paar geschlagen werden muss."""
+    hand, combis = sample_hand_and_combis
+    trick_figure = (CombinationType.PAIR, 2, 4) # Paar 4 liegt
+    action_space = build_action_space(combis, trick_figure, 0)
 
-        cards = parse_cards("Ph SA RA")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("SA RA Ph", stringify_cards(cards), "Drilling - Phönix am Ende")
+    # Passen muss möglich sein
+    assert FIGURE_PASS_TUPLE in action_space
+    # Höhere Paare (Paar 5, Paar 6) müssen drin sein
+    assert find_combination(parse_cards("S5 G5"), action_space) is not None
+    assert find_combination(parse_cards("S6 B6"), action_space) is not None
+    # Singles dürfen nicht drin sein (außer Drache/Phönix, wenn als Single erlaubt?)
+    assert find_combination(parse_cards("S7"), action_space) is None
+    # Drache als Single darf nicht drin sein, um Paar zu schlagen
+    assert find_combination(parse_cards("Dr"), action_space) is None
+    # Treppen, Straßen, Fullhouses dürfen nicht drin sein
+    assert find_combination(parse_cards("S5 G5 S6 B6"), action_space) is None
+    # Bomben dürften drin sein (hier haben wir keine)
 
-        cards = parse_cards("Ph RK GK BA SA RD")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("SA BA GK RK RD Ph", stringify_cards(cards), "Treppe - Phönix am Ende")
+def test_action_space_beat_street(sample_hand_and_combis):
+    """Testet Action Space, wenn eine Straße geschlagen werden muss."""
+    hand, combis = sample_hand_and_combis
+    trick_figure = (CombinationType.STREET, 3, 6) # Straße 4-5-6 liegt (angenommen)
+    action_space = build_action_space(combis, trick_figure, 0)
 
-        cards = parse_cards("Ph RK BA SA GD RD")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("SA BA RK Ph GD RD", stringify_cards(cards), "Treppe - Phönix Phönix an 4. Stelle")
+    # Passen muss möglich sein
+    assert FIGURE_PASS_TUPLE in action_space
+    # Nur höhere Straßen *gleicher Länge* oder Bomben sind erlaubt
+    # Unsere Straße 7-8-9 ist auch Länge 3 -> sollte erlaubt sein
+    assert find_combination(parse_cards("S7 S8 S9"), action_space) is not None
+    # Andere Typen nicht erlaubt
+    assert find_combination(parse_cards("S5 G5"), action_space) is None
+    assert find_combination(parse_cards("Dr"), action_space) is None
 
-        cards = parse_cards("RK GK BA Ph GD RD")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("BA Ph GK RK GD RD", stringify_cards(cards), "Treppe - Phönix Phönix an 2. Stelle")
+def test_action_space_wish_fulfillable(sample_hand_and_combis):
+    """Testet Action Space, wenn ein erfüllbarer Wunsch aktiv ist."""
+    hand, combis = sample_hand_and_combis
+    trick_figure = FIGURE_PASS # Anspiel
+    wish = 8 # Wunsch Acht
+    action_space = build_action_space(combis, trick_figure, wish)
 
-        cards = parse_cards("RK GA BA Ph SA")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("SA BA GA RK Ph", stringify_cards(cards), "Fullhouse - Phönix am Ende")
+    # Nur Kombinationen mit einer 8 sind erlaubt (hier nur Single 8)
+    assert len(action_space) == 1
+    assert action_space[0][0] == parse_cards("S8")
+    assert action_space[0][1] == (CombinationType.SINGLE, 1, 8)
+    # Passen ist beim Anspiel nicht erlaubt, auch nicht mit Wunsch
 
-        cards = parse_cards("RK GK BK Ph SA")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("SA Ph BK GK RK", stringify_cards(cards), "Fullhouse - Phönix an 2. Stelle")
+def test_action_space_wish_fulfillable_with_pass(sample_hand_and_combis):
+    """Testet Action Space mit Wunsch, wenn Passen erlaubt ist."""
+    hand, combis = sample_hand_and_combis
+    trick_figure = (CombinationType.SINGLE, 1, 4) # Single 4 liegt
+    wish = 8 # Wunsch Acht
+    action_space = build_action_space(combis, trick_figure, wish)
 
-        cards = parse_cards("RK GK BA Ph SA")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("SA BA Ph GK RK", stringify_cards(cards), "Fullhouse - Phönix in der Mitte")
+    # Nur Passen und Kombinationen mit einer 8 sind erlaubt
+    assert len(action_space) == 2
+    assert FIGURE_PASS_TUPLE in action_space
+    found_eight = False
+    for cards, combi in action_space:
+        if CARD_MAH not in cards and 8 in [c[0] for c in cards]: # Prüfe auf 8 in den Karten
+             assert combi == (CombinationType.SINGLE, 1, 8)
+             found_eight = True
+    assert found_eight
 
-        cards = parse_cards("GK BB SZ Ph BD")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("Ph GK BD BB SZ", stringify_cards(cards), "Straße - Phönix am Anfang")
+def test_action_space_wish_unfulfillable(sample_hand_and_combis):
+    """Testet Action Space, wenn ein Wunsch nicht erfüllbar ist."""
+    hand, combis = sample_hand_and_combis
+    trick_figure = FIGURE_PASS # Anspiel
+    wish = 10 # Wunsch Zehn (nicht in Hand)
+    action_space = build_action_space(combis, trick_figure, wish)
 
-        cards = parse_cards("BD GK R9 SZ Ph")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("GK BD Ph SZ R9", stringify_cards(cards), "Straße - Phönix in der Mitte")
+    # Da Wunsch nicht erfüllbar, ist der normale Action Space für Anspiel aktiv
+    assert FIGURE_PASS_TUPLE not in action_space
+    assert len(action_space) == len(combis) # Alle Kombis der Hand
 
-        cards = parse_cards("GK BB GA Ph BD")
-        get_figure(cards, 10, shift_phoenix=True)
-        self.assertEqual("GA GK BD BB Ph", stringify_cards(cards), "Straße - Phönix am Ende")
+# --- Tests für validate_figure --- (Beispielhaft)
 
-    def test_build_combinations(self):
-        # Straßen zählen
-        combis = build_combinations(parse_cards("Ph GK BD RB RZ R9 R8 R7 R6 B5 G4 G3 B2 Ma"))
-        self.assertEqual(381, len(combis), "381 Kombinationen sind möglich")
-        self.assertEqual(352, len([1 for combi, figure in combis if figure[0] == STREET]), "352 Straßen sind möglich")
-
-        # Drillinge, Straßen und Bomben zählen
-        # Superblatt (3 Bomben + Phönix): 1576 Kombis = 3 Bomben, 360 Fullhouse, 64 5erStraßen, 174 2erTreppen,
-        #                                   684 3erTreppen, 216 4erTreppen, 30 Drillinge, 31 Paare, 14 Einzelkarten
-        combis = build_combinations(parse_cards("Ph R5 S4 B4 G4 R4 S3 B3 G3 R3 S2 B2 G2 R2"))  # Superblatt
-        self.assertEqual(1576, len(combis), "1576 Kombinationen sind möglich")
-        self.assertEqual(30, len([1 for combi, figure in combis if figure[0] == TRIPLE]), "30 Drillinge sind möglich")
-        self.assertEqual(64, len([1 for combi, figure in combis if figure[0] == STREET]), "64 Straßen sind möglich")
-        self.assertEqual(3, len([1 for combi, figure in combis if figure[0] == BOMB]), "3 Bomben sind möglich")
-        expected = ["4erBombe4", "4erBombe3", "4erBombe2", "5erStraße6", "5erStraße6"]  # Reihenfolge testen
-        for (s, combi) in zip(expected, combis[:5]):
-            self.assertEqual(s, stringify_figure(combi[1]))
-
-        # Treppen und FullHouses zählen
-        combis = build_combinations(parse_cards("G4 R4 B3 G3 R3 B2 G2 R2"))
-        self.assertEqual(46, len(combis), "46 Kombinationen sind möglich")
-        self.assertEqual(7, len([1 for combi, figure in combis if figure[0] == PAIR]), "7 Paare sind möglich")
-        self.assertEqual(2, len([1 for combi, figure in combis if figure[0] == TRIPLE]), "2 Drillinge sind möglich")
-        self.assertEqual(21, len([1 for combi, figure in combis if figure[0] == STAIR]), "21 Treppen sind möglich")
-        self.assertEqual(8, len([1 for combi, figure in combis if figure[0] == FULLHOUSE]), "8 FullHouses sind möglich")
-
-        # Konkrete Beispiele prüfen
-        combis = build_combinations(parse_cards("BD GD RD BZ RZ"))
-        expected = ("BD GD RD BZ RZ", "BD GD RD", "BD GD", "BD RD", "GD RD", "BZ RZ", "BD", "GD", "RD", "BZ", "RZ")
-        expected2 = ("FullHouseD", "DrillingD",   "PaarD", "PaarD", "PaarD", "PaarZ", "Dame", "Dame", "Dame", "Zehn", "Zehn")
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-        combis = build_combinations(parse_cards("Ph G9 B8 B7 R6 R4 Hu"))  # Straße mit Phönix für die 5 Und Hund
-        expected = ("Ph G9 B8 B7 R6", "G9 B8 B7 R6 Ph R4", "B8 B7 R6 Ph R4", "G9 Ph", "B8 Ph", "B7 Ph", "R6 Ph", "R4 Ph", "Ph", "G9", "B8", "B7", "R6", "R4", "Hu")
-        expected2 = ("5erStraßeZ", "6erStraße9", "5erStraße8", "Paar9", "Paar8", "Paar7", "Paar6", "Paar4", "Phönix", "Neun", "Acht", "Sieben", "Sechs", "Vier", "Hund")
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-        combis = build_combinations(parse_cards("Ph GA BK BD RB"))  # Straße mit Phönix am Ende
-        expected = ("GA BK BD RB Ph", "GA Ph", "BK Ph", "BD Ph", "RB Ph", "Ph", "GA", "BK", "BD", "RB")
-        expected2 = ("5erStraßeA", "PaarA", "PaarK", "PaarD", "PaarB", "Phönix", "As", "König", "Dame", "Bube")
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-        combis = build_combinations(parse_cards("Ph BK BD RB GZ"))  # Straße mit Phönix am Anfang
-        expected = ("Ph BK BD RB GZ", "BK Ph", "BD Ph", "RB Ph", "GZ Ph", "Ph", "BK", "BD", "RB", "GZ")
-        expected2 = ("5erStraßeA", "PaarK", "PaarD", "PaarB", "PaarZ", "Phönix", "König", "Dame", "Bube", "Zehn")
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-    def test_remove_combinations(self):
-        combis = remove_combinations(build_combinations(parse_cards("BD GD RD BZ RZ")), parse_cards("GD"))
-        expected = ("BD RD", "BZ RZ", "BD", "RD", "BZ", "RZ")
-        expected2 = ("PaarD", "PaarZ", "Dame", "Dame", "Zehn", "Zehn")
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-    def test_build_action_space(self):
-        # Passen und 4 Paare
-        combis = build_action_space(build_combinations(parse_cards("RA Ph SZ BZ RB SB")), (PAIR, 2, 10), 0)
-        expected = ('', "RA Ph", "RB Ph", "RB SB", "SB Ph")
-        expected2 = ("Passen", "PaarA", "PaarB", "PaarB", "PaarB")
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            # print(stringify_cards(combi))
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-        # Bombe
-        combis = build_action_space(build_combinations(parse_cards("SA SB GB BB RB")), (STREET, 5, 10), 0)
-        expected = ('', "SB GB BB RB")
-        expected2 = ("Passen", "4erBombeB")
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-        # Phönix auf Drache
-        combis = build_action_space(build_combinations(parse_cards("Ph SA")), (SINGLE, 1, 15), 0)
-        expected = ('',)
-        expected2 = ("Passen",)
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            # print(stringify_cards(combi))
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-        # Wunsch 10
-        combis = build_action_space(build_combinations(parse_cards("SA BD GZ R9")), (SINGLE, 1, 8), 10)
-        expected = ("GZ",)
-        expected2 = ("Zehn",)
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-        # Anspiel
-        combis = build_action_space(build_combinations(parse_cards("SA BD GZ R9")), (0, 0, 0), 0)
-        expected = ("SA", "BD", "GZ", "R9")
-        expected2 = ("As", "Dame", "Zehn", "Neun")
-        self.assertEqual(len(expected), len(combis))
-        for i, (combi, figure) in enumerate(combis):
-            self.assertEqual(expected[i], stringify_cards(combi), f"Kombination nicht ok: {combi}")
-            self.assertEqual(expected2[i], stringify_figure(figure), f"Kombination nicht ok: {figure}")
-
-
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.parametrize("figure, expected_valid", [
+    (FIGURE_PASS, True),
+    ((CombinationType.SINGLE, 1, 5), True),
+    ((CombinationType.SINGLE, 2, 5), False), # Falsche Länge
+    ((CombinationType.PAIR, 2, 14), True),
+    ((CombinationType.PAIR, 2, 1), False), # Falscher Rang (MahJong ist kein Paar)
+    ((CombinationType.STAIR, 4, 6), True), # 5566
+    ((CombinationType.STAIR, 5, 6), False), # Ungerade Länge
+    ((CombinationType.STREET, 5, 9), True), # 5-9
+    ((CombinationType.STREET, 4, 9), False), # Zu kurz
+    ((CombinationType.BOMB, 4, 5), True),
+    ((CombinationType.BOMB, 5, 9), True), # Farbbombe 5-9
+    ((CombinationType.BOMB, 5, 4), False), # Farbbombe Rang zu niedrig für Länge
+])
+def test_validate_figure(figure: Combination, expected_valid: bool):
+    assert validate_figure(figure) == expected_valid

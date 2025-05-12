@@ -164,7 +164,22 @@ Aber diesen Ansatz möchte ich nicht weiter verfolgen. Ich kann davon aber einen
 - NNetAgent bauen
 
 
+# Tests
+
+```
+ # Einzelne Datei testen
+ python -m pytest tests/test_cards2.py
+ 
+ # Testabdeckung reporten:
+ python -m pytest tests/test_cards2.py --cov=src 
+ 
+ # Testabdeckung reporten (inkl. HTML-Report)
+ python -m pytest tests/test_cards2.py --cov=src --cov-report=term-missing --cov-report=html
+```
+
 ## Quellen
 
 Regeln
 https://abacusspiele.de/wp-content/uploads/2021/01/Tichu_Pocket_Regel.pdf
+
+
