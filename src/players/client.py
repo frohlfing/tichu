@@ -121,7 +121,7 @@ class Client(Player):
     #  Es fehlt eine klare Definition, wie die Nachrichten aufgebaut sein müssen.
     # ------------------------------------------------------
 
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:  # -> List[Optional[Card]]  todo schupf_cards in kanonischer Form
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -171,7 +171,7 @@ class Client(Player):
         # TODO: Implementieren!
         return self._random.choice([True, False], [1, 19] if grand else [1, 9])
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
+    async def play(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
@@ -278,7 +278,7 @@ class Client(Player):
         # TODO: Implementieren!
         return self._random.choice([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
 
-    async def gift(self, pub: PublicState, priv: PrivateState) -> int:
+    async def choose_dragon_recipient(self, pub: PublicState, priv: PrivateState) -> int:
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 

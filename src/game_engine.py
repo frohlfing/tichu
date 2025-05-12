@@ -13,7 +13,7 @@ from src.players.player import Player
 from src.players.random_agent import RandomAgent
 from src.private_state import PrivateState
 from src.public_state import PublicState
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 class GameEngine:
     """
@@ -229,7 +229,7 @@ class GameEngine:
                     # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
                     if pub.trick_owner_index == priv.player_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt aber immer liegen
                         if not pub.double_victory and pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
-                            opponent = await agent.gift(pub, priv)
+                            opponent = await agent.choose_dragon_recipient(pub, priv)
                             assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                         else:
                             opponent = -1
@@ -248,25 +248,25 @@ class GameEngine:
 
                         # Kombination auswählen
                         action_space = build_action_space(priv.combinations, pub.trick_combination, pub.wish_value)
-                        combi = await agent.combination(pub, priv, action_space)
+                        cards, combination = await agent.play(pub, priv, action_space)
                         assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
-                        assert combi[1][1] <= pub.count_hand_cards[priv.player_index] <= 14
+                        assert combination[1] <= pub.count_hand_cards[priv.player_index] <= 14
 
                         # Kombination ausspielen
-                        self.play_priv(priv, combi)
-                        assert len(priv.hand_cards) == pub.count_hand_cards[priv.player_index] - combi[1][1]
-                        self.play_pub(pub, combi)
+                        self.play_priv(priv, cards, combination)
+                        assert len(priv.hand_cards) == pub.count_hand_cards[priv.player_index] - combination[1]
+                        self.play_pub(pub, cards, combination)
                         assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
                         if clients_joined: 
                             await self.broadcast("")
 
-                        if combi[1] != FIGURE_PASS:
+                        if combination != FIGURE_PASS:
                             # Spiel vorbei?
                             if pub.is_round_over:
                                 # Spiel ist vorbei; letzten Stich abräumen und fertig!
                                 assert pub.trick_owner_index == priv.player_index
                                 if not pub.double_victory and pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
-                                    opponent = await agent.gift(pub, priv)
+                                    opponent = await agent.choose_dragon_recipient(pub, priv)
                                     assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                                 else:
                                     opponent = -1
@@ -276,7 +276,7 @@ class GameEngine:
                                 break
 
                             # falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden
-                            if CARD_MAH in combi[0]:
+                            if CARD_MAH in cards:
                                 assert pub.wish_value == 0
                                 wish = await agent.wish(pub, priv)
                                 assert 2 <= wish <= 14
@@ -337,14 +337,14 @@ class GameEngine:
         pub.trick_owner_index = -1
         pub.trick_combination = (CombinationType.PASS, 0, 0)
         pub.trick_points = 0
-        pub.round_history = []
+        pub.tricks = []
         pub.points = [0, 0, 0, 0]
         pub.winner_index = -1
         pub.loser_index = -1
         pub.is_round_over = False
         pub.double_victory = False
     
-    def shuffle_cards(self, cards: List[Card]) -> None:
+    def shuffle_cards(self, cards: Cards) -> None:
         """
         Karten mischen
         :param cards: Kartendeck
@@ -352,7 +352,7 @@ class GameEngine:
         self._random.shuffle(cards)
 
     @staticmethod
-    def deal_out(cards: List[Card], player_index: int, n: int) -> List[Card]:
+    def deal_out(cards: Cards, player_index: int, n: int) -> Cards:
         """
         Karten austeilen
         :param cards: Kartendeck
@@ -408,45 +408,54 @@ class GameEngine:
         pub.announcements[player_index] = 2 if grand else 1
 
     @staticmethod
-    def play_pub(pub: PublicState, combi: Tuple[List[Card], Combination]):
+    def play_pub(pub: PublicState, cards: Cards, combination: Combination):
         """
         Kombination spielen
         :param pub: Öffentlicher Spielzustand
-        :param combi: Ausgewählte Kombination (Karten, (Typ, Länge, Wert)) 
+        :param cards: Ausgewählte Karten 
+        :param combination: Die Kombination, die die Karten bilden (Typ, Länge, Rang).
         """
         assert not pub.is_round_over
         assert pub.current_turn_index != -1
-        pub.round_history.append((pub.current_turn_index, combi))  # todo: in Stiche unterteilen
-        if combi[1] == FIGURE_PASS:
+
+        # Spielverlauf festhalten
+        if pub.trick_owner_index == -1:  # neuer Stich?
+            pub.tricks.append([(pub.current_turn_index, cards, combination)])
+            assert combination != FIGURE_PASS  # beim Anspiel darf nicht gepasst werden, der erste Eintrag im Stich sind also Karten
+        else:
+            assert len(pub.tricks) > 0
+            pub.tricks[-1].append((pub.current_turn_index, cards, combination))
+
+        if combination == FIGURE_PASS:
             return
-
-        # Gespielte Karten merken
-        assert not set(combi[0]).intersection(pub.played_cards)  # darf keine Schnittmenge bilden
-        pub.played_cards += combi[0]
-
-        # Anzahl Handkarten aktualisieren
-        assert combi[1][1] == len(combi[0])
-        assert pub.count_hand_cards[pub.current_turn_index] >= combi[1][1]
-        pub.count_hand_cards[pub.current_turn_index] -= combi[1][1]
-
-        # Wunsch erfüllt?
-        assert pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
-        if pub.wish_value > 0 and is_wish_in(pub.wish_value, combi[0]):
-            assert CARD_MAH in pub.played_cards
-            pub.wish_value = -pub.wish_value
 
         # Stich aktualisieren
         pub.trick_owner_index = pub.current_turn_index
-        if combi[1] == FIGURE_PHO:
-            assert pub.trick_combination == (0, 0, 0) or pub.trick_combination[0] == SINGLE
+        if combination == FIGURE_PHO:
+            assert pub.trick_combination == FIGURE_PASS or pub.trick_combination[0] == SINGLE
             assert pub.trick_combination != FIGURE_DRA  # Phönix auf Drache geht nicht
             # Der Phönix ist eigentlich um 0.5 größer als der Stich, aber gleichsetzen geht auch (Anspiel == 1).
             if pub.trick_combination[2] == 0:  # Anspiel oder Hund?
                 pub.trick_combination = FIGURE_MAH
         else:
-            pub.trick_combination = combi[1]
-        pub.trick_points += sum_card_points(combi[0])
+            pub.trick_combination = combination
+        pub.trick_points += sum_card_points(cards)
         assert -25 <= pub.trick_points <= 125
+
+        # Gespielte Karten merken
+        assert not set(cards).intersection(pub.played_cards)  # darf keine Schnittmenge bilden
+        pub.played_cards += cards
+
+        # Anzahl Handkarten aktualisieren
+        assert combination[1] == len(cards)
+        assert pub.count_hand_cards[pub.current_turn_index] >= combination[1]
+        pub.count_hand_cards[pub.current_turn_index] -= combination[1]
+
+        # Wunsch erfüllt?
+        assert pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
+        if pub.wish_value > 0 and is_wish_in(pub.wish_value, cards):
+            assert CARD_MAH in pub.played_cards
+            pub.wish_value = -pub.wish_value
 
         # Runde beendet?
         if pub.count_hand_cards[pub.current_turn_index] == 0:
@@ -491,7 +500,7 @@ class GameEngine:
         # Sicherstellen, dass die Funktion nicht zweimal aufgerufen wird, sondern nur, wenn ein Stich abgeräumt werden kann.
         assert pub.trick_owner_index != -1
         assert pub.trick_owner_index == pub.current_turn_index
-        assert pub.trick_combination != (0, 0, 0)
+        assert pub.trick_combination != FIGURE_PASS
 
         if pub.double_victory:
             # Doppelsieg! Die Karten müssen nicht gezählt werden.
@@ -583,7 +592,7 @@ class GameEngine:
         priv.given_schupf_cards = []
 
     @staticmethod
-    def take_cards(priv: PrivateState, cards: List[Card]):
+    def take_cards(priv: PrivateState, cards: Cards):
         """
         Handkarten für eine neue Runde aufnehmen
         
@@ -596,12 +605,12 @@ class GameEngine:
         priv.given_schupf_cards = []
 
     @staticmethod
-    def schupf(priv: PrivateState, schupfed: Cards) -> list[tuple]:
+    def schupf(priv: PrivateState, schupfed: Cards) -> List[Optional[Card]]:
         """ 
         Tauschkarten an die Mitspieler abgeben
         
-        :param priv: Privater Spielzustand
-        :param schupfed: Tauschkarte für rechten Gegner, Karte für Partner, Karte für linken Gegner
+        :param priv: Privater Spielzustand des Spielers, der die Tauschkarten abgegeben hat
+        :param schupfed: Tauschkarte für rechten Gegner, Karte für Partner, Karte für linken Gegner  todo schupf_cards in kanonischer Form
         :return: Tauschkarten für Spieler 0 bis 3, kanonische Form (der eigene Spieler kriegt nichts, also None)
         """
         # Karten abgeben
@@ -613,34 +622,35 @@ class GameEngine:
         cards = [None, None, None, None]
         for i in range(0, 3):
             cards[(priv.player_index + i + 1) % 4] = priv.given_schupf_cards[i]
-        # todo: priv.received_schupf_cards aktualisieren
         return cards
 
     @staticmethod
-    def take_schupfed_cards(priv: PrivateState, cards: list[tuple]):
+    def take_schupfed_cards(priv: PrivateState, cards: List[Optional[Card]]):
         """
         Tauschkarten der Mitspieler aufnehmen
         
-        :param priv: Privater Spielzustand
-        :param cards: Tauschkarten der Spieler 0 bis 3 (None steht für keine Karte; eigener Spieler)
+        :param priv: Privater Spielzustand des Spielers, der die Tauschkarten der Mitspieler aufnimmt.
+        :param cards: Abgegebene Tauschkarten der Spieler 0 bis 3 (None steht für keine Karte; eigener Spieler)
         """
         assert len(priv.hand_cards) == 11
         assert not set(cards).intersection(priv.hand_cards)  # darf keine Schnittmenge bilden
+        priv.received_schupf_cards = cards
         priv.hand_cards += [card for card in cards if card is not None]
         priv.hand_cards.sort(reverse=True)
         assert len(priv.hand_cards) == 14
 
     @staticmethod
-    def play_priv(priv: PrivateState, combi: tuple):
+    def play_priv(priv: PrivateState, cards: Cards, combination: Combination):
         """
         Kombination ausspielen (oder passen)
         
         :param priv: Privater Spielzustand
-        :param combi: Ausgewählte Kombination (Karten, (Typ, Länge, Wert)) 
+        :param cards: Ausgewählte Karten
+        :param combination: Die Kombination, die die Karten bilden (Typ, Länge, Rang).
         """
-        if combi[1] != FIGURE_PASS:
+        if combination != FIGURE_PASS:
             # Handkarten aktualisieren
-            priv.hand_cards = [card for card in priv.hand_cards if card not in combi[0]]
+            priv.hand_cards = [card for card in priv.hand_cards if card not in cards]
 
     # ------------------------------------------------------
     # Client-spezifisches

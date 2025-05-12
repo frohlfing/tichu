@@ -279,39 +279,39 @@ def stringify_type(t: int, m: int = None) -> str:
 def get_figure(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> tuple:
     n = len(cards)
     if n == 0:
-        return 0, 0, 0  # Passen
+        return FIGURE_PASS
 
     # Karten absteigend sortieren
     cards.sort(reverse=True)  # Der Phönix ist jetzt, falls vorhanden, die erste Karte!
 
     # Type
     if n == 1:
-        t = SINGLE
+        t = CombinationType.SINGLE
     elif n == 2:
-        t = PAIR
+        t = CombinationType.PAIR
     elif n == 3:
-        t = TRIPLE
+        t = CombinationType.TRIPLE
     elif n == 4 and cards[1][0] == cards[2][0] == cards[3][0]:  # Treppe ausschließen: 2., 3. und 4. Karte gleichwertig
-        t = BOMB  # 4er-Bombe
+        t = CombinationType.BOMB  # 4er-Bombe
     elif n == 5 and (cards[1][0] == cards[2][0] or cards[2][0] == cards[3][0]):  # Straße ausschließen
-        t = FULLHOUSE  # 22211 22111 *2211 *2221 *2111
+        t = CombinationType.FULLHOUSE  # 22211 22111 *2211 *2221 *2111
     elif cards[1][0] == cards[2][0] or cards[2][0] == cards[3][0]:  # Straße ausschließen
-        t = STAIR  # Treppe: 332211 *32211 *33211 *33221
+        t = CombinationType.STAIR  # Treppe: 332211 *32211 *33211 *33221
     elif len([card for card in cards if card[1] == cards[0][1]]) == n:  # Einfarbig?
-        t = BOMB  # Farbbombe
+        t = CombinationType.BOMB  # Farbbombe
     else:
-        t = STREET
+        t = CombinationType.STREET
 
     # Rang
-    if t == SINGLE:
+    if t == CombinationType.SINGLE:
         if cards[0] == CARD_PHO:
             assert 0 <= trick_value <= 15
             v = trick_value if trick_value else 1  # ist um 0.5 größer als der Stich (wir runden ab, da egal)
         else:
             v = cards[0][0]
-    elif t == FULLHOUSE:
+    elif t == CombinationType.FULLHOUSE:
         v = cards[2][0]  # die 3. Karte gehört auf jeden Fall zum Drilling
-    elif t == STREET or (t == BOMB and n > 4):
+    elif t == CombinationType.STREET or (t == CombinationType.BOMB and n > 4):
         if cards[0] == CARD_PHO:
             if cards[1][0] == 14:
                 v = 14  # Phönix muss irgendwo anders eingereiht werden
@@ -329,11 +329,11 @@ def get_figure(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> t
 
     # Phönix einsortieren
     if shift_phoenix and cards[0] == CARD_PHO:
-        if t == PAIR:  # Pärchen → Phönix ans Ende verschieben
+        if t == CombinationType.PAIR:  # Pärchen → Phönix ans Ende verschieben
             cards[0] = cards[1]; cards[1] = CARD_PHO
-        elif t == TRIPLE:  # Drilling → Phönix ans Ende verschieben
+        elif t == CombinationType.TRIPLE:  # Drilling → Phönix ans Ende verschieben
             cards[0] = cards[1]; cards[1] = cards[2]; cards[2] = CARD_PHO
-        elif t == STAIR:  # Treppe → Phönix in die Lücke verschieben *11233
+        elif t == CombinationType.STAIR:  # Treppe → Phönix in die Lücke verschieben *11233
             for i in range(1, n, 2):
                 if i + 1 == n or cards[i][0] != cards[i + 1][0]:
                     # Lücke gefunden
@@ -341,14 +341,14 @@ def get_figure(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> t
                         cards[j] = cards[j + 1]
                     cards[i] = CARD_PHO
                     break
-        elif t == FULLHOUSE:  # Straße → Phönix ans Ende des Drillings bzw. Pärchens verschieben
+        elif t == CombinationType.FULLHOUSE:  # Straße → Phönix ans Ende des Drillings bzw. Pärchens verschieben
             if cards[1][0] == cards[2][0] == cards[3][0]:  # Drilling vorne komplett → Phönix ans Ende verschieben
                 cards[0] = cards[1]; cards[1] = cards[2]; cards[2] = cards[3]; cards[3] = cards[4]; cards[4] = CARD_PHO
             elif cards[2][0] == cards[3][0] == cards[4][0]:  # Drilling hinten komplett → Phönix an die 2. Stelle verschieben
                 cards[0] = cards[1]; cards[1] = CARD_PHO
             else:  # kein Drilling komplett → Phönix in die Mitte verschieben
                 cards[0] = cards[1]; cards[1] = cards[2]; cards[2] = CARD_PHO
-        elif t == STREET:  # Straße → Phönix in die Lücke verschieben
+        elif t == CombinationType.STREET:  # Straße → Phönix in die Lücke verschieben
             w = cards[1][0] + 1  # wir nehmen erstmal an, dass der Phönix vorn bleiben kann
             for i in range(2, n):
                 if w > cards[i][0] + i:

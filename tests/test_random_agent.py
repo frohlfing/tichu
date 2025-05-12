@@ -26,7 +26,7 @@ class TestRandomAgent(unittest.TestCase):
 
     def test_combination(self):
         action_space = [(list(range(5)), ('type', 5, 10)), ([], ('pass', 0, 0))]
-        result = self.agent.combination(self.pub, self.priv, action_space)
+        result = self.agent.play(self.pub, self.priv, action_space)
         self.assertIn(result, action_space)
 
     def test_wish(self):
@@ -34,7 +34,7 @@ class TestRandomAgent(unittest.TestCase):
         self.assertIn(result, range(2, 15))
 
     def test_gift(self):
-        result = self.agent.gift(self.pub, self.priv)
+        result = self.agent.choose_dragon_recipient(self.pub, self.priv)
         self.assertIn(result, [self.priv.opponent_right, self.priv.opponent_left])
 
 

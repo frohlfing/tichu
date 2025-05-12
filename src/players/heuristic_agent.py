@@ -65,7 +65,7 @@ class HeuristicAgent(Agent):
     #       future: Future = loop.run_in_executor(pool, blocking_function)
     #       result: int = await future
 
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:  # -> List[Optional[Card]]  todo schupf_cards in kanonischer Form
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -140,10 +140,10 @@ class HeuristicAgent(Agent):
 
             if i == 2:
                 # Für den Partner nehmen wir die höchste Einzelkarte
-                schupfed[i - 1] = preferred[0]
+                schupfed[i - 1] = preferred[0]  # todo schupf_cards in kanonischer Form
             else:
                 # Für den Gegner entscheidet der Zufall
-                schupfed[i - 1] = preferred[self._random.integer(0, length)]
+                schupfed[i - 1] = preferred[self._random.integer(0, length)]  # todo schupf_cards in kanonischer Form
         return schupfed
 
     async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
@@ -179,7 +179,7 @@ class HeuristicAgent(Agent):
             announcement = q >= min_q
         return announcement
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
+    async def play(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
@@ -360,7 +360,7 @@ class HeuristicAgent(Agent):
             # Ansonsten werden Werte bevorzugt, die sich noch vollständig in den Händen der Mitspieler befinden und
             # nicht an den Partner geschoben wurde. Das verringert das Bombenrisiko etwas.
             preferred = []
-            excl = priv.hand_cards + pub.played_cards + [priv.given_schupf_cards[1]]
+            excl = priv.hand_cards + pub.played_cards + [priv.given_schupf_cards[1]]  # todo schupf_cards in kanonischer Form
             for v in range(2, 15):
                 if (v, 1) not in excl and (v, 2) not in excl and (v, 3) not in excl and (v, 4) not in excl:
                     preferred.append(v)
@@ -368,7 +368,7 @@ class HeuristicAgent(Agent):
             values = preferred
 
         # Wert bevorzugen, der an den nachfolgenden Gegner geschoben wurde. So mobben wir unseren Partner nicht.
-        value, color = priv.given_schupf_cards[0]
+        value, color = priv.given_schupf_cards[0]  # todo schupf_cards in kanonischer Form
         if value in values:
             values = [value]
 
@@ -376,7 +376,7 @@ class HeuristicAgent(Agent):
         assert 2 <= wish <= 14, "Der Wunsch muss zw. 2 und 14 (As) liegen."
         return wish
 
-    async def gift(self, pub: PublicState, priv: PrivateState) -> int:
+    async def choose_dragon_recipient(self, pub: PublicState, priv: PrivateState) -> int:
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 

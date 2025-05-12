@@ -110,18 +110,18 @@ class TestHeuristicAgent(unittest.TestCase):
         self.priv._hand = cards
         self.pub._number_of_cards = [14, 14, 14, 14]
         action_space = [([CARD_DRA], FIGURE_DRA)]
-        self.assertEqual(action_space[0], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[0], self.agent.play(self.pub, self.priv, action_space))
 
         # Wir könnten und werden alle restlichen Karten ablegen.
         cards = parse_cards("RA GA BA")
         self.priv._hand = cards
         self.pub._number_of_cards = [3, 14, 14, 14]
         action_space = [([], FIGURE_PASS), (cards, (3, 3, 14))]
-        self.assertEqual(action_space[1], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[1], self.agent.play(self.pub, self.priv, action_space))
 
         # Wie eben, aber der Partner hat Tichu gesagt. Wir machen nicht fertig.
         self.pub._announcements = [0, 0, 1, 0]
-        self.assertEqual(action_space[0], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[0], self.agent.play(self.pub, self.priv, action_space))
         self.pub._announcements = [0, 0, 0, 0]
 
         # Der Partner könnte den Stich bekommen. Wir passen und überstechen den Partner nicht.
@@ -130,7 +130,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.pub._number_of_cards = [14, 14, 10, 14]
         action_space = [([], FIGURE_PASS), (parse_cards("RA GA BA"), (3, 3, 14))]
         self.pub._trick_player_index = 2
-        self.assertEqual(action_space[0], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[0], self.agent.play(self.pub, self.priv, action_space))
         self.pub._trick_player_index = -1
 
         # Wir spielen den Hund
@@ -138,7 +138,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.priv._hand = cards
         self.pub._number_of_cards = [3, 14, 10, 14]
         action_space =  [([CARD_DRA], FIGURE_DRA), (parse_cards("BA"), (1, 1, 14)), ([CARD_DOG], FIGURE_DOG)]
-        self.assertEqual(action_space[2], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[2], self.agent.play(self.pub, self.priv, action_space))
 
     def test_combination_one_combi(self):
         # Die beste Partition hat genau eine spielbare Kombi.
@@ -147,7 +147,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.pub._played_cards = parse_cards("G9 S8 R8 B8 G6 S6 G5 B5 S5 Ma")
         self.pub._number_of_cards = [4, 14, 14, 14]
         action_space =  [(parse_cards("GA BA"), (1, 1, 14)), (parse_cards("RA BA"), (1, 1, 14))]
-        self.assertEqual(action_space[0], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[0], self.agent.play(self.pub, self.priv, action_space))
 
     def test_combination_more_combis(self):
         # Wir beste Partition hat mehrere spielbare Kombis.
@@ -156,7 +156,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.pub._played_cards = parse_cards("Dr G9 S8 R8 B8 G6 S6 G5 B5 S5")
         self.pub._number_of_cards = [4, 14, 14, 14]
         action_space = [(parse_cards("RA GA"), (2, 2, 14)), (parse_cards("GK BK"), (2, 2, 13))]
-        self.assertEqual(action_space[1], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[1], self.agent.play(self.pub, self.priv, action_space))
 
     def test_combination_bomb(self):
         # Wir haben eine Bombe
@@ -165,15 +165,15 @@ class TestHeuristicAgent(unittest.TestCase):
         self.pub._played_cards = parse_cards("G9 S8 R8 B8 G6 S6 G5 B5 S5")
         self.pub._number_of_cards = [5, 14, 14, 14]
         action_space = [(parse_cards("RA GA BA SA"), (7, 4, 14)), ([CARD_DRA], FIGURE_DRA)]
-        self.assertEqual(action_space[0], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[0], self.agent.play(self.pub, self.priv, action_space))
 
         # Wie eben, aber der Partner hat Tichu gesagt. Wir schmeißen nicht die Bombe, sondern eine ander Kombi
         self.pub._announcements = [0, 0, 1, 0]
-        self.assertEqual(action_space[1], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[1], self.agent.play(self.pub, self.priv, action_space))
 
         # Wie eben, aber wir könnten auch passen, was wir auch tun.
         action_space = [([], FIGURE_PASS), (parse_cards("RA GA BA SA"), (7, 4, 14))]
-        self.assertEqual(action_space[0], self.agent.combination(self.pub, self.priv, action_space))
+        self.assertEqual(action_space[0], self.agent.play(self.pub, self.priv, action_space))
         self.pub._announcements = [0, 0, 0, 0]
 
     def test_wish(self):
@@ -222,11 +222,11 @@ class TestHeuristicAgent(unittest.TestCase):
         self.priv._hand = parse_cards("BA GA RD S8 R8 B8 G7 S7 G5 B5 S5 G4")
         self.pub._played_cards = parse_cards("S4 R6 R7 Dr")
         self.pub._number_of_cards = [12, 12, 14, 14]
-        self.assertEqual(3, self.agent.gift(self.pub, self.priv))
+        self.assertEqual(3, self.agent.choose_dragon_recipient(self.pub, self.priv))
         self.pub._number_of_cards = [12, 14, 14, 12]
-        self.assertEqual(1, self.agent.gift(self.pub, self.priv))
+        self.assertEqual(1, self.agent.choose_dragon_recipient(self.pub, self.priv))
         self.pub._number_of_cards = [13, 13, 13, 13]
-        self.assertEqual(3, self.agent.gift(self.pub, self.priv))
+        self.assertEqual(3, self.agent.choose_dragon_recipient(self.pub, self.priv))
 
 
 if __name__ == "__main__":

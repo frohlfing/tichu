@@ -61,7 +61,7 @@ class Player:
     # Entscheidungen
     # ------------------------------------------------------
 
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:  # -> List[Optional[Card]]  todo schupf_cards in kanonischer Form
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -88,7 +88,7 @@ class Player:
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'announce' implementieren.")
 
-    async def combination(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
+    async def play(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
@@ -115,7 +115,7 @@ class Player:
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'wish' implementieren.")
 
-    async def gift(self, pub: PublicState, priv: PrivateState) -> int:  # todo besseren Namen finden
+    async def choose_dragon_recipient(self, pub: PublicState, priv: PrivateState) -> int:  # todo besseren Namen finden
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 

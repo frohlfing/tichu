@@ -3,9 +3,16 @@ Definiert die Datenstruktur für den öffentlichen Spielzustand.
 """
 
 from dataclasses import dataclass, field
-from src.lib.cards import Card, stringify_cards, other_cards
+from src.lib.cards import Card, Cards, stringify_cards, other_cards
 from src.lib.combinations import Combination, CombinationType
 from typing import List, Optional, Tuple, Dict, Any
+
+# Typ-Alias für einen Spielzug
+Turn = Tuple[int, Cards, Combination]
+
+# Typ-Alias für einen Stich (Liste von Spielzügen)
+Trick = List[Turn]
+
 
 @dataclass
 class PublicState:
@@ -26,8 +33,8 @@ class PublicState:
     :ivar trick_owner_index: Index des Spielers, der die letzte Kombination gespielt hat, also Besitzer des Stichs ist (-1 == leerer Stich).
     :ivar trick_cards: Die Karten der letzten Kombination im Stich [Card, ...].
     :ivar trick_combination: Typ, Länge und Wert des aktuellen Stichs ((0,0,0) == leerer Stich)
-    :ivar trick_points: Punkte des aktuellen Stichs.
-    :ivar round_history: Spielverlauf der aktuellen Runde [(player_index, [Card, ...], Combination), ...]. # todo in Stiche unterteilen
+    :ivar trick_points: Punkte des aktuellen Stichs.  # todo könnte man auch berechnen
+    :ivar tricks: Liste der Stiche der aktuellen Runde.
     :ivar points: Bisher kassierte Punkte in der aktuellen Runde pro Spieler [Spieler 0-3].
     :ivar winner_index: Index des Spielers, der zuerst in der aktuellen Runde fertig wurde (-1 == alle Spieler sind noch dabei).
     :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == Runde läuft noch oder wurde mit Doppelsieg beendet).
@@ -54,8 +61,7 @@ class PublicState:
     trick_cards: List[Card] = field(default_factory=lambda: [])
     trick_combination: Combination = field(default_factory=lambda: [CombinationType.PASS, 0, 0])
     trick_points: int = 0
-    #round_history: List[Tuple[int, Optional[List[Card]], Optional[Combination]]] = field(default_factory=list)  # todo
-    round_history: List[Tuple[int, Tuple[List[Card], Combination]]] = field(default_factory=list)  # todo
+    tricks: List[Trick] = field(default_factory=list)
     points: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
     winner_index: int = -1
     loser_index: int = -1
@@ -101,7 +107,7 @@ class PublicState:
             "trickCards": stringify_cards(self.trick_cards),
             "trickCombination": (self.trick_combination[0].name, self.trick_combination[1], self.trick_combination[2]),
             "trickPoints": self.trick_points,
-            "roundHistory": [(idx, stringify_cards(cards), (combi[0].name, combi[1], combi[2])) for idx, cards, combi in self.round_history],
+            "tricks": [[(idx, stringify_cards(cards), (combi[0].name, combi[1], combi[2])) for idx, cards, combi in trick] for trick in self.tricks],
             "points": self.points,
             "winnerIndex": self.winner_index,
             "loserIndex": self.loser_index,
@@ -129,6 +135,18 @@ class PublicState:
     def points_per_team(self) -> Tuple[int, int]:
         """Bisher kassierte Punkte in der aktuellen Runde für Team 20 und Team 31"""
         return self.points[2] + self.points[0], self.points[3] + self.points[1]
+
+    # @property
+    # def is_round_over(self) -> bool:
+    #     """Gibt an, ob die aktuelle Runde beendet ist."""
+    #     # Runde ist vorbei, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wurde.
+    #     return self.count_active_players <= 1 or self.double_victory
+    #
+    # @property
+    # def double_victory(self) -> bool:
+    #     """Gibt an, ob die Runde durch einen Doppelsieg beendet wurde."""
+    #     # Ein Doppelsieg heißt, dass beide Spieler eines Teams fertig sind und die anderen beiden noch nicht.
+    #     return self.count_active_players == 2 and self.winner_index != -1 and self.count_hand_cards[(self.winner_index + 2) % 4] == 0
 
     @property
     def total_score(self) -> Tuple[int, int]:
