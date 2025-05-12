@@ -27,6 +27,7 @@ class PrivateState:
     _hand_cards: Cards = field(default_factory=list)
     given_schupf_cards: Cards = field(default_factory=list)  # todo in kanonischer Form definieren ([Spieler 0 bis 3], wobei given_schupf_cards[player_index] immer None ist)
     received_schupf_cards: Cards = field(default_factory=list)  # todo in kanonischer Form definieren ([Spieler 0 bis 3], wobei received_schupf_cards[player_index] immer None ist)
+    # Anmerkung: received_schupf_cards ist für das Regelwerk nicht nötig. Allerdings könne der Agent dieses Wissen für strategische Entscheidungen nutzen.
 
     # --- Private Caches (verborgene Variablen) ---
     _combination_cache: List[Tuple[Cards, Combination]] = field(default_factory=list, repr=False)  # Nur intern verwendet, daher repr=False
@@ -42,8 +43,6 @@ class PrivateState:
     def hand_cards(self, value: Cards) -> None:
         """Setzt die Handkarten und leert den Cache."""
         self._hand_cards = value
-        #self._combination_cache.clear()
-        #self._partition_cache.clear()
         self._combination_cache = []
         self._partition_cache = []
         self._partitions_aborted = True

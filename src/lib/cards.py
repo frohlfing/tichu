@@ -52,7 +52,7 @@ deck = (  # const
 
 # wie deck.index(card), aber 6 mal schneller!
 _deck_index = {  # const
-    #  rot        grün        blau     schwarz
+    # schwarz    blau         grün        rot
     (0, 0): 0,                                           # Hund
     (1, 0): 1,                                           # MahJong
     (2, 1): 2, (2, 2): 3, (2, 3): 4, (2, 4): 5,          # 2
@@ -74,44 +74,44 @@ _deck_index = {  # const
 
 # Kartenlabel
 _cardlabels = (
-    # rt   gr    bl    sw
+    # sw   bl    gr    rt
     "Hu",                    # Hund
     "Ma",                    # MahJong
-    "R2", "G2", "B2", "S2",  # 2
-    "R3", "G3", "B3", "S3",  # 3
-    "R4", "G4", "B4", "S4",  # 4
-    "R5", "G5", "B5", "S5",  # 5
-    "R6", "G6", "B6", "S6",  # 6
-    "R7", "G7", "B7", "S7",  # 7
-    "R8", "G8", "B8", "S8",  # 8
-    "R9", "G9", "B9", "S9",  # 9
-    "RZ", "GZ", "BZ", "SZ",  # 10
-    "RB", "GB", "BB", "SB",  # Bube
-    "RD", "GD", "BD", "SD",  # Dame
-    "RK", "GK", "BK", "SK",  # König
-    "RA", "GA", "BA", "SA",  # As
+    "S2", "B2", "G2", "R2",  # 2
+    "S3", "B3", "G3", "R3",  # 3
+    "S4", "B4", "G4", "R4",  # 4
+    "S5", "B5", "G5", "R5",  # 5
+    "S6", "B6", "G6", "R6",  # 6
+    "S7", "B7", "G7", "R7",  # 7
+    "S8", "B8", "G8", "R8",  # 8
+    "S9", "B9", "G9", "R9",  # 9
+    "SZ", "BZ", "GZ", "RZ",  # 10
+    "SB", "BB", "GB", "RB",  # Bube
+    "SD", "BD", "GD", "RD",  # Dame
+    "SK", "BK", "GK", "RK",  # König
+    "SA", "BA", "GA", "RA",  # As
     "Dr",                    # Drache
     "Ph",                    # Phönix
 )
 
 # wie cardlabels.index(label), aber 6 mal schneller
 _cardlabels_index = {
-    # rot      grün     blau      schwarz
+    # schwarz blau      grün      rot
     "Hu": 0,                                 # Hund
     "Ma": 1,                                 # MahJong
-    "R2": 2, "G2": 3, "B2": 4, "S2": 5,      # 2
-    "R3": 6, "G3": 7, "B3": 8, "S3": 9,      # 3
-    "R4": 10, "G4": 11, "B4": 12, "S4": 13,  # 4
-    "R5": 14, "G5": 15, "B5": 16, "S5": 17,  # 5
-    "R6": 18, "G6": 19, "B6": 20, "S6": 21,  # 6
-    "R7": 22, "G7": 23, "B7": 24, "S7": 25,  # 7
-    "R8": 26, "G8": 27, "B8": 28, "S8": 29,  # 8
-    "R9": 30, "G9": 31, "B9": 32, "S9": 33,  # 9
-    "RZ": 34, "GZ": 35, "BZ": 36, "SZ": 37,  # 10
-    "RB": 38, "GB": 39, "BB": 40, "SB": 41,  # Bube
-    "RD": 42, "GD": 43, "BD": 44, "SD": 45,  # Dame
-    "RK": 46, "GK": 47, "BK": 48, "SK": 49,  # König
-    "RA": 50, "GA": 51, "BA": 52, "SA": 53,  # As
+    "S2": 2, "B2": 3, "G2": 4, "R2": 5,      # 2
+    "S3": 6, "B3": 7, "G3": 8, "R3": 9,      # 3
+    "S4": 10, "B4": 11, "G4": 12, "R4": 13,  # 4
+    "S5": 14, "B5": 15, "G5": 16, "R5": 17,  # 5
+    "S6": 18, "B6": 19, "G6": 20, "R6": 21,  # 6
+    "S7": 22, "B7": 23, "G7": 24, "R7": 25,  # 7
+    "S8": 26, "B8": 27, "G8": 28, "R8": 29,  # 8
+    "S9": 30, "B9": 31, "G9": 32, "R9": 33,  # 9
+    "SZ": 34, "BZ": 35, "GZ": 36, "RZ": 37,  # 10
+    "SB": 38, "BB": 39, "GB": 40, "RB": 41,  # Bube
+    "SD": 42, "BD": 43, "GD": 44, "RD": 45,  # Dame
+    "SK": 46, "BK": 47, "GK": 48, "RK": 49,  # König
+    "SA": 50, "BA": 51, "GA": 52, "RA": 53,  # As
     "Dr": 54,                                # Drache
     "Ph": 55,                                # Phönix
 }
@@ -140,13 +140,13 @@ _card_points = (
 
 # Parst die Karten aus dem String
 # s: z.B. "R6 B5 G4"
-def parse_cards(s: str) -> list[tuple]:
+def parse_cards(s: str) -> Cards:
     return [deck[_cardlabels_index[c]] for c in s.split(" ")]
 
 
 # Formatiert Karten als lesbaren String
 # cards: Karten, z.B. [(8,3),(2,4),(0,1)]
-def stringify_cards(cards: list[tuple]) -> str:
+def stringify_cards(cards: Cards) -> str:
     return " ".join([_cardlabels[_deck_index[c]] for c in cards])
 
 
@@ -154,7 +154,7 @@ def stringify_cards(cards: list[tuple]) -> str:
 #
 # Zurückgegeben wird eine Liste mit 17 Integer, wobei der Index den Rang entspricht und
 # der Wert die Anzahl der Karten mit diesem Rang.
-def ranks_to_vector(cards: list[tuple]) -> list[int]:
+def ranks_to_vector(cards: Cards) -> list[int]:
     # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
     # i= 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
     h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -164,7 +164,7 @@ def ranks_to_vector(cards: list[tuple]) -> list[int]:
 
 
 # Wandelt die Karten in einen Vektor um
-def cards_to_vector(cards: list[tuple]) -> list[int]:
+def cards_to_vector(cards: Cards) -> list[int]:
     # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
     # i= 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55
     h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -177,7 +177,7 @@ def cards_to_vector(cards: list[tuple]) -> list[int]:
 
 
 # Ermittelt, ob der gewünschte Kartenwert unter den Karten ist
-def is_wish_in(wish: int, cards: list[tuple]) -> bool:
+def is_wish_in(wish: int, cards: Cards) -> bool:
     assert 2 <= wish <= 14
     for card in cards:
         if card[0] == wish:
@@ -187,11 +187,11 @@ def is_wish_in(wish: int, cards: list[tuple]) -> bool:
 
 # Zählt die Punkte der Karten
 # cards: Karten, z.B. [(8,3),(2,4),(0,1)]
-def sum_card_points(cards: list[tuple]) -> int:
+def sum_card_points(cards: Cards) -> int:
     return sum([_card_points[card[0]] for card in cards])
 
 
-def other_cards(cards: list[tuple]) -> List[Card]:
+def other_cards(cards: Cards) -> List[Card]:
     """
     Listet die Karten auf, die nicht in cards vorkommen.
 

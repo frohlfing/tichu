@@ -41,11 +41,11 @@ STREET = 6     # Straße
 BOMB = 7       # Vierer-Bombe oder Farbbombe
 
 # Sonderkarten einzeln ausgespielt (Typ, Länge, Rang)
-FIGURE_PASS = (0, 0, 0)
-FIGURE_DOG = (1, 1, 0)
-FIGURE_MAH = (1, 1, 1)
-FIGURE_DRA = (1, 1, 15)
-FIGURE_PHO = (1, 1, 16)
+FIGURE_PASS = (CombinationType.PASS, 0, 0)
+FIGURE_DOG = (CombinationType.SINGLE, 1, 0)
+FIGURE_MAH = (CombinationType.SINGLE, 1, 1)
+FIGURE_DRA = (CombinationType.SINGLE, 1, 15)
+FIGURE_PHO = (CombinationType.SINGLE, 1, 16)
 
 # todo prüfen, ob wir das tatsächlich brauchen
 # Alle möglichen Figuren
@@ -91,7 +91,7 @@ _figures = (  # Index → figure == (Typ, Länge, Rang)
     (7, 13, 14),
 )
 
-# todo prüfen, ob wir das tatsächlich brauchen
+# todo entfernen
 # wie figures.index(figure), aber schneller!
 _figures_index = {  # figure == (Typ, Länge, Rang) → Index
     # Passen - PASS
@@ -244,7 +244,7 @@ def validate_figure(figure: tuple) -> bool:
     return False
 
 
-# Wandelt das Label einer Kartenkombination in Typ, Länge und Rang umw
+# Wandelt das Label einer Kartenkombination in Typ, Länge und Rang um
 def parse_figure(lb: str) -> tuple:
     return _figures[_figurelabels_index[lb]]
 
@@ -276,7 +276,7 @@ def stringify_type(t: int, m: int = None) -> str:
 # trick_value: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist)
 # shift_phoenix: Wenn True, wird der Phönix eingereiht (kostet etwas Zeit)
 # return: (Typ, Länge, Rang);
-def get_figure(cards: list, trick_value: int, shift_phoenix: bool = False) -> tuple:
+def get_figure(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> tuple:
     n = len(cards)
     if n == 0:
         return 0, 0, 0  # Passen
@@ -528,7 +528,7 @@ def build_action_space(combis: List[Tuple[List[Card], Combination]], trick_figur
     result = []
     if trick_figure not in (FIGURE_PASS, FIGURE_DOG):
         # Stich liegt und es ist kein Hund
-        result.append(([], (0, 0, 0)))  # Passen ist eine Option
+        result.append(([], (CombinationType.PASS, 0, 0)))  # Passen ist eine Option
         t, n, v = trick_figure
         for combi in combis:
             t2, n2, v2 = combi[1]

@@ -4,7 +4,7 @@ Definiert die Datenstruktur für den öffentlichen Spielzustand.
 
 from dataclasses import dataclass, field
 from src.lib.cards import Card, stringify_cards, other_cards
-from src.lib.combinations import Combination
+from src.lib.combinations import Combination, CombinationType
 from typing import List, Optional, Tuple, Dict, Any
 
 @dataclass
@@ -34,7 +34,7 @@ class PublicState:
     :ivar is_round_over: Gibt an, ob die aktuelle Runde beendet ist.  # todo könnte man auch berechnen
     :ivar double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.  # todo könnte man auch berechnen
     :ivar game_score: Punktetabelle der Partie [Team 20, Team 31] (pro Team eine Liste von Punkten).
-    :ivar round_counter: Anzahl der abgeschlossenen Runden (nur für statistische Zwecke). # todo kann aus game_ccore ermittelt werden
+    :ivar round_counter: Anzahl der abgeschlossenen Runden (nur für statistische Zwecke). # todo kann aus game_score ermittelt werden
     :ivar trick_counter: Anzahl der abgeräumten Stiche in der aktuellen Runde (nur für statistische Zwecke). # todo kann aus round_history ermittelt werden
     :ivar current_phase: # Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
     """
@@ -52,7 +52,7 @@ class PublicState:
     dragon_recipient: int = -1
     trick_owner_index: int = -1
     trick_cards: List[Card] = field(default_factory=lambda: [])
-    trick_combination: Combination = field(default_factory=lambda: [0, 0, 0])
+    trick_combination: Combination = field(default_factory=lambda: [CombinationType.PASS, 0, 0])
     trick_points: int = 0
     #round_history: List[Tuple[int, Optional[List[Card]], Optional[Combination]]] = field(default_factory=list)  # todo
     round_history: List[Tuple[int, Tuple[List[Card], Combination]]] = field(default_factory=list)  # todo
@@ -61,6 +61,13 @@ class PublicState:
     loser_index: int = -1
     is_round_over: bool = False
     double_victory: bool = False
+
+    # todo Berechnung:
+    # is_round_over = count_active_players == 1 or double_victory  # nur noch eine Spieler im Spiel oder Doppelsieg
+    # double_victory = count_active_players == 2 and count_hand_cards[(winner_index + 2) % 4] == 0  # die beiden Spieler eine Teams sind fertig, die anderen 2 Spieler noch nicht
+    # die Berechnung ist nicht aufwendig. Ich bevorzuge im Hinblick, neuronale Netze zu trainieren, so wenig wie nötig als
+    # Zustandsvariablen definieren zu müssen. Properties sehe ich für das Training als optionale Features.
+    # Aber ja, ich werde das später erst noch prüfen, in wie weit die Geschwindigkeit der Arena leiden würde.
 
     # --- Information über die Partie ---
     game_score: List[List[int]] = field(default_factory=lambda: [[], []])
