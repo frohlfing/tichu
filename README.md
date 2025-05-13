@@ -1,3 +1,21 @@
+Badges:
+
+Coverage-Rate (statisch):
+![Coverage](https://img.shields.io/badge/Coverage-80%25-green)
+
+Coverage-Rate (automatisch):
+![Coverage](https://github.com/frohlfing/tichu-server/actions/workflows/coverage.yml/badge.svg)
+
+GitHub Releases:
+![Version](https://img.shields.io/github/v/release/frohlfing/tichu-server)
+
+Lizenz:
+![License](https://img.shields.io/github/license/frohlfing/tichu-server)
+
+Python-Version:
+![Python](https://img.shields.io/badge/python-3.11-blue)
+
+
 # TICHU
 
 Ich entwickle eine Webanwendung "Tichu" mit Python. Tichu ist ein Kartenspiel. 

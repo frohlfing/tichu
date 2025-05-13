@@ -1,19 +1,7 @@
-# Konfiguration für Codeabdeckung:
-
 [run]
-# Verzeichnisse und Dateien, die getestet werden sollen
-source =
-    src
-#    main.py
-
-# Verzeichnisse und Dateien, die nicht getestet werden sollen
-omit =
-    _*
-
-[report]
-# Zeigt die nicht abgedeckten Zeilen im Bericht an
-show_missing = True
+# Cobertura-Datei
+data_file = tests/.coverage
 
 [html]
 # Ausgabeverzeichnis für HTML-Report
-directory = docs/htmlcov
+directory = tests/htmlcov
