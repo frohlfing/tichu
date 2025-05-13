@@ -1,16 +1,16 @@
 Badges:
 
-Coverage-Rate (statisch):
-![Coverage](https://img.shields.io/badge/Coverage-80%25-green)
-
-Coverage-Rate (automatisch):
-![Coverage](https://github.com/frohlfing/tichu-server/actions/workflows/coverage.yml/badge.svg)
+Coverage-Rate:
+![Coverage](coverage.svg)
 
 GitHub Releases:
-![Version](https://img.shields.io/github/v/release/frohlfing/tichu-server)
+![Version](https://img.shields.io/github/v/release/frohlfing/laravel-websocket)
+
+Version
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 
 Lizenz:
-![License](https://img.shields.io/github/license/frohlfing/tichu-server)
+![License](https://img.shields.io/github/license/frohlfing/laravel-websocket)
 
 Python-Version:
 ![Python](https://img.shields.io/badge/python-3.11-blue)
@@ -185,14 +185,16 @@ Aber diesen Ansatz möchte ich nicht weiter verfolgen. Ich kann davon aber einen
 # Tests
 
 ```
- # Einzelne Datei testen
- python -m pytest tests/test_cards2.py
+
+# Alle Tests durchführen
+python -m pytest
+
+# Einzelne Datei testen
+python -m pytest tests/test_cards.py
  
- # Testabdeckung reporten:
- python -m pytest tests/test_cards2.py --cov=src 
- 
- # Testabdeckung reporten (inkl. HTML-Report)
- python -m pytest tests/test_cards2.py --cov=src --cov-report=term-missing --cov-report=html
+# Coverage-Badge aktualisieren 
+coverage-badge -o coverage.svg
+
 ```
 
 ## Quellen
