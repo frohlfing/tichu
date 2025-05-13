@@ -2,6 +2,14 @@
 # Cobertura-Datei ein Coverage-Badge zu erzeugen. Das Badge kann dann in der README so angezeigt werden:
 # ![Coverage](https://github.com/<USERNAME>/<REPO>/actions/workflows/coverage.yml/badge.svg)
 
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
 name: Code Coverage Summary Report
 uses: irongut/CodeCoverageSummary@v1.3.0
 with:
