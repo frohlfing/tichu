@@ -13,7 +13,7 @@ def get_version_from_readme():
 
     :return: Die aktuelle Versionsnummer
     """
-    with open("README.md", "r", encoding="utf-8") as file:
+    with open("../README.md", "r", encoding="utf-8") as file:
         content = file.read()
     match = re.search(r"Version\-(\d+\.\d+\.\d+)", content)
     return match.group(1) if match else "Version nicht gefunden"
