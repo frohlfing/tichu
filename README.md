@@ -4,6 +4,7 @@ Badges:
 ![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![Version](https://img.shields.io/github/v/release/frohlfing/tichu)
+![Version](https://img.shields.io/github/v/tag/frohlfing/tichu)
 ![License](https://img.shields.io/github/license/frohlfing/tichu)
 
 # TICHU
