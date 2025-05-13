@@ -64,7 +64,7 @@ def main(args: argparse.Namespace):
 
 
 if __name__ == "__main__":
-    print(f"Tichu Arena Version: {get_git_tag()}")
+    print(f"Tichu Arena Version {get_git_tag().strip("v")}")
 
     # Argumente parsen (`nargs="?":` Dieses Argument für `add_argument` macht die Agenten-Argumente optional)
     parser = argparse.ArgumentParser(description=f"Lässt Agenten gegeneinander spielen. Verfügbare Agenten: {', '.join(agent_classes.keys())}.")

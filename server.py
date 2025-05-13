@@ -255,7 +255,7 @@ def shutdown(*_args):
 
 
 if __name__ == "__main__":
-    print(f"Tichu Server {get_git_tag()}")
+    print(f"Tichu Server {get_git_tag().strip("v")}")
 
     # Argumente parsen
     parser = argparse.ArgumentParser(description="Stellt einen Webserver inkl. WebSocket bereit")

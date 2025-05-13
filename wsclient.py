@@ -138,7 +138,7 @@ async def main(args: argparse.Namespace):
 
 
 if __name__ == "__main__":
-    print(f"Tichu WebSocket-Client {get_git_tag()}")
+    print(f"Tichu WebSocket-Client {get_git_tag().strip("v")}")
 
     # Argumente parsen
     parser = argparse.ArgumentParser(description="Verbindet sich zu Testzwecke mit dem Tichu Server")

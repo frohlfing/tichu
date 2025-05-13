@@ -22,8 +22,7 @@ def get_git_tag():
     :return: Die aktuelle Versionsnummer
     """
     try:
-        tag = subprocess.check_output(["git", "describe", "--tags"]).strip().decode("utf-8")
-        return tag
+        tag = subprocess.check_output(["git", "describe", "--tags"]).strip().decode("utf-8").split("-", 1)
+        return tag[0]
     except subprocess.CalledProcessError:
-        return "No tag found"
-
+        return "0.0.0"
