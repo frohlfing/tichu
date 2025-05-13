@@ -1,20 +1,10 @@
 Badges:
 
-Coverage-Rate:
 ![Coverage](coverage.svg)
-
-GitHub Releases:
-![Version](https://img.shields.io/github/v/release/frohlfing/laravel-websocket)
-
-Version
+![Version](https://img.shields.io/github/v/release/frohlfing/tichu)
 ![Version](https://img.shields.io/badge/version-0.3.0-blue)
-
-Lizenz:
-![License](https://img.shields.io/github/license/frohlfing/laravel-websocket)
-
-Python-Version:
+![License](https://img.shields.io/github/license/frohlfing/tichu)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
-
 
 # TICHU
 
