@@ -1,12 +1,11 @@
 ![Coverage](coverage.svg)
-<!-- 
-![Version](https://img.shields.io/badge/version-0.3.0-blue)
-![Version](https://img.shields.io/github/v/release/frohlfing/tichu)
--->
 ![Version](https://img.shields.io/github/v/tag/frohlfing/tichu)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![License](https://img.shields.io/github/license/frohlfing/tichu)
-
+<!--
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Version](https://img.shields.io/github/v/release/frohlfing/tichu)
+-->
 # TICHU
 
 Ich entwickle eine Webanwendung "Tichu" mit Python. Tichu ist ein Kartenspiel. 
