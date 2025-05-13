@@ -1,7 +1,7 @@
+# todo Dokumentieren (reStructuredText)
+
 import random
 from typing import Any, Optional
-
-# todo Dokumentieren (reStructuredText)
 
 # Random ist für Multiprocessing ausgelegt.
 #

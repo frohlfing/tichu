@@ -7,6 +7,7 @@ Startet einen aiohttp-Server, der einen WebSocket-Endpunkt bereitstellt, über d
 interagieren können. Verwaltet den Server-Lebenszyklus und Signal-Handling für sauberes Beenden.
 """
 
+import argparse
 import asyncio
 import config
 import json
@@ -15,10 +16,10 @@ import signal
 import sys
 from aiohttp import WSMsgType, WSCloseCode, WSMessage
 from aiohttp.web import Application, AppRunner, Request, WebSocketResponse, TCPSite
+from src.common.git_utils import get_git_tag
 from src.common.logger import logger
 from src.game_factory import GameFactory
 from src.players.client import Client
-
 
 async def websocket_handler(request: Request) -> WebSocketResponse | None:
     """
@@ -40,7 +41,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
     # --- 2) Query-String auslesen. ---
     params = request.query  # z.B. ?name=Frank&table=Tisch1[&session=UUID]
     remote_addr = request.remote if request.remote else "Unbekannt"  # Client-Adresse
-    logger.info(f"WebSocket Verbindung hergestellt von {remote_addr} mit Parametern: {params}")
+    logger.debug(f"WebSocket Verbindung hergestellt von {remote_addr} mit Parametern: {params}")
 
     # --- 3) Referenz auf die Game-Engine holen, Client anlegen und der Engine zuordnen. ---
     session = params.get("session")
@@ -144,7 +145,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                 
     except asyncio.CancelledError:  # der Server wird heruntergefahren (z.B. durch Signal)
         client_name_log = client.name if client else remote_addr
-        logger.info(f"WebSocket Handler für {client_name_log} abgebrochen (Server Shutdown).")
+        logger.debug(f"WebSocket Handler für {client_name_log} abgebrochen (Server Shutdown).")
         raise  # Wichtig: CancelledError weitergeben für sauberes Beenden.
     except Exception as e:  # fängt unerwartete Fehler während der Verbindung oder im Handler ab
         logger.exception(f"Unerwarteter Fehler in der Nachrichtenschleife für {client.name} von {remote_addr}: {e}")
@@ -152,13 +153,13 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
     # --- 6) Bei Verbindungsabbruch etwas warten, vielleicht schlüpft der Client erneut in sein altes Ich. Ansonsten WebSocket-Verbindung serverseitig schließen. ---
     if not client.is_connected:
         # Verbindungsabbruch
-        logger.debug(f"{engine.table_name}, Spieler {client.name}: Verbindungsabbruch. Starte Kick-Out-Timer...")
+        logger.info(f"{engine.table_name}, Spieler {client.name}: Verbindungsabbruch. Starte Kick-Out-Timer...")
         await asyncio.sleep(config.KICK_OUT_TIME)
         if client.is_connected:
-            logger.debug(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich inzwischen wieder verbunden.")
+            logger.info(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich inzwischen wieder verbunden.")
             return ws  # keine weiteren Aufräumarbeiten erforderlich
         else:
-            logger.debug(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich nicht wieder verbunden.")
+            logger.info(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich nicht wieder verbunden.")
     elif not ws.closed:
         # Client will gehen
         try:
@@ -172,15 +173,15 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         try:
             await engine.leave_client(client)  # der Fallback-Agent spielt jetzt weiter
         except ValueError as e:
-            logger.warning(f"Fehler beim Entfernen des Clients {client.name} aus {engine.table_name}: {e}")
+            logger.error(f"Fehler beim Entfernen des Clients {client.name} aus {engine.table_name}: {e}")
     else:
         await factory.remove_engine(engine.table_name)
 
-    logger.info(f"{engine.table_name}, Spieler {client.name}: WebSocket geschlossen.")
+    logger.debug(f"{engine.table_name}, Spieler {client.name}: WebSocket geschlossen.")
     return ws
 
 
-async def main():
+async def main(args: argparse.Namespace):
     """
     Haupt-Einstiegspunkt zum Starten des aiohttp Servers.
 
@@ -221,20 +222,20 @@ async def main():
     # Server starten (mit AppRunner und TCPSite, das bietet mehr Kontrolle)
     runner = AppRunner(app)
     await runner.setup()
-    site = TCPSite(runner, config.HOST, config.PORT)  # Server an Host und Port aus der Konfiguration binden
+    site = TCPSite(runner, args.host, args.port)  # Server an Host und Port aus der Konfiguration binden
     try:
         await site.start()  # startet den Server
-        logger.info(f"aiohttp Server gestartet auf http://{config.HOST}:{config.PORT}")
-        logger.info(f"WebSocket verfügbar unter ws://{config.HOST}:{config.PORT}/ws")
+        logger.debug(f"aiohttp Server gestartet auf http://{args.host}:{args.port}")
+        logger.debug(f"WebSocket verfügbar unter ws://{args.host}:{args.port}/ws")
         await asyncio.Event().wait()  # hält den Haupt-Task am Laufen, bis ein Ereignis (z.B. CancelledError durch shutdown) eintritt
     except asyncio.CancelledError:  # wird ausgelöst, wenn shutdown() die Tasks abbricht.
-        logger.info("Haupt-Task abgebrochen, beginne Shutdown-Sequenz.")
+        logger.debug("Haupt-Task abgebrochen, beginne Shutdown-Sequenz.")
     finally:
-        logger.info("Fahre Server herunter...")
+        logger.debug("Fahre Server herunter...")
         await factory.cleanup()
         await site.stop()  # aiohttp Listener stoppen (nimmt keine neuen Verbindungen mehr an)
         await runner.cleanup()  # aiohttp AppRunner Ressourcen aufräumen
-        logger.info("Server erfolgreich heruntergefahren.")
+        logger.debug("Server erfolgreich heruntergefahren.")
 
 
 def shutdown(*_args):
@@ -254,11 +255,19 @@ def shutdown(*_args):
 
 
 if __name__ == "__main__":
-    logger.info(f"Starte Tichu Server (PID: {os.getpid()})...")
+    print(f"Tichu Server {get_git_tag()}")
+
+    # Argumente parsen
+    parser = argparse.ArgumentParser(description="Stellt einen Webserver inkl. WebSocket bereit")
+    parser.add_argument("-s", "--host", default=config.HOST, help=f"Hostname oder IP-Adresse (Default: {config.HOST})")
+    parser.add_argument("-p", "--port", type=int, default=config.PORT, help=f"Port (Default: {config.PORT})")
+
+    # Main-Routine starten
+    logger.info(f"Starte Server-Prozess (PID: {os.getpid()})...")
     try:
-       asyncio.run(main(), debug=config.DEBUG)
+       asyncio.run(main(parser.parse_args()), debug=config.DEBUG)
     except Exception as e_top:
         logger.exception(f"Unerwarteter Fehler auf Top-Level: {e_top}")
         sys.exit(1) # Beenden mit Fehlercode
     finally:
-        logger.info("Server-Prozess beendet.")
+        logger.debug("Server-Prozess beendet.")

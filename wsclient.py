@@ -7,6 +7,8 @@ from datetime import datetime
 import json
 import sys
 from aiohttp import WSMsgType, ClientSession, ClientWebSocketResponse, ClientConnectorError
+
+from src.common.git_utils import get_git_tag
 from src.common.logger import logger
 from src.lib.errors import ClientDisconnectedError
 from typing import Optional
@@ -42,7 +44,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
                 logger.exception(f"Fehler beim Verarbeiten der empfangenen Nachricht: {e}")
 
         elif msg.type == WSMsgType.CLOSED:
-            logger.info("Verbindung vom Server geschlossen.")
+            logger.debug("Verbindung vom Server geschlossen.")
             break
 
         elif msg.type == WSMsgType.ERROR:
@@ -52,15 +54,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
     logger.debug("Empfangs-Task beendet.")
 
 
-async def main():
-    # Argumente parsen
-    parser = argparse.ArgumentParser(description="Verbindet sich zu Testzwecke mit dem Tichu Server")
-    parser.add_argument("-s", "--host", default=config.HOST, help=f"Server Hostname oder IP-Adresse (Default: {config.HOST})")
-    parser.add_argument("-p", "--port", type=int, default=config.PORT, help=f"Server Port (Default: {config.PORT})")
-    parser.add_argument("-n", "--name", default="Anton", help="Name des Spielers (Default: Anton)")
-    parser.add_argument("-t", "--table", default="Test", help="Name des Tisches (Default: Test)")
-    args = parser.parse_args()
-
+async def main(args: argparse.Namespace):
     # URL zusammenbauen
     global session
     if session:
@@ -144,14 +138,24 @@ async def main():
 
 
 if __name__ == "__main__":
-    logger.info(f"Starte Tichu Test-Client...")
+    print(f"Tichu WebSocket-Client {get_git_tag()}")
+
+    # Argumente parsen
+    parser = argparse.ArgumentParser(description="Verbindet sich zu Testzwecke mit dem Tichu Server")
+    parser.add_argument("-s", "--host", default=config.HOST, help=f"Server Hostname oder IP-Adresse (Default: {config.HOST})")
+    parser.add_argument("-p", "--port", type=int, default=config.PORT, help=f"Server Port (Default: {config.PORT})")
+    parser.add_argument("-n", "--name", default="Anton", help="Name des Spielers (Default: Anton)")
+    parser.add_argument("-t", "--table", default="Test", help="Name des Tisches (Default: Test)")
+
+    # Main-Routine starten
+    logger.debug(f"Starte Tichu WebSocket-Client...")
     try:
-        asyncio.run(main(), debug=config.DEBUG)
+        asyncio.run(main(parser.parse_args()), debug=config.DEBUG)
     except Exception as e_top:
         logger.exception(f"Unerwarteter Fehler auf Top-Level: {e_top}")
         sys.exit(1)  # Beenden mit Fehlercode
     finally:
-        logger.info("Test-Client beendet.")
+        logger.debug("Test-Client beendet.")
 
 
 # todo Client wird bei der Eingabe von "quit" noch nicht sauber beendet:
