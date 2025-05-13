@@ -5,7 +5,6 @@
 /logs
 /data/cache
 /data/lib
-/tests/.coverage
 /tests/htmlcov
 /*.py.lprof
 /*.py.prof
