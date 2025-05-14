@@ -24,15 +24,16 @@ import pytest
 import logging
 import sys
 import os
-from io import StringIO # Zum Abfangen von Stream-Ausgaben
-from unittest.mock import MagicMock, patch
+from io import StringIO  # Zum Abfangen von Stream-Ausgaben
+from unittest.mock import patch
 
 # Klassen und das konfigurierte Logger-Objekt importieren
 # ACHTUNG: Der Import von logger führt den Konfigurationscode aus!
+# noinspection PyProtectedMember
 from src.common.logger import logger, AnsiColorizer, ColorStreamHandler
 
 # Importiere config, um es evtl. zu mocken
-import src.common.config as config
+import config
 
 # === Tests für AnsiColorizer ===
 
@@ -42,7 +43,7 @@ def mock_stream():
     return StringIO()
 
 @patch('src.common.logger.AnsiColorizer.supported', return_value=True) # Annahme: Farben werden unterstützt
-def test_ansi_colorizer_write(mock_supported, mock_stream):
+def test_ansi_colorizer_write(_mock_supported, mock_stream):
     """Testet, ob der Colorizer die korrekten ANSI-Codes schreibt."""
     colorizer = AnsiColorizer(mock_stream)
     colorizer.write("Hello", "red")
@@ -58,7 +59,7 @@ def test_ansi_colorizer_write(mock_supported, mock_stream):
     assert mock_stream.getvalue() == expected_output_default
 
 @patch('sys.stdout.isatty', return_value=False) # Simulieren: Kein TTY
-def test_ansi_colorizer_supported_no_tty(mock_isatty):
+def test_ansi_colorizer_supported_no_tty(_mock_isatty):
     """Testet, ob supported() False zurückgibt, wenn kein TTY vorhanden ist."""
     assert AnsiColorizer.supported(sys.stdout) is False
 
@@ -82,17 +83,17 @@ def test_color_stream_handler_emit(color_stream_handler, mock_stream):
     # Erstelle LogRecords für verschiedene Level
     info_record = logging.LogRecord(
         name='test', level=logging.INFO, pathname='', lineno=0,
-        msg='Info message', args=[], exc_info=None, func=''
+        msg='Info message', args=(), exc_info=None, func=''
     )
     warning_record = logging.LogRecord(
         name='test', level=logging.WARNING, pathname='', lineno=0,
-        msg='Warning message', args=[], exc_info=None, func=''
+        msg='Warning message', args=(), exc_info=None, func=''
     )
 
     # Sende Info-Record
     color_stream_handler.emit(info_record)
     # Info -> grün (32)
-    expected_output_info = "\x1b[32mInfo message\x1b[0m\n"
+    expected_output_info = "\x1b[32mInfo message\n\x1b[0m"
     assert mock_stream.getvalue() == expected_output_info
 
     # Sende Warning-Record
@@ -100,7 +101,7 @@ def test_color_stream_handler_emit(color_stream_handler, mock_stream):
     mock_stream.truncate()
     color_stream_handler.emit(warning_record)
     # Warning -> gelb (33)
-    expected_output_warning = "\x1b[33mWarning message\x1b[0m\n"
+    expected_output_warning = "\x1b[33mWarning message\n\x1b[0m"
     assert mock_stream.getvalue() == expected_output_warning
 
 # === Tests für die globale Logger-Konfiguration (Beispielhaft) ===
@@ -117,21 +118,23 @@ def test_logger_level_set_from_config():
     """Prüft, ob das Logger-Level dem Wert aus config entspricht."""
     # Wir können nicht garantieren, was in config steht, aber wir können prüfen,
     # ob der gesetzte Level dem entspricht, was beim Import gelesen wurde.
-    assert logger.level == logging.getLevelName(config.LOG_LEVEL)
+    assert logger.level == config.LOG_LEVEL
 
 def test_logger_has_handlers():
     """Prüft, ob der Logger die erwarteten Handler hat."""
     assert len(logger.handlers) >= 2 # Mindestens File und Console
 
     handler_types = [type(h) for h in logger.handlers]
+    # noinspection PyUnresolvedReferences
     assert logging.handlers.TimedRotatingFileHandler in handler_types
     assert ColorStreamHandler in handler_types
 
-def test_logger_file_handler_configured(mocker):
+def test_logger_file_handler_configured():
     """Prüft einige Konfigurationen des File Handlers (weniger robust)."""
+    # noinspection PyUnresolvedReferences
     file_handler = next((h for h in logger.handlers if isinstance(h, logging.handlers.TimedRotatingFileHandler)), None)
     assert file_handler is not None
-    assert file_handler.level == logging.getLevelName(config.LOG_LEVEL)
+    assert file_handler.level == config.LOG_LEVEL
     # Dateiname prüfen (kann fehlschlagen, wenn Pfad sich ändert)
     expected_path_part = os.path.join("logs", "app.log")
     assert expected_path_part in file_handler.baseFilename
@@ -142,13 +145,14 @@ def test_logger_console_handler_configured():
     """Prüft einige Konfigurationen des Console Handlers."""
     console_handler = next((h for h in logger.handlers if isinstance(h, ColorStreamHandler)), None)
     assert console_handler is not None
-    assert console_handler.level == logging.getLevelName(config.LOG_LEVEL)
+    assert console_handler.level == config.LOG_LEVEL
     assert console_handler.stream is sys.stdout # Prüft den Stream
     assert isinstance(console_handler.formatter, logging.Formatter)
 
 # Man könnte auch testen, ob eine Log-Nachricht tatsächlich geschrieben wird,
 # aber das erfordert mehr Mocking oder das Abfangen der Ausgabe.
-@patch.object(logger, 'handle') # Mocke die zentrale handle-Methode des Loggers
+# noinspection GrazieInspection
+@patch.object(logger, 'handle') # Mock die zentrale handle-Methode des Loggers
 def test_logger_logs_message_at_correct_level(mock_handle):
     """Testet, ob logger.info() etc. die handle-Methode aufruft."""
     # Setze Logger-Level temporär für diesen Test, falls nötig

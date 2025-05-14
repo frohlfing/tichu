@@ -1,4 +1,4 @@
-![Coverage](coverage.svg)
+![Coverage](cov/coverage.svg)
 ![Version](https://img.shields.io/github/v/tag/frohlfing/tichu)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![License](https://img.shields.io/github/license/frohlfing/tichu)
@@ -6,190 +6,46 @@
 ![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![Version](https://img.shields.io/github/v/release/frohlfing/tichu)
 -->
-# TICHU
 
-Ich entwickle eine Webanwendung "Tichu" mit Python. Tichu ist ein Kartenspiel. 
+# Tichu KI-Projekt
 
-Die Regeln stehen hier: https://cardgames.wiki/de/blog/tichu-spielen-regeln-und-anleitung-einfach-erklaert
+Willkommen zum Tichu KI-Projekt! Dies ist eine Python-Implementierung des Kartenspiels Tichu, die darauf ausgelegt ist, sowohl schnelle Simulationen zwischen KI-Agenten zu ermöglichen als auch eine Plattform für menschliche Spieler zu bieten, um online gegen KIs oder andere Menschen zu spielen.
 
-Das System soll sowohl auf Windows 11 laufen (Entwicklungsumgebung) als auch auf einem Raspberry Pi 5 (bookworm).
+## Über Tichu
 
-Es gibt zwei Betriebsarten:
-- In der Arena spielen Agenten gegeneinander. Hier kommt es auf hohe Geschwindigkeit an, um möglichst viele Partien zu spielen. 
-Dieser Part ist bereits umgesetzt und funktioniert.
-- Im Live-Betrieb spielen die Agenten mit realen Spielern. Dazu stellt ein Server eine Websocket bereit, über die der reale 
-Spieler seine Aktionen mitteilt und die Events erhält. 
-Dieser Parte befindet sich in der Entwicklung.
+Tichu ist ein Kartenspiel, das ursprünglich aus China stammt und Ähnlichkeiten mit Spielen wie Bridge, Poker und Big Two aufweist. Ziel ist es, als erster Spieler seine Karten loszuwerden und durch geschicktes Ausspielen von Kombinationen Punkte für das eigene Team zu sammeln. Besondere Karten wie Drache, Phönix, Hund und Mah Jong bringen zusätzliche strategische Tiefe ins Spiel.
 
-**Anmerkung:**
-- Mit "Client" ist hier der serverseitige Endpunkt der WebSocket-Verbindung gemeint. 
-Der clientseitige Endpunkt ist der "reale Spieler".
-- Mit "Agent" ist ein KI-gesteuerter Spieler gemeint.
+[Detaillierte Regeln (Deutsch)](https://cardgames.wiki/de/blog/tichu-spielen-regeln-und-anleitung-einfach-erklaert)
 
+## Projektziele
 
-## Aufgabenbereiche
+*   **KI-Arena:** Eine Umgebung, in der verschiedene KI-Agenten in hoher Geschwindigkeit gegeneinander antreten können, um Strategien zu testen, zu bewerten und Spieldaten für maschinelles Lernen zu generieren.
+*   **Live-Betrieb (in Entwicklung):** Ein WebSocket-basierter Server, der es menschlichen Spielern ermöglicht, über einen Web-Client am Spiel teilzunehmen – entweder gegeneinander oder mit/gegen KI-Agenten.
+*   **Entwicklung fortgeschrittener KI-Agenten:** Von einfachen regelbasierten Agenten bis hin zu komplexen, auf neuronalen Netzen basierenden Agenten (z.B. durch Behavior Cloning oder Reinforcement Learning).
 
-### Aufgaben des WebSocket-Handlers
+## Aktueller Status
 
-Er delegiert eine Interrupt-Anfrage an die Engine, sonstige Nachrichten an die Client-Instanz.
+*   **Kern-Spiellogik:** Weitgehend implementiert und durch Unit-Tests abgedeckt.
+*   **Arena-Modus:** Funktional und wird für die Entwicklung und das Testen von Agenten verwendet. Kann Spiele parallel ausführen.
+*   **Agenten:**
+    *   `RandomAgent`: Implementiert (spielt zufällige, gültige Züge).
+    *   Weitere Agenten (heuristisch, neuronal) sind geplant.
+*   **Server-Modus (Live-Spiel):** Befindet sich aktiv in der Entwicklung. Die grundlegende Architektur für WebSocket-Kommunikation und Tischverwaltung wird derzeit implementiert.
+*   **Frontend:** Geplant als reine Webanwendung (HTML/CSS/JS).
 
-1) Spiel beitreten
-Der reale Spieler verbindet sich über eine WebSocket und gibt seinen Namen und den Namen eines Tisches an.
-Gibt es den Tisch noch nicht, wird dieser Tisch eröffnet. Ist der Tisch voll besetzt (max. 4 reale Spieler), 
-kann der Spieler sich nicht an den Tisch setzen. Ist noch mind. ein Platz fei (d.h. der Platz ist belegt von einer KI), 
-kann der Spieler sich an den Platz setzen (ersetzt die KI) und erhält den aktuellen Spielzustand.
+## Systemanforderungen
 
-2) Spiel verlassen
-Wenn der reale Spieler geht, übernimmt automatisch die KI wieder den Platz, damit die übrigen Spieler weiterspielen können. 
-Ist der letzte reale Spieler vom Tisch aufgestanden, wird der Tisch geschlossen (entfernt).
+*   **Entwicklung:** Getestet auf Windows 11.
+*   **Zielplattform (Server):** Raspberry Pi 5 (Bookworm OS).
 
-3) Verbindungsabbruch
-Bei einem Verbindungsabbruch wartet der Server 20 Sekunden, bevor die KI den Platz einnimmt. Sollte der Spieler sich 
-wiederverbinden (er versucht es automatisch jede Sekunden), nimmt er den alten Platz wieder ein (sofern nicht in der zwischenzeit 
-ein anderer reale Spieler sich dort hingesetzt hat) und erhält den aktuellen Spielzustand.
+## Technische Dokumentation
 
-4) Als einzige proaktive Aktion kann der Spieler ein Handzeichen geben und sagen, was er tun möchte (Interrupt anfordern).
-Diese Anfrage delegiert der WebSocket-Handler an die Game-Engine weiter. Alle anderen Nachrichten leitet der Handler an den 
-Client (serverseitigen Endpunkt) weiter.
-
-### Aufgaben der Game-Faktory
-
-Die Faktory stellt passend zum Tisch eine Game-Engine bereit. 
- 
-### Aufgaben der Game-Engine
-
-Die Engine steuert das Spiel für einen Tisch. Die Engine interagiert mit den Spielern, unterscheidet dabei nicht zwischen 
-KI-gesteuerten SpAgenten und realen Spieler (abgesehen von verzichtbaren Hacks, um die Ausführungsgeschwindigkeit in der Arena 
-zu optimieren).
-Der Server übermittelt dem Spieler, der keine Handkarten mehr hat (er spielt also nicht mehr in der aktuellen Runde
-mit) zusätzlich die Handkarten der Mitspieler. Der von der Runde ausgeschiedene Spieler darf nämlich in die Karten der Mitspieler
-schauen, damit er sich nicht langweilen muss.
-
-### Aufgaben eines Spielers
-
-Der Spieler (Agent und Client) reagiert ausschließlich auf eine Anfrage. Die einzige Ausnahme ist das Handzeichen geben 
-(Interrupt anfordern). Bei einem Interrupt bricht der Spieler seine aktuelle Entscheidungsfindung, so dass der Server nicht 
-länger auf eine Antwort warten muss.
-Der Client (serverseitigen Endpunkt) leitet Benachrichtigungen und Anfragen des Servers an den realen Spieler weiter. 
-Bei einer Anfrage wartet der Client, das der Spieler darauf antwortet und gibt diese an den Server zurück.
-
-## Ablauf eine Partie
-
-1) Grundsätzlich sendet der Client (serverseitigen Endpunkt) jedes Ereignis inkl. Spielzustand über alle aktiven Websocket-
-Verbindungen, damit der reale Spieler auf dem aktuellen Stand bleiben können. Das ist für Agenten nicht notwendig, da sie bei 
-einer Entscheidung direkt auf den aktuellen Spielzustand zugreifen können.
-2) Mit Verbindungsaufbau über die WebSocket sendet der reale Spieler direkt den Tisch-Namen mit. 
-3) Wenn der reale Spieler das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet,
-bis er durch eine KI ersetzt wird.
-4) Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet (normalerweise wird 
-er warten, bis seine Freunde auch am Tisch sitzen und dann sagen, wer mit wem ein Team bildet.) Das findet in der Lobby statt.
-5) Eine Neue Runde beginnt. Der Server verteilt je 8 Karten an jeden Spieler. 
-6) Jeder Spieler muss sich dann entscheiden, ob er Grand Tichu ansagen möchte oder nicht (passt). 
-7) Sobald jeder Spieler sich entschieden hat, ob er ein Großes Tichu ansagen möchte oder nicht, teilt er die restlichen Karten 
-aus (je 6 pro Spieler).
-8) Solange noch kein Spieler Karten zum Tausch (Schupfen) abgegeben hat, kann der Spieler ein Tichu ansagen. Dazu muss er vorab
-ein Interrupt auslösen, damit er vom Server gelegenheit bekommt, dies zu tun.
-9) Die Spieler müssen nun 3 Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler). 
-10) Sobald alle Spieler die Karten zum Tauschen abgegeben haben, sendet der Server an jedem Spieler jeweils die getauschten
-Karten, die für den jeweiligen Spieler bestimmt sind.
-11) Ab jetzt kann der Spieler jederzeit a) so wie vor dem Schupfen jederzeit Tichu ansagen, solange er noch 14 Karten auf der 
-Hand hat und b) eine Bombe werfen (sofern er eine besitzt). Dazu muss er ein Interrupt auslösen.
-12) Der Spieler mit dem MahJong muss eine Kartenkombination ablegen. 
-13) Der nächste Spieler wird aufgefordert, Karten abzulegen oder zu Passen. 
-14) Punkt 13 wird wiederholt, bis alle Mitspieler hintereinander gepasst haben, so das der Spieler, der die letzten Karten 
-gespielt hat, wieder an der Reihe ist.
-15) Dieser Spieler darf die Karten kassieren.
-16) Wenn ein Spieler keine Handkarten mehr hat, kann er in die Karten der Mitspieler kucken (die Karten sind für ihn nicht 
-mehr verdeckt).
-17) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), leitet der 
-Server automatisch eine neue Runde ein (wir beginnen wieder bei Punkt 5).
-18) Wenn die Partie beendet ist, beginnen wir wieder mit Punkt 4.  
-
-
-## Definition der Websocket-Nachrichten
-
-### Proaktive Nachrichten vom realen Spieler an den Server
-
-- type: "bye"
-
-- type: "ping", payload: {timestamp:<timestamp>}
-
-Antwort vom Server: type: "pong", payload: {timestamp:<timestamp>“}
-
-- type: "interrupt", payload: {reason:"tichu"|"bomb"}
-
-Keine Antwort vom Server
-
-### Proaktive Nachrichten vom Server an den realen Spieler
-  
-TODO: action und data spezifizieren
-
-- type: "request", payload: {action:<action> [,data:<action_data>]}
-
-Antwort vom realen Spieler:
-
-type: "response", payload: {action:<action>, data:<action_data>}
-
-
-## Zusammenfassung der verschiedenen Agenten und ihrer Funktionsweise 
-
-- **`RandomAgent`** – Wählt zufällige Züge. 
-- **`RuleAgent`** – Befolgt festgelegte Regeln. 
-- **`HeuristikAgent`** – Berechnet (exakte oder durch Erfahrungswerte geschätzte) Wahrscheinlichkeiten für die 
-Entscheidungsfindung.
-  (Heuristiken sind Näherungsmethoden, um mit begrenzten Informationen oder Rechenkapazitäten effektive Entscheidungen zu treffen.)
-- **`NNetAgent`** – Nutzt ein neuronales Netz (Neural Network), um Entscheidungen zu treffen.
-  - **`BehaviorAgent`** – Lernt durch überwachtes Lernen aus Log-Daten (von bettspielwelt.de), menschliche Spielweisen zu 
-  imitieren. 
-  - **`AlphaZeroAgent`** – Verwendet Monte-Carlo Tree Search (MCTS) in Kombination mit neuronalen Netzen, um durch 
-  selbständiges Spielen das vortrainierte Netz von `BehaviorAgent` zu optimieren.  
-
-Während ein **regelbasierter Agent** feste Regeln befolgt und ein **heuristischer Agent** zusätzlich Wahrscheinlichkeiten 
-einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
-
-
-## Web-App
-Das Frontend soll via HTML/JS/CSS umgesetzt werden. Ich hatte in Godot angefangen, eine App zu entwickeln. 
-Aber diesen Ansatz möchte ich nicht weiter verfolgen. Ich kann davon aber einen Screenshot als Vorlage liefern.  
- 
-
-## TODOS
-
-- von Gemini dokumentieren lassen: 
-  - Projektbeschreibung
-  - Allgemeine Funktionsweise
-  - Klassenhierarchie, Klassenbeschreibung
-  - Vorschläge für Testfälle (nicht coden, nur eine todo-Liste für den Entwickler)
-  - Glossar/Definition der Begriffe
-- Test bzg Arena schreiben lassen und durchführen
-- Test bzg Server schreiben lassen und durchführen
-- Todos im code umsetzten
-- Webfrontend aus Godot von Gemini programmieren lassen
-- Lobby-Bereich (Html)
-- Webfrontend testen
-- HeuristikAgent optimieren mit neuer Wahrscheinlichkeitsberechnung
-- Brettspielwelt-Logs aufbereiten
-- NNetAgent bauen
-
-
-# Tests
-
-```
-
-# Alle Tests durchführen
-python -m pytest
-
-# Einzelne Datei testen
-python -m pytest tests/test_cards.py
- 
-# Coverage-Badge aktualisieren 
-coverage-badge -o coverage.svg
-
-```
+Eine detailliertere technische Dokumentation zur Architektur, den Modulen und dem Spielablauf befindet sich in [Technische_Dokumentation.md](docs/Technische_Dokumentation.md).
 
 ## Quellen
 
-Regeln
-https://abacusspiele.de/wp-content/uploads/2021/01/Tichu_Pocket_Regel.pdf
+- Regeln: https://abacusspiele.de/wp-content/uploads/2021/01/Tichu_Pocket_Regel.pdf
 
+## Lizenz
 
+Dieses Projekt steht unter der [GPL-3.0-Lizenz](LICENSE).

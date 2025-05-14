@@ -17,12 +17,9 @@ Zusammenfassung der Tests für PublicState:
 """
 
 import pytest
-from typing import List, Tuple
-from copy import deepcopy
-
 from src.public_state import PublicState
-from src.lib.cards import Card, Cards, parse_cards, stringify_cards
-from src.lib.combinations import Combination, CombinationType, PlayInTrick, TrickHistory
+from src.lib.cards import parse_cards
+from src.lib.combinations import CombinationType
 
 # Fixture für einen initialisierten PublicState
 @pytest.fixture
@@ -48,7 +45,6 @@ def test_public_state_initialization(initial_pub_state):
     assert pub.trick_cards == [] # Hängt von Implementierung ab, ob dies noch genutzt wird
     assert pub.trick_combination == (CombinationType.PASS, 0, 0)
     assert pub.trick_points == 0
-    # assert pub._current_trick_plays_internal == [] # Falls in PublicState belassen
     assert pub.tricks == [] # Vormals round_history
     assert pub.points == [0, 0, 0, 0]
     assert pub.winner_index == -1
@@ -82,7 +78,7 @@ def test_public_state_to_dict(initial_pub_state):
     assert pub_dict["playerNames"] == ["Alice", "Bob", "Charlie", "David"]
     assert pub_dict["currentTurnIndex"] == 1
     assert pub_dict["countHandCards"] == [10, 11, 12, 13]
-    assert pub_dict["playedCards"] == "S5 G5" # Stringified
+    assert pub_dict["playedCards"] == "S5 G5"
     assert pub_dict["trickCombination"] == ("PAIR", 2, 5) # Enum Name
     assert pub_dict["trickPoints"] == 10
     assert pub_dict["trickOwnerIndex"] == 0
@@ -117,7 +113,7 @@ def test_public_state_points_per_team(initial_pub_state):
 def test_public_state_total_score(initial_pub_state):
     """Testet die Berechnung des Gesamtspielstands."""
     pub = initial_pub_state
-    pub.game_score = [[100, -10], [90, 110]] # Rundenpunkte Team 20, Team 31
+    pub.game_score = [[100, -10], [90, 110]] # Punkte pro Partei für Team 20, Team 31
     # Team 20 = 100 - 10 = 90
     # Team 31 = 90 + 110 = 200
     assert pub.total_score == (90, 200)

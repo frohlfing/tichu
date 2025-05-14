@@ -25,7 +25,7 @@ def _to_array(env_value: str|list|None, method: callable) -> list:
     return arr
 
 
-def str_to_loglevel(env_value: str):
+def str_to_loglevel(env_value: str) -> int:
     log_levels = {
         'DEBUG': logging.DEBUG,
         'INFO': logging.INFO,

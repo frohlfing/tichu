@@ -138,6 +138,7 @@ class TestCombinations(unittest.TestCase):
 
     def test_build_combinations(self):
         # Straßen zählen
+
         combis = build_combinations(parse_cards("Ph GK BD RB RZ R9 R8 R7 R6 B5 G4 G3 B2 Ma"))
         self.assertEqual(381, len(combis), "381 Kombinationen sind möglich")
         self.assertEqual(352, len([1 for combi, figure in combis if figure[0] == STREET]), "352 Straßen sind möglich")

@@ -1,7 +1,25 @@
+# Konfiguration für Code Coverage
+
 [run]
-# Cobertura-Datei
-data_file = tests/.coverage
+# Coverage-Datei
+data_file = cov/.coverage
+
+# Verzeichnisse und Dateien, die getestet werden sollen
+source =
+    src
+#    main.py
+
+# Verzeichnisse und Dateien, die nicht getestet werden sollen
+omit =
+    _*
+
+[report]
+# Zeilennummern der nicht abgedeckten Zeilen anzeigen
+show_missing = True
+
+# Dateien ohne Code überspringen
+skip_empty = True
 
 [html]
 # Ausgabeverzeichnis für HTML-Report
-directory = tests/htmlcov
+directory = cov/htmlcov

@@ -59,7 +59,7 @@ class PublicState:
     dragon_recipient: int = -1
     trick_owner_index: int = -1
     trick_cards: List[Card] = field(default_factory=lambda: [])
-    trick_combination: Combination = field(default_factory=lambda: [CombinationType.PASS, 0, 0])
+    trick_combination: Combination = field(default_factory=lambda: (CombinationType.PASS, 0, 0))
     trick_points: int = 0
     tricks: List[Trick] = field(default_factory=list)
     points: List[int] = field(default_factory=lambda: [0, 0, 0, 0])

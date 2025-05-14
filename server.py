@@ -16,7 +16,7 @@ import signal
 import sys
 from aiohttp import WSMsgType, WSCloseCode, WSMessage
 from aiohttp.web import Application, AppRunner, Request, WebSocketResponse, TCPSite
-from src.common.git_utils import get_git_tag
+from src.common.git_utils import get_release
 from src.common.logger import logger
 from src.game_factory import GameFactory
 from src.players.client import Client
@@ -107,7 +107,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     payload = data.get("payload", {})  # Die Nutzdaten
 
                     # Nachricht weiterdelegieren
-                    if msg_type == "bye":  # Client verlässt den Tisch
+                    if msg_type == "leave":  # Client verlässt den Tisch
                         break # aus der Message-Loop springen
 
                     elif msg_type == "ping":  # Verbindungstest
@@ -255,7 +255,7 @@ def shutdown(*_args):
 
 
 if __name__ == "__main__":
-    print(f"Tichu Server {get_git_tag().strip("v")}")
+    print(f"Tichu Server {get_release()}")
 
     # Argumente parsen
     parser = argparse.ArgumentParser(description="Stellt einen Webserver inkl. WebSocket bereit")

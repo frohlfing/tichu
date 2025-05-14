@@ -7,8 +7,7 @@ from datetime import datetime
 import json
 import sys
 from aiohttp import WSMsgType, ClientSession, ClientWebSocketResponse, ClientConnectorError
-
-from src.common.git_utils import get_git_tag
+from src.common.git_utils import get_release
 from src.common.logger import logger
 from src.lib.errors import ClientDisconnectedError
 from typing import Optional
@@ -63,7 +62,7 @@ async def main(args: argparse.Namespace):
         url = f"ws://{args.host}:{args.port}/ws?name={args.name}&table={args.table}"
 
     messages = [
-        {"type": "bye"},
+        {"type": "leave"},
         {"type": "ping", "payload": {"timestamp": "<timestamp>"}},
         {"type": "interrupt", "payload": {"reason": "tichu"}},
         {"type": "interrupt", "payload": {"reason": "bomb"}},
@@ -138,7 +137,7 @@ async def main(args: argparse.Namespace):
 
 
 if __name__ == "__main__":
-    print(f"Tichu WebSocket-Client {get_git_tag().strip("v")}")
+    print(f"Tichu WebSocket-Client {get_release()}")
 
     # Argumente parsen
     parser = argparse.ArgumentParser(description="Verbindet sich zu Testzwecke mit dem Tichu Server")

@@ -17,11 +17,10 @@ Zusammenfassung der Tests für cards:
 """
 
 import pytest
-from typing import List, Tuple
 
 # Annahme: src liegt auf gleicher Ebene wie tests
 from src.lib.cards import (
-    Card, Cards, deck,
+    Cards, deck,
     parse_cards, stringify_cards,
     sum_card_points, is_wish_in, other_cards,
     ranks_to_vector, cards_to_vector,
@@ -85,7 +84,7 @@ def test_stringify_cards_all_special():
         ([(10, 1), (13, 2), CARD_PHO], -5, "Phönix zieht Punkte ab"),
         ([(5, 1), CARD_DRA, CARD_PHO], 5, "Drache und Phönix heben sich auf"),
         ([CARD_DRA, CARD_DRA], 50, "Zwei Drachen (unrealistisch, aber testet Summe)"),
-        ([CARD_PHO, CARD_PHO], -50, "Zwei Phönixe (unrealistisch, aber testet Summe)"),
+        ([CARD_PHO, CARD_PHO], -50, "Zwei Phönix (unrealistisch, aber testet Summe)"),
     ],
     ids=["empty", "no_points", "5_10_K_5", "5_Dragon", "10_K_Phoenix", "5_Dragon_Phoenix", "double_dragon", "double_phoenix"]
 )

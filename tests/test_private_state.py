@@ -15,12 +15,8 @@ Zusammenfassung der Tests für PrivateState:
 """
 
 import pytest
-from typing import List, Tuple
-from copy import deepcopy
-
 from src.private_state import PrivateState
-from src.lib.cards import Card, Cards, parse_cards, stringify_cards, CARD_PHO
-from src.lib.combinations import Combination, CombinationType, Combinations
+from src.lib.cards import parse_cards
 
 # Fixture für einen initialisierten PrivateState
 @pytest.fixture
@@ -45,8 +41,11 @@ def test_private_state_initialization(initial_priv_state):
 def test_private_state_hand_cards_setter_clears_cache(initial_priv_state):
     """Testet, ob das Setzen der Handkarten die Caches leert."""
     priv = initial_priv_state
+
     # Befülle Caches (simuliert)
+    # noinspection PyTypeChecker
     priv._combination_cache = ["dummy_combi"]
+    # noinspection PyTypeChecker
     priv._partition_cache = ["dummy_parti"]
     priv._partitions_aborted = False
 

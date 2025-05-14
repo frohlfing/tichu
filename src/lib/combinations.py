@@ -1,4 +1,4 @@
-__all__ = "CombinationType", "Combination", \
+__all__ = "CombinationType", "Combination", "Combinations",  \
     "PASS", "SINGLE", "PAIR", "TRIPLE", "STAIR", "FULLHOUSE", "STREET", "BOMB", \
     "FIGURE_PASS", "FIGURE_DOG", "FIGURE_MAH", "FIGURE_DRA", "FIGURE_PHO", \
     "validate_figure", "parse_figure", "stringify_figure", "stringify_type", "get_figure", \
@@ -6,7 +6,7 @@ __all__ = "CombinationType", "Combination", \
     "build_action_space",
 
 import enum
-from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in, Card, Cards
+from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in, Card, Cards, parse_cards
 from typing import Tuple, List
 
 # todo Dokumentieren (reStructuredText)
@@ -562,5 +562,8 @@ def build_action_space(combis: List[Tuple[List[Card], Combination]], trick_figur
 # Test
 # -----------------------------------------------------------------------------
 
-# if __name__ == "__main__":  # pragma: no cover
-#     pass
+if __name__ == "__main__":  # pragma: no cover
+    hand = parse_cards("B2 B3 B4 S5 G5 S6 B6 S7 S8 S9 Dr")
+    combis = build_combinations(hand)
+
+    pass

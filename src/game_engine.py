@@ -535,7 +535,7 @@ class GameEngine:
                 assert pub.winner_index >= 0
                 pub.points[pub.winner_index] += pub.points[pub.loser_index]
                 pub.points[pub.loser_index] = 0
-                assert sum(pub.points) == 100
+                assert sum(pub.points) == 100, pub.points
                 assert -25 <= pub.points[0] <= 125
                 assert -25 <= pub.points[1] <= 125
                 assert -25 <= pub.points[2] <= 125
@@ -600,7 +600,7 @@ class GameEngine:
         :param cards: Karten, die aufgenommen werden sollen (8 oder 14 Karten).
         """
         n = len(cards)
-        assert n == 8 or n == 14
+        assert n == 8 or n == 14, n
         priv.hand_cards = cards
         priv.given_schupf_cards = []
 

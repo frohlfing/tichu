@@ -12,11 +12,9 @@ Zusammenfassung der Tests für Agent:
     - Überprüfung des `class_name` Properties.
 """
 
-import pytest
-
 # Zu testende Klasse
 from src.players.agent import Agent
-from src.players.player import Player # Importiere Player um Vererbung zu prüfen
+from src.players.player import Player # Importiere Player, um Vererbung zu prüfen
 
 # === Testfälle für Agent (Basisklasse) ===
 

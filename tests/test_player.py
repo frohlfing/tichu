@@ -1,4 +1,5 @@
 # tests/test_player.py
+
 """
 Tests für die abstrakte Basisklasse Player.
 
@@ -17,7 +18,6 @@ Zusammenfassung der Tests für Player:
 """
 
 import pytest
-import asyncio
 from uuid import UUID
 
 # Zu testende Klasse
@@ -71,7 +71,7 @@ class IncompletePlayer(Player):
     pass
 
 @pytest.mark.asyncio
-async def test_player_abstract_methods_raise_not_implemented(mocker):
+async def test_player_abstract_methods_raise_not_implemented():
     """
     Testet, ob der Aufruf der abstrakten Methoden in einer unvollständigen
     Subklasse NotImplementedError auslöst.

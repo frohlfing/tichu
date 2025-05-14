@@ -4,25 +4,34 @@ Dieses Modul stellt Funktionen zur Interaktion mit Git bereit.
 Aktuell enthält es nur eine Funktion, um den neuesten Git-Tag aus dem aktuellen Repository zu ermitteln.
 """
 
-__all__ = "get_git_tag",
+__all__ = "get_git_tag", "get_release",
 
 import subprocess
 
-def get_git_tag():
+def get_git_tag() -> str:
     """
-    Ermittelt den neuesten Git-Tag aus dem aktuellen Repository von Github.
+    Ermittelt den neuesten Git-Tag aus dem Repository von Github.
 
-    Die Versionsnummer wird gemäß dem Semantic Versioning-Schema(https://semver.org/) vergeben.
-
-    Das bedeutet, wir erhöhen bei gegebener Versionsnummer MAJOR.MINOR.PATCH die:
-    - MAJOR-Version, wenn wir inkompatible API-Änderungen vornehmen
-    - MINOR-Version, wenn wir Funktionen abwärtskompatibel hinzufügen
-    - PATCH-Version, wenn wir abwärtskompatible Fehlerbehebungen vornehmen
-
-    :return: Die aktuelle Versionsnummer
+    :return: Den neuesten Git-Tag.
     """
     try:
-        tag = subprocess.check_output(["git", "describe", "--tags"]).strip().decode("utf-8").split("-", 1)
-        return tag[0]
+        tag = subprocess.check_output(["git", "describe", "--tags"]).strip().decode("utf-8")
+        return tag
     except subprocess.CalledProcessError:
+        return ""
+
+
+def get_release() -> str:
+    """
+    Ermittelt die aktuelle Versionsnummer des Repositories von Github.
+
+    Es wird vorausgesetzt, dass die Versionsnummer im Git-Tag als v<MAJOR>.<MINOR>.<PATCH> angegeben ist.
+
+    :return: Die aktuelle Versionsnummer (MAJOR.MINOR.PATCH).
+    """
+    version = get_git_tag().lstrip("v").split("-", 1)[0]
+    parts = version.split(".")
+    if len(parts) == 3 and all(part.isdigit() for part in parts):
+        return version
+    else:
         return "0.0.0"

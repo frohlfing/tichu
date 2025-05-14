@@ -14,20 +14,20 @@ Zusammenfassung der Tests für RandomAgent:
 - Reproduzierbarkeit (implizit durch `random_agent_seeded`):
     - Verwendung eines Agenten mit festem Seed ermöglicht prinzipiell reproduzierbare Testergebnisse für spezifische Zufallswahlen (obwohl hier primär Typen/Grenzen getestet werden).
 """
+
 import pytest
-import asyncio
 
 # Zu testende Klasse
 from src.players.random_agent import RandomAgent
-from src.players.agent import Agent # Importiere Agent um Vererbung zu prüfen
+from src.players.agent import Agent # Importiere Agent, um Vererbung zu prüfen
 
 # Zustands-Klassen für Kontext
 from src.public_state import PublicState
 from src.private_state import PrivateState
 
 # Karten und Kombinationen für Testdaten
-from src.lib.cards import Card, Cards, parse_cards, CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO
-from src.lib.combinations import Combination, CombinationType, FIGURE_PASS, FIGURE_DOG
+from src.lib.cards import parse_cards
+from src.lib.combinations import CombinationType, FIGURE_PASS
 
 # === Fixtures (spezifisch für RandomAgent-Tests) ===
 
@@ -151,8 +151,8 @@ async def test_random_agent_play_empty_action_space_raises_error(random_agent_se
     agent.player_index = private_state_fixture.player_index
     empty_action_space = []
 
-    # Erwarte einen IndexError, da random.integer(0, 0) oder random.choice([]) fehlschlägt
-    with pytest.raises(IndexError):
+    # Erwarte einen ValueError, da random.integer(0, 0) oder random.choice([]) fehlschlägt
+    with pytest.raises(ValueError):
        await agent.play(public_state_fixture, private_state_fixture, empty_action_space)
 
 

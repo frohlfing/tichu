@@ -1,11 +1,11 @@
-/__pycache__
-/.venv
-/.env
 /.idea
-/logs
+/.venv
+/cov/htmlcov
 /data/cache
 /data/lib
-/tests/htmlcov
+/logs
+/.env
+/__pycache__
 /*.py.lprof
 /*.py.prof
 .DS_Store

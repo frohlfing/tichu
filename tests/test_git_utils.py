@@ -2,13 +2,10 @@
 """
 Tests für src.common.git_utils
 """
-
-import pytest
+import subprocess
 from unittest.mock import patch, MagicMock # Importiere patch und MagicMock
+from src.common.git_utils import get_git_tag, get_release
 
-# Importiere die zu testende Funktion
-# Annahme: Deine Datei heißt z.B. src/common/git_utils.py
-from src.common.git_utils import get_git_tag
 
 # === Testfälle für get_git_tag ===
 
@@ -25,7 +22,7 @@ def test_get_git_tag_success(mock_check_output: MagicMock):
     # 1. Konfiguriere den Mock:
     #    Was soll er zurückgeben, wenn er aufgerufen wird?
     #    'git describe' gibt Bytes zurück, die dann dekodiert und gestrippt werden.
-    expected_tag_bytes = b"v1.2.3-4-gabcdef\n" # Beispiel-Output von git describe
+    expected_tag_bytes = b"v1.2.3-4-foo\n" # Beispiel-Output von git describe
     mock_check_output.return_value = expected_tag_bytes
 
     # 2. Rufe die zu testende Funktion auf:
@@ -35,7 +32,7 @@ def test_get_git_tag_success(mock_check_output: MagicMock):
     #    a) Wurde der Mock korrekt aufgerufen?
     mock_check_output.assert_called_once_with(["git", "describe", "--tags"])
     #    b) Ist der zurückgegebene Tag der erwartete (gestrippt und dekodiert)?
-    assert actual_tag == "v1.2.3-4-gabcdef"
+    assert actual_tag == "v1.2.3-4-foo"
 
 @patch('src.common.git_utils.subprocess.check_output')
 def test_get_git_tag_no_tags_found(mock_check_output: MagicMock):
@@ -59,7 +56,7 @@ def test_get_git_tag_no_tags_found(mock_check_output: MagicMock):
     #    a) Wurde der Mock korrekt aufgerufen?
     mock_check_output.assert_called_once_with(["git", "describe", "--tags"])
     #    b) Ist der zurückgegebene Wert der erwartete Fallback-String?
-    assert actual_tag == "No tag found"
+    assert actual_tag == ""
 
 @patch('src.common.git_utils.subprocess.check_output')
 def test_get_git_tag_different_tag_format(mock_check_output: MagicMock):
@@ -87,3 +84,104 @@ def test_get_git_tag_empty_output_from_git(mock_check_output: MagicMock):
 
     mock_check_output.assert_called_once_with(["git", "describe", "--tags"])
     assert actual_tag == "" # strip() and decode() sollten einen leeren String ergeben
+    
+    
+# === Testfälle für get_release ===
+
+# Wir können die Funktion get_git_tag innerhalb des Moduls mocken,
+# wenn get_release sie aufruft. Das macht die Tests für get_release
+# unabhängig von der Implementierung (und den Mocks) von get_git_tag.
+@patch('src.common.git_utils.get_git_tag') # Mock get_git_tag im selben Modul
+def test_get_release_valid_semver_tag(mock_get_git_tag: MagicMock):
+    """
+    Testet get_release mit einem gültigen semver-ähnlichen Tag.
+    """
+    mock_get_git_tag.return_value = "v1.2.3"
+    assert get_release() == "1.2.3"
+    mock_get_git_tag.assert_called_once()
+
+@patch('src.common.git_utils.get_git_tag')
+def test_get_release_valid_semver_tag_with_suffix(mock_get_git_tag: MagicMock):
+    """
+    Testet get_release mit einem Tag, der einen Suffix hat (z.B. von 'git describe').
+    Der Suffix sollte entfernt werden.
+    """
+    mock_get_git_tag.return_value = "v1.2.3-4-foo"
+    assert get_release() == "1.2.3"
+    mock_get_git_tag.assert_called_once()
+
+@patch('src.common.git_utils.get_git_tag')
+def test_get_release_tag_without_v_prefix(mock_get_git_tag: MagicMock):
+    """
+    Testet get_release mit einem Tag, der kein 'v' als Präfix hat.
+    """
+    mock_get_git_tag.return_value = "1.2.3"
+    assert get_release() == "1.2.3"
+    mock_get_git_tag.assert_called_once()
+
+@patch('src.common.git_utils.get_git_tag')
+def test_get_release_tag_without_v_prefix_and_suffix(mock_get_git_tag: MagicMock):
+    """
+    Testet get_release mit einem Tag ohne 'v'-Präfix aber mit Suffix.
+    """
+    mock_get_git_tag.return_value = "1.2.3-rc1"
+    assert get_release() == "1.2.3"
+    mock_get_git_tag.assert_called_once()
+
+@patch('src.common.git_utils.get_git_tag')
+def test_get_release_non_semver_tag_returns_default(mock_get_git_tag: MagicMock):
+    """
+    Testet get_release mit einem Tag, der nicht dem SemVer-Format entspricht.
+    Sollte "0.0.0" zurückgeben.
+    """
+    mock_get_git_tag.return_value = "my-feature-branch"
+    assert get_release() == "0.0.0"
+    mock_get_git_tag.assert_called_once()
+
+@patch('src.common.git_utils.get_git_tag')
+def test_get_release_non_semver_tag_with_numbers_returns_default(mock_get_git_tag: MagicMock):
+    """
+    Testet get_release mit einem Tag, der Zahlen enthält, aber nicht SemVer ist.
+    """
+    mock_get_git_tag.return_value = "feature-1.2" # Nur zwei Teile
+    assert get_release() == "0.0.0"
+    mock_get_git_tag.assert_called_once()
+
+@patch('src.common.git_utils.get_git_tag')
+def test_get_release_non_semver_tag_with_non_digits_returns_default(mock_get_git_tag: MagicMock):
+    """
+    Testet get_release mit einem Tag, der SemVer-ähnlich aussieht, aber nicht-numerische Teile hat.
+    """
+    mock_get_git_tag.return_value = "v1.beta.3"
+    assert get_release() == "0.0.0"
+    mock_get_git_tag.assert_called_once()
+
+@patch('src.common.git_utils.get_git_tag')
+def test_get_release_empty_tag_from_get_git_tag_returns_default(mock_get_git_tag: MagicMock):
+    """
+    Testet get_release, wenn get_git_tag einen leeren String zurückgibt
+    (z.B. weil kein Tag gefunden wurde und get_git_tag jetzt "" zurückgibt).
+    Sollte "0.0.0" zurückgeben.
+    """
+    mock_get_git_tag.return_value = ""
+    assert get_release() == "0.0.0"
+    mock_get_git_tag.assert_called_once()
+
+@patch('src.common.git_utils.get_git_tag')
+def test_get_release_tag_is_just_v_returns_default(mock_get_git_tag: MagicMock):
+    """
+    Testet den Fall, dass der Tag nur "v" ist.
+    """
+    mock_get_git_tag.return_value = "v"
+    assert get_release() == "0.0.0"
+    mock_get_git_tag.assert_called_once()
+
+@patch('src.common.git_utils.get_git_tag')
+def test_get_release_complex_suffix_is_stripped(mock_get_git_tag: MagicMock):
+    """
+    Testet einen komplexeren Suffix, der korrekt entfernt werden sollte.
+    """
+    mock_get_git_tag.return_value = "v0.15.1-beta.2-15-foo01"
+    assert get_release() == "0.15.1"
+    mock_get_git_tag.assert_called_once()
+    

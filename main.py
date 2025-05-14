@@ -8,7 +8,7 @@ import argparse
 import config
 config.LOG_LEVEL = "WARNING"
 
-from src.common.git_utils import get_git_tag
+from src.common.git_utils import get_release
 from src.arena import Arena
 from src.players.heuristic_agent import HeuristicAgent
 from src.players.random_agent import RandomAgent
@@ -64,7 +64,7 @@ def main(args: argparse.Namespace):
 
 
 if __name__ == "__main__":
-    print(f"Tichu Arena Version {get_git_tag().strip("v")}")
+    print(f"Tichu Arena Version {get_release()}")
 
     # Argumente parsen (`nargs="?":` Dieses Argument für `add_argument` macht die Agenten-Argumente optional)
     parser = argparse.ArgumentParser(description=f"Lässt Agenten gegeneinander spielen. Verfügbare Agenten: {', '.join(agent_classes.keys())}.")

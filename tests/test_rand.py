@@ -24,7 +24,6 @@ Stellt sicher, dass _random erst beim ersten Aufruf einer Methode initialisiert 
     Wahrscheinlichkeit).
 """
 
-import pytest
 import random as std_random # Standard-Modul zum Vergleichen
 
 # Zu testende Klasse
@@ -56,6 +55,7 @@ def test_random_lazy_initialization():
     assert isinstance(custom_rand._random, std_random.Random)
     # Prüfen, ob der Seed verwendet wurde (indirekt durch Vergleich)
     expected_gen = std_random.Random(seed)
+    expected_gen.randint(0, 10)
     assert custom_rand._random.getstate() == expected_gen.getstate()
 
 def test_random_integer_range():
@@ -162,7 +162,7 @@ def test_random_reproducibility_with_seed():
     rand1 = Random(seed=seed)
     seq1 = [rand1.integer(0, 100) for _ in range(10)]
     choice1 = rand1.choice(['x', 'y'], weights=[1, 5])
-    sample1 = rand1.sample(range(20), 5)
+    sample1 = rand1.sample(list(range(20)), 5)
     bool1 = rand1.boolean()
     shuffled_list1 = list(range(5))
     rand1.shuffle(shuffled_list1)
@@ -171,7 +171,7 @@ def test_random_reproducibility_with_seed():
     rand2 = Random(seed=seed)
     seq2 = [rand2.integer(0, 100) for _ in range(10)]
     choice2 = rand2.choice(['x', 'y'], weights=[1, 5])
-    sample2 = rand2.sample(range(20), 5)
+    sample2 = rand2.sample(list(range(20)), 5)
     bool2 = rand2.boolean()
     shuffled_list2 = list(range(5))
     rand2.shuffle(shuffled_list2)
