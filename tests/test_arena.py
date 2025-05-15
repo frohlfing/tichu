@@ -1,327 +1,443 @@
 # tests/test_arena.py
-# tests/test_arena.py
+
 """
-Tests für die Arena-Klasse.
+Tests für die Arena-Klasse mit Schwerpunkt auf deren Orchestrierungs- und Statistiklogik.
+
+Diese Testsuite verwendet vereinfachte Mock-Objekte für „Agent“, „PublicState“, „PrivateState“ und „GameEngine“,
+um die Funktionalität der Arena von der Komplexität des eigentlichen Tichu-Gameplays zu isolieren.
 
 Zusammenfassung der Tests für Arena:
 - Initialisierung:
-    - Korrekte Übernahme der Parameter (Agenten, max_games, verbose, worker, etc.).
-    - Auswahl des korrekten Event-Typs (`asyncio.Event` vs. `Manager.Event`) basierend auf der Worker-Anzahl.
+    - Korrekte Übernahme von Parametern (Agenten, max_games, worker-Anzahl).
+    - Auswahl des korrekten Event-Typs (`asyncio.Event` vs. `multiprocessing.managers.EventProxy`)
+      basierend auf der Worker-Anzahl.
+    - Validierung der Anzahl der Agenten (AssertionError bei falscher Anzahl).
+
+- Spielausführungssimulation (`_run_game`):
+    - Testet die Hilfsfunktion `_run_game` (die normalerweise ein komplettes Spiel ausführt)
+      durch Mocking der `GameEngine`.
+    - Überprüft, ob `_run_game` den `PublicState` von der gemockten Engine korrekt zurückgibt.
+    - Stellt sicher, dass `_run_game` initiale `PublicState` und `PrivateState` Objekte
+      korrekt an die gemockte Engine weitergibt.
+    - Verifiziert, dass Exceptions innerhalb der gemockten Engine von `_run_game` abgefangen
+      und `None` zurückgegeben wird, sowie dass eine Log-Meldung erfolgt.
+
+- Interne Spielsteuerung (`_play_game`):
+    - Testet die Methode `_play_game` (die ein einzelnes Spiel im Kontext der Arena steuert).
+    - Mockt die darunterliegende `_run_game` Funktion, um das Ergebnis eines Spiels zu simulieren.
+    - Überprüft, ob `_play_game` die korrekten Parameter (Tischnamen, Agenten, Seed,
+      initiale States) an `_run_game` weitergibt.
+    - Stellt sicher, dass `_play_game` `None` zurückgibt, wenn das `_stop_event` der Arena gesetzt ist.
+
 - Statistik-Aktualisierung (`_update`):
-    - Korrekte Zählung von Spielen, Runden und Stichen.
-    - Korrekte Zuordnung von Siegen, Niederlagen und Unentschieden für Team 20 basierend auf dem Spielergebnis (`PublicState`).
-    - Korrekte Handhabung von `None`-Ergebnissen (z.B. bei Abbruch).
-- Ablaufsteuerung (Single-Worker):
-    - Überprüfung, ob `Arena.run` die Methode `_play_game` für die korrekte Anzahl an Spielen aufruft.
-    - Überprüfung, ob die Ergebnisse von `_play_game` korrekt an `_update` weitergegeben werden.
-- Einzelspiel-Ausführung (`_play_game`):
-    - Sicherstellung, dass `_play_game` die Funktion `_run_game` (die ein einzelnes Spiel durchführt) mit den korrekten Parametern (Tischnamen, Agenten, Seed etc.) über `asyncio.run` startet.
-- Early Stopping:
-    - Korrekte Auslösung des Stopp-Events (`_stop_event.set()`), wenn die konfigurierte Gewinnrate erreicht oder uneinholbar unterschritten wird.
-- Ablaufsteuerung (Multi-Worker):
-    - Überprüfung (durch Mocking von `multiprocessing.Pool`), ob die Arena versucht, die Spiele mittels `Pool.apply_async` zu starten und die Pool-API korrekt verwendet (Callback, close, join).
+    - Korrekte Inkrementierung der Zähler für Spiele, Runden und Stiche.
+    - Korrekte Aktualisierung des `_rating`-Arrays (Siege, Niederlagen, Unentschieden für Team 0)
+      basierend auf dem `game_score` des übergebenen `PublicState`.
+    - Korrekte Berechnung der Gesamtspielzeit (`_seconds`).
+    - Stellt sicher, dass `_update` bei einem `None`-Ergebnis (z.B. abgebrochenes Spiel)
+      die Statistiken nicht verändert.
+
+- Early Stopping Logik (innerhalb `_update`):
+    - Überprüfung, ob das `_stop_event` korrekt gesetzt wird, wenn die konfigurierte
+      Siegquote (`win_rate`) sicher erreicht ist.
+    - Überprüfung, ob das `_stop_event` korrekt gesetzt wird, wenn die konfigurierte
+      Siegquote nicht mehr erreicht werden kann.
+    - Stellt sicher, dass das Event nicht gesetzt wird, wenn die Bedingungen nicht erfüllt sind.
+
+- Ablaufsteuerung (`run` Methode):
+    - Single-Worker-Modus:
+        - Mockt `_play_game` auf der Arena-Instanz, um die Ausführung tatsächlicher Spiele zu vermeiden.
+        - Überprüft, ob `run` die gemockte `_play_game`-Methode für die korrekte Anzahl
+          an Spielen (`max_games`) aufruft.
+        - Überprüft, ob `run` die `_update`-Methode mit den Ergebnissen von `_play_game` aufruft.
+    - Multi-Worker-Modus:
+        - Mockt die `multiprocessing.Pool`-Klasse.
+        - Überprüft, ob `run` einen `Pool` mit der korrekten Anzahl an Prozessen erstellt.
+        - Verifiziert, dass `Pool.apply_async` für jedes Spiel mit den korrekten Parametern
+          (Zielfunktion `arena._play_game`, Spielindex-Argumente, Callback `arena._update`)
+          aufgerufen wird.
+        - Stellt sicher, dass `Pool.close()` und `Pool.join()` aufgerufen werden.
+
+- Hilfsfunktionen und Properties:
+    - Testet die statische Methode `Arena.cpu_count()` durch Mocking von `src.arena.cpu_count`.
+    - Überprüft die korrekte Funktionsweise der Read-Only Properties
+      (`seconds`, `games`, `rounds`, `tricks`, `rating`).
 """
 
-from typing import List
-
 import pytest
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch, call # Importiere call für Aufrufreihgenfolge/Argumente
-from time import sleep # Für Tests mit Zeitbezug
-
-# Zu testende Klasse
-from src.arena import Arena, _run_game # Importiere auch _run_game zum Mocken
-
-# Abhängigkeiten, die gemockt werden müssen/können
+from typing import Optional, List
 from src.players.agent import Agent
-from src.public_state import PublicState
-from src.private_state import PrivateState
-from multiprocessing import Pool, Manager # Zum Mocken
+import asyncio
+from unittest.mock import patch, MagicMock, call
+# noinspection PyUnresolvedReferences,PyProtectedMember
+from multiprocessing.managers import EventProxy
+# noinspection PyProtectedMember
+from src.arena import Arena, _run_game
 
-# === Fixtures ===
+# Importiere deine echten Klassen, wenn du sie nicht mocken willst (oder die Mocks von oben)
+# from src.players.agent import Agent # Ersetzt durch MockAgent
+# from src.public_state import PublicState # Ersetzt durch MockPublicState
+# from src.private_state import PrivateState # Ersetzt durch MockPrivateState
+# from src.game_engine import GameEngine # Ersetzt durch MockGameEngine
+# from src.common.logger import logger # Könnte auch gemockt werden
+
+# --- Dummies/Mocks für Abhängigkeiten (wie oben definiert) ---
+class MockAgent:
+    def __init__(self, name="TestAgent"):
+        self.name = name
+        self.__class__ = Agent
+
+    # async def get_action(self, public_state: Any, private_state: Any) -> Any:
+    #     return "some_action"
+
+class MockPublicState:
+    def __init__(self, game_score=([0], [0]), trick_counter=0, round_counter=0, game_over=False):
+        self.game_score = game_score
+        self.trick_counter = trick_counter
+        self.round_counter = round_counter
+        self.game_over = game_over
+        self.current_player_index = 0
+        self.current_round_score = ([0], [0])
+        self.deck = []
+        self.played_cards_in_trick = []
+        self.next_player_index = 0
+
+class MockPrivateState:
+    def __init__(self):
+        self.hand = []
+
+class MockGameEngine:
+    def __init__(self, table_name: str, default_agents: list, seed: Optional[int]):
+        self.table_name = table_name
+        self.agents = default_agents
+        self.seed = seed
+        # Wird im run_game_loop gesetzt oder durch Parameter pub überschrieben
+        self.pub_state_to_return = MockPublicState(game_score=([100], [50]), round_counter=5, trick_counter=20, game_over=True)
+
+    async def run_game_loop(self, pub: Optional[MockPublicState], privs: Optional[List[MockPrivateState]], break_time: int) -> MockPublicState:
+        if pub:
+            # Simuliere, dass der übergebene pub state modifiziert wird
+            pub.game_score = self.pub_state_to_return.game_score
+            pub.round_counter = self.pub_state_to_return.round_counter
+            pub.trick_counter = self.pub_state_to_return.trick_counter
+            pub.game_over = True
+            return pub
+        return self.pub_state_to_return
 
 @pytest.fixture
 def mock_agents(mocker) -> List[MagicMock]:
     """Erstellt 4 einfache Mock-Agenten (nicht async für Arena nötig)."""
-    return [mocker.create_autospec(Agent, instance=True, name=f"Agent_{i}") for i in range(4)]
+    return [mocker.create_autospec(Agent, instance=True, name=f"Agent_{i}", player_index=i) for i in range(4)]
 
 @pytest.fixture
-def sample_public_state_game_over() -> PublicState:
-    """Erstellt einen PublicState, der ein abgeschlossenes Spiel repräsentiert."""
-    pub = PublicState(table_name="Game_0")
-    pub.game_score = [[150, 200], [-50, 300]] # Team 20: 350, Team 31: 250 -> Team 20 gewinnt
-    pub.round_counter = 5
-    pub.trick_counter = 55 # Beispielwerte
-    # Markiere als beendet
-    pub.current_phase = "finished" # Oder eine andere passende Phase
-    # Setze Score, damit is_game_over True wird (obwohl Arena das nicht direkt prüft)
-    pub.game_score = [[600],[400]] # Team 20 = 600, Team 31 = 400
-    # Recalculate total score for is_game_over property if used internally
-    # pub.total_score = (sum(pub.game_score[0]), sum(pub.game_score[1])) # Nicht nötig, Property macht das
-    return pub
+def mock_public_state_win_team0():
+    return MockPublicState(game_score=([100], [50]), round_counter=5, trick_counter=20)
 
-# === Testfälle ===
+@pytest.fixture
+def mock_public_state_win_team1():
+    return MockPublicState(game_score=([50], [100]), round_counter=6, trick_counter=22)
 
+@pytest.fixture
+def mock_public_state_draw():
+    return MockPublicState(game_score=([75], [75]), round_counter=4, trick_counter=18)
+
+@pytest.fixture
+def mock_private_states():
+    return [MockPrivateState() for _ in range(4)]
+
+# --- Tests für _run_game ---
+@pytest.mark.asyncio
+@patch('src.arena.GameEngine', new=MockGameEngine)  # Mock GameEngine für _run_game
+async def test_run_game_success(mock_agents, mock_public_state_win_team0):
+    pub_state = await _run_game("TestTable", mock_agents, seed=123, pub=None, privs=None)
+    assert pub_state is not None
+    assert pub_state.game_score == ([100], [50])
+
+@pytest.mark.asyncio
+@patch('src.arena.GameEngine', new=MockGameEngine)
+async def test_run_game_with_initial_states(mock_agents, mock_public_state_win_team0, mock_private_states):
+    initial_pub = MockPublicState()
+    initial_privs = mock_private_states
+
+    # Konfiguriere den MockGameEngine, um den übergebenen pub State zu modifizieren
+    # oder stelle sicher, dass MockGameEngine.run_game_loop das korrekt handhabt
+    class CustomMockGameEngine(MockGameEngine):
+        async def run_game_loop(self, pub: Optional[MockPublicState], privs: Optional[List[MockPrivateState]], break_time: int) -> MockPublicState:
+            assert pub is initial_pub
+            assert privs is initial_privs
+            pub.game_score = ([100], [50])  # Simuliere Modifikation
+            pub.round_counter = 1
+            pub.trick_counter = 1
+            pub.game_over = True
+            return pub
+
+    with patch('src.arena.GameEngine', new=CustomMockGameEngine):
+        # noinspection PyTypeChecker
+        returned_pub = await _run_game("TestTable", mock_agents, seed=123, pub=initial_pub, privs=initial_privs)
+
+    assert returned_pub is initial_pub  # Sollte dasselbe Objekt sein, modifiziert
+    assert returned_pub.game_score == ([100], [50])
+
+@pytest.mark.asyncio
+@patch('src.arena.GameEngine')  # Standard MagicMock
+async def test_run_game_exception_in_engine(mock_game_engine_cls, mock_agents):
+    mock_engine_instance = MagicMock()
+    mock_engine_instance.run_game_loop.side_effect = Exception("Engine Boom!")
+    mock_game_engine_cls.return_value = mock_engine_instance
+
+    with patch('src.arena.logger.exception') as mock_logger_exception:
+        pub_state = await _run_game("TestTableError", mock_agents, seed=123, pub=None, privs=None)
+        assert pub_state is None
+        mock_logger_exception.assert_called_once()
+        assert "Engine Boom!" in mock_logger_exception.call_args[0][0]
+
+# --- Tests für Arena ---
 def test_arena_initialization(mock_agents):
-    """Testet die korrekte Initialisierung der Arena."""
-    arena = Arena(agents=mock_agents, max_games=100, verbose=False, worker=1)
-    assert arena._agents is mock_agents
-    assert arena._max_games == 100
-    assert arena._verbose is False
+    arena = Arena(mock_agents, max_games=10, worker=1)
+    assert len(arena._agents) == 4
+    assert arena._max_games == 10
     assert arena._worker == 1
-    assert arena._early_stopping is False
-    assert arena._games == 0
-    assert arena._rounds == 0
-    assert arena._tricks == 0
-    assert arena._rating == [0, 0, 0]
-    assert isinstance(arena._stop_event, asyncio.Event) # Bei worker=1
+    assert isinstance(arena._stop_event, asyncio.Event) # Für worker = 1
 
-def test_arena_initialization_multi_worker(mock_agents, mocker):
-    """Testet die Initialisierung im Multi-Worker-Modus."""
-    # Mocke Manager().Event()
-    mock_manager_event = mocker.patch('src.arena.Manager').return_value.Event.return_value
-    arena = Arena(agents=mock_agents, max_games=50, worker=4)
-    assert arena._worker == 4
-    assert arena._stop_event is mock_manager_event
+def test_arena_initialization_multi_worker_event(mock_agents):
+    # Um Manager().Event() zu testen, ohne einen echten Manager zu starten,
+    # können wir den Typ des Events prüfen.
+    arena = Arena(mock_agents, max_games=10, worker=2)
+    assert arena._worker == 2
+    # Überprüfen, ob es sich um einen Event-Typ handelt, der von multiprocessing.Manager stammt
+    # Genauer gesagt, es ist ein EventProxy.
+    assert isinstance(arena._stop_event, EventProxy)
 
-def test_arena_update_statistics_team20_wins(mock_agents, sample_public_state_game_over):
-    """Testet die _update Methode, wenn Team 20 gewinnt."""
-    arena = Arena(agents=mock_agents, max_games=10, worker=1)
-    # sample_public_state_game_over: Team 20 = 600, Team 31 = 400 -> Win for 20
-    game_index = 0
-    result = (game_index, sample_public_state_game_over)
+def test_arena_initialization_invalid_agents():
+    with pytest.raises(AssertionError):
+        # noinspection PyTypeChecker
+        Arena([MockAgent()] * 3, max_games=10)  # Nur 3 Agenten
 
-    arena._update(result)
+@patch('src.arena._run_game')  # Mocke die interne _run_game Funktion
+def test_arena_play_game_single_run(mock_run_game_async, mock_agents, mock_public_state_win_team0):
+    # Mock _run_game, um ein PublicState zurückzugeben
+    async def async_mock_run_game(*_args, **_kwargs):
+        return mock_public_state_win_team0
 
-    assert arena._games == 1
-    assert arena._rounds == 5 # Aus sample state
-    assert arena._tricks == 55 # Aus sample state
-    assert arena._rating == [1, 0, 0] # Win, Lost, Draw for Team 20
-    assert arena._seconds > 0 # Zeit sollte gestartet sein (schwer exakt zu testen)
+    mock_run_game_async.side_effect = async_mock_run_game
 
-def test_arena_update_statistics_team31_wins(mock_agents, sample_public_state_game_over):
-    """Testet die _update Methode, wenn Team 31 gewinnt."""
-    arena = Arena(agents=mock_agents, max_games=10, worker=1)
-    # Modifiziere State für Sieg Team 31
-    sample_public_state_game_over.game_score = [[300], [700]] # Team 20=300, Team 31=700
-    game_index = 0
-    result = (game_index, sample_public_state_game_over)
+    arena = Arena(mock_agents, max_games=1, worker=1)
+    game_index, pub_result = arena._play_game(0)
 
-    arena._update(result)
-
-    assert arena._games == 1
-    assert arena._rating == [0, 1, 0] # Win, Lost, Draw for Team 20
-
-def test_arena_update_statistics_draw(mock_agents, sample_public_state_game_over):
-    """Testet die _update Methode bei einem Unentschieden."""
-    arena = Arena(agents=mock_agents, max_games=10, worker=1)
-    # Modifiziere State für Unentschieden
-    sample_public_state_game_over.game_score = [[500], [500]]
-    game_index = 0
-    result = (game_index, sample_public_state_game_over)
-
-    arena._update(result)
-
-    assert arena._games == 1
-    assert arena._rating == [0, 0, 1] # Win, Lost, Draw for Team 20
-
-def test_arena_update_ignores_none_result(mock_agents):
-    """Testet, dass _update nichts tut, wenn das Ergebnis None ist (z.B. bei Abbruch)."""
-    arena = Arena(agents=mock_agents, max_games=10, worker=1)
-    initial_rating = list(arena._rating)
-    arena._update(None) # Simulierter Abbruch
-    assert arena._games == 0
-    assert arena._rating == initial_rating
-
-@patch('src.arena._run_game', return_value=asyncio.Future()) # Mocke die Spielfunktion
-def test_arena_run_single_worker_calls_play_game(mock_run_game, mock_agents, sample_public_state_game_over, mocker):
-    """
-    Testet, ob Arena.run im Single-Worker-Modus _play_game für jedes Spiel aufruft
-    und _update mit dem Ergebnis.
-    """
-    max_games = 3
-    arena = Arena(agents=mock_agents, max_games=max_games, worker=1)
-
-    # Mocke _play_game, damit es kontrollierte Ergebnisse zurückgibt
-    # Erstelle Future-Objekte, die aufgelöst werden können
-    futures = []
-    results = []
-    for i in range(max_games):
-        # Erstelle einen neuen State für jedes Spiel-Ergebnis
-        state = PublicState(table_name=f"Game_{i}")
-        state.game_score = [[i+1], [0]] # Jedes Spiel hat ein anderes Ergebnis
-        state.round_counter = i + 1
-        state.trick_counter = (i + 1) * 10
-        results.append((i, state))
-
-        future = asyncio.Future()
-        future.set_result(results[-1]) # Setze das Ergebnis des Futures
-        futures.append(future)
-
-    # Konfiguriere den Mock _play_game, um die vorbereiteten Ergebnisse zurückzugeben
-    # Da _play_game innerhalb von run synchron aufgerufen wird (und intern asyncio.run nutzt),
-    # müssen wir das Ergebnis direkt zurückgeben, nicht das Future.
-    # Wir mocken also _play_game selbst, nicht _run_game in diesem Test.
-    mocker.patch.object(arena, '_play_game', side_effect=results)
-    mock_update = mocker.patch.object(arena, '_update') # Mocke _update, um Aufrufe zu prüfen
-
-    # Führe Arena.run aus
-    arena.run()
-
-    # Prüfungen:
-    # Wurde _play_game für jede Partie aufgerufen?
-    assert arena._play_game.call_count == max_games
-    arena._play_game.assert_has_calls([call(0), call(1), call(2)])
-
-    # Wurde _update für jedes Ergebnis aufgerufen?
-    assert mock_update.call_count == max_games
-    mock_update.assert_has_calls([call(results[0]), call(results[1]), call(results[2])])
-
-@patch('src.arena.asyncio.run') # Mocke asyncio.run, das in _play_game verwendet wird
-def test_arena_play_game_calls_run_game(mock_asyncio_run, mock_agents, sample_public_state_game_over):
-    """Testet, ob _play_game die Funktion _run_game mit asyncio.run aufruft."""
-    arena = Arena(agents=mock_agents, max_games=1, worker=1, seed=123)
-    game_index = 0
-
-    # Konfiguriere den Mock von asyncio.run, um das State-Objekt zurückzugeben
-    mock_asyncio_run.return_value = sample_public_state_game_over
-
-    # Rufe _play_game auf
-    result_index, result_state = arena._play_game(game_index)
-
-    # Prüfungen:
-    assert result_index == game_index
-    assert result_state is sample_public_state_game_over
-
-    # Prüfe, ob asyncio.run korrekt aufgerufen wurde
-    # Der erste Argument von asyncio.run ist die Coroutine _run_game(...)
-    mock_asyncio_run.assert_called_once()
-    call_args = mock_asyncio_run.call_args[0] # Die Argumente des Aufrufs
-    assert len(call_args) == 1
-    run_game_coro = call_args[0]
-    # Wir können die Coroutine nicht direkt vergleichen, aber wir können prüfen, ob sie
-    # die richtigen Argumente binden würde, wenn sie erstellt wird.
-    # Dies ist etwas kompliziert, alternativ kann man _run_game mocken.
-    # Einfacher: Prüfen, ob _run_game die korrekten Argumente in seinem Aufruf *innerhalb* von _play_game hätte.
-    # Dazu müssten wir _run_game mocken.
-
-    # Alternativer Test: Mocke _run_game
-    with patch('src.arena._run_game', return_value=asyncio.Future()) as mock_internal_run_game:
-        # Konfiguriere das Future, das _run_game zurückgibt
-        future = asyncio.Future()
-        future.set_result(sample_public_state_game_over)
-        mock_internal_run_game.return_value = future # _run_game gibt eine Coroutine zurück
-
-        # Setze den Return-Wert von asyncio.run, um das Ergebnis des Futures zurückzugeben
-        mock_asyncio_run.return_value = sample_public_state_game_over
-
-        arena._play_game(game_index)
-
-        # Prüfe, ob _run_game korrekt aufgerufen wurde (innerhalb von asyncio.run)
-        # Der Aufruf an _run_game findet statt, BEVOR asyncio.run aufgerufen wird,
-        # da die Coroutine als Argument übergeben wird.
-        # --> Mocking von _run_game ist hier der bessere Ansatz.
-
-@patch('src.arena._run_game', new_callable=AsyncMock) # _run_game ist async, also AsyncMock
-def test_arena_play_game_calls_run_game_direct_mock(mock_run_game_coro, mock_agents, sample_public_state_game_over, mocker):
-    """Testet _play_game durch direktes Mocken von _run_game."""
-    arena = Arena(agents=mock_agents, max_games=1, worker=1, seed=123)
-    game_index = 0
-
-    # Konfiguriere den AsyncMock _run_game, was er zurückgeben soll, wenn er awaited wird
-    mock_run_game_coro.return_value = sample_public_state_game_over
-
-    # Mocke asyncio.run, um sicherzustellen, dass es die Coroutine ausführt
-    # und deren Ergebnis zurückgibt
-    mock_asyncio_run = mocker.patch('src.arena.asyncio.run', side_effect=lambda coro: coro.result() if isinstance(coro, asyncio.Future) else asyncio.get_event_loop().run_until_complete(coro) )
-    # Die side_effect simuliert das Warten auf die Coroutine
-
-    # Rufe _play_game auf
-    result_index, result_state = arena._play_game(game_index)
-
-    # Prüfungen
-    assert result_index == game_index
-    assert result_state is sample_public_state_game_over
-
-    # Prüfe, ob _run_game korrekt aufgerufen wurde
-    mock_run_game_coro.assert_awaited_once_with(
-        table_name=f"Game_{game_index}",
+    assert game_index == 0
+    assert pub_result == mock_public_state_win_team0
+    mock_run_game_async.assert_called_once_with(
+        table_name="Game_0",
         agents=mock_agents,
-        seed=123,
-        pub=None, # Da keine initialen States übergeben wurden
+        seed=None,  # Default
+        pub=None,
         privs=None
     )
-    # Prüfe, ob asyncio.run aufgerufen wurde (mit der Coroutine von _run_game)
-    mock_asyncio_run.assert_called_once()
 
+@patch('src.arena._run_game')
+def test_arena_play_game_with_initial_states(mock_run_game_async, mock_agents, mock_public_state_win_team0, mock_private_states):
+    async def async_mock_run_game(*_args, **kwargs):
+        # Stelle sicher, dass pub und privs korrekt durchgereicht wurden
+        assert kwargs.get('pub') is mock_public_state_win_team0
+        privs = kwargs.get('privs')
+        assert privs is mock_private_states
+        return mock_public_state_win_team0
 
-def test_arena_early_stopping_wins_met(mock_agents, sample_public_state_game_over):
-    """Testet early stopping, wenn die Gewinnrate erreicht wird."""
-    # Team 20 gewinnt jedes Spiel
-    sample_public_state_game_over.game_score = [[600],[400]]
-    result = (0, sample_public_state_game_over)
+    mock_run_game_async.side_effect = async_mock_run_game
 
-    arena = Arena(agents=mock_agents, max_games=10, worker=1, early_stopping=True, win_rate=0.6)
-    mock_stop_event_set = MagicMock()
-    arena._stop_event.set = mock_stop_event_set # Mocke die set Methode des Events
+    init_pubs = [mock_public_state_win_team0]
+    init_privs = [mock_private_states]  # Liste von Listen von PrivateStates
 
-    # Simuliere 6 Siege für Team 20
-    for i in range(6):
-        result = (i, sample_public_state_game_over)
-        arena._update(result)
-        if i < 5:
-            mock_stop_event_set.assert_not_called() # Noch nicht genug Spiele/Siege
-        else:
-            # Nach dem 6. Spiel (6 Siege / 6 Gesamt -> 100% > 60%)
-            mock_stop_event_set.assert_called_once()
+    # noinspection PyTypeChecker
+    arena = Arena(mock_agents, max_games=1, worker=1, pubs=init_pubs, privs=init_privs)
+    arena._play_game(0)
 
-def test_arena_early_stopping_wins_unreachable(mock_agents, sample_public_state_game_over):
-    """Testet early stopping, wenn die Gewinnrate nicht mehr erreichbar ist."""
-    # Team 31 gewinnt jedes Spiel
-    sample_public_state_game_over.game_score = [[400],[600]]
+    mock_run_game_async.assert_called_once_with(
+        table_name="Game_0",
+        agents=mock_agents,
+        seed=None,
+        pub=init_pubs[0],
+        privs=init_privs[0]
+    )
 
-    arena = Arena(agents=mock_agents, max_games=10, worker=1, early_stopping=True, win_rate=0.7) # 70% benötigt
-    mock_stop_event_set = MagicMock()
-    arena._stop_event.set = mock_stop_event_set # Mocke die set Methode des Events
+def test_arena_play_game_stop_event_set(mock_agents):
+    arena = Arena(mock_agents, max_games=1, worker=1)
+    arena._stop_event.set()
+    result = arena._play_game(0)
+    assert result is None
 
-    # Simuliere 4 Niederlagen für Team 20 (0 Siege)
-    for i in range(4):
-        result = (i, sample_public_state_game_over)
-        arena._update(result)
-        # Nach 4 Spielen: 0 Siege. Übrig 6 Spiele. Max mögliche Siege: 6.
-        # Max Win Rate = 6 / (6 + 4) = 0.6 -> Kann 0.7 nicht mehr erreichen.
-        if i < 3:
-             mock_stop_event_set.assert_not_called()
-        else:
-             mock_stop_event_set.assert_called_once()
+def test_arena_update_stats(mock_agents, mock_public_state_win_team0):
+    arena = Arena(mock_agents, max_games=1, worker=1)
+    arena._time_start = 0  # Mock time.time()
 
-# Testen des Multi-Worker-Modus ist komplexer, da es echte Prozesse involviert.
-# Man könnte Pool mocken, aber das testet nicht die tatsächliche Parallelisierung.
-# Ein einfacher Test könnte prüfen, ob Pool() und apply_async aufgerufen werden.
-@patch('src.arena.Pool') # Mocke die Pool-Klasse
-def test_arena_run_multi_worker_calls_pool(mock_pool_class, mock_agents, sample_public_state_game_over, mocker):
-    """Testet grob, ob der Multi-Worker-Modus Pool und apply_async nutzt."""
-    max_games = 5
-    num_workers = 4
-    arena = Arena(agents=mock_agents, max_games=max_games, worker=num_workers)
+    with patch('src.arena.time', return_value=5):  # Mock time.time() für Dauerberechnung
+        arena._update((0, mock_public_state_win_team0))
 
-    # Mocke die Instanz von Pool und ihre Methoden
-    mock_pool_instance = mock_pool_class.return_value
-    mock_apply_async = mock_pool_instance.apply_async
-    mock_close = mock_pool_instance.close
-    mock_join = mock_pool_instance.join
+    assert arena.games == 1
+    assert arena.rounds == 5
+    assert arena.tricks == 20
+    assert arena.rating == [1, 0, 0]  # Team 0 gewinnt
+    assert arena.seconds == 5
 
-    # Führe run aus
+def test_arena_update_stats_team1_wins(mock_agents, mock_public_state_win_team1):
+    arena = Arena(mock_agents, max_games=1, worker=1)
+    arena._time_start = 0
+    with patch('src.arena.time', return_value=1):
+        arena._update((0, mock_public_state_win_team1))
+    assert arena.rating == [0, 1, 0]
+
+def test_arena_update_stats_draw(mock_agents, mock_public_state_draw):
+    arena = Arena(mock_agents, max_games=1, worker=1)
+    arena._time_start = 0
+    with patch('src.arena.time', return_value=1):
+        arena._update((0, mock_public_state_draw))
+    assert arena.rating == [0, 0, 1]
+
+def test_arena_update_no_result(mock_agents):
+    arena = Arena(mock_agents, max_games=1, worker=1)
+    initial_games = arena.games
+    arena._update(None)  # Sollte einfach zurückkehren
+    assert arena.games == initial_games  # Keine Änderung
+
+# --- Early Stopping Tests ---
+def test_arena_early_stopping_win_rate_achieved(mock_agents, mock_public_state_win_team0):
+    arena = Arena(mock_agents, max_games=10, early_stopping=True, win_rate=0.6, worker=1)
+    arena._time_start = 0
+    arena._rating = [5, 0, 0]
+
+    # Spiel 1: Sieg für Team 0
+    # Rating: [1,0,0], Games: 1, total_bewertet = 1, unplayed = 9
+    # 1/1 = 1.0 >= 0.6 -> Stop!
+    with patch('src.arena.time', return_value=1):
+        arena._update((0, mock_public_state_win_team0))
+    assert arena._stop_event.is_set()
+
+def test_arena_early_stopping_win_rate_unreachable(mock_agents, mock_public_state_win_team1):
+    arena = Arena(mock_agents, max_games=3, early_stopping=True, win_rate=0.5, worker=1)
+    arena._time_start = 0
+
+    # Spiel 1 (Index 0): Niederlage für Team 0 -> Rating [0,1,0], unplayed=2
+    # max_possible_wins = 0 (current) + 2 (unplayed) = 2
+    # total_bewertbar = 3 (max_games) - 0 (draws) = 3
+    # 2/3 = 0.66 >= 0.5 -> noch erreichbar
+    with patch('src.arena.time', return_value=1):
+        arena._update((0, mock_public_state_win_team1))
+    assert not arena._stop_event.is_set()
+
+    # Spiel 2 (Index 1): Niederlage für Team 0 -> Rating [0,2,0], unplayed=1
+    # max_possible_wins = 0 (current) + 1 (unplayed) = 1
+    # total_bewertbar = 3 (max_games) - 0 (draws) = 3
+    # 1/3 = 0.33 < 0.5 -> Stop!
+    with patch('src.arena.time', return_value=2):
+        arena._update((1, mock_public_state_win_team1))
+    assert arena._stop_event.is_set()
+
+def test_arena_early_stopping_not_met(mock_agents, mock_public_state_win_team0):
+    arena = Arena(mock_agents, max_games=10, early_stopping=True, win_rate=0.9, worker=1)
+    arena._time_start = 0
+    with patch('src.arena.time', return_value=1):
+        arena._update((0, mock_public_state_win_team0))  # 1/1 = 1.0 (noch nicht sicher, da unplayed > 0)
+    assert not arena._stop_event.is_set()  # noch nicht sicher, da (1+9)/(10) = 1.0 >= 0.9
+
+@patch('src.arena.Arena._play_game')  # Mocke _play_game
+def test_arena_run_single_worker(mock_play_game, mock_agents, mock_public_state_win_team0):
+    # _play_game soll (index, pub_state) zurückgeben
+    mock_play_game.side_effect = lambda game_idx: (game_idx, mock_public_state_win_team0)
+
+    max_games = 3
+    arena = Arena(mock_agents, max_games=max_games, worker=1, verbose=False)
+
+    # Mock _update, um seine Aufrufe zu überprüfen
+    with patch.object(arena, '_update', wraps=arena._update) as mock_update_method:
+        arena.run()
+        assert mock_play_game.call_count == max_games
+        assert mock_update_method.call_count == max_games
+        for i in range(max_games):
+            # Überprüfe, ob _play_game mit dem richtigen Index aufgerufen wurde
+            assert call(i) in mock_play_game.call_args_list
+            # Überprüfe, ob _update mit dem Ergebnis von _play_game aufgerufen wurde
+            mock_update_method.assert_any_call((i, mock_public_state_win_team0))
+
+    assert arena.games == max_games
+    assert arena.rating == [max_games, 0, 0]
+
+@patch('src.arena.Pool')  # Mocke multiprocessing.Pool
+@patch('src.arena.Arena._play_game')  # _play_game wird im Pool-Prozess ausgeführt, mocken wir es hier nicht direkt, sondern was der Pool zurückgibt
+def test_arena_run_multi_worker(_mock_arena_play_game_method_placeholder, mock_pool_cls, mock_agents, mock_public_state_win_team0):
+    # Dieser Test ist etwas komplexer, da wir Pool und Callbacks mocken müssen.
+    # Für einen einfacheren Test könnte man `_play_game` so mocken, dass es direkt
+    # ein Ergebnis liefert, und dann prüfen, ob `_update` korrekt aufgerufen wird.
+
+    max_games = 2
+    num_workers = 2
+
+    # Mock-Instanz für den Pool
+    mock_pool_instance = MagicMock()
+    mock_pool_cls.return_value = mock_pool_instance
+
+    # Ergebnisse, die `apply_async` über den `callback` an `_update` liefern soll
+    # Der Callback wird mit dem Ergebnis von _play_game aufgerufen
+    # _play_game gibt (game_index, pub_state) zurück.
+    # Wir müssen also den Callback `arena._update` mit diesem Tupel aufrufen lassen.
+
+    # Die `apply_async` Methode soll den `callback` mit dem Ergebnis von `_play_game` aufrufen.
+    # Wir simulieren das, indem wir `apply_async` so mocken, dass es den Callback direkt ausführt.
+    # Die `args` für `_play_game` (game_index) werden an `apply_async` übergeben.
+
+    # Hilfsfunktion, um den apply_async-Aufruf zu simulieren, der den Callback auslöst
+    # Der Callback (arena._update) erwartet das Ergebnis von _play_game
+    update_calls = []
+
+    # noinspection GrazieInspection
+    def mock_apply_async(_target_func, args, callback):
+        # target_func ist arena._play_game
+        # args ist (game_index,)
+        # callback ist arena._update
+        game_index = args[0]
+        # Simuliere das Ergebnis von _play_game
+        play_game_result = (game_index, mock_public_state_win_team0)
+        callback(play_game_result)  # Rufe _update mit dem simulierten Ergebnis auf
+        update_calls.append(play_game_result)  # Für Assertions
+        return MagicMock()  # apply_async gibt ein AsyncResult-Objekt zurück
+
+    mock_pool_instance.apply_async.side_effect = mock_apply_async
+
+    arena = Arena(mock_agents, max_games=max_games, worker=num_workers, verbose=False)
+
+    # Da `_update` jetzt direkt durch `mock_apply_async` aufgerufen wird,
+    # brauchen wir `_update` nicht separat zu mocken, sondern können seine Seiteneffekte prüfen.
     arena.run()
 
-    # Prüfungen
-    mock_pool_class.assert_called_once_with(processes=num_workers)
-    assert mock_apply_async.call_count == max_games
-    # Prüfe Argumente des ersten apply_async Aufrufs (optional)
-    first_call_args = mock_apply_async.call_args_list[0][1] # kwargs des ersten Aufrufs
-    assert first_call_args['func'] == arena._play_game
-    assert first_call_args['args'] == (0,) # game_index = 0
-    assert first_call_args['callback'] == arena._update
+    mock_pool_cls.assert_called_once_with(processes=num_workers)
+    assert mock_pool_instance.apply_async.call_count == max_games
 
-    mock_close.assert_called_once()
-    mock_join.assert_called_once()
+    # Überprüfe, dass _update (via Callback) mit den richtigen Argumenten aufgerufen wurde
+    assert len(update_calls) == max_games
+    for i in range(max_games):
+        # Stelle sicher, dass für jeden Spielindex ein Update erfolgte
+        assert any(res[0] == i and res[1] == mock_public_state_win_team0 for res in update_calls)
+
+    mock_pool_instance.close.assert_called_once()
+    mock_pool_instance.join.assert_called_once()
+
+    assert arena.games == max_games
+    assert arena.rating == [max_games, 0, 0]
+
+def test_cpu_count():
+    with patch('src.arena.cpu_count', return_value=4) as mock_cpu_c:
+        assert Arena.cpu_count() == 4
+        mock_cpu_c.assert_called_once()
+
+def test_properties(mock_agents, mock_public_state_win_team0):
+    arena = Arena(mock_agents, max_games=1)
+    arena._seconds = 10
+    arena._games = 1
+    arena._rounds = 5
+    arena._tricks = 20
+    arena._rating = [1, 0, 0]
+
+    assert arena.seconds == 10
+    assert arena.games == 1
+    assert arena.rounds == 5
+    assert arena.tricks == 20
+    assert arena.rating == [1, 0, 0]

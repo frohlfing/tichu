@@ -1,7 +1,7 @@
 # Konfiguration für Code Coverage
 
 [run]
-# Coverage-Datei
+# Coverage-Datei (SQLite)
 data_file = cov/.coverage
 
 # Verzeichnisse und Dateien, die getestet werden sollen
@@ -23,3 +23,7 @@ skip_empty = True
 [html]
 # Ausgabeverzeichnis für HTML-Report
 directory = cov/htmlcov
+
+[xml]
+# Ausgabeverzeichnis für HTML-Report
+output = cov/coverage.xml

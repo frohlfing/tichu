@@ -6,6 +6,9 @@ coverage run -m pytest
 # HTML-Report generieren (Ausgabeverzeichnis: ./htmlcov; kann in .coveragerc geändert werden)
 coverage html
 
+# XML-Report für PyCharm generieren (Default: coverage.xml; kann in .coveragerc geändert werden)
+coverage xml
+
 # Icon für die README generieren
 coverage-badge -f -o cov/coverage.svg
 

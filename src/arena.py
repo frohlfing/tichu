@@ -103,7 +103,7 @@ class Arena:
             for game_index in range(self._max_games):
                 self._update(self._play_game(game_index))
 
-        if self._verbose:
+        if self._verbose:  # pragma: no cover
             print("\r ")
         #else:
         #    if sum(self._rating) < self._max_games:
@@ -172,7 +172,7 @@ class Arena:
             elif total > 0 and float(self._rating[0] + unplayed) / total < self._win_rate:
                 self._stop_event.set()  # die gewünschte Gewinnquote kann nicht mehr erreicht werden
 
-        if self._verbose:
+        if self._verbose:  # pragma: no cover
             if self._games == 1:
                 print("\nPartie | Runden |    Score    |    Rating   ")
             print(f"\r{(game_index + 1):7d}"
