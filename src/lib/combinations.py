@@ -258,11 +258,11 @@ def stringify_figure(figure: tuple) -> str:
 #
 # t: Typ der Kombination
 # m: Länge der Kombination (optional)
-def stringify_type(t: int, m: int = None) -> str:
-    assert 1 <= t <= 7
+def stringify_type(t: CombinationType, m: int = None) -> str:
+    assert CombinationType.PASS <= t <= CombinationType.BOMB
     label = ["pass", "single", "pair", "triple", "stair", "fullhouse", "street", "bomb"][t]
-    if m is not None and t in (STAIR, STREET, BOMB):
-        assert (t == STAIR and m % 2 == 0 and 4 <= m <= 14) or (t == STREET and 5 <= m <= 14) or (t == BOMB and 4 <= m <= 14)
+    if m is not None and t in (CombinationType.STAIR, CombinationType.STREET, CombinationType.BOMB):
+        assert (t == CombinationType.STAIR and m % 2 == 0 and 4 <= m <= 14) or (t == CombinationType.STREET and 5 <= m <= 14) or (t == CombinationType.BOMB and 4 <= m <= 14)
         label += f"{m:02}"
     return label
 
@@ -282,7 +282,7 @@ def get_figure(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> t
         return FIGURE_PASS
 
     # Karten absteigend sortieren
-    cards.sort(reverse=True)  # Der Phönix ist jetzt, falls vorhanden, die erste Karte!
+    cards.sort(reverse=True)  # Der Phönix ist jetzt, falls vorhanden, die erste Karte von rechts!
 
     # Type
     if n == 1:

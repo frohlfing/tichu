@@ -55,7 +55,7 @@ Zusammenfassung der Tests für GameEngine:
 
 from typing import List
 import pytest
-from unittest.mock import AsyncMock, patch, PropertyMock, Mock  # AsyncMock für async Methoden
+from unittest.mock import AsyncMock
 from src.players.agent import Agent
 from src.game_engine import GameEngine
 from src.public_state import PublicState

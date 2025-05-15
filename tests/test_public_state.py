@@ -128,3 +128,7 @@ def test_public_state_is_game_over(initial_pub_state):
     assert pub.is_game_over is True
     pub.game_score = [[400], [1000]] # Team 31 = 1000
     assert pub.is_game_over is True
+
+# -------------------------------------------------------
+# Alte Tests (ursprünglich mit unittest geschrieben)
+# -------------------------------------------------------

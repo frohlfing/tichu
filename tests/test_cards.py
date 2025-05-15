@@ -17,15 +17,9 @@ Zusammenfassung der Tests für cards:
 """
 
 import pytest
-
-# Annahme: src liegt auf gleicher Ebene wie tests
-from src.lib.cards import (
-    Cards, deck,
-    parse_cards, stringify_cards,
-    sum_card_points, is_wish_in, other_cards,
-    ranks_to_vector, cards_to_vector,
-    CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO
-)
+# noinspection PyProtectedMember
+from src.lib.cards import _deck_index, _cardlabels, _cardlabels_index
+from src.lib.cards import *
 
 # --- Tests für parse_cards ---
 
@@ -36,17 +30,9 @@ def test_parse_cards_valid():
     # Sortiere beide Listen für einen stabilen Vergleich, da parse_cards keine Sortierung garantiert
     assert sorted(parse_cards(input_str)) == sorted(expected_cards)
 
-# todo
-# def test_parse_cards_empty():
-#     """Testet das Parsen eines leeren Strings."""
-#     assert parse_cards("") == []
-
-# todo
-# def test_parse_cards_extra_spaces():
-#     """Testet das Parsen mit überflüssigen Leerzeichen."""
-#     input_str = " S2  B3  "
-#     expected_cards: Cards = [(2, 1), (3, 2)]
-#     assert sorted(parse_cards(input_str)) == sorted(expected_cards)
+def test_parse_cards_empty():
+    """Testet das Parsen eines leeren Strings."""
+    assert parse_cards("") == []
 
 def test_parse_cards_invalid_label():
     """Testet das Parsen eines Strings mit ungültigem Label."""
@@ -148,3 +134,51 @@ def test_cards_to_vector_simple():
     expected_vector[1] = 1 # MahJong
     expected_vector[2] = 1 # Schwarz 2
     assert cards_to_vector(hand) == expected_vector
+
+# -------------------------------------------------------
+# Alte Tests (ursprünglich mit unittest geschrieben)
+# -------------------------------------------------------
+
+def test_parse_and_stringify_cards():
+    assert len(deck) == len(_deck_index) == len(_cardlabels) == len(_cardlabels_index) == 56, "es gibt 56 Karten"
+    assert list(deck) == parse_cards(stringify_cards(deck)), "Index nicht OK"
+
+def test_ranks_to_vector():
+    #   Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
+    h = [1, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0]
+    assert h == ranks_to_vector([(0, 0), (2, 1), (3, 2), (2, 3), (14, 3), (14, 4), (15, 0)])
+
+    #   Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
+    h = [0, 1, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 1]
+    assert h == ranks_to_vector([(1, 0), (8, 1), (8, 2), (8, 3), (8, 4), (16, 0)])
+
+def test_cards_to_vector():
+    h1 = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+          0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0]
+    assert h1 == cards_to_vector([(0, 0), (14, 1), (10, 2), (5, 3), (2, 4)])
+
+    h2 = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 1, 0, 1]
+    assert h2 == cards_to_vector([(1, 0), (14, 4), (16, 0)])
+
+    h3 = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 1, 0]
+    assert h3 == cards_to_vector([(2, 1), (15, 0)])
+
+def test_is_wish_in2():
+    assert is_wish_in(10, parse_cards("RA Ph BZ BZ RB SB")), "eine 10 ist unter den Karten"
+    assert not is_wish_in(13, parse_cards("RA Ph BZ BZ RB SB")), "eine 13 ist nicht unter den Karten"
+
+def test_sum_card_points2():
+    assert sum_card_points(parse_cards("Ph GK BD RB RZ R9 R8 R7 R6 B5 G5 G3 B2 Ma")) == 5
+    assert sum_card_points(parse_cards("Dr GK BD RB RZ R9 R8 R7 R6 B5 G5 G3 B2 Ma")) == 55
+    assert sum_card_points(parse_cards("GK BD RB RZ R9 R8 R7 R6 B5 G5 G3 B2 Ma")) == 30
+
+def test_other_cards():
+    assert other_cards([card for card in deck if card[0] != 14]) == [(14, 1), (14, 2), (14, 3), (14, 4)]

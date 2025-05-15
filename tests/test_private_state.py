@@ -134,3 +134,7 @@ def test_private_state_partitions_property(initial_priv_state):
 
     partitions_cached = priv.partitions
     assert partitions_cached is partitions
+
+# -------------------------------------------------------
+# Alte Tests (ursprünglich mit unittest geschrieben)
+# -------------------------------------------------------

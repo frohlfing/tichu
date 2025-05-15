@@ -20,15 +20,12 @@ Zusammenfassung der Tests für combinations:
 """
 
 import pytest
+# noinspection PyProtectedMember
+from src.lib.combinations import _figures, _figures_index, _figurelabels, _figurelabels_index
+from src.lib.combinations import *
+from src.lib.cards import *
 from typing import Tuple
-
-# Annahme: src liegt auf gleicher Ebene wie tests
 from src.lib.cards import Cards, parse_cards
-from src.lib.combinations import (
-    Combination, CombinationType, Combinations,
-    FIGURE_PASS, FIGURE_DOG, FIGURE_MAH, FIGURE_DRA,
-    get_figure, build_combinations, build_action_space, validate_figure,
-)
 
 # Helper zum Vergleichen von Kombinationslisten (ignoriert Kartenreihenfolge innerhalb einer Kombi)
 def sort_combinations(combis: Combinations) -> Combinations:
@@ -255,3 +252,111 @@ def test_action_space_wish_unfulfillable(sample_hand_and_combis):
 ])
 def test_validate_figure(figure: Combination, expected_valid: bool):
     assert validate_figure(figure) == expected_valid
+
+# -------------------------------------------------------
+# Alte Tests (ursprünglich mit unittest geschrieben)
+# -------------------------------------------------------
+
+def test_validate_figure2():
+    assert validate_figure((0, 0, 0))
+    assert validate_figure((1, 1, 6))
+    assert validate_figure((2, 2, 5))
+    assert validate_figure((3, 3, 6))
+    assert validate_figure((4, 14, 8))
+    assert validate_figure((5, 5, 2))
+    assert validate_figure((6, 14, 14))
+    assert validate_figure((7, 13, 14))
+    assert not validate_figure((6, 11, 10))
+
+def test_parse_and_stringify_figure():
+    assert len(_figures) == len(_figures_index) == len(_figurelabels) == len(_figurelabels_index) == 227
+    for i in range(227):
+        figure = _figures[i]
+        lb = stringify_figure(figure)
+        assert figure == parse_figure(lb), f"Index nicht OK: {i}, {figure}, {lb}"
+
+def test_stringify_type():
+    assert stringify_type(0) == "pass"
+    assert stringify_type(5, 6) == "fullhouse"
+    assert stringify_type(6) == "street"
+    assert stringify_type(6, 7) == "street07"
+    assert stringify_type(7) == "bomb"
+
+@pytest.mark.parametrize("cards, expected", [
+    ([], (PASS, 0, 0)),
+    ([CARD_MAH], (SINGLE, 1, 1)),
+    ([CARD_DOG], (SINGLE, 1, 0)),
+    ([CARD_DRA], (SINGLE, 1, 15)),
+    ([CARD_PHO], (SINGLE, 1, 10)),
+    (parse_cards("SA"), (SINGLE, 1, 14)),
+    (parse_cards("RA GA"), (PAIR, 2, 14)),
+    (parse_cards("RA Ph"), (PAIR, 2, 14)),
+    (parse_cards("RA GA BA"), (TRIPLE, 3, 14)),
+    (parse_cards("RA Ph BA"), (TRIPLE, 3, 14)),
+    (parse_cards("RK GK BA SA"), (STAIR, 4, 14)),
+    (parse_cards("RK Ph BA SA"), (STAIR, 4, 14)),
+    (parse_cards("RA GA BA SA"), (BOMB, 4, 14)),
+    (parse_cards("RK GK BK BA SA"), (FULLHOUSE, 5, 13)),
+    (parse_cards("RK GK GA BA SA"), (FULLHOUSE, 5, 14)),
+    (parse_cards("R9 GZ BB BD SK"), (STREET, 5, 13)),
+    (parse_cards("R8 R9 BZ RB RD RK"), (STREET, 6, 13)),
+    (parse_cards("R8 R9 RZ RB RD RK"), (BOMB, 6, 13)),
+])
+def test_get_figure(cards, expected):
+    assert get_figure(cards, 10) == expected
+
+def test_phoenix_sorting():
+    tests = [
+        ("Ph SA", "SA Ph"),
+        ("Ph SA RA", "RA SA Ph"),
+        ("Ph RK GK BA SA RD", "BA SA RK GK RD Ph"),
+        ("Ph RK BA SA GD RD", "BA SA RK Ph RD GD"),
+        ("RK GK BK Ph SA", "SA Ph RK GK BK"),
+        ("GK BB SZ Ph BD", "Ph GK BD BB SZ"),
+        ("BD GK R9 SZ Ph", "GK BD Ph SZ R9"),
+        ("GK BB GA Ph BD", "GA GK BD BB Ph"),
+    ]
+    for card_str, expected in tests:
+        cards = parse_cards(card_str)
+        get_figure(cards, 10, shift_phoenix=True)
+        assert stringify_cards(cards) == expected
+
+def test_build_combinations_counts():
+    combis = build_combinations(parse_cards("Ph GK BD RB RZ R9 R8 R7 R6 B5 G4 G3 B2 Ma"))
+    assert len(combis) == 381
+    assert sum(1 for _, f in combis if f[0] == STREET) == 352
+
+    combis = build_combinations(parse_cards("Ph R5 S4 B4 G4 R4 S3 B3 G3 R3 S2 B2 G2 R2"))
+    assert len(combis) == 1576
+    assert sum(1 for _, f in combis if f[0] == TRIPLE) == 30
+    assert sum(1 for _, f in combis if f[0] == STREET) == 64
+    assert sum(1 for _, f in combis if f[0] == BOMB) == 3
+    expected = ["4erBombe4", "4erBombe3", "4erBombe2", "5erStraße6", "5erStraße6"]
+    # for e, (s, combi) in zip(expected, combis[:5]):
+    #     assert stringify_figure(combi[1]) == e
+    for (s, combi) in zip(expected, combis[:5]):
+        assert stringify_figure(combi[1]) == s
+
+    combis = build_combinations(parse_cards("G4 R4 B3 G3 R3 B2 G2 R2"))
+    assert len(combis) == 46
+    assert sum(1 for _, f in combis if f[0] == PAIR) == 7
+    assert sum(1 for _, f in combis if f[0] == TRIPLE) == 2
+    assert sum(1 for _, f in combis if f[0] == STAIR) == 21
+    assert sum(1 for _, f in combis if f[0] == FULLHOUSE) == 8
+
+@pytest.mark.parametrize("hand, expected_cards, expected_labels", [
+    ("BD GD RD BZ RZ", ("BD GD RD BZ RZ", "BD GD RD", "BD GD", "BD RD", "GD RD", "BZ RZ", "BD", "GD", "RD", "BZ", "RZ"),
+                          ("FullHouseD", "DrillingD", "PaarD", "PaarD", "PaarD", "PaarZ", "Dame", "Dame", "Dame", "Zehn", "Zehn")),
+    ("Ph G9 B8 B7 R6 R4 Hu", ("Ph G9 B8 B7 R6", "G9 B8 B7 R6 Ph R4", "B8 B7 R6 Ph R4", "G9 Ph", "B8 Ph", "B7 Ph", "R6 Ph", "R4 Ph", "Ph", "G9", "B8", "B7", "R6", "R4", "Hu"),
+                           ("5erStraßeZ", "6erStraße9", "5erStraße8", "Paar9", "Paar8", "Paar7", "Paar6", "Paar4", "Phönix", "Neun", "Acht", "Sieben", "Sechs", "Vier", "Hund")),
+    ("Ph GA BK BD RB", ("GA BK BD RB Ph", "GA Ph", "BK Ph", "BD Ph", "RB Ph", "Ph", "GA", "BK", "BD", "RB"),
+                      ("5erStraßeA", "PaarA", "PaarK", "PaarD", "PaarB", "Phönix", "As", "König", "Dame", "Bube")),
+    ("Ph BK BD RB GZ", ("Ph BK BD RB GZ", "BK Ph", "BD Ph", "RB Ph", "GZ Ph", "Ph", "BK", "BD", "RB", "GZ"),
+                      ("5erStraßeA", "PaarK", "PaarD", "PaarB", "PaarZ", "Phönix", "König", "Dame", "Bube", "Zehn")),
+])
+def test_build_combinations_examples(hand, expected_cards, expected_labels):
+    combis = build_combinations(parse_cards(hand))
+    assert len(combis) == len(expected_cards)
+    for i, (combi, figure) in enumerate(combis):
+        assert stringify_cards(combi) == expected_cards[i], f"Kombination nicht ok: {combi}"
+        assert stringify_figure(figure) == expected_labels[i], f"Kombination nicht ok: {figure}"

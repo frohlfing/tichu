@@ -24,9 +24,8 @@ Stellt sicher, dass _random erst beim ersten Aufruf einer Methode initialisiert 
     Wahrscheinlichkeit).
 """
 
-import random as std_random # Standard-Modul zum Vergleichen
-
-# Zu testende Klasse
+import pytest
+import random as std_random
 from src.common.rand import Random
 
 # === Testfälle ===
@@ -197,8 +196,48 @@ def test_random_difference_without_seed_or_different_seed():
     rand3 = Random()
     seq3 = [rand3.integer(0, 1000) for _ in range(10)]
 
-
     # Die Sequenzen sollten (extrem wahrscheinlich) unterschiedlich sein
     assert seq1 != seq2
     assert seq1 != seq3
     assert seq2 != seq3
+
+# -------------------------------------------------------
+# Alte Tests (ursprünglich mit unittest geschrieben)
+# -------------------------------------------------------
+
+@pytest.fixture
+def rand():
+    return Random(seed=123)
+
+def test_integer(rand):
+    result = rand.integer(1, 10)
+    assert 1 <= result < 10
+
+def test_boolean(rand):
+    result = rand.boolean()
+    assert result in [True, False]
+
+def test_choice(rand):
+    seq = [1, 2, 3, 4, 5]
+    result = rand.choice(seq)
+    assert result in seq
+
+def test_choice_with_weights(rand):
+    seq = [1, 2, 3, 4, 5]
+    weights = [1, 1, 1, 1, 5]
+    result = rand.choice(seq, weights)
+    assert result in seq
+
+def test_sample(rand):
+    seq = [1, 2, 3, 4, 5]
+    result = rand.sample(seq, 3)
+    assert len(result) == 3
+    for item in result:
+        assert item in seq
+
+def test_shuffle(rand):
+    seq = [1, 2, 3, 4, 5]
+    original_seq = seq.copy()
+    rand.shuffle(seq)
+    assert seq != original_seq  # Prüfen, dass etwas geändert wurde
+    assert sorted(seq) == sorted(original_seq)  # Inhalt unverändert, nur Reihenfolge anders

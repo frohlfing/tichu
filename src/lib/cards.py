@@ -141,7 +141,7 @@ _card_points = (
 # Parst die Karten aus dem String
 # s: z.B. "R6 B5 G4"
 def parse_cards(s: str) -> Cards:
-    return [deck[_cardlabels_index[c]] for c in s.split(" ")]
+    return [deck[_cardlabels_index[c]] for c in s.split(" ")] if s else []
 
 
 # Formatiert Karten als lesbaren String

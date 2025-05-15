@@ -16,16 +16,10 @@ Zusammenfassung der Tests für RandomAgent:
 """
 
 import pytest
-
-# Zu testende Klasse
-from src.players.random_agent import RandomAgent
-from src.players.agent import Agent # Importiere Agent, um Vererbung zu prüfen
-
-# Zustands-Klassen für Kontext
 from src.public_state import PublicState
 from src.private_state import PrivateState
-
-# Karten und Kombinationen für Testdaten
+from src.players.random_agent import RandomAgent
+from src.players.agent import Agent
 from src.lib.cards import parse_cards
 from src.lib.combinations import CombinationType, FIGURE_PASS
 
@@ -189,3 +183,46 @@ async def test_random_agent_choose_dragon_recipient(random_agent_unseeded, publi
         chosen_opponents.add(recipient_index)
     assert len(chosen_opponents) > 0 # Mindestens einer der Gegner wurde gewählt.
     # assert len(chosen_opponents) == 2 # Wahrscheinlich, aber nicht garantiert.
+
+# -------------------------------------------------------
+# Alte Tests (ursprünglich mit unittest geschrieben)
+# -------------------------------------------------------
+
+@pytest.fixture
+def agent():
+    return RandomAgent("RandomAgent", seed=123)
+
+@pytest.fixture
+def pub():
+    return PublicState()
+
+@pytest.fixture
+def priv():
+    return PrivateState()
+
+def test_name(agent):
+    assert agent.name == "RandomAgent"
+
+def test_schupf(agent, pub, priv):
+    priv._hand = parse_cards("S4 B4 G4 R4 S3 B3 G3 R3 S2 B2 G2 R2 Ma Hu")
+    pub._number_of_cards = [14, 14, 14, 14]
+    result = agent.schupf(pub, priv)
+    assert result == parse_cards("S4 B3 G4")
+
+def test_announce(agent, pub, priv):
+    result = agent.announce(pub, priv)
+    assert result in [True, False]
+
+def test_combination(agent, pub, priv):
+    #List[Tuple[Cards, Combination]]
+    action_space = [(list(range(5)), ('type', 5, 10)), ([], ('pass', 0, 0))]
+    result = agent.play(pub, priv, action_space)
+    assert result in action_space
+
+def test_wish(agent, pub, priv):
+    result = agent.wish(pub, priv)
+    assert result in range(2, 15)
+
+def test_gift(agent, pub, priv):
+    result = agent.choose_dragon_recipient(pub, priv)
+    assert result in [priv.opponent_right_index, priv.opponent_left_in+]
