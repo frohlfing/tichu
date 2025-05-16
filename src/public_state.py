@@ -7,10 +7,10 @@ from src.lib.cards import Card, Cards, stringify_cards, other_cards
 from src.lib.combinations import Combination, CombinationType
 from typing import List, Optional, Tuple, Dict, Any
 
-# Typ-Alias für einen Spielzug
+# Type-Alias für einen Spielzug
 Turn = Tuple[int, Cards, Combination]
 
-# Typ-Alias für einen Stich (Liste von Spielzügen)
+# Type-Alias für einen Stich (Liste von Spielzügen)
 Trick = List[Turn]
 
 
@@ -22,7 +22,7 @@ class PublicState:
     Diese Klasse sammelt alle Daten, die den Spielverlauf und den Zustand beschreiben, soweit sie für alle Teilnehmer sichtbar sind.
 
     :ivar table_name: Der Name des Tisches.
-    :ivar player_names: Die Namen der 4 Spieler [Spieler 0-3].
+    :ivar player_names: Die eindeutigen Namen der 4 Spieler (Spieler mit gleichen Namen werden durchnummeriert) [Spieler 0-3].
     :ivar current_turn_index: Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest).
     :ivar count_hand_cards: Anzahl der Handkarten pro Spieler [Spieler 0-3].
@@ -39,7 +39,7 @@ class PublicState:
     :ivar winner_index: Index des Spielers, der zuerst in der aktuellen Runde fertig wurde (-1 == alle Spieler sind noch dabei).
     :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == Runde läuft noch oder wurde mit Doppelsieg beendet).
     :ivar is_round_over: Gibt an, ob die aktuelle Runde beendet ist.  # todo könnte man auch berechnen
-    :ivar double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.  # todo könnte man auch berechnen
+    :ivar is_double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.  # todo könnte man auch berechnen
     :ivar game_score: Punktetabelle der Partie [Team 20, Team 31] (pro Team eine Liste von Punkten).
     :ivar round_counter: Anzahl der abgeschlossenen Runden (nur für statistische Zwecke). # todo kann aus game_score ermittelt werden
     :ivar trick_counter: Anzahl der abgeräumten Stiche in der aktuellen Runde (nur für statistische Zwecke). # todo kann aus round_history ermittelt werden
@@ -66,11 +66,11 @@ class PublicState:
     winner_index: int = -1
     loser_index: int = -1
     is_round_over: bool = False
-    double_victory: bool = False
+    is_double_victory: bool = False
 
     # todo Berechnung:
-    # is_round_over = count_active_players == 1 or double_victory  # nur noch eine Spieler im Spiel oder Doppelsieg
-    # double_victory = count_active_players == 2 and count_hand_cards[(winner_index + 2) % 4] == 0  # die beiden Spieler eine Teams sind fertig, die anderen 2 Spieler noch nicht
+    # is_round_over = count_active_players == 1 or is_double_victory  # nur noch eine Spieler im Spiel oder Doppelsieg
+    # is_double_victory = count_active_players == 2 and count_hand_cards[(winner_index + 2) % 4] == 0  # die beiden Spieler eine Teams sind fertig, die anderen 2 Spieler noch nicht
     # die Berechnung ist nicht aufwendig. Ich bevorzuge im Hinblick, neuronale Netze zu trainieren, so wenig wie nötig als
     # Zustandsvariablen definieren zu müssen. Properties sehe ich für das Training als optionale Features.
     # Aber ja, ich werde das später erst noch prüfen, in wie weit die Geschwindigkeit der Arena leiden würde.
@@ -112,7 +112,7 @@ class PublicState:
             "winnerIndex": self.winner_index,
             "loserIndex": self.loser_index,
             "isRoundOver": self.is_round_over,
-            "doubleVictory": self.double_victory,
+            "isDoubleVictory": self.is_double_victory,
             "gameScore": self.game_score,
             "roundCounter": self.round_counter,
             "trickCounter": self.trick_counter,
@@ -140,10 +140,10 @@ class PublicState:
     # def is_round_over(self) -> bool:
     #     """Gibt an, ob die aktuelle Runde beendet ist."""
     #     # Runde ist vorbei, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wurde.
-    #     return self.count_active_players <= 1 or self.double_victory
+    #     return self.count_active_players <= 1 or self.is_double_victory
     #
     # @property
-    # def double_victory(self) -> bool:
+    # def is_double_victory(self) -> bool:
     #     """Gibt an, ob die Runde durch einen Doppelsieg beendet wurde."""
     #     # Ein Doppelsieg heißt, dass beide Spieler eines Teams fertig sind und die anderen beiden noch nicht.
     #     return self.count_active_players == 2 and self.winner_index != -1 and self.count_hand_cards[(self.winner_index + 2) % 4] == 0

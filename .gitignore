@@ -1,11 +1,12 @@
 /.idea
+/.pytest_cache
 /.venv
+/__pycache__
+/bw
 /cov/htmlcov
-/data/cache
-/data/lib
+/data
 /logs
 /.env
-/__pycache__
 /*.py.lprof
 /*.py.prof
 .DS_Store

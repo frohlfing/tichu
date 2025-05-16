@@ -5,9 +5,9 @@ Tests für die RandomAgent-Klasse
 Zusammenfassung der Tests für RandomAgent:
 - Vererbung:
     - Sicherstellung, dass `RandomAgent` korrekt von `Agent` erbt.
-- Entscheidungsmethoden (`schupf`, `announce`, `play`, `wish`, `choose_dragon_recipient`):
+- Entscheidungsmethoden (`schupf`, `announce`, `play`, `wish`, `give_dragon_away`):
     - Überprüfung der korrekten Rückgabetypen für jede Methode.
-    - Sicherstellung, dass die zurückgegebenen Werte innerhalb der gültigen und erwarteten Grenzen liegen (z.B. 3 Karten für `schupf`, bool für `announce`, Wert 2-14 für `wish`, gültiger Gegner-Index für `choose_dragon_recipient`).
+    - Sicherstellung, dass die zurückgegebenen Werte innerhalb der gültigen und erwarteten Grenzen liegen (z.B. 3 Karten für `schupf`, bool für `announce`, Wert 2-14 für `wish`, gültiger Gegner-Index für `give_dragon_away`).
     - Verifizierung, dass die von `play` zurückgegebene Aktion eine aus dem übergebenen `action_space` ist.
 - Randfälle:
     - Überprüfung des Verhaltens, wenn `play` mit einem leeren `action_space` aufgerufen wird (sollte `IndexError` auslösen).
@@ -86,7 +86,6 @@ async def test_random_agent_schupf(random_agent_seeded, public_state_fixture, pr
     # 4. Wurde der PrivateState vom Agenten modifiziert? (Sollte nicht)
     assert private_state_fixture.hand_cards == original_hand_copy
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("grand", [True, False], ids=["GrandTichu", "SmallTichu"])
 async def test_random_agent_announce(random_agent_unseeded, public_state_fixture, private_state_fixture, grand):
@@ -149,7 +148,6 @@ async def test_random_agent_play_empty_action_space_raises_error(random_agent_se
     with pytest.raises(ValueError):
        await agent.play(public_state_fixture, private_state_fixture, empty_action_space)
 
-
 @pytest.mark.asyncio
 async def test_random_agent_wish(random_agent_unseeded, public_state_fixture, private_state_fixture):
     """Testet RandomAgent.wish."""
@@ -165,8 +163,8 @@ async def test_random_agent_wish(random_agent_unseeded, public_state_fixture, pr
     assert len(wishes) > 1 # Sollte verschiedene Werte liefern
 
 @pytest.mark.asyncio
-async def test_random_agent_choose_dragon_recipient(random_agent_unseeded, public_state_fixture, private_state_fixture):
-    """Testet RandomAgent.choose_dragon_recipient."""
+async def test_random_agent_give_dragon_away(random_agent_unseeded, public_state_fixture, private_state_fixture):
+    """Testet RandomAgent.give_dragon_away."""
     agent = random_agent_unseeded
     agent.player_index = private_state_fixture.player_index # Spieler 1
 
@@ -177,12 +175,11 @@ async def test_random_agent_choose_dragon_recipient(random_agent_unseeded, publi
 
     chosen_opponents = set()
     for _ in range(20): # Mehrere Versuche
-        recipient_index = await agent.choose_dragon_recipient(public_state_fixture, private_state_fixture)
+        recipient_index = await agent.give_dragon_away(public_state_fixture, private_state_fixture)
         assert isinstance(recipient_index, int)
         assert recipient_index in possible_opponents
         chosen_opponents.add(recipient_index)
     assert len(chosen_opponents) > 0 # Mindestens einer der Gegner wurde gewählt.
-    # assert len(chosen_opponents) == 2 # Wahrscheinlich, aber nicht garantiert.
 
 # -------------------------------------------------------
 # Alte Tests (ursprünglich mit unittest geschrieben)
@@ -190,7 +187,9 @@ async def test_random_agent_choose_dragon_recipient(random_agent_unseeded, publi
 
 @pytest.fixture
 def agent():
-    return RandomAgent("RandomAgent", seed=123)
+    agent = RandomAgent("Agent_1", seed=123)
+    agent.player_index = 1
+    return agent
 
 @pytest.fixture
 def pub():
@@ -198,31 +197,34 @@ def pub():
 
 @pytest.fixture
 def priv():
-    return PrivateState()
+    priv = PrivateState(player_index=1)
+    priv.player_index = 1
+    return priv
 
 def test_name(agent):
-    assert agent.name == "RandomAgent"
+    assert agent.name == "Agent_1"
 
-def test_schupf(agent, pub, priv):
-    priv._hand = parse_cards("S4 B4 G4 R4 S3 B3 G3 R3 S2 B2 G2 R2 Ma Hu")
+async def test_schupf(agent, pub, priv):
+    priv._hand_cards = parse_cards("S4 B4 G4 R4 S3 B3 G3 R3 S2 B2 G2 R2 Ma Hu")
     pub._number_of_cards = [14, 14, 14, 14]
-    result = agent.schupf(pub, priv)
+    result = await agent.schupf(pub, priv)
     assert result == parse_cards("S4 B3 G4")
 
-def test_announce(agent, pub, priv):
-    result = agent.announce(pub, priv)
+async def test_announce(agent, pub, priv):
+    result = await agent.announce(pub, priv)
     assert result in [True, False]
 
-def test_combination(agent, pub, priv):
+async def test_play(agent, pub, priv):
     #List[Tuple[Cards, Combination]]
-    action_space = [(list(range(5)), ('type', 5, 10)), ([], ('pass', 0, 0))]
-    result = agent.play(pub, priv, action_space)
+    action_space = [([(3,2)], (CombinationType, 1, 3)), ([], (CombinationType.PASS, 0, 0))]
+    result = await agent.play(pub, priv, action_space)
     assert result in action_space
 
-def test_wish(agent, pub, priv):
-    result = agent.wish(pub, priv)
+async def test_wish(agent, pub, priv):
+    result = await agent.wish(pub, priv)
     assert result in range(2, 15)
 
-def test_gift(agent, pub, priv):
-    result = agent.choose_dragon_recipient(pub, priv)
-    assert result in [priv.opponent_right_index, priv.opponent_left_in+]
+async def test_give_dragon_away(agent, pub, priv):
+    result = await agent.give_dragon_away(pub, priv)
+    assert result in [agent.opponent_right_index, agent.opponent_left_index]
+    assert result in [priv.opponent_right_index, priv.opponent_left_index]

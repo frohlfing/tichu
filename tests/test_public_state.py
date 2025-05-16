@@ -51,7 +51,7 @@ def test_public_state_initialization(initial_pub_state):
     assert pub.loser_index == -1
     # Diese Felder könnten Properties sein:
     # assert pub.is_round_over is False
-    # assert pub.double_victory is False
+    # assert pub.is_double_victory is False
     assert pub.game_score == [[], []]
     assert pub.round_counter == 0
     assert pub.trick_counter == 0

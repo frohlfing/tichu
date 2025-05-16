@@ -13,10 +13,10 @@ from typing import Tuple, List
 # Spielkarten
 # -----------------------------------------------------------------------------
 
-# Typ-Alias für eine Karte
+# Type-Alias für eine Karte
 Card = Tuple[int, int]  # Wert, Farbe   # todo überall konsequent verwenden
 
-# Typ-Alias für mehrere Karten
+# Type-Alias für mehrere Karten
 Cards = List[Card]  # todo überall konsequent verwenden
 
 # Sonderkarten

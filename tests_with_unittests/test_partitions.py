@@ -48,7 +48,7 @@ class TestPartitions(unittest.TestCase):
     def test_filter_playable_partitions(self):
         partitions = []
         build_partitions(partitions, build_combinations(parse_cards("RB BB BZ SZ")), counter=4, maxlen=2000)
-        action_space = [([], FIGURE_PASS), ([(11,1)], (SINGLE, 1, 11)), ([(11,3)], (SINGLE, 1, 11))]  # Passen, RB, BB
+        action_space = [([], FIGURE_PASS), ([(11,4)], (CombinationType.SINGLE, 1, 11)), ([(11,2)], (CombinationType.SINGLE, 1, 11))]  # Passen, RB, BB
         partitions = filter_playable_partitions(partitions, action_space)
         expected = ["PaarZ Bube Bube", "Bube Bube Zehn Zehn"]
         self.assertEqual(len(expected), len(partitions))
@@ -57,7 +57,7 @@ class TestPartitions(unittest.TestCase):
 
     def test_filter_playable_combinations(self):
         partition = [([(10, 3), (10, 4)], (2, 2, 10)), ([(11, 1)], (1, 1, 11)), ([(11, 3)], (1, 1, 11))]  # PaarZ Bube Bube
-        action_space = [([], FIGURE_PASS), ([(11, 1)], (SINGLE, 1, 11)), ([(11, 3)], (SINGLE, 1, 11))]  # Passen, RB, BB
+        action_space = [([], FIGURE_PASS), ([(11, 1)], (CombinationType.SINGLE, 1, 11)), ([(11, 3)], (CombinationType.SINGLE, 1, 11))]  # Passen, RB, BB
         combis = filter_playable_combinations(partition, action_space)
         expected = [([(11, 1)], (1, 1, 11)), ([(11, 3)], (1, 1, 11))]  # RB, BB
         self.assertEqual(len(expected), len(combis))
@@ -108,7 +108,7 @@ class TestPartitions(unittest.TestCase):
 
         # 8) Wie 4, aber mit Anspielrecht
         _test(9, expected=1., hand="RZ G9 G8 B7 G6", hidden="RB GB BB SB Hu Ma Dr", number_of_cards=[5, 7, 0, 0], trick_figure=(1, 1, 11),
-              action_space=[(parse_cards("RZ G9 G8 B7 G6"), (STREET, 5, 10)),])
+              action_space=[(parse_cards("RZ G9 G8 B7 G6"), (CombinationType.STREET, 5, 10)),])
 
 
 if __name__ == "__main__":

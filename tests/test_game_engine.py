@@ -60,7 +60,7 @@ from src.players.agent import Agent
 from src.game_engine import GameEngine
 from src.public_state import PublicState
 from src.private_state import PrivateState
-from src.lib.cards import Cards, parse_cards, CARD_MAH, CARD_DRA
+from src.lib.cards import Cards, parse_cards, CARD_MAH, CARD_DRA, deck
 from src.lib.combinations import CombinationType, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA
 
 # === Fixtures: Wiederverwendbare Test-Setups ===
@@ -97,7 +97,7 @@ def mock_agents(mocker) -> List[AsyncMock]:
         player_mock.announce = AsyncMock(name=f'announce_mock_{i}')
         player_mock.play = AsyncMock(name=f'play_mock_{i}') # play statt combination
         player_mock.wish = AsyncMock(name=f'wish_mock_{i}')
-        player_mock.choose_dragon_recipient = AsyncMock(name=f'gift_mock_{i}') # Umbenannt
+        player_mock.give_dragon_away = AsyncMock(name=f'gift_mock_{i}') # Umbenannt
         player_mock.cleanup = AsyncMock(name=f'cleanup_mock_{i}') # Auch cleanup mocken
 
         # Setze Standard-Attribute für den Mock
@@ -372,7 +372,7 @@ def test_engine_clear_trick_round_end(initial_public_state):
     # erste Runde
 
     pub.is_round_over = True # Runde ist vorbei
-    pub.double_victory = False
+    pub.is_double_victory = False
     pub.winner_index = 0
     pub.loser_index = 1
     pub.current_turn_index = 2
@@ -400,7 +400,7 @@ def test_engine_clear_trick_round_end(initial_public_state):
 
     pub.announcements = [0, 0, 0, 1] # Keine Ansagen
     pub.is_round_over = True # Runde ist vorbei
-    pub.double_victory = False
+    pub.is_double_victory = False
     pub.winner_index = 0
     pub.loser_index = 1
     pub.current_turn_index = 2
@@ -478,3 +478,13 @@ async def test_engine_calls_player_schupf(game_engine, initial_public_state, ini
     # 2. Hat die Engine-Methode den State korrekt aktualisiert?
     assert len(privs[player_index].hand_cards) == 11
     assert privs[player_index].given_schupf_cards == [card for card in engine_schupf_result if card]
+
+# -------------------------------------------------------
+# Alte Tests (ursprünglich mit unittest geschrieben)
+# -------------------------------------------------------
+
+def test_shuffle_cards(game_engine):
+    mixed_deck = list(deck)
+    assert list(deck) == mixed_deck
+    game_engine._shuffle_cards(mixed_deck)
+    assert list(deck) != mixed_deck

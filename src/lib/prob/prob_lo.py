@@ -175,7 +175,7 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                         b = all(sum(1 for v, _ in hand if v == rlo - i) >= 1 for i in range(m))
 
                 elif t == BOMB:  # Bombe
-                    b = True  # bereits jede Einzelkarte kann ist einer Bombe unterlegen
+                    b = k > 0  # bereits jede Einzelkarte ist einer Bombe unterlegen
 
                 else:
                     assert False
@@ -224,7 +224,7 @@ def inspect_combination():  # pragma: no cover
         #("Dr Hu Ma S4 R3 R2 Ph", 1, (1, 1, 16), 4, 7, "Einzelkarte Phönix (2)"),
         #("SB RZ R9 G9 R8 G8 B4", 2, (1, 1, 9), 15, 21, "Neun, Test 1884"),
         #("Ph Dr RB GZ BZ SZ R9 G9 S9 R8 G8 B4", 1, (1, 1, 15), 12, 12, "Drache, Test 3289"),
-        ("Dr", 1, (1, 1, 15), 12, 12, "Drache, Test 3289"),
+        #("Dr", 1, (1, 1, 15), 12, 12, "Drache, Test 3289"),
         # # Pärchen
         #("Dr RK GK BB SB RB R2", 5, (2, 2, 12), 18, 21, "Pärchen ohne Phönix"),
         #("Ph RK GK BD SB RB R2", 5, (2, 2, 11), 10, 21, "Pärchen mit Phönix"),
@@ -261,7 +261,7 @@ def inspect_combination():  # pragma: no cover
         #("GA RK GD RB GZ R9 S8 B7 S6 Ph", 9, (6, 5, 11), 9, 10, "5er-Straße aus 10 Karten"),
         #("SB RZ R9 R8 R7 R6", 5, (6, 5, 11), 1, 6, "Straße mit Farbbombe (bekannter Fehler, 0/6 wäre eigentlich richtig)"),
         # Bombe
-        #("RK GB BB SB RB BZ R2", 5, (7, 4, 10), 21, 21, "4er-Bombe"),
+        ("RK GB BB SB RB BZ R2", 0, (7, 4, 10), 21, 21, "4er-Bombe"),
         #("BK BB BZ B9 B8 B7 B2", 5, (7, 7, 10), 21, 21, "Farbbombe"),
     ]
     for cards, k, figure, matches_expected, total_expected, msg in test:

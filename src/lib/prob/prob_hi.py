@@ -386,8 +386,10 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
 def inspect_combination():  # pragma: no cover
     #inspect("BK BB BZ B9 B8 B7 B2", 5, (7, 5, 10), verbose=True)
     test = [
+        ("Ph SB RB GZ BZ SZ R9 G9 B6 B5 B4 B3 B2 Ma", 14, (1, 1, 11), 0, 0, "foo"),
         #("RA BD BB RZ B9 B2 Ph", 6, (6, 5, 13), 0, 7, "5er-Straße aus 7 Karten mit Phönix (nicht hinten verlängert)"),
-        ("SB RZ R9 G9 R8 G8 B4", 0, (1, 1, 0), 0, 1, "Hund, Test 1"),
+        #("SB RZ R9 G9 R8 G8 B4", 0, (1, 1, 0), 0, 1, "Hund, Test 1"),
+        #("Dr Hu Ph Ma S4 R3 R2", 1, (1, 1, 0), 6, 7, "Einzelkarte Hund"),
         #("Ph SB RB GZ BZ SZ R9 G9 S9 R8 G8 B4 Hu", 1, (1, 1, 0), 12, 13, "Hund, Test 167"),
 
     ]

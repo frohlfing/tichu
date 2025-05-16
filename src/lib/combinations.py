@@ -26,7 +26,7 @@ class CombinationType(enum.IntEnum):  # todo überall konsequent verwenden
     STREET = 6  # Straße
     BOMB = 7  # Vierer-Bombe oder Farbbombe
 
-# Typ-Alias für eine Kombination
+# Type-Alias für eine Kombination
 Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)  # todo überall konsequent verwenden
 Combinations = List[Tuple[Cards, Combination]]  # todo missverständlich? Wenn nicht, überall konsequent verwenden
 

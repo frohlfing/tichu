@@ -376,7 +376,7 @@ class HeuristicAgent(Agent):
         assert 2 <= wish <= 14, "Der Wunsch muss zw. 2 und 14 (As) liegen."
         return wish
 
-    async def choose_dragon_recipient(self, pub: PublicState, priv: PrivateState) -> int:
+    async def give_dragon_away(self, pub: PublicState, priv: PrivateState) -> int:
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 

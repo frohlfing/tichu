@@ -175,7 +175,7 @@ class GameEngine:
                     agent.reset_round()
 
                 # Karten mischen
-                self.shuffle_cards(mixed_deck)
+                self._shuffle_cards(mixed_deck)
 
                 # Karten aufnehmen, erst 8 dann alle
                 first = self._random.integer(0, 4)  # wählt zufällig eine Zahl zwischen 0 und 3
@@ -228,8 +228,8 @@ class GameEngine:
 
                     # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
                     if pub.trick_owner_index == priv.player_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt aber immer liegen
-                        if not pub.double_victory and pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
-                            opponent = await agent.choose_dragon_recipient(pub, priv)
+                        if not pub.is_double_victory and pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
+                            opponent = await agent.give_dragon_away(pub, priv)
                             assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                         else:
                             opponent = -1
@@ -265,8 +265,8 @@ class GameEngine:
                             if pub.is_round_over:
                                 # Spiel ist vorbei; letzten Stich abräumen und fertig!
                                 assert pub.trick_owner_index == priv.player_index
-                                if not pub.double_victory and pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
-                                    opponent = await agent.choose_dragon_recipient(pub, priv)
+                                if not pub.is_double_victory and pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
+                                    opponent = await agent.give_dragon_away(pub, priv)
                                     assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                                 else:
                                     opponent = -1
@@ -342,9 +342,9 @@ class GameEngine:
         pub.winner_index = -1
         pub.loser_index = -1
         pub.is_round_over = False
-        pub.double_victory = False
+        pub.is_double_victory = False
     
-    def shuffle_cards(self, cards: Cards) -> None:
+    def _shuffle_cards(self, cards: Cards) -> None:
         """
         Karten mischen
         :param cards: Kartendeck
@@ -468,7 +468,7 @@ class GameEngine:
                 assert 0 <= pub.winner_index <= 3
                 if (pub.current_turn_index + 2) % 4 == pub.winner_index:  # Doppelsieg?
                     pub.is_round_over = True
-                    pub.double_victory = True
+                    pub.is_double_victory = True
             elif n == 1:
                 pub.is_round_over = True
                 for player in range(0, 4):
@@ -502,7 +502,7 @@ class GameEngine:
         assert pub.trick_owner_index == pub.current_turn_index
         assert pub.trick_combination != FIGURE_PASS
 
-        if pub.double_victory:
+        if pub.is_double_victory:
             # Doppelsieg! Die Karten müssen nicht gezählt werden.
             assert pub.is_round_over
             assert 0 <= pub.winner_index <= 3

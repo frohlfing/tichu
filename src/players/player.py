@@ -115,7 +115,7 @@ class Player:
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'wish' implementieren.")
 
-    async def choose_dragon_recipient(self, pub: PublicState, priv: PrivateState) -> int:  # todo besseren Namen finden
+    async def give_dragon_away(self, pub: PublicState, priv: PrivateState) -> int:  # todo besseren Namen finden
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 
@@ -126,7 +126,7 @@ class Player:
         :return: Der Index (0-3) des Gegners, der den Stich erhält.
         :raises PlayerInteractionError: Wenn die Aktion fehlschlägt.
         """
-        raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'gift' implementieren.")
+        raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'give_dragon_away' implementieren.")
 
     # ------------------------------------------------------
     # Eigenschaften

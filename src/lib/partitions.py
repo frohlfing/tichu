@@ -16,6 +16,8 @@ from typing import List, Tuple, Optional
 # Partitionen
 # -----------------------------------------------------------------------------
 
+# Type-Alias für eine Partition
+# Typ Partition ist technisch gleich Typ Combinations, aber in der Partition kommt keine Karten mehrfach vor.
 Partition = List[Tuple[Cards, Combination]]  # todo überall konsequent verwenden
 
 # Berechnet die Partitionen, die mit den verfügbaren Kombinationen gebildet werden können.

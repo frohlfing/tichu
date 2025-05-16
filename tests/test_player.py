@@ -14,7 +14,7 @@ Zusammenfassung der Tests für Player:
     - Korrekte Rückgabe des Klassennamens (`class_name`).
     - Korrekte Berechnung der Indizes für Partner und Gegner (`partner_index`, `opponent_right_index`, `opponent_left_index`).
 - Abstrakte Natur:
-    - Verifizierung durch eine Dummy-Subklasse, dass der Aufruf der nicht implementierten, abstrakten Entscheidungsmethoden (`schupf`, `announce`, `play`, `wish`, `choose_dragon_recipient`) einen `NotImplementedError` auslöst.
+    - Verifizierung durch eine Dummy-Subklasse, dass der Aufruf der nicht implementierten, abstrakten Entscheidungsmethoden (`schupf`, `announce`, `play`, `wish`, `give_dragon_away`) einen `NotImplementedError` auslöst.
 """
 
 import pytest
@@ -94,4 +94,4 @@ async def test_player_abstract_methods_raise_not_implemented():
     with pytest.raises(NotImplementedError):
         await player.wish(pub_state, priv_state)
     with pytest.raises(NotImplementedError):
-        await player.choose_dragon_recipient(pub_state, priv_state) # Umbenannt
+        await player.give_dragon_away(pub_state, priv_state) # Umbenannt

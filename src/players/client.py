@@ -278,7 +278,7 @@ class Client(Player):
         # TODO: Implementieren!
         return self._random.choice([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
 
-    async def choose_dragon_recipient(self, pub: PublicState, priv: PrivateState) -> int:
+    async def give_dragon_away(self, pub: PublicState, priv: PrivateState) -> int:
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 

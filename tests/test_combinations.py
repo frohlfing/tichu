@@ -276,11 +276,11 @@ def test_parse_and_stringify_figure():
         assert figure == parse_figure(lb), f"Index nicht OK: {i}, {figure}, {lb}"
 
 def test_stringify_type():
-    assert stringify_type(0) == "pass"
-    assert stringify_type(5, 6) == "fullhouse"
-    assert stringify_type(6) == "street"
-    assert stringify_type(6, 7) == "street07"
-    assert stringify_type(7) == "bomb"
+    assert stringify_type(CombinationType.PASS) == "pass"
+    assert stringify_type(CombinationType.FULLHOUSE, 6) == "fullhouse"
+    assert stringify_type(CombinationType.STREET) == "street"
+    assert stringify_type(CombinationType.STREET, 7) == "street07"
+    assert stringify_type(CombinationType.BOMB) == "bomb"
 
 @pytest.mark.parametrize("cards, expected", [
     ([], (PASS, 0, 0)),

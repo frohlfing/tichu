@@ -2,8 +2,8 @@ import unittest
 from src.lib.cards import *
 from src.lib.combinations import *
 from src.players.heuristic_agent import HeuristicAgent
-from _dev.altkram.private_state import PrivateState
-from _dev.altkram.public_state import PublicState
+from src.private_state import PrivateState
+from src.public_state import PublicState
 
 
 class TestHeuristicAgent(unittest.TestCase):
@@ -210,7 +210,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.pub._number_of_cards = [8, 14, 14, 14]
         self.assertEqual(13, self.agent.wish(self.pub, self.priv))
 
-    def test_gift(self):
+    def test_give_dragon_away(self):
         cards = parse_cards("Dr BA GA RD G9 S8 R8 B8 G6 S6 G5 B5 S5 Ma")
         self.pub._mixed_deck = cards + other_cards(cards)
         cards = self.pub.deal_out(0, 8)
@@ -222,11 +222,11 @@ class TestHeuristicAgent(unittest.TestCase):
         self.priv._hand = parse_cards("BA GA RD S8 R8 B8 G7 S7 G5 B5 S5 G4")
         self.pub._played_cards = parse_cards("S4 R6 R7 Dr")
         self.pub._number_of_cards = [12, 12, 14, 14]
-        self.assertEqual(3, self.agent.choose_dragon_recipient(self.pub, self.priv))
+        self.assertEqual(3, self.agent.give_dragon_away(self.pub, self.priv))
         self.pub._number_of_cards = [12, 14, 14, 12]
-        self.assertEqual(1, self.agent.choose_dragon_recipient(self.pub, self.priv))
+        self.assertEqual(1, self.agent.give_dragon_away(self.pub, self.priv))
         self.pub._number_of_cards = [13, 13, 13, 13]
-        self.assertEqual(3, self.agent.choose_dragon_recipient(self.pub, self.priv))
+        self.assertEqual(3, self.agent.give_dragon_away(self.pub, self.priv))
 
 
 if __name__ == "__main__":
