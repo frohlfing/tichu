@@ -23,7 +23,6 @@ class ClientDisconnectedError(PlayerInteractionError):
     """
     Wird ausgelöst, wenn versucht wird, eine Aktion mit einem Client auszuführen, der nicht (mehr) verbunden ist.
     """
-
     def __init__(self, message="Client ist nicht verbunden", *args):
         super().__init__(message, *args)
 

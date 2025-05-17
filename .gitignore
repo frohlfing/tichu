@@ -5,6 +5,7 @@
 /bw
 /cov/htmlcov
 /data
+/docs/E-Mail_Urheberrechte
 /logs
 /.env
 /*.py.lprof

@@ -12,12 +12,15 @@ from src.common.logger import logger
 from src.lib.errors import ClientDisconnectedError
 from typing import Optional
 
-# Tichu-Session
-session: Optional[str] = None  # todo aus session-Datei laden
+# Tichu-Session-ID
+session_id: Optional[str] = None  # todo aus session-Datei laden
+
+# Request-ID der letzten Server-Anfrage
+last_request_id: Optional[str] = None
 
 async def receive_messages(ws: ClientWebSocketResponse):
     """ Lauscht kontinuierlich auf Nachrichten vom Server und gibt sie aus. """
-    global session
+    global session_id, last_request_id
 
     logger.debug("Starte Empfangs-Task...")
 
@@ -27,14 +30,72 @@ async def receive_messages(ws: ClientWebSocketResponse):
                 data = json.loads(msg.data)
                 logger.debug(f"Empfangen: {json.dumps(data)}")
 
-                msg_type, payload = data.get("type"), data.get("payload", {})
-                if msg_type == "joined":
-                     session = payload.get("session")
-                     print(f"Session: {session}")
-                elif msg_type == "action":
+                msg_type = data.get("type")
+                payload = data.get("payload", {})
+
+                if msg_type == "joined_confirmation":  # Antwort vom Server auf die join-Nachricht
+                    session_id = payload.get("session_id")
+                    public_state: dict = payload.get("public_state", {})
+                    private_state: dict = payload.get("private_state", {})
+                    print(f"--- ERFOLGREICH BEIGETRETEN ---")
+                    print(f"  Session ID: {session_id}")
+                    print(f"  Dein Spieler-Index: {private_state.get("player_index", "N/A")}")
+                    print(f"  Öffentlicher Spielstatus (Auszug): Tischname: {public_state.get('table_name', 'N/A')}, Spieler: {public_state.get('player_names', [])}")
+                    print(f"  Privater Spielstatus (Auszug): Handkarten: {private_state.get('hand_cards', 'N/A')}")
+
+                elif msg_type == "pong":  # Antwort vom Server auf die ping-Nachricht
+                    timestamp = payload.get("timestamp")
+                    print(f"--- PONG ---")
+                    print(f"  Timestamp: {timestamp}")
+
+                elif msg_type == "request":  # Proaktive Nachrichten vom Server
+                    #public_state = payload.get("public_state", {})
+                    #private_state = payload.get("private_state", {})
+                    request_id = payload.get("request_id", "")
+                    last_request_id = request_id
                     action = payload.get("action")
-                    payload = payload.get("payload")
-                    print(f"{action}: {json.dumps(payload)}")
+                    print(f"--- SERVER ANFRAGE ---")
+                    print(f"  Aktion angefordert: {action}")
+                    print(f"  Tipp: Antworte mit: {{\"type\": \"response\", \"payload\": {{\"request_id\": \"{request_id}\", \"data\": {{...deine Daten...}}}}}}")
+                    print(f"  Request ID: {request_id}")
+
+                elif msg_type == "notification":  # Benachrichtigung an alle Spieler
+                    event = payload.get("event")
+                    event_data = payload.get("data", {})
+                    print(f"--- SERVER BENACHRICHTIGUNG ---")
+                    print(f"  Event: {event}")
+                    print(f"  Daten: {json.dumps(event_data)}")
+
+                elif msg_type == "deal_cards":  # Proaktive Nachrichten vom Server
+                    hand_cards = payload.get("hand_cards")
+                    print(f"--- KARTEN ERHALTEN ({len(hand_cards)}) ---")
+                    print(f"  Deine Handkarten: {hand_cards if hand_cards else 'Keine'}")
+
+                elif msg_type == "schupf_cards_received":
+                    received = payload.get("received_cards", {})
+                    print(f"--- SCHUPF-KARTEN ERHALTEN ---")
+                    print(f"  Vom rechten Gegner: {received.get('from_opponent_right', 'N/A')}")
+                    print(f"  Vom Partner: {received.get('from_partner', 'N/A')}")
+                    print(f"  Vom linken Gegner: {received.get('from_opponent_left', 'N/A')}")
+
+                elif msg_type == "error":
+                    error_message = payload.get("message")
+                    error_code = payload.get("code")
+                    error_details = payload.get("details", {})
+                    original_request_id = payload.get("request_id")  # aus der Response-Nachricht
+                    print(f"--- SERVER FEHLER (ERROR) ---")
+                    print(f"  Fehlercode: {error_code}")
+                    print(f"  Nachricht: {error_message}")
+                    if original_request_id:
+                        print(f"  Bezogen auf Request ID: {original_request_id}")
+                    if error_details:
+                        print(f"  Details: {json.dumps(error_details)}")
+
+                else:
+                    # Fallback für unbekannte Nachrichtentypen vom Server
+                    print(f"--- UNBEKANNTE NACHRICHT VOM SERVER ---")
+                    print(f"  Typ: {msg_type}")
+                    print(f"  Payload: {json.dumps(payload)}")
 
             except json.JSONDecodeError:
                 logger.exception(f"Kein JSON empfangen: {msg.data}")
@@ -55,9 +116,9 @@ async def receive_messages(ws: ClientWebSocketResponse):
 
 async def main(args: argparse.Namespace):
     # URL zusammenbauen
-    global session
-    if session:
-        url = f"ws://{args.host}:{args.port}/ws?session={session}"
+    global session_id
+    if session_id:
+        url = f"ws://{args.host}:{args.port}/ws?session={session_id}"
     else:
         url = f"ws://{args.host}:{args.port}/ws?name={args.name}&table={args.table}"
 

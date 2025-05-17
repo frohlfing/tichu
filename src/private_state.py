@@ -53,18 +53,16 @@ class PrivateState:
         """
         Konvertiert den Zustand in ein Dictionary für JSON-Serialisierung.
 
-        Verwendet eine übergebene Funktion zur Konvertierung interner Karten in ihre String-Label-Repräsentation.
-
         :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
         """
         return {
-            "playerIndex": self.player_index,
-            "handCards": stringify_cards(self.hand_cards),
-            "givenSchupfCards": stringify_cards(self.given_schupf_cards),
-            "receivedSchupfCards": stringify_cards(self.received_schupf_cards),
+            "player_index": self.player_index,
+            "hand_cards": stringify_cards(self.hand_cards),
+            "given_schupf_cards": stringify_cards(self.given_schupf_cards),
+            "received_schupf_cards": stringify_cards(self.received_schupf_cards),
             # todo schupf_cards in kanonischer Form
-            #  "givenSchupfCards": [stringify_cards([card]) if card else None for card in self.given_schupf_cards],
-            #  "receivedSchupfCards": [stringify_cards([card]) if card else None for card in self.received_schupf_cards],
+            #  "given_schupf_cards": [stringify_cards([card]) if card else None for card in self.given_schupf_cards],
+            #  "received_schupf_cards": [stringify_cards([card]) if card else None for card in self.received_schupf_cards],
         }
 
     @property

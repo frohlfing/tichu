@@ -15,14 +15,14 @@
     1.  [Regelwerk](#31-regelwerk)
     2.  [Wichtige Spielphasen und Ablauf einer Partie](#32-wichtige-spielphasen-und-ablauf-einer-partie)
     3.  [Ausnahmeregeln und Spezialkarten (Phönix)](#33-ausnahmeregeln-und-spezialkarten-phönix)
-4.  [Modulübersicht und Code-Struktur](#4-modulübersicht-und-code-struktur)
+4.  [Modulübersicht und Code-Struktur](#4-modulübersicht-und-verzeichnis-struktur)
     1.  [`src/` Verzeichnis](#41-src-verzeichnis)
         1.  [`src/lib/`](#411-srclib)
         2.  [`src/players/`](#412-srcplayers)
         3.  [`src/common/`](#413-srccommon)
         4.  [Weitere Kernmodule (`game_engine.py`, `public_state.py` etc.)](#414-weitere-kernmodule)
     2.  [`tests/` Verzeichnis](#42-tests-verzeichnis)
-    3.  [Startskripte (`main.py`)](#43-startskripte-mainpy)
+    3.  [Start-Skripte (`main.py`)](#43-startskripte-mainpy)
 5.  [Datenstrukturen](#5-datenstrukturen)
     1.  [`PublicState`](#51-publicstate)
     2.  [`PrivateState`](#52-privatestate)
@@ -33,11 +33,10 @@
     2.  [Implementierung (`arena.py`)](#62-implementierung-arenapy)
 7.  [Live-Betrieb (Spiel mit realen Spielern) - In Entwicklung](#7-live-betrieb-spiel-mit-realen-spielern---in-entwicklung)
     1.  [Grundkonzept](#71-grundkonzept)
-    2.  [WebSocket-Kommunikation](#72-websocket-kommunikation)
-        1. [Nachrichtenformat](#721-nachrichtenformat)
-        2. [Request-/Response-Nachrichten](#722-request-response-nachrichten)
-        3. [Notification-Nachrichten](#723-notification-nachrichten)
-        4. [Error-Nachrichten](#724-error-nachrichten) 
+    2.  [WebSocket-Nachrichten](#72websocket-nachrichten)
+        1[Request-/Response-Nachrichten](#721-request-response-nachrichten)
+        2[Notification-Nachrichten](#722-notification-nachrichten)
+        3[Fehlermeldungen](#723-fehlermeldungen)
     3.  [Verantwortlichkeiten der Komponenten im Live-Betrieb](#73-verantwortlichkeiten-der-komponenten-im-live-betrieb)
         1.  [WebSocket-Handler](#731-websocket-handler)
         2.  [Game-Factory](#732-game-factory)
@@ -45,14 +44,16 @@
         4.  [Client (serverseitiger WebSocket-Endpunkt des realen Spielers)](#734-client-serverseitiger-websocket-endpunkt-des-realen-Spielers)
 8.  [Agenten (KI-gesteuerter Spieler)](#8-agenten-ki-gesteuerter-spieler)
     1.  [Basisklassen (`Player`, `Agent`)](#81-basisklassen-player-agent)
-    2.  [Implementierte und geplante Agenten-Typen](#82-implementierte-und-geplante-agenten-typen)
-9.  [Entwicklungsumgebung und Deployment](#9-entwicklungsumgebung-und-deployment)
+    2.  [Agenten-Typen](#82-agenten-typen)
+9.  [Entwicklungsumgebung](#9-entwicklungsumgebung)
     1.  [Systemanforderungen](#91-systemanforderungen)
     2.  [Einrichtung](#92-einrichtung)
     3.  [Testing](#93-testing)
-10. [Frontend (Geplant)](#10-frontend-geplant)
-11. [Versionsnummer](#11-versionsnummer)
-12. [Glossar](#12-glossar)
+10. [Frontend (Geplant)](#10-frontend)
+11. [Exceptions](#11-exceptions)
+12. [Versionsnummer](#12-versionsnummer)
+    1. [Release auf Github erstellen](#121-release-auf-github-erstellen)
+13. [Glossar](#13-glossar)
 
 ---
 
@@ -61,7 +62,7 @@
 Dieses Dokument beschreibt die technische Implementierung einer Webanwendung für das Kartenspiel "Tichu". Ziel des Projekts ist es, eine Plattform zu schaffen, auf der sowohl KI-gesteuerte Agenten als auch menschliche Spieler gegeneinander Tichu spielen können.
 
 Das Projekt umfasst zwei Hauptbetriebsarten:
-*   Eine **Arena** für schnelle Simulationen zwischen Agenten, optimiert für Forschungs- und Entwicklungszwecke (z.B. Training von KI-Agenten).
+*   Eine **Arena** für schnelle Simulationen zwischen Agenten optimiert für Forschung- und Entwicklungszwecke (z.B. Training von KI-Agenten).
 *   Einen **Live-Betrieb**, der menschlichen Spielern via WebSockets ermöglicht, gegen Agenten oder andere menschliche Spieler anzutreten.
 
 ## 2. Systemarchitektur
@@ -133,19 +134,21 @@ Die Implementierung versucht, diese Regeln so genau wie möglich abzubilden.
     *   **Phönix als Einzelkarte (Kombination):** Die Kombination "Phönix als Einzelkarte" hat den Rang 14.5 (schlägt das Ass, aber nicht den Drachen).
     *   **Phönix im Stich:** Sticht der Phönix eine Einzelkarte, so ist sein Rang im Stich 0.5 höher die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
 
-## 4. Modulübersicht und Code-Struktur
+## 4. Modulübersicht und Verzeichnis-Struktur
 
 Das Projekt ist in Hauptverzeichnisse `src/` (Quellcode) und `tests/` (Unit-Tests) unterteilt.
 
 ### 4.1 `src/` Verzeichnis
 
 #### 4.1.1 `src/lib/`
+
 Enthält Kernbibliotheken für die Spiellogik, die relativ eigenständig sind:
 *   `cards.py`: Definition von Karten, dem Deck, Punktwerten und Hilfsfunktionen zur Kartenmanipulation (Parsen, Stringify, Vektorisierung).
 *   `combinations.py`: Definition von Kombinationstypen, Logik zur Erkennung (`get_figure`), Generierung (`build_combinations`) und Validierung von Kartenkombinationen. Enthält auch Logik zur Erstellung des gültigen Aktionsraums (`build_action_space`).
 *   `partitions.py`: (Falls vorhanden und relevant für Agenten) Logik zur Aufteilung von Handkarten in mögliche Sequenzen von Kombinationen.
 
 #### 4.1.2 `src/players/`
+
 Definition der verschiedenen Spieler-Typen:
 *   `player.py`: Abstrakte Basisklasse `Player` mit der Grundschnittstelle für alle Spieler.
 *   `agent.py`: Abstrakte Basisklasse `Agent`, erbt von `Player`, für KI-gesteuerte Spieler.
@@ -154,6 +157,7 @@ Definition der verschiedenen Spieler-Typen:
 *   `client.py`: (Für Live-Betrieb) Klasse, die einen menschlichen Spieler repräsentiert und die WebSocket-Kommunikation auf Serverseite abwickelt.
 
 #### 4.1.3 `src/common/`
+
 Allgemeine Hilfsmodule:
 *   `logger.py`: Konfiguration des Logging-Frameworks, inklusive farbiger Konsolenausgabe.
 *   `rand.py`: Benutzerdefinierte Zufallsgenerator-Klasse, optimiert für potenzielle Multiprocessing-Szenarien (verzögerte Initialisierung des Seeds pro Instanz).
@@ -162,15 +166,18 @@ Allgemeine Hilfsmodule:
 *   `git_utils.py`: Hilfsfunktionen zur Interaktion mit Git (z.B. Ermittlung des aktuellen Tags/Version).
 
 #### 4.1.4 Weitere Kernmodule
+
 *   `public_state.py`: Definition der `PublicState`-Datenklasse, die alle öffentlich sichtbaren Informationen eines Spiels enthält.
 *   `private_state.py`: Definition der `PrivateState`-Datenklasse, die die privaten Informationen eines Spielers (Handkarten etc.) enthält.
 *   `game_engine.py`: Die `GameEngine`-Klasse, die die Hauptspiellogik für einen Tisch steuert, Runden abwickelt und mit den `Player`-Instanzen interagiert.
 *   `arena.py`: Die `Arena`-Klasse für den Arena-Betrieb, führt mehrere Spiele parallel oder sequenziell aus und sammelt Statistiken.
 
 ### 4.2 `tests/` Verzeichnis
+
 Enthält Unit-Tests für die Module in `src/`, geschrieben mit `pytest`. Die Struktur spiegelt grob die `src/`-Struktur wider (z.B. `test_cards.py`, `test_game_engine.py`).
 
-### 4.3 Startskripte (`main.py`)
+### 4.3 Start-Skripte (`main.py`)
+
 *   `main.py`: Dient als Haupteinstiegspunkt für den Start des Arena-Betriebs. Konfiguriert Agenten und startet die `Arena`.
 *   `server.py`: Startet den Server für den Live-Betrieb. 
 *   `wsclient.py`: Startet einen interaktiven WebSocket-Client lediglich für Testzwecke. 
@@ -178,6 +185,7 @@ Enthält Unit-Tests für die Module in `src/`, geschrieben mit `pytest`. Die Str
 ## 5. Datenstrukturen
 
 ### 5.1 `PublicState`
+
 Eine `dataclass`, die alle Informationen enthält, die allen Spielern an einem Tisch bekannt sind. Dazu gehören u.a.:
 *   Namen der Spieler, aktueller Spieler am Zug (`current_turn_index`), Startspieler der Runde (`start_player_index`).
 *   Anzahl der Handkarten jedes Spielers (`count_hand_cards`).
@@ -189,6 +197,7 @@ Eine `dataclass`, die alle Informationen enthält, die allen Spielern an einem T
 *   Statusinformationen (z.B. `is_round_over`, `double_victory`, `current_phase`).
 
 ### 5.2 `PrivateState`
+
 Eine `dataclass`, die Informationen enthält, die nur dem jeweiligen Spieler bekannt sind:
 *   Der Index des Spielers (`player_index`).
 *   Die eigenen Handkarten (`_hand_cards`, zugreifbar über `@property hand_cards`).
@@ -196,12 +205,14 @@ Eine `dataclass`, die Informationen enthält, die nur dem jeweiligen Spieler bek
 *   Caches für mögliche Kombinationen (`_combination_cache`) und Partitionen (`_partition_cache`) der Handkarten zur Performanceoptimierung.
 
 ### 5.3 Kartenrepräsentation (`Card`, `Cards`)
+
 *   `Card`: Ein Tupel `(value: int, suit: int)`.
     *   `value`: 0 (Dog), 1 (Mah Jong), 2 bis 10, 11 (Jack/Bube), 12 (Queen/Dame), 13 (King/König), 14 (Ace/As), 15 (Dragon/Drache), 16 (Phoenix/Phönix).
     *   `suit`: 0 (Sonderkarte), 1 (Schwert/Schwarz), 2 (Pagode/Blau), 3 (Jade/Grün), 4 (Stern/Rot).
 *   `Cards`: Eine Liste von `Card`-Tupeln (`List[Card]`).
 
 ### 5.4 Kombinationen (`Combination`)
+
 *   `Combination`: Ein Tupel `(type: CombinationType, length: int, rank: int)`.
     *   `CombinationType`: Ein `IntEnum` für den Typ (z.B. `CombinationType.SINGLE`, `CombinationType.PAIR`, `CombinationType.STREET`, `CombinationType.BOMB`).
     *   `length`: Anzahl der Karten in der Kombination.
@@ -210,6 +221,7 @@ Eine `dataclass`, die Informationen enthält, die nur dem jeweiligen Spieler bek
 ## 6. Arena-Betrieb
 
 ### 6.1 Zweck
+
 Der Arena-Betrieb (`arena.py` gestartet über `main.py`) dient dazu, KI-Agenten in einer großen Anzahl von Spielen gegeneinander antreten zu lassen. Dies ist nützlich für:
 *   Testen der Stabilität der `GameEngine`.
 *   Evaluierung und Vergleich der Spielstärke verschiedener Agenten.
@@ -217,6 +229,7 @@ Der Arena-Betrieb (`arena.py` gestartet über `main.py`) dient dazu, KI-Agenten 
 *   Performance-Benchmarking.
 
 ### 6.2 Implementierung (`arena.py`)
+
 Die `Arena`-Klasse:
 *   Nimmt eine Liste von 4 Agenten und eine maximale Anzahl von Spielen entgegen.
 *   Kann Spiele parallel ausführen, indem `multiprocessing.Pool` genutzt wird, um die `GameEngine` für jedes Spiel in einem separaten Prozess zu starten. Dies beschleunigt die Simulation erheblich.
@@ -229,130 +242,130 @@ Die `Arena`-Klasse:
 
 Ein zentraler Server stellt eine WebSocket bereit. Menschliche Spieler verbinden sich über diese Websocket mit dem Server. 
 
-### 7.2 WebSocket-Kommunikation
-
-1) Grundsätzlich sendet der Client (serverseitigen Endpunkt) jedes Ereignis inkl. Spielzustand über alle aktiven Websocket-Verbindungen, damit der reale Spieler auf dem aktuellen Stand bleiben können. Das ist für Agenten nicht notwendig, da sie bei einer Entscheidung direkt auf den aktuellen Spielzustand zugreifen können.
+1) Grundsätzlich sendet der Client (serverseitigen Endpunkt) jedes Ereignis inkl. Spielzustand über alle aktiven Websocket-Verbindungen, damit der reale Spieler auf dem aktuellen Stand bleiben kann. Das ist für Agenten nicht notwendig, da sie bei einer Entscheidung direkt auf den aktuellen Spielzustand zugreifen können.
 2) Mit Verbindungsaufbau über die WebSocket sendet der reale Spieler direkt den Tisch-Namen mit. 
 3) Wenn der reale Spieler das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis er durch eine KI ersetzt wird.
 4) Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet (normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen und dann sagen, wer mit wem ein Team bildet.) Das findet in der Lobby statt.
 5) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
 6) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
 
-#### 7.2.1 Nachrichtenformat
+#### 7.2.WebSocket-Nachrichten
 
 Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `payload`-Feld.
 
 **Proaktive Nachrichten vom Spieler an den Server:**
 
-| Typ            | Payload                                                                                     | Beschreibung                                                                              | Antwort vom Server                                                                                                         |
-|----------------|---------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `join`         | `{"table_name": "str", "player_name": "str"}` oder `{"session_id": "str"}` (für Reconnect)  | Der Spieler möchte einem Tisch beitreten oder bei Reconnect.                              | `type: "joined_confirmation", payload: {session_id: str, public_state: PublicStateDict, private_state: PrivateStateDict}`  |
-| `leave`        | `{}`                                                                                        | Spieler möchte den Tisch verlassen.                                                       | keine Antwort                                                                                                              |
-| `ping`         | `{"timestamp": "ISO8601_string"}`                                                           | Verbindungstest.                                                                          | `type: "pong", payload: {timestamp: ISO8601-str (aus der Ping-Anfrage)}`                                                   |
-| `interrupt`    | `{"reason": "tichu"` oder `"bomb"}`                                                         | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen oder eine Bombe werfen. | Keine Antwort                                                                                                              |
-| `lobby_action` | `{"action": "assign_team", "data": [player_new_index,...]}` oder `{"action": "start_game"}` | Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel).     | Keine Antwort                                                                                                              |
+| Type             | Payload                                                                                 | Beschreibung                                                                              | Antwort vom Server (Type) | Antwort vom Server (Payload)                                                         |
+|------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------|
+| `"join"`         | `{table_name: str, player_name: str}` oder `{session_id: uuid}` (für Reconnect)         | Der Spieler möchte einem Tisch beitreten oder bei Reconnect.                              | `"joined_confirmation"`   | `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}` |
+| `"leave"`        | `{}`                                                                                    | Der Spieler möchte den Tisch verlassen.                                                   | keine Antwort             |                                                                                      |
+| `"lobby_action"` | `{action: "assign_team", "data": [player_new_index,...]}` oder `{action: "start_game"}` | Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel). | Keine Antwort             |                                                                                      |
+| `"interrupt"`    | `{reason: "tichu"}` oder `{reason: "bomb"}`                                             | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen oder eine Bombe werfen. | Keine Antwort             |                                                                                      |
+| `"ping"`         | `{timestamp: "ISO8601_string"}`                                                         | Verbindungstest.                                                                          | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}`                                    |
 
 **Proaktive Nachrichten vom Server an den Spieler:**
 
-| Type                      | Payload                                                                                                                                                  | Beschreibung                                                                                                | Antwort vom Spieler                                                                                                             |
-|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
-| `request`  (s. 7.2.3)     | `{request_id: uuid_str, action: str, public_state: PublicStateDict, private_state: PrivateStateDict, context: {(aktionsspezifisch, z.B. action_space)}}` | Server fordert den Spieler auf, eine Entscheidung zu treffen. Der volle Spielzustand ist Teil der Anfrage.  | `type: "response", payload: {request_id: uuid_str (aus der Request-Anfrage), data: dict (vom Spieler getroffene Entscheidung)}` | 
-| `notification` (s. 7.2.4) | `{event: str, data: { ereignisspezifische Daten }}`                                                                                                      | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort                                                                                                                   |
-| `deal_cards`              | `{hand_cards: str}`                                                                                                                                      | Eine neue Runde hat begonnen und der jeweilige Spieler hat seine Handkarten bekommen (erst 8 dann alle 14). | keine Antwort                                                                                                                   |
-| `schupf_cards_received`   | `{from_opponent_right: str, from_partner: str, from_opponent_left: str}`                                                                                 | Die Tauschkarten wurden an den jeweiligen Spieler abgegeben.                                                | keine Antwort                                                                                                                   |
-| `error`                   | `{message: str, code: int, details: {} (optional), original_request_id: str (optional)}`                                                                 | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort                                                                                                                   |
+| Type                        | Payload                                                                                                        | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                               |
+|-----------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|-------------------------------------------------------------|
+| `"deal_cards"`              | `{hand_cards: str}`                                                                                            | Eine neue Runde hat begonnen und der jeweilige Spieler hat seine Handkarten bekommen (erst 8 dann alle 14). | keine Antwort              |                                                             |
+| `"schupf_cards_received"`   | `{from_opponent_right: str, from_partner: str, from_opponent_left: str}`                                       | Die Tauschkarten wurden an den jeweiligen Spieler abgegeben.                                                | keine Antwort              |                                                             |
+| `"request"`  (s. 7.2.1)     | `{action: str, public_state: PublicStateDict, private_state: PrivateStateDict, request_id: uuid}`              | Server fordert den Spieler auf, eine Entscheidung zu treffen. Der volle Spielzustand ist Teil der Anfrage.  | `"response"`               | `{data: dict, request_id: uuid (aus der Request-Nachrich)}` | 
+| `"notification"` (s. 7.2.2) | `{event: str, data: dict}`                                                                                     | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort              |                                                             |
+| `"error"` (s. 7.2.3)        | `{message: str, code: int, details: dict (optional), request_id: uuid (optional, aus der Response-Nachricht)}` | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort              |                                                             |
 
-#### 7.2.2 Request-/Response-Nachrichten
+#### 7.2.1 Request-/Response-Nachrichten
 
-| Request Action (vom Server) | Response Data (vom Spieler)                                         | Beschreibung                                                         |
-|-----------------------------|---------------------------------------------------------------------|----------------------------------------------------------------------|
-| "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}`  | Der Spieler muss 3 Karten zum Tausch abgeben.                        |
-| "announce"                  | `{announced: bool}`                                                 | Der Spieler wird gefragt, ob er ein Tichu ansagen will.              |
-| "play"                      | `{cards: str}` oder  `{cards: ""}` (für passen)                     | Der Spieler muss Karten ausspielen oder passen.                      |
-| "wish"                      | `{wish_value: int}`                                                 | Der Spieler muss sich einen Kartenwert wünschen.                     |
-| "give_dragon_away"          | `{player_index: int}`                                               | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll. |
+| Request Action (vom Server) | Response Data (vom Spieler)                                        | Beschreibung                                                         |
+|-----------------------------|--------------------------------------------------------------------|----------------------------------------------------------------------|
+| "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}` | Der Spieler muss 3 Karten zum Tausch abgeben.                        |
+| "announce"                  | `{announced: bool}`                                                | Der Spieler wird gefragt, ob er ein Tichu ansagen will.              |
+| "play"                      | `{cards: str}` oder `{cards: ""}` (für passen)                     | Der Spieler muss Karten ausspielen oder passen.                      |
+| "wish"                      | `{wish_value: int}`                                                | Der Spieler muss sich einen Kartenwert wünschen.                     |
+| "give_dragon_away"          | `{player_index: int}`                                              | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll. |
 
-#### 7.2.3 Notification-Nachrichten
+#### 7.2.2 Notification-Nachrichten
 
-Broadcast-Nachricht an alle Spieler
+Benachrichtigung an alle Spieler
 
-| Event                   | Event Data                                                          | Beschreibung                                                    |
-|-------------------------|---------------------------------------------------------------------|-----------------------------------------------------------------|
-| "player_joined"         | `{player_index: int, player_index: str}`                            | Der Spieler spielt jetzt mit.                                   |
-| "player_left"           | `{player_index: int, replaced_by_name: str}`                        | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen. |
-| "interrupt_processed"   | `{player_index: int, reason: "tichu"` oder `"bomb"}`                | Der Spieler hat Halt gerufen. (Dies wurde akzeptiert.)          |
-| "lobby_update"          | `{action: "assign_team", team: list}` oder `{action: "start_game"}` | Der Spieler hat das Team gebildet oder das Spiel gestartet.     |
-| "schupfed_by_player"    | `{player_index: int}`                                               | Der Spieler hat 3 Karten zum Tausch abgegeben.                  |
-| "tichu_announced"       | `{player_index: int, announced: bool}`                              | Der Spieler hat Tichu angesagt oder abgelehnt.                  |
-| "played"                | `{player_index: int, cards: str}`                                   | Der Spieler hat Karten ausgespielt oder hat gepasst.            |
-| "wish_made"             | `{player_index: int, wish_value: int}`                              | Der Spieler hat sich einen Kartenwert gewünscht.                |
-| "trick_taken"           | `{player_index: int}`                                               | Der Spieler hat den Stich kassiert.                             |
-| "player_turn_changed"   | `{current_turn_index: int}`                                         | Der Spieler ist jetzt am Zug.                                   |
-| "round_over"            | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Karten werden neu gemischt.        |
-| "game_over"             | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Partie ist entschieden.            |
+| Notification Event    | Notification Data                                                   | Beschreibung                                                    |
+|-----------------------|---------------------------------------------------------------------|-----------------------------------------------------------------|
+| "player_joined"       | `{player_index: int, player_index: str}`                            | Der Spieler spielt jetzt mit.                                   |
+| "player_left"         | `{player_index: int, replaced_by_name: str}`                        | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen. |
+| "interrupt_processed" | `{player_index: int, reason: "tichu"` oder `"bomb"}`                | Der Spieler hat Halt gerufen. (Dies wurde akzeptiert.)          |
+| "lobby_update"        | `{action: "assign_team", team: list}` oder `{action: "start_game"}` | Der Spieler hat das Team gebildet oder das Spiel gestartet.     |
+| "schupfed_by_player"  | `{player_index: int}`                                               | Der Spieler hat 3 Karten zum Tausch abgegeben.                  |
+| "tichu_announced"     | `{player_index: int, announced: bool}`                              | Der Spieler hat Tichu angesagt oder abgelehnt.                  |
+| "played"              | `{player_index: int, cards: str}`                                   | Der Spieler hat Karten ausgespielt oder hat gepasst.            |
+| "wish_made"           | `{player_index: int, wish_value: int}`                              | Der Spieler hat sich einen Kartenwert gewünscht.                |
+| "trick_taken"         | `{player_index: int}`                                               | Der Spieler hat den Stich kassiert.                             |
+| "player_turn_changed" | `{current_turn_index: int}`                                         | Der Spieler ist jetzt am Zug.                                   |
+| "round_over"          | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Karten werden neu gemischt.        |
+| "game_over"           | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Partie ist entschieden.            |
 
-#### 7.2.4 Error-Nachrichten
+### 7.2.3. Fehlermeldungen
 
-Entwurf
-
-| Code                                          |                      | Message (Beispiel)                                         | Details (Beispiel)                                                | Wann gesendet?                                                                                          |
-|-----------------------------------------------|----------------------|------------------------------------------------------------|-------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| **Allgemeine Fehler (1000-1999)**             |                      |                                                            |                                                                   |                                                                                                         |
-| 1000                                          | UNKNOWN_ERROR        | "Ein unbekannter Fehler ist aufgetreten."                  | `{ "exception_type": "RuntimeError" }`                            | Serverseitiger Catch-All.                                                                               |
-| 1001                                          | INVALID_MESSAGE      | "Ungültiges Nachrichtenformat empfangen."                  | `{ "received_message": "{...}" }`                                 | Client sendet kein valides JSON oder erwartete Struktur fehlt.                                          |
-| 1002                                          | UNAUTHORIZED         | "Aktion nicht autorisiert."                                |                                                                   | Client versucht etwas ohne passende Rechte (z.B. Lobby-Aktion ohne Host zu sein).                       |
-| 1003                                          | SERVER_BUSY          | "Server ist momentan überlastet. Bitte später versuchen."  |                                                                   | Falls der Server temporär keine neuen Anfragen/Verbindungen annehmen kann.                              |
-| 1004                                          | MAINTENANCE_MODE     | "Server befindet sich im Wartungsmodus."                   |                                                                   | Bei geplanten Wartungsarbeiten.                                                                         |
-| **Verbindungs- & Session-Fehler (2000-2999)** |                      |                                                            |                                                                   |                                                                                                         |
-| 2000                                          | SESSION_EXPIRED      | "Deine Session ist abgelaufen. Bitte neu verbinden."       |                                                                   | Session-ID ist nicht mehr gültig.                                                                       |
-| 2001                                          | SESSION_NOT_FOUND    | "Session nicht gefunden."                                  | `{ "session_id": "xyz" }`                                         | Client versucht Reconnect mit ungültiger Session.                                                       |
-| 2002                                          | TABLE_NOT_FOUND      | "Tisch nicht gefunden."                                    | `{ "table_name": "Tisch1" }`                                      | Client will Tisch beitreten, der nicht existiert.                                                       |
-| 2003                                          | TABLE_FULL           | "Tisch ist bereits voll."                                  | `{ "table_name": "Tisch1" }`                                      | Client will vollem Tisch beitreten.                                                                     |
-| 2004                                          | NAME_TAKEN           | "Dieser Spielername ist an diesem Tisch bereits vergeben." | `{ "player_name": "Anton" }`                                      | Client wählt Namen, der schon am Tisch ist.                                                             |
-| 2005                                          | ALREADY_ON_TABLE     | "Du bist bereits an diesem Tisch."                         | `{ "player_index": 1 }`                                           | Client versucht, Tisch beizutreten, an dem seine Session schon aktiv ist.                               |
-| **Spiellogik-Fehler (3000-3999)**             |                      |                                                            |                                                                   |                                                                                                         |
-| 3000                                          | INVALID_ACTION       | "Ungültige Aktion."                                        | `{ "action_attempted": "play_cards", "reason": "Not your turn" }` | Client versucht Aktion, die nicht erlaubt ist (z.B. nicht am Zug, ungültige Karten).                    |
-| 3001                                          | INVALID_CARDS        | "Ausgewählte Karten sind ungültig für diese Aktion."       | `{ "cards": ["S2", "S2"], "action": "play_combination" }`         | Client sendet ungültige Kartenauswahl in einer `response`.                                              |
-| 3002                                          | NOT_YOUR_TURN        | "Du bist nicht am Zug."                                    |                                                                   | Client sendet `response` oder , obwohl nicht am Zug (oder Interrupt nicht passend). `interrupt_request` |
-| 3003                                          | INTERRUPT_DENIED     | "Interrupt-Anfrage abgelehnt."                             | `{ "reason": "tichu", "denial_reason": "Already announced" }`     | wurde vom Server abgelehnt. `interrupt_request`                                                         |
-| 3004                                          | INVALID_WISH         | "Ungültiger Kartenwunsch."                                 | `{ "wish_value": 1 }`                                             | Client wünscht sich einen ungültigen Wert.                                                              |
-| 3005                                          | INVALID_SCHUPF       | "Ungültige Karten für den Schupf-Vorgang."                 | `{ "schupf_cards": "..." }`                                       | Client sendet ungültige Karten beim Schupfen.                                                           |
-| 3006                                          | ACTION_TIMEOUT       | "Zeit für Aktion abgelaufen."                              | `{ "action_requested": "play_combination" }`                      | Falls serverseitige Timeouts für Spieleraktionen implementiert werden.                                  |
-| **Lobby-Fehler (4000-4999)**                  |                      |                                                            |                                                                   |                                                                                                         |
-| 4000                                          | GAME_ALREADY_STARTED | "Das Spiel an diesem Tisch hat bereits begonnen."          |                                                                   | Client versucht Lobby-Aktion, obwohl Spiel läuft.                                                       |
-| 4001                                          | NOT_LOBBY_HOST       | "Nur der Host kann diese Aktion ausführen."                | `{ "action": "start_game" }`                                      | Falls ein Host-Konzept in der Lobby existiert.                                                          |
+| Error Code                                  | Error Message                                              | Details                                |
+|---------------------------------------------|------------------------------------------------------------|----------------------------------------|
+| **Allgemeine Fehler (100-199)**             |                                                            |                                        |
+| UNKNOWN_ERROR = 100                         | "Ein unbekannter Fehler ist aufgetreten."                  | `{exception: ExceptionClassName}`      |
+| INVALID_MESSAGE = 101                       | "Ungültiges Nachrichtenformat empfangen."                  | `{message: dict}`                      |
+| UNAUTHORIZED = 102                          | "Aktion nicht autorisiert."                                | `{action: str}`                        |
+| SERVER_BUSY = 103                           | "Server ist momentan überlastet. Bitte später versuchen."  |                                        |
+| MAINTENANCE_MODE = 104                      | "Server befindet sich im Wartungsmodus."                   |                                        |
+| **Verbindungs- & Session-Fehler (200-299)** |                                                            |                                        |
+| SESSION_EXPIRED = 200                       | "Deine Session ist abgelaufen. Bitte neu verbinden."       |                                        |
+| SESSION_NOT_FOUND = 201                     | "Session nicht gefunden."                                  | `{session_id: uuid}`                   |
+| TABLE_NOT_FOUND = 202                       | "Tisch nicht gefunden."                                    | `{table_name: str}`                    |
+| TABLE_FULL = 203                            | "Tisch ist bereits voll."                                  | `{table_name: str}`                    |
+| NAME_TAKEN = 204                            | "Dieser Spielername ist an diesem Tisch bereits vergeben." | `{table_name: str, player_name: str}`  |
+| ALREADY_ON_TABLE = 205                      | "Du bist bereits an diesem Tisch."                         | `{table_name: str, player_index: int}` |
+| **Spiellogik-Fehler (300-399)**             |                                                            |                                        |
+| INVALID_ACTION = 300                        | "Ungültige Aktion."                                        | `{reason: str, request_id: uuid}`      |
+| INVALID_CARDS = 301                         | "Ausgewählte Karten sind ungültig für diese Aktion."       | `{request_id: uuid}`                   |
+| NOT_YOUR_TURN = 302                         | "Du bist nicht am Zug."                                    | `{request_id: uuid}`                   |
+| INTERRUPT_DENIED = 303                      | "Interrupt-Anfrage abgelehnt."                             | `{reason: str, request_id: uuid}`      |
+| INVALID_WISH = 304                          | "Ungültiger Kartenwunsch."                                 | `{request_id: uuid}`                   |
+| INVALID_SCHUPF = 305                        | "Ungültige Karten für den Schupf-Vorgang."                 | `{request_id: uuid}`                   |
+| ACTION_TIMEOUT = 306                        | "Zeit für Aktion abgelaufen."                              | `{timeout: seconds, request_id: uuid}` |
+| **Lobby-Fehler (400-499)**                  |                                                            |                                        |
+| GAME_ALREADY_STARTED = 400                  | "Das Spiel an diesem Tisch hat bereits begonnen."          | `{table_name: str}`                    |
+| NOT_LOBBY_HOST = 401                        | "Nur der Host kann diese Aktion ausführen."                | `{action: str}`                        |
 
 ### 7.3 Verantwortlichkeiten der Komponenten im Live-Betrieb
 
 #### 7.3.1 WebSocket-Handler
+
 *   Nimmt neue WebSocket-Verbindungen an:
     *   Der reale Spieler verbindet sich über eine WebSocket und gibt seinen Namen und den Namen eines Tisches an.
     *   Gibt es den Tisch noch nicht, wird dieser Tisch eröffnet (über die `Game-Factory`). 
     *   Ist der Tisch voll besetzt (max. 4 reale Spieler), kann der Spieler sich nicht an den Tisch setzen. 
-    *   Ist noch mind. ein Platz fei (d.h. der Platz ist belegt von einer KI), kann der Spieler sich an den Platz setzen (ersetzt die KI) und erhält den aktuellen Spielzustand.
+    *   Ist noch mind. ein Platz frei (d.h. der Platz ist belegt von einer KI), kann der Spieler sich an den Platz setzen (ersetzt die KI) und erhält den aktuellen Spielzustand.
 *   Reagiert darauf, wenn der Spieler das Spiel verlassen will: 
     *   Wenn der reale Spieler geht, übernimmt automatisch die KI wieder den Platz, damit die übrigen Spieler weiterspielen können. 
     *   Ist der letzte reale Spieler vom Tisch aufgestanden, wird der Tisch geschlossen (über die `Game-Factory`).
 *   Händelt Verbindungsabbrüche:  
     *   Bei einem Verbindungsabbruch wartet der Server 20 Sekunden, bevor die KI den Platz einnimmt. 
     *   Sollte der Spieler sich wiederverbinden (er versucht es automatisch jede Sekunden), nimmt er den alten Platz wieder ein (sofern nicht in der zwischenzeit ein anderer reale Spieler sich dort hingesetzt hat) und erhält den aktuellen Spielzustand.
-*   Empfängt Nachrichten von realen Spielern:
+*   Empfangt Nachrichten von realen Spielern:
     *   Leitet reguläre Spielaktionen (Antworten auf Requests) an die `Client`-Instanz des Spielers weiter.
     *   Leitet Interrupt-Anfragen (`"interrupt"`) direkt an die zuständige `GameEngine` weiter.
     *   Verarbeitet Meta-Nachrichten (Join, Leave, Ping, Lobby-Aktionen).
 
 #### 7.3.2 Game-Factory
+
 *   Verwaltet eine Sammlung aktiver Spieltische (`GameEngine`-Instanzen).
 *   Erstellt eine neue `GameEngine` für einen neuen Tisch.
 *   Schließt Tische, wenn keine realen Spieler mehr verbunden sind (nach Timeout).
 
 #### 7.3.3 Game-Engine (Server-Modus)
+
 *   Bildet die Kern-Spiellogik ab.
 *   Interagiert über die `Player`-Schnittstelle mit Agenten und realen Spieler (unterscheidet aber nicht zw. `Agent` und `Client`).
 *   Muss auf Interrupt-Anfragen der Spieler reagieren können.
 *   Übermittelt dem Spieler, der keine Handkarten mehr hat, zusätzlich die Handkarten der Mitspieler.
 
 #### 7.3.4 Client (serverseitiger WebSocket-Endpunkt des realen Spielers)
+
 *   Erbt von `Player`.
 *   Kapselt die WebSocket-Verbindung zu einem einzelnen realen Spieler.
 *   Empfängt Aufforderungen von der `GameEngine` (z.B. `play()`, `announce()`).
@@ -365,10 +378,12 @@ Entwurf
 ## 8. Agenten (KI-gesteuerter Spieler)
 
 ### 8.1 Basisklassen (`Player`, `Agent`)
+
 *   `Player`: Definiert die Schnittstelle, die jeder Spieler (Mensch oder KI) implementieren muss (Methoden `schupf`, `announce`, `play`, `wish`, `choose_dragon_recipient`, `cleanup`).
 *   `Agent`: Erbt von `Player` und dient als Basis für alle KI-Implementierungen.
 
-### 8.2 Implementierte und geplante Agenten-Typen
+### 8.2 Agenten-Typen
+
 *   **`RandomAgent`**: Wählt zufällige, aber regelkonforme Züge. Dient als Baseline und zum Testen.
 *   **`RuleAgent`**: (Geplant/Konzept) Befolgt festgelegte Regeln.
 *   **`HeuristicAgent`**: (Geplant/Konzept) Berechnet (exakte oder durch Erfahrungswerte geschätzte) Wahrscheinlichkeiten für die Entscheidungsfindung.
@@ -379,13 +394,15 @@ Entwurf
 Während ein **regelbasierter Agent** feste Regeln befolgt und ein **heuristischer Agent** zusätzlich Wahrscheinlichkeiten 
 einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
 
-## 9. Entwicklungsumgebung und Deployment
+## 9. Entwicklungsumgebung
 
 ### 9.1 Systemanforderungen
+
 *   **Entwicklung:** Windows 11, Python >= 3.11.
 *   **Produktivbetrieb (geplant):** Raspberry Pi 5 (Bookworm OS), Python >= 3.11.
 
 ### 9.2 Einrichtung
+
 1.  Python 3.11 (oder neuer) installieren.
 2.  **Repository klonen:**
     ```bash
@@ -424,17 +441,30 @@ einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
     ```
 
 ### 9.3 Testing
+
 *   Unit-Tests werden mit `pytest` geschrieben und befinden sich im `tests/`-Verzeichnis.
     *   Ausführen der Tests: `python -m pytest`.
     *   Ausführen mit Coverage: `cov.ps1`
 *   Die Codeabdeckung der Tests wird mit `coverage` gemessen, Konfiguration in `.coveragerc`.
     *   Ausführen: `cov.ps1`
 
-## 10. Frontend (Geplant)
+## 10. Frontend
+
+(Geplant)
 
 Das Frontend für den Live-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Es kommuniziert über WebSockets mit dem Python-Backend. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
 
-## 11. Versionsnummer
+### 11. Exceptions
+
+| Error                    | Beschreibung                                                                                                                           |
+|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| PlayerInteractionError-  | Basisklasse für Fehler, die während der Interaktion mit einem Spieler auftreten können.                                                |
+| ClientDisconnectedError- | Wird ausgelöst, wenn versucht wird, eine Aktion mit einem Client auszuführen, der nicht (mehr) verbunden ist.                          |
+| PlayerInterruptError -   | Wird ausgelöst, wenn eine wartende Spieleraktion durch ein Engine-internes Ereignis (z.B. Tichu-Ansage, Bombe) unterbrochen wird.      |
+| PlayerTimeoutError -     | Wird ausgelöst, wenn ein Spieler nicht innerhalb des vorgegebenen Zeitlimits auf eine Anfrage reagiert hat.                            |
+| PlayerResponseError-     | Wird ausgelöst, wenn ein Spieler (Client) eine ungültige, unerwartete oder nicht zum Kontext passende Antwort auf eine Anfrage sendet. |
+
+## 12. Versionsnummer
 
 Die Versionsnummer wird gemäß dem [Semantic Versioning-Schema](https://semver.org/) vergeben.
 
@@ -443,7 +473,7 @@ Das bedeutet, wir erhöhen bei gegebener Versionsnummer MAJOR.MINOR.PATCH die:
 - MINOR-Version, wenn wir Funktionen abwärtskompatibel hinzufügen
 - PATCH-Version, wenn wir abwärtskompatible Fehlerbehebungen vornehmen
 
-### 11.1 Release in Github erstellen
+### 12.1. Release auf Github erstellen
 
 - Schritt 1: Tag erstellen (falls noch nicht geschehen)
 ```bash
@@ -457,12 +487,12 @@ git push --tags
   - Beschreibung für das Release eingeben (Änderungen, Features, Bugfixes etc.)
   - Auf "Publish release" klicken.
 
-## 12. Glossar
+## 13. Glossar
 
 *   **Spieler und Teams**: Die Spieler werden gegen den Uhrzeigersinn mit 0 beginnend durchnummeriert. Spieler 0 und 2 bildet das Team 20 sowie Spieler 1 und 3 das Team 31. Ein Spieler hat 3 Mitspieler. Der Mitspieler gegenüber ist der Partner, die beiden anderen Mitspieler sind rechter und linker Gegner.
 *   **Spielzug (turn)**: Ein Spieler spielt eine Kartenkombination aus oder passt.
 *   **Stich (trick)**: Eine Serie von Spielzügen, bis die Karten vom Tisch genommen werden. Jeder Spieler spielt nacheinander Karten aus oder passt. Der Spieler, der zuletzt Karten abgelegt hat, ist der Besitzer des Stichs. Schaut ein Spieler, der am Zug ist, wieder auf seine zuvor ausgespielten Karten (weil alle Mitspieler gepasst haben), hat er den Stich gewonnen. Der Besitzer wird zum Gewinner des Stichs. Der Stich wird geschlossen, indem er vom Tisch abgeräumt wird. Solange kein Gewinner des Stichs feststeht, ist der Stich offen.
-*   **Runde (round)**: Karten austeilen und spielen, bis Gewinner feststeht. Eine Runde besteht aus mehreren Stichen, bis der Gewinner feststeht und Punkte vergeben werden.
+*   **Runde (round)**: Karten austeilen und spielen, bis der Gewinner feststeht. Eine Runde besteht aus mehreren Stichen, bis der Gewinner feststeht und Punkte vergeben werden.
 *   **Partie (game)**: Runden spielen, bis ein Team mindestens 1000 Punkte hat. Eine Partie besteht aus mehreren Runden und endet, wenn ein Team mindestens 1000 Punkte erreicht hat.
 *   **Öffentlicher Spielzustand/Beobachtungsraum (public state)**: Alle Informationen über die Partie, die für alle Spieler sichtbar sind.
 *   **Privater Spielzustand (private state)**: Die verborgenen Informationen über die Partie, die nur der jeweilige Spieler kennt.
@@ -473,7 +503,7 @@ git push --tags
 *   **Kombination (Combination)**: Die Merkmale Typ (`CombinationType`), Länge und Rang einer Kartenzusammenstellung.
 *   **Partition**: Aufteilung der (Hand-)Karten in eine Sequenz von gültigen Kombinationen.
 *   **Historie (tricks)**: Beinhaltet alle Infos des Spielverlaufs (Stiche mit ihren Spielzügen) zur Rekonstruktion.
-*   **Anspielen (first lead)**: Als Erster Karten in einem neuen Stich legen.
+*   **Anspielen (first lead)**: Als Erster Karten in einen neuen Stich legen.
 *   **Initiative**: Das Recht zum Anspielen erlangen.
 *   **Rating**: Numerische Bewertung der Spielstärke eines Agenten.
 *   **Ranking**: Platzierung eines Spielers in einer Rangliste.

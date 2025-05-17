@@ -89,34 +89,32 @@ class PublicState:
         """
         Konvertiert den Zustand in ein Dictionary für JSON-Serialisierung.
 
-        Verwendet eine übergebene Funktion zur Konvertierung interner Karten in ihre String-Label-Repräsentation.
-
         :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
         """
         return {
-            "tableName": self.table_name,
-            "playerNames": self.player_names,
-            "currentTurnIndex": self.current_turn_index,
-            "startPlayerIndex": self.start_player_index,
-            "countHandCards": self.count_hand_cards,
-            "playedCards": stringify_cards(self.played_cards),
+            "table_name": self.table_name,
+            "player_names": self.player_names,
+            "current_turn_index": self.current_turn_index,
+            "start_player_index": self.start_player_index,
+            "count_hand_cards": self.count_hand_cards,
+            "played_cards": stringify_cards(self.played_cards),
             "announcements": self.announcements,
-            "wishValue": self.wish_value,
-            "dragonRecipient": self.dragon_recipient,
-            "trickOwnerIndex": self.trick_owner_index,
-            "trickCards": stringify_cards(self.trick_cards),
-            "trickCombination": (self.trick_combination[0].name, self.trick_combination[1], self.trick_combination[2]),
-            "trickPoints": self.trick_points,
+            "wish_value": self.wish_value,
+            "dragon_recipient": self.dragon_recipient,
+            "trick_owner_index": self.trick_owner_index,
+            "trick_cards": stringify_cards(self.trick_cards),
+            "trick_combination": (self.trick_combination[0].name, self.trick_combination[1], self.trick_combination[2]),
+            "trick_points": self.trick_points,
             "tricks": [[(idx, stringify_cards(cards), (combi[0].name, combi[1], combi[2])) for idx, cards, combi in trick] for trick in self.tricks],
             "points": self.points,
-            "winnerIndex": self.winner_index,
-            "loserIndex": self.loser_index,
-            "isRoundOver": self.is_round_over,
-            "isDoubleVictory": self.is_double_victory,
-            "gameScore": self.game_score,
-            "roundCounter": self.round_counter,
-            "trickCounter": self.trick_counter,
-            "currentPhase": self.current_phase,
+            "winner_Index": self.winner_index,
+            "loser_index": self.loser_index,
+            "isRound_over": self.is_round_over,
+            "isDouble_victory": self.is_double_victory,
+            "game_score": self.game_score,
+            "round_counter": self.round_counter,
+            "trick_counter": self.trick_counter,
+            "current_phase": self.current_phase,
         }
 
     @property

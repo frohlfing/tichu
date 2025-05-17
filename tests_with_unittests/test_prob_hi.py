@@ -1,9 +1,8 @@
 import unittest
 from src.lib.cards import *
 from src.lib.combinations import *
-from src.lib.prob import *
 # noinspection PyProtectedMember
-from src.lib.prob.prob_hi import possible_hands_hi
+from src.lib.prob.prob_hi import possible_hands_hi, prob_of_higher_combi_or_bomb
 
 
 # Testfunktion possible_hands_hi() testen
