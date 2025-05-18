@@ -238,16 +238,15 @@ Die `Arena`-Klasse:
 
 ## 7. Live-Betrieb (Spiel mit realen Spielern) - In Entwicklung
 
-### 7.1 Grundkonzept
+### 7.1 Query-Parameer der Websocket-URL
 
-Ein zentraler Server stellt eine WebSocket bereit. Menschliche Spieler verbinden sich über diese Websocket mit dem Server. 
+Ein zentraler Server stellt eine WebSocket bereit. Beim initialen Verbindungsaufbau gibt der Spieler den gewünschten Tisch und seinen Namen über die Query-Parameter an:
 
-1) Grundsätzlich sendet der Client (serverseitigen Endpunkt) jedes Ereignis inkl. Spielzustand über alle aktiven Websocket-Verbindungen, damit der reale Spieler auf dem aktuellen Stand bleiben kann. Das ist für Agenten nicht notwendig, da sie bei einer Entscheidung direkt auf den aktuellen Spielzustand zugreifen können.
-2) Mit Verbindungsaufbau über die WebSocket sendet der reale Spieler direkt den Tisch-Namen mit. 
-3) Wenn der reale Spieler das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis er durch eine KI ersetzt wird.
-4) Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet (normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen und dann sagen, wer mit wem ein Team bildet.) Das findet in der Lobby statt.
-5) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
-6) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
+`?table_name=str&player_name=str`
+
+Nach einem Reconnect teilt der Spieler statt dessen seine letzte Session-ID über die Query-Parameter mit:  
+
+`?session_id=uuid`
 
 #### 7.2.WebSocket-Nachrichten
 
@@ -258,7 +257,7 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 | Type             | Payload                                                                                 | Beschreibung                                                                              | Antwort vom Server (Type) | Antwort vom Server (Payload)                                                         |
 |------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------|
 | `"join"`         | `{table_name: str, player_name: str}` oder `{session_id: uuid}` (für Reconnect)         | Der Spieler möchte einem Tisch beitreten oder bei Reconnect.                              | `"joined_confirmation"`   | `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}` |
-| `"leave"`        | `{}`                                                                                    | Der Spieler möchte den Tisch verlassen.                                                   | keine Antwort             |                                                                                      |
+| `"leave"`        |                                                                                         | Der Spieler möchte den Tisch verlassen.                                                   | keine Antwort             |                                                                                      |
 | `"lobby_action"` | `{action: "assign_team", "data": [player_new_index,...]}` oder `{action: "start_game"}` | Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel). | Keine Antwort             |                                                                                      |
 | `"interrupt"`    | `{reason: "tichu"}` oder `{reason: "bomb"}`                                             | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen oder eine Bombe werfen. | Keine Antwort             |                                                                                      |
 | `"ping"`         | `{timestamp: "ISO8601_string"}`                                                         | Verbindungstest.                                                                          | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}`                                    |
@@ -267,6 +266,7 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 
 | Type                        | Payload                                                                                                        | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                               |
 |-----------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|-------------------------------------------------------------|
+| `"joined_confirmation"`     | `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}`                           | Der Spieler hat sich an den Tisch gesetzt bzw. ist (bzw. ist nach einem Verbindungsabbruch wieder zurück).  | keine Antwort              |                                                             |
 | `"deal_cards"`              | `{hand_cards: str}`                                                                                            | Eine neue Runde hat begonnen und der jeweilige Spieler hat seine Handkarten bekommen (erst 8 dann alle 14). | keine Antwort              |                                                             |
 | `"schupf_cards_received"`   | `{from_opponent_right: str, from_partner: str, from_opponent_left: str}`                                       | Die Tauschkarten wurden an den jeweiligen Spieler abgegeben.                                                | keine Antwort              |                                                             |
 | `"request"`  (s. 7.2.1)     | `{action: str, public_state: PublicStateDict, private_state: PrivateStateDict, request_id: uuid}`              | Server fordert den Spieler auf, eine Entscheidung zu treffen. Der volle Spielzustand ist Teil der Anfrage.  | `"response"`               | `{data: dict, request_id: uuid (aus der Request-Nachrich)}` | 
@@ -452,7 +452,16 @@ einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
 
 (Geplant)
 
-Das Frontend für den Live-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Es kommuniziert über WebSockets mit dem Python-Backend. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
+### 10.1 Allgemeine Funktionsweise
+1) Das Frontend für den Live-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
+2) Es kommuniziert über WebSockets mit dem Python-Backend. 
+3) Mit Verbindungsaufbau über die WebSocket sendet der reale Spieler als Query-Parameter in der URL den Tisch-Namen und seinen Namen mit. 
+4) Beim Wiederaufbau nach Verbindungsabbruch sendet der Spieler stattdessen die letzte Session-Id.
+5) Wenn der reale Spieler das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis er durch eine KI ersetzt wird.
+6) Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet (normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen und dann sagen, wer mit wem ein Team bildet.) Das findet in der Lobby statt.
+7) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
+8) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
+
 
 ### 11. Exceptions
 

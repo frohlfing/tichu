@@ -103,7 +103,7 @@ def mock_agents(mocker) -> List[AsyncMock]:
         # Setze Standard-Attribute für den Mock
         player_mock.name = f"MockPlayer_{i}"
         player_mock.player_index = i
-        player_mock.session = f"session_{i}"
+        player_mock.session_id = f"session_{i}"
         # Stellt sicher, dass die Index-Properties des Mocks funktionieren
         player_mock.partner_index = (i + 2) % 4
         player_mock.opponent_right_index = (i + 1) % 4

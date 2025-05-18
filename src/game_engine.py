@@ -683,7 +683,7 @@ class GameEngine:
         index = client.player_index
         if index < 0 or index > 3:
             raise ValueError(f"Der Index des Spielers {client.name} ist nicht korrekt: {index}")
-        if self._players[index].session != client.session:
+        if self._players[index].session_id != client.session_id:
             raise ValueError(f"Der Spielers {client.name} kann den Tisch {self._table_name} nicht verlassen, er sitz dort nicht.")
         self._players[index] = self._default_agents[index]
         client.player_index = -1
@@ -759,7 +759,7 @@ class GameEngine:
         :return: Die Player-Instanz falls die Session existiert, sonst None.
         """
         for p in self._players:
-            if p.session == session:
+            if p.session_id == session:
                 return p
         return None
 

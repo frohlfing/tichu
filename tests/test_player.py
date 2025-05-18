@@ -36,7 +36,7 @@ def test_player_init_valid_name():
     assert player.name == "Alice" # Name sollte gestrippt sein
     assert player.player_index is None # Initial kein Index
     # Session sollte eine gültige UUID sein
-    assert isinstance(UUID(player.session, version=4), UUID)
+    assert isinstance(UUID(player.session_id, version=4), UUID)
 
 def test_player_init_empty_name_raises_error():
     """Testet, ob ein leerer Name einen ValueError auslöst."""
@@ -48,8 +48,8 @@ def test_player_init_empty_name_raises_error():
 def test_player_init_with_session():
     """Testet die Initialisierung mit einer vorgegebenen Session."""
     custom_session = "my-test-session-123"
-    player = Player(name="Bob", session=custom_session)
-    assert player.session == custom_session
+    player = Player(name="Bob", session_id=custom_session)
+    assert player.session_id == custom_session
 
 def test_player_properties():
     """Testet die Standard-Properties eines Players."""

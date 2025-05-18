@@ -13,16 +13,16 @@ class Agent(Player):
     Erbt von der Basisklasse `Player`.
     """
 
-    def __init__(self, name: Optional[str] = None, session: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, session_id: Optional[str] = None):
         """
         Initialisiert einen neuen Agenten.
 
         :param name: (Optional) Name für den Agenten. Wenn None, wird einer generiert.
-        :param session: (Optional) Aktuelle Session des Agenten. Wenn None, wird eine Session generiert.
+        :param session_id: (Optional) Aktuelle Session des Agenten. Wenn None, wird eine Session generiert.
         """
         # Generiere einen Namen, falls keiner angegeben ist.
         if name is None:
             name = f"{self.class_name}_{uuid4().hex[:8]}"  # Beispiel: "Agent_1a2b3c4d"
 
         # Rufe den Konstruktor der Basisklasse auf.
-        super().__init__(name, session=session)
+        super().__init__(name, session_id=session_id)

@@ -29,7 +29,7 @@ class Client(Player):
     def __init__(self, name: str,
                  websocket: WebSocketResponse,
                  interrupt_event: asyncio.Event,  # todo nach Player verlager. Agent könnten auch schonmal await benutzen und dann brauchen die das interrupt_event
-                 session: Optional[str] = None,
+                 session_id: Optional[str] = None,
                  seed: Optional[int] = None):
         """
         Initialisiert einen neuen Client.
@@ -37,10 +37,10 @@ class Client(Player):
         :param name: Der Name des Spielers.
         :param websocket: Das WebSocketResponse-Objekt der initialen Verbindung.
         :param interrupt_event: Das globale Interrupt-Event.
-        :param session: (Optional) Aktuelle Session des Spielers. Wenn None, wird eine Session generiert.
+        :param session_id: (Optional) Aktuelle Session des Spielers. Wenn None, wird eine Session generiert.
         :param seed: (Optional) Seed für den internen Zufallsgenerator (für Tests).
         """
-        super().__init__(name, session=session)
+        super().__init__(name, session_id=session_id)
         self._websocket = websocket
         self._interrupt_event = interrupt_event
         self._random = Random(seed)  # Zufallsgenerator
@@ -301,7 +301,7 @@ class Client(Player):
 
         :param new_websocket: Das neue WebSocketResponse-Objekt.
         """
-        logger.info(f"Aktualisiere WebSocket für Client {self._name} ({self._session}).")
+        logger.info(f"Aktualisiere WebSocket für Client {self._name} ({self._session_id}).")
         self._websocket = new_websocket
         #self._is_connected = True  # markiere als verbunden
         # Über die alte Verbindung noch Anfragen offen sind, diese verwerfen.

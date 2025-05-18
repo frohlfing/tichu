@@ -71,6 +71,6 @@ class GameFactory:
         """
         for engine in self._engines.values():
             for p in engine.players:
-                if p.session == session:
+                if p.session_id == session:
                     return engine
         return None

@@ -20,12 +20,12 @@ class Player:
     :ivar player_index: Der Index des Spielers am Tisch (0 bis 3, None == Spieler sitzt noch nicht am Tisch).
     """
 
-    def __init__(self, name: str, session: Optional[str] = None):
+    def __init__(self, name: str, session_id: Optional[str] = None):
         """
         Initialisiert einen neuen Spieler.
 
         :param name: Der Name des Spielers. Wird bereinigt (Leerzeichen entfernt). Darf nicht leer sein.
-        :param session: (Optional) Aktuelle Session des Spielers. Wenn None, wird eine Session generiert.
+        :param session_id: (Optional) Aktuelle Session des Spielers. Wenn None, wird eine Session generiert.
         :raises ValueError: Wenn der `player_name` leer ist.
         """
         #: Der Name des Spielers.
@@ -33,17 +33,17 @@ class Player:
         if not name_stripped:
             raise ValueError("Spielername darf nicht leer sein.")
         self._name: str = name_stripped
-        self._session: str = session if session else str(uuid4())
+        self._session_id: str = session_id if session_id else str(uuid4())
         self.player_index: Optional[int] = None  # wird von der GameEngine gesetzt  todo in index umbenennen
-        logger.debug(f"Player '{self._name}' (Session: {self._session}) erstellt.")
+        logger.debug(f"Player '{self._name}' (Session: {self._session_id}) erstellt.")
 
     def __repr__(self) -> str:
         """
         Gibt eine repräsentative Zeichenkette für das Player-Objekt zurück.
 
-        :return: String-Repräsentation (z.B. "Agent(name='Alice', session='...')").
+        :return: String-Repräsentation (z.B. "Agent(name='Alice', session_id='...')").
         """
-        return f"{self.__class__.__name__}(name='{self._name}', session='{self._session}')"
+        return f"{self.__class__.__name__}(name='{self._name}', session_id='{self._session_id}')"
 
     async def cleanup(self):
         """
@@ -143,9 +143,9 @@ class Player:
         return self._name
 
     @property
-    def session(self) -> str:
-        """Die aktuelle Session des Spielers."""
-        return self._session
+    def session_id(self) -> str:
+        """Die aktuelle Session-ID des Spielers."""
+        return self._session_id
 
     @property
     def partner_index(self) -> int:

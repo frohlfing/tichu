@@ -39,27 +39,27 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         return ws
 
     # --- 2) Query-String auslesen. ---
-    params = request.query  # z.B. ?name=Frank&table=Tisch1[&session=UUID]
+    params = request.query  # z.B. ?name=Frank&table=Tisch1[&session_id=UUID]
     remote_addr = request.remote if request.remote else "Unbekannt"  # Client-Adresse
     logger.debug(f"WebSocket Verbindung hergestellt von {remote_addr} mit Parametern: {params}")
 
     # --- 3) Referenz auf die Game-Engine holen, Client anlegen und der Engine zuordnen. ---
-    session = params.get("session")
-    if session:
-        engine = factory.get_engine_by_session(session)
-        client = engine.get_player_by_session(session) if engine else None
+    session_id = params.get("session_id")
+    if session_id:
+        engine = factory.get_engine_by_session(session_id)
+        client = engine.get_player_by_session(session_id) if engine else None
         if isinstance(client, Client) and not client.is_connected:
             client.set_websocket(ws)
         else:
-            error_message = "Query-Parameter 'session' fehlerhaft."
+            error_message = "Query-Parameter 'session_id' fehlerhaft."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
-        logger.info(f"Client {client.name} (Session {client.session}) erfolgreich wiederverbunden.")
+        logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich wiederverbunden.")
     else:
         try:
             engine = factory.get_or_create_engine(params.get("table"))
-            client = Client(params.get("name"), websocket=ws, interrupt_event=engine.interrupt_event, session=session) if engine else None
+            client = Client(params.get("name"), websocket=ws, interrupt_event=engine.interrupt_event, session_id=session_id) if engine else None
         except ValueError:
             error_message = "Query-Parameter 'name' oder 'table' fehlerhaft."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
@@ -70,21 +70,21 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
-        logger.info(f"Client {client.name} (Session {client.session}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {client.player_index} zugeordnet.")
+        logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {client.player_index} zugeordnet.")
 
     # --- 4) Bestätigung an den Client senden. ---
     try:
         await client.on_notify("joined", {
-            "name": client.name,
-            "table": engine.table_name,
-            "index": client.player_index,
-            "session": client.session,
+            "player_name": client.name,
+            "table_name": engine.table_name,
+            "player_index": client.player_index,
+            "session_id": client.session_id,
         })
     except Exception as e:
         logger.warning(f"Senden der Beitrittsbestätigung an {client.name} fehlgeschlagen: {e}.")
         return ws
 
-    # --- 5) Solange Nachrichten von der WebSocket verarbeiten, bis die Verbindung abbricht oder der Client absichtlich geht. ---
+    # --- 5) So lange Nachrichten von der WebSocket verarbeiten, bis die Verbindung abbricht oder der Client absichtlich geht. ---
     try:
         msg: WSMessage
         async for msg in ws:
@@ -117,7 +117,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     elif msg_type == "interrupt":  # explizite Interrupt-Anfrage
                         await engine.on_interrupt(client, payload.get("reason"))
 
-                    elif msg_type == "response":  # Antwort auf einer vorherigen Anfrage (die mittels _ask() gestellt wurde)
+                    elif msg_type == "response":  # Antwort auf eine vorherige Anfrage (die mittels _ask() gestellt wurde)
                         await client.on_websocket_response(payload.get("action"), payload.get("data", {}))
 
                     else:
@@ -167,7 +167,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         except Exception as close_e:
             logger.exception(f"Fehler beim expliziten Schließen des WebSockets für {remote_addr}: {close_e}")
 
-    # --- 7) Wenn es noch menschliche Mitspieler gibt, Fallback-Agent einsetzen, ansonst Tisch schließen. ---
+    # --- 7) Wenn es noch menschliche Mitspieler gibt, einen Fallback-Agent einsetzen, ansonst Tisch schließen. ---
     client_exists = any(isinstance(p, Client) for p in engine.players if p.player_index != client.player_index)
     if client_exists:
         try:
@@ -199,19 +199,19 @@ async def main(args: argparse.Namespace):
     # Route für den WebSocket-Endpunkt '/ws' hinzufügen und mit dem Handler verknüpfen.
     app.router.add_get('/ws', websocket_handler)
 
-    # --- Plattformspezifisches Signal Handling ---
+    # Plattformspezifisches Signal-Handling
     # Notwendig, um auf Strg+C (SIGINT) und Terminate-Signale (SIGTERM) zu reagieren und einen geordneten Shutdown einzuleiten.
     if sys.platform == 'win32':
         # Unter Windows wird signal.signal verwendet, da loop.add_signal_handler nicht unterstützt wird.
         # Nur SIGINT (Strg+C) wird zuverlässig unterstützt.
-        signal.signal(signal.SIGINT, shutdown) # Registriert die shutdown Funktion als Handler
+        signal.signal(signal.SIGINT, shutdown) # Registriert die Shutdown-Funktion als Handler
         logger.debug("Signal-Handler: Verwende signal.signal für SIGINT unter Windows.")
     else:
         # Unter POSIX-Systemen (Linux, macOS) wird loop.add_signal_handler bevorzugt. Es integriert sich besser in die asyncio Event-Schleife.
         try:
             loop = asyncio.get_running_loop()
             for sig in (signal.SIGINT, signal.SIGTERM):
-                # Registriert die shutdown Funktion für SIGINT und SIGTERM.
+                # Registriert die Shutdown-Funktion für SIGINT und SIGTERM.
                 loop.add_signal_handler(sig, shutdown, sig) # Übergibt Signalnummer an shutdown
             logger.debug("Signal-Handler: Verwende loop.add_signal_handler für SIGINT und SIGTERM unter POSIX.")
         except NotImplementedError:
