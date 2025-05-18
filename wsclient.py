@@ -68,7 +68,19 @@ async def receive_messages(ws: ClientWebSocketResponse):
 
                 # Proaktive Nachrichten vom Server
 
-                if msg_type == "deal_cards":
+                if msg_type == "joined_confirmation":  # snake_case
+                    session_id = payload.get("session_id")
+                    public_state: dict = payload.get("public_state", {})
+                    private_state: dict = payload.get("private_state", {})
+                    print(f"--- ERFOLGREICH BEIGETRETEN ---")
+                    print(f"  Session ID: {session_id}")
+                    print(f"  Tischname: {public_state.get('table_name', 'N/A')}, Spieler: {public_state.get('player_names', [])}")
+                    print(f"  Dein Spieler-Index: {private_state.get("player_index", "N/A")}")
+                    print(f"  Deine Handkarten: {private_state.get('hand_cards', 'N/A')}")
+                    # neue Session-ID speichern
+                    save_session_id(session_id)
+
+                elif msg_type == "deal_cards":
                     hand_cards = payload.get("hand_cards")
                     print(f"--- KARTEN ERHALTEN ({len(hand_cards)}) ---")
                     print(f"  Deine Handkarten: {hand_cards if hand_cards else 'Keine'}")
@@ -111,18 +123,6 @@ async def receive_messages(ws: ClientWebSocketResponse):
                         print(f"  Details: {json.dumps(error_details)}")
 
                 # Reaktionen des Servers auf Client-Aktionen
-
-                if msg_type == "joined_confirmation":  # snake_case
-                    session_id = payload.get("session_id")
-                    public_state: dict = payload.get("public_state", {})
-                    private_state: dict = payload.get("private_state", {})
-                    print(f"--- ERFOLGREICH BEIGETRETEN ---")
-                    print(f"  Session ID: {session_id}")
-                    print(f"  Tischname: {public_state.get('table_name', 'N/A')}, Spieler: {public_state.get('player_names', [])}")
-                    print(f"  Dein Spieler-Index: {private_state.get("player_index", "N/A")}")
-                    print(f"  Deine Handkarten: {private_state.get('hand_cards', 'N/A')}")
-                    # neue Session-ID speichern
-                    save_session_id(session_id)
 
                 elif msg_type == "pong":  # Antwort vom Server auf die ping-Nachricht
                     timestamp = payload.get("timestamp")
