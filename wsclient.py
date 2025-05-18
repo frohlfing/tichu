@@ -291,7 +291,8 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--port", type=int, default=config.PORT, help=f"Server Port (Default: {config.PORT})")
     parser.add_argument("-n", "--name", default="Anton", help="Name des Spielers (Default: Anton)")
     parser.add_argument("-t", "--table", default="Test", help="Name des Tisches (Default: Test)")
-    parser.add_argument("-s", "--session_id", default=sid, help="Session-ID (Default: Letzte gespeicherte Session-ID)")
+    if sid:
+        parser.add_argument("-s", "--session_id", default=sid, help="Session-ID (Default: Letzte gespeicherte Session-ID)")
 
     # Main-Routine starten
     logger.debug(f"Starte Tichu WebSocket-Client...")
