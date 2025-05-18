@@ -242,7 +242,7 @@ Die `Arena`-Klasse:
 
 Ein zentraler Server stellt eine WebSocket bereit. Beim initialen Verbindungsaufbau gibt der Spieler den gewünschten Tisch und seinen Namen über die Query-Parameter an:
 
-`?table_name=str&player_name=str`
+`?player_name=str&table_name=str`
 
 Nach einem Reconnect teilt der Spieler statt dessen seine letzte Session-ID über die Query-Parameter mit:  
 

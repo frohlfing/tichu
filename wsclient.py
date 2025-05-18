@@ -159,7 +159,7 @@ async def main(args: argparse.Namespace):
     if args.session_id:
         url = f"ws://{args.host}:{args.port}/ws?session_id={args.session_id}"
     else:
-        url = f"ws://{args.host}:{args.port}/ws?patient_name={args.name}&table_name={args.table}"
+        url = f"ws://{args.host}:{args.port}/ws?player_name={args.name}&table_name={args.table}"
 
     example_messages = [
         # Proaktive Nachrichten vom Spieler

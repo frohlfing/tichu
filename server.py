@@ -39,7 +39,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         return ws
 
     # --- 2) Query-String auslesen. ---
-    params = request.query  # z.B. ?name=Frank&table=Tisch1[&session_id=UUID]
+    params = request.query  # z.B. ?player_name=Frank&table_name=Tisch1 oder ?session_id=UUID
     remote_addr = request.remote if request.remote else "Unbekannt"  # Client-Adresse
     logger.debug(f"WebSocket Verbindung hergestellt von {remote_addr} mit Parametern: {params}")
 

@@ -75,7 +75,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
     elif query_player_name and query_table_name:
         try:
             engine = factory.get_or_create_engine(query_table_name)
-            # Optional: Prüfen, ob Spieler mit gleichem Namen schon als Client am Tisch ist
+            # Optional: Prüfen, ob der Spieler mit gleichem Namen schon als Client am Tisch ist
             # (Diese Logik kann auch in engine.join_client() liegen)
             # ...
             client_obj = Client(name=query_player_name, websocket=ws, interrupt_event=engine.interrupt_event)
