@@ -5,7 +5,7 @@ __all__ = "Card", "Cards", \
     "ranks_to_vector", "cards_to_vector", \
     "is_wish_in", "sum_card_points", "other_cards",
 
-from typing import Tuple, List
+from typing import Tuple, List, Iterable
 
 # todo Dokumentieren (reStructuredText)
 
@@ -138,15 +138,27 @@ _card_points = (
 )
 
 
+# Parst die Karte aus dem String
+# s: z.B. "R6"
+#def parse_card(s: str) -> Card:
+#    return deck[_cardlabels_index[s]]
+
+
 # Parst die Karten aus dem String
 # s: z.B. "R6 B5 G4"
 def parse_cards(s: str) -> Cards:
     return [deck[_cardlabels_index[c]] for c in s.split(" ")] if s else []
 
 
+# Formatiert die Karte als lesbaren String
+# card: Karte, z.B. (8,3)
+#def stringify_card(card: Card) -> str:
+#    return _cardlabels[_deck_index[card]]
+
+
 # Formatiert Karten als lesbaren String
 # cards: Karten, z.B. [(8,3),(2,4),(0,1)]
-def stringify_cards(cards: Cards) -> str:
+def stringify_cards(cards: Iterable[Card]) -> str:
     return " ".join([_cardlabels[_deck_index[c]] for c in cards])
 
 

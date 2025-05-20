@@ -186,7 +186,7 @@ def test_reset_private_state_for_round(game_engine, initial_private_states):
     priv = initial_private_states[0]
     # Zustand "verschmutzen"
     priv.hand_cards = parse_cards("S5 G5")
-    priv.given_schupf_cards = parse_cards("R2") # Alte Form
+    priv.given_schupf_cards = (2, 2), (2, 3), (2, 4)
     # priv.given_schupf_cards = [None, None, parse_cards("R2")[0], None] # Neue Form
 
     # Reset durchführen (reset_private_state_for_round ist static)
@@ -194,9 +194,7 @@ def test_reset_private_state_for_round(game_engine, initial_private_states):
 
     # Prüfen
     assert priv.hand_cards == []
-    assert priv.given_schupf_cards == [] # Alte Form
-    # assert priv.given_schupf_cards == [None, None, None, None] # Neue Form
-
+    assert priv.given_schupf_cards is None
 
 # --- Tests für Kartenmanagement ---
 
@@ -444,40 +442,25 @@ def test_engine_turn_with_dog(initial_public_state):
     assert pub.current_turn_index == 3
 
 
-# --- Async Tests (Beispielhaft - erfordern ggf. pytest-asyncio) ---
-# Diese testen Methoden, die auf Player-Mocks warten
-
-@pytest.mark.asyncio # Markierung für pytest-asyncio (falls benötigt)
-async def test_engine_calls_player_schupf(game_engine, initial_public_state, initial_private_states, mock_agents):
+async def test_schupf(game_engine, initial_public_state, initial_private_states, mock_agents):
     """
-    Testet, ob die Engine die schupf-Methode des Spielers aufruft.
-    Dies ist ein Integrationstest für einen kleinen Teil der Game Loop.
+    Testet die schupf-Methode.
     """
     pub = initial_public_state
     privs = initial_private_states
     player_index = 0
-    mock_player = mock_agents[player_index]
-    # Konfiguriere den Mock, was er zurückgeben soll, wenn schupf aufgerufen wird
-    schupf_return = parse_cards("S2 B3 G4")
-    #schupf_return = [None, (2, 1), (3, 2), (4, 3)]  # [None] + parse_cards("S2 B3 G4")
-    mock_player.schupf.return_value = schupf_return
-
-    # Beispiel: Simulierter Aufruf aus der Game Loop
-    # Setze initiale Hand für den Spieler
     privs[player_index].hand_cards = parse_cards("S2 B3 G4 R5 G5 B5 R6 G6 B6 R7 G7 B7 R8 G8")
     assert len(privs[player_index].hand_cards) == 14
 
-    # Der Teil der Loop:
-    returned_cards_from_player = await mock_player.schupf(pub, privs[player_index])
-    # Die Engine würde dann self.schupf aufrufen:
-    engine_schupf_result = game_engine.schupf(privs[player_index], returned_cards_from_player)
-
-    # Assertions:
-    # 1. Wurde der Mock aufgerufen?
-    mock_player.schupf.assert_awaited_once_with(pub, privs[player_index])
-    # 2. Hat die Engine-Methode den State korrekt aktualisiert?
+    schupfed_cards = (2,1), (3,2), (4,3)  # S2 B3 G4
+    game_engine.schupf(privs[player_index], schupfed_cards)
     assert len(privs[player_index].hand_cards) == 11
-    assert privs[player_index].given_schupf_cards == [card for card in engine_schupf_result if card]
+    assert privs[player_index].given_schupf_cards == schupfed_cards
+
+    schupfed_cards = (9, 1), (9, 2), (9, 3)  # S9 B9 G9
+    game_engine.take_schupfed_cards(privs[player_index], schupfed_cards)
+    assert len(privs[player_index].hand_cards) == 14
+    assert privs[player_index].received_schupf_cards == schupfed_cards
 
 # -------------------------------------------------------
 # Alte Tests (ursprünglich mit unittest geschrieben)

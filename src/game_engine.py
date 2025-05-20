@@ -13,7 +13,8 @@ from src.players.player import Player
 from src.players.random_agent import RandomAgent
 from src.private_state import PrivateState
 from src.public_state import PublicState
-from typing import List, Optional
+from typing import List, Optional, Tuple
+
 
 class GameEngine:
     """
@@ -46,13 +47,6 @@ class GameEngine:
         else:
             self._default_agents: List[Agent] = [RandomAgent(name=f"RandomAgent_{i + 1}") for i in range(4)]
 
-        # Sitzplätze der Reihe nach vergeben (0 bis 3)
-        for i, default_agent in enumerate(self._default_agents):
-            default_agent.player_index = i
-
-        agent_names = ", ".join(default_agent.name for default_agent in self._default_agents)
-        logger.debug(f"[{self.table_name}] Agenten initialisiert: {agent_names}.")
-
         # aktuelle Spielerliste
         self._players: List[Player] = list(self._default_agents)
 
@@ -67,6 +61,14 @@ class GameEngine:
         # Zufallsgenerator, geeignet für Multiprocessing
         self._random = Random(seed)
 
+        # Sitzplätze der Reihe nach vergeben (0 bis 3) und Interrupt-Event durchreichen
+        for i, default_agent in enumerate(self._default_agents):
+            default_agent.player_index = i
+            default_agent.interrupt_event = self.interrupt_event  # Todo Test für diese Zuweisung hinzufügen
+
+        agent_names = ", ".join(default_agent.name for default_agent in self._default_agents)
+        logger.debug(f"[{self.table_name}] Agenten initialisiert: {agent_names}.")
+
         logger.info(f"GameEngine für Tisch '{table_name}' erstellt.")
 
     async def cleanup(self):
@@ -77,7 +79,7 @@ class GameEngine:
         """
         logger.info(f"Bereinige Tisch '{self._table_name}'...")
 
-        # breche den Haupt-Spiel-Loop Task ab, falls er läuft.
+        # bricht den Haupt-Spiel-Loop Task ab, falls er läuft
         if self.game_loop_task and not self.game_loop_task.done():
             logger.debug(f"Tisch '{self._table_name}': Breche Spiel-Loop Task ab.")
             self.game_loop_task.cancel()
@@ -141,7 +143,7 @@ class GameEngine:
             pub.player_names = [p.name for p in self._players]
             pub.current_phase = "playing"
 
-            # privaten Spielzustände initialisieren
+            # privater Spielzustände initialisieren
             if privs:
                 if len(privs) != 4:
                     raise ValueError(f"Die Anzahl der Einträge in `privs` muss genau 4 sein.")
@@ -151,7 +153,7 @@ class GameEngine:
             for i, priv in enumerate(privs):
                 priv.player_index = i
 
-            # Kopie des sortiertem Standarddecks - wird jede Runde neu durchgemischt
+            # Kopie des sortierten Standarddecks - wird jede Runde neu durchgemischt
             mixed_deck = list(deck)
             
             # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
@@ -198,17 +200,31 @@ class GameEngine:
                                 await self.broadcast("")
 
                 # jetzt müssen die Spieler schupfen
-                schupfed = [None, None, None, None]
-                for player in range(0, 4):
-                    schupfed[player] = self.schupf(privs[player], await self._players[player].schupf(pub, privs[player]))
+
+                # a) Tauschkarten abgeben
+                for player in range(0, 4):  # Geber
+                    self.schupf(privs[player], await self._players[player].schupf(pub, privs[player]))
                     assert len(privs[player].hand_cards) == 11
                     self.set_number_of_cards(pub, player, 11)
                 if clients_joined: 
                     await self.broadcast("")
 
-                # die abgegebenen Karten der Mitspieler aufnehmen
-                for player in range(0, 4):
-                    self.take_schupfed_cards(privs[player], [schupfed[giver][player] for giver in range(0, 4)])
+                # b) Tauscharten aufnehmen
+                # Karten-Index der abgegebenen Karte:
+                # Ge-| Nehmer
+                # ber| 0  1  2  3
+                # ---|------------
+                #   0| -  1  2  3
+                #   1| 3  -  1  2
+                #   2| 2  3  -  1
+                #   3| 1  2  3  -
+                for player in range(0, 4):  # Nehmer
+                    schupfed = (
+                        privs[(player + 1) % 4].given_schupf_cards[3],
+                        privs[(player + 2) % 4].given_schupf_cards[2],
+                        privs[(player + 3) % 4].given_schupf_cards[1],
+                    )
+                    self.take_schupfed_cards(privs[player], schupfed)
                     assert len(privs[player].hand_cards) == 14
                     self.set_number_of_cards(pub, player, 14)
                     if CARD_MAH in privs[player].hand_cards:
@@ -324,7 +340,7 @@ class GameEngine:
     @staticmethod
     def reset_public_state_for_round(pub: PublicState):  # pragma: no cover
         """
-        Spielzustand für eine neue Runde zurücksetzen
+        Spielzustand für eine neue Runde zurücksetzen.
         :param pub: Öffentlicher Spielzustand
         """
         pub.current_turn_index = -1
@@ -346,7 +362,7 @@ class GameEngine:
     
     def _shuffle_cards(self, cards: Cards) -> None:
         """
-        Karten mischen
+        Karten mischen.
         :param cards: Kartendeck
         """
         self._random.shuffle(cards)
@@ -354,10 +370,10 @@ class GameEngine:
     @staticmethod
     def deal_out(cards: Cards, player_index: int, n: int) -> Cards:
         """
-        Karten austeilen
-        :param cards: Kartendeck
-        :param player_index: Index des Spielers (0 bis 3)
-        :param n: Anzahl Karten (8 oder 14)
+        Karten austeilen.
+        :param cards: Kartendeck.
+        :param player_index: Index des Spielers (0 bis 3).
+        :param n: Anzahl Karten (8 oder 14).
         :return: Die ausgeteilten Karten, absteigend sortiert.
         """
         offset = player_index * 14
@@ -366,9 +382,9 @@ class GameEngine:
     @staticmethod
     def set_start_player(pub: PublicState, player_index: int):  # pragma: no cover
         """
-        Startspieler bekannt geben
-        :param pub: Öffentlicher Spielzustand
-        :param player_index: Index des Spielers (0 bis 3)
+        Startspieler bekannt geben.
+        :param pub: Öffentlicher Spielzustand.
+        :param player_index: Index des Spielers (0 bis 3).
         """
         assert not pub.is_round_over
         assert 0 <= player_index <= 3
@@ -380,10 +396,10 @@ class GameEngine:
     @staticmethod
     def set_number_of_cards(pub: PublicState, player_index: int, n: int):  # pragma: no cover
         """
-        Anzahl der Handkarten angeben
-        :param pub: Öffentlicher Spielzustand
+        Anzahl der Handkarten angeben.
+        :param pub: Öffentlicher Spielzustand.
         :param player_index: Der Index des Spielers. 
-        :param n: Anzahl Handkarten des Spielers
+        :param n: Anzahl Handkarten des Spielers.
         """
         assert not pub.is_round_over
         assert 0 <= player_index <= 3
@@ -396,8 +412,8 @@ class GameEngine:
     @staticmethod
     def announce(pub: PublicState, player_index: int, grand: bool = False):  # pragma: no cover
         """
-        Tichu ansagen
-        :param pub: Öffentlicher Spielzustand
+        Tichu ansagen.
+        :param pub: Öffentlicher Spielzustand.
         :param player_index: Der Index des Spielers, der Tichu angesagt hat. 
         :param grand: True, wenn Grand Tichu angesagt wurde.
         """
@@ -410,9 +426,9 @@ class GameEngine:
     @staticmethod
     def play_pub(pub: PublicState, cards: Cards, combination: Combination):
         """
-        Kombination spielen
-        :param pub: Öffentlicher Spielzustand
-        :param cards: Ausgewählte Karten 
+        Kombination spielen.
+        :param pub: Öffentlicher Spielzustand.
+        :param cards: Ausgewählte Karten.
         :param combination: Die Kombination, die die Karten bilden (Typ, Länge, Rang).
         """
         assert not pub.is_round_over
@@ -433,7 +449,7 @@ class GameEngine:
         pub.trick_owner_index = pub.current_turn_index
         if combination == FIGURE_PHO:
             assert pub.trick_combination == FIGURE_PASS or pub.trick_combination[0] == SINGLE
-            assert pub.trick_combination != FIGURE_DRA  # Phönix auf Drache geht nicht
+            assert pub.trick_combination != FIGURE_DRA  # Phönix auf Drachen geht nicht
             # Der Phönix ist eigentlich um 0.5 größer als der Stich, aber gleichsetzen geht auch (Anspiel == 1).
             if pub.trick_combination[2] == 0:  # Anspiel oder Hund?
                 pub.trick_combination = FIGURE_MAH
@@ -480,8 +496,8 @@ class GameEngine:
     @staticmethod
     def set_wish(pub: PublicState, wish: int):  # pragma: no cover
         """
-        Wunsch äußern
-        :param pub: Öffentlicher Spielzustand
+        Wunsch äußern.
+        :param pub: Öffentlicher Spielzustand.
         :param wish: Der gewünschte Kartenwert. 
         """
         assert not pub.is_round_over
@@ -493,9 +509,9 @@ class GameEngine:
     @staticmethod
     def clear_trick(pub: PublicState, opponent: int = -1):
         """
-        Stich abräumen
-        :param pub: Öffentlicher Spielzustand
-        :param opponent: opponent: Nummer des Gegners, falls der Stich verschenkt werden muss, ansonsten -1 
+        Stich abräumen.
+        :param pub: Öffentlicher Spielzustand.
+        :param opponent: opponent: Nummer des Gegners, falls der Stich verschenkt werden muss, ansonsten -1.
         """
         # Sicherstellen, dass die Funktion nicht zweimal aufgerufen wird, sondern nur, wenn ein Stich abgeräumt werden kann.
         assert pub.trick_owner_index != -1
@@ -567,8 +583,8 @@ class GameEngine:
     @staticmethod
     def turn(pub: PublicState):
         """
-        Nächsten Spieler auswählen        
-        :param pub: Öffentlicher Spielzustand
+        Nächsten Spieler auswählen.
+        :param pub: Öffentlicher Spielzustand.
         """
         assert not pub.is_round_over
         assert 0 <= pub.current_turn_index <= 3
@@ -586,10 +602,10 @@ class GameEngine:
         """
         Alles für eine neue Runde zurücksetzen.
         
-        :param priv: Privater Spielzustand
+        :param priv: Privater Spielzustand.
         """
         priv.hand_cards = []
-        priv.given_schupf_cards = []
+        priv.given_schupf_cards = None
 
     @staticmethod
     def take_cards(priv: PrivateState, cards: Cards):
@@ -602,16 +618,15 @@ class GameEngine:
         n = len(cards)
         assert n == 8 or n == 14, n
         priv.hand_cards = cards
-        priv.given_schupf_cards = []
+        priv.given_schupf_cards = None
 
     @staticmethod
-    def schupf(priv: PrivateState, schupfed: Cards) -> List[Optional[Card]]:
+    def schupf(priv: PrivateState, schupfed: Tuple[Card, Card, Card]):
         """ 
         Tauschkarten an die Mitspieler abgeben
         
-        :param priv: Privater Spielzustand des Spielers, der die Tauschkarten abgegeben hat
-        :param schupfed: Tauschkarte für rechten Gegner, Karte für Partner, Karte für linken Gegner  todo schupf_cards in kanonischer Form
-        :return: Tauschkarten für Spieler 0 bis 3, kanonische Form (der eigene Spieler kriegt nichts, also None)
+        :param priv: Privater Spielzustand des Spielers, der die Tauschkarten abgegeben hat.
+        :param schupfed: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner (aus Sicht des Spielers, der die Tauschkarten abgegeben hat).
         """
         # Karten abgeben
         assert len(schupfed) == 3
@@ -619,33 +634,29 @@ class GameEngine:
         assert len(priv.hand_cards) == 14
         priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
         assert len(priv.hand_cards) == 11, f"Anzahl Handkarten: {len(priv.hand_cards)}"
-        cards = [None, None, None, None]
-        for i in range(0, 3):
-            cards[(priv.player_index + i + 1) % 4] = priv.given_schupf_cards[i]
-        return cards
 
     @staticmethod
-    def take_schupfed_cards(priv: PrivateState, cards: List[Optional[Card]]):
+    def take_schupfed_cards(priv: PrivateState, cards: Tuple[Card, Card, Card]):
         """
         Tauschkarten der Mitspieler aufnehmen
         
         :param priv: Privater Spielzustand des Spielers, der die Tauschkarten der Mitspieler aufnimmt.
-        :param cards: Abgegebene Tauschkarten der Spieler 0 bis 3 (None steht für keine Karte; eigener Spieler)
+        :param cards: Karte vom rechten Gegner, Karte vom Partner, Karte vom linken Gegner (aus Sicht des Spielers, der die Karten aufnimmt)
         """
         assert len(priv.hand_cards) == 11
         assert not set(cards).intersection(priv.hand_cards)  # darf keine Schnittmenge bilden
         priv.received_schupf_cards = cards
-        priv.hand_cards += [card for card in cards if card is not None]
+        priv.hand_cards += cards  #[card for card in cards]
         priv.hand_cards.sort(reverse=True)
         assert len(priv.hand_cards) == 14
 
     @staticmethod
     def play_priv(priv: PrivateState, cards: Cards, combination: Combination):
         """
-        Kombination ausspielen (oder passen)
+        Kombination ausspielen (oder passen).
         
-        :param priv: Privater Spielzustand
-        :param cards: Ausgewählte Karten
+        :param priv: Privater Spielzustand.
+        :param cards: Ausgewählte Karten.
         :param combination: Die Kombination, die die Karten bilden (Typ, Länge, Rang).
         """
         if combination != FIGURE_PASS:
@@ -672,13 +683,14 @@ class GameEngine:
             return False
         self._players[available_index] = client
         client.player_index = available_index
+        client.interrupt_event = self.interrupt_event   # Todo Test für diese Zuweisung hinzufügen
         return True
 
     async def leave_client(self, client: Client) -> None:
         """
         Lässt den Client gehen.
         :param client: Der Client, der gehen will.
-        :raise ValueError: Wenn der Clients nicht gefunden werden kann.
+        :raise ValueError: Wenn der Client nicht gefunden werden kann.
         """
         index = client.player_index
         if index < 0 or index > 3:
@@ -705,8 +717,8 @@ class GameEngine:
         """
         Sendet den aktuellen Spielzustand an alle Clients.
 
-        :param pub: Öffentlicher Spielzustand
-        :param privs: Private Spielzustände 
+        :param pub: Öffentlicher Spielzustand.
+        :param privs: Private Spielzustände.
         """
         for player in self._players:
             if isinstance(player, Client):  
@@ -756,7 +768,7 @@ class GameEngine:
         Gibt den Spieler anhand der Session zurück.
 
         :param session: Die Session des Spielers.
-        :return: Die Player-Instanz falls die Session existiert, sonst None.
+        :return: Die Player-Instanz, falls die Session existiert, sonst None.
         """
         for p in self._players:
             if p.session_id == session:

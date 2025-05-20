@@ -1,9 +1,8 @@
 import unittest
 from src.lib.cards import *
 from src.lib.combinations import *
-from src.lib.prob import *
 # noinspection PyProtectedMember
-from src.lib.prob.prob_lo import possible_hands_lo
+from src.lib.prob.prob_lo import possible_hands_lo, prob_of_lower_combi
 
 
 # Testfunktion possible_hands_lo() testen

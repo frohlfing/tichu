@@ -74,14 +74,14 @@ def test_public_state_to_dict(initial_pub_state):
 
     pub_dict = pub.to_dict()
 
-    assert pub_dict["tableName"] == "TestTable"
-    assert pub_dict["playerNames"] == ["Alice", "Bob", "Charlie", "David"]
-    assert pub_dict["currentTurnIndex"] == 1
-    assert pub_dict["countHandCards"] == [10, 11, 12, 13]
-    assert pub_dict["playedCards"] == "S5 G5"
-    assert pub_dict["trickCombination"] == ("PAIR", 2, 5) # Enum Name
-    assert pub_dict["trickPoints"] == 10
-    assert pub_dict["trickOwnerIndex"] == 0
+    assert pub_dict["table_name"] == "TestTable"
+    assert pub_dict["player_names"] == ["Alice", "Bob", "Charlie", "David"]
+    assert pub_dict["current_turn_index"] == 1
+    assert pub_dict["count_hand_cards"] == [10, 11, 12, 13]
+    assert pub_dict["played_cards"] == "S5 G5"
+    assert pub_dict["trick_combination"] == ("PAIR", 2, 5) # Enum Name
+    assert pub_dict["trick_points"] == 10
+    assert pub_dict["trick_owner_index"] == 0
     assert len(pub_dict["tricks"]) == 1
     assert len(pub_dict["tricks"][0]) == 2
     # Prüfe den ersten Spielzug im ersten Trick

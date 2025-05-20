@@ -59,7 +59,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
     else:
         try:
             engine = factory.get_or_create_engine(params.get("table_name"))
-            client = Client(params.get("player_name"), websocket=ws, interrupt_event=engine.interrupt_event, session_id=session_id) if engine else None
+            client = Client(params.get("player_name"), websocket=ws) if engine else None
         except ValueError:
             error_message = "Query-Parameter 'player_name' oder 'table_name' fehlerhaft."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")

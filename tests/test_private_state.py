@@ -28,12 +28,8 @@ def test_private_state_initialization(initial_priv_state):
     priv = initial_priv_state
     assert priv.player_index == 1
     assert priv.hand_cards == []
-    # Teste die kanonische Form, wenn implementiert:
-    # assert priv.given_schupf_cards == [None, None, None, None]
-    # assert priv.received_schupf_cards == [None, None, None, None]
-    # Teste die alte Form:
-    assert priv.given_schupf_cards == []
-    assert priv.received_schupf_cards == []
+    assert priv.given_schupf_cards is None
+    assert priv.received_schupf_cards is None
     assert priv._combination_cache == []
     assert priv._partition_cache == []
     assert priv._partitions_aborted is True
@@ -61,19 +57,13 @@ def test_private_state_to_dict(initial_priv_state):
     """Testet die Umwandlung in ein Dictionary."""
     priv = initial_priv_state
     priv.hand_cards = parse_cards("SA RA GA")
-    # Setze Schupf-Karten (alte Form)
-    priv.given_schupf_cards = parse_cards("S2 B3 G4")
-    priv.received_schupf_cards = parse_cards("R5 S6 B7")
-
+    priv.given_schupf_cards = (2,1), (3,2), (4,3)  # S2 B3 G4
+    priv.received_schupf_cards = (5,4), (6,1), (7,2)  # R5 S6 B7
     priv_dict = priv.to_dict()
-
-    assert priv_dict["playerIndex"] == 1
-    assert priv_dict["handCards"] == "SA RA GA"
-    # Teste alte Form:
-    assert priv_dict["givenSchupfCards"] == "S2 B3 G4"
-    assert priv_dict["receivedSchupfCards"] == "R5 S6 B7"
-    # Teste neue Form (wenn implementiert):
-    # assert priv_dict["givenSchupfCards"] == [None, stringify_cards([parse_cards("S2")[0]), ...] etc.
+    assert priv_dict["player_index"] == 1
+    assert priv_dict["hand_cards"] == "SA RA GA"
+    assert priv_dict["given_schupf_cards"] == "S2 B3 G4"
+    assert priv_dict["received_schupf_cards"] == "R5 S6 B7"
 
 # --- Tests für Properties ---
 

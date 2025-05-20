@@ -2,8 +2,9 @@
 Definiert die abstrakte Basisklasse `Player` für alle Spieler im Tichu-Spiel.
 """
 
+import asyncio
 from src.common.logger import logger
-from src.lib.cards import Cards
+from src.lib.cards import Card, Cards
 from src.lib.combinations import Combination
 from src.private_state import PrivateState
 from src.public_state import PublicState
@@ -18,6 +19,7 @@ class Player:
     Definiert die grundlegenden Eigenschaften und Methoden, die jeder Spieler haben muss.
 
     :ivar player_index: Der Index des Spielers am Tisch (0 bis 3, None == Spieler sitzt noch nicht am Tisch).
+    :ivar interrupt_event: Das globale Interrupt-Event.
     """
 
     def __init__(self, name: str, session_id: Optional[str] = None):
@@ -35,6 +37,7 @@ class Player:
         self._name: str = name_stripped
         self._session_id: str = session_id if session_id else str(uuid4())
         self.player_index: Optional[int] = None  # wird von der GameEngine gesetzt  todo in index umbenennen
+        self.interrupt_event: Optional[asyncio.Event] = None  # wird von der Engine gesetzt
         logger.debug(f"Player '{self._name}' (Session: {self._session_id}) erstellt.")
 
     def __repr__(self) -> str:
@@ -61,7 +64,7 @@ class Player:
     # Entscheidungen
     # ------------------------------------------------------
 
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:  # -> List[Optional[Card]]  todo schupf_cards in kanonischer Form
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Tuple[Card, Card, Card]:
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -69,7 +72,7 @@ class Player:
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :return: Die Liste der Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
+        :return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner.
         :raises PlayerInteractionError: Wenn die Aktion fehlschlägt.
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'schupf' implementieren.")
@@ -96,7 +99,7 @@ class Player:
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :param action_space: Mögliche Kombinationen (inklusiv Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
+        :param action_space: Mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0)).
         :raises PlayerInteractionError: Wenn die Aktion fehlschlägt.
         """

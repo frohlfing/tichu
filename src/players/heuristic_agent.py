@@ -5,7 +5,7 @@ Definiert die Heuristik-Agenten.
 import config
 import math
 from src.common.rand import Random
-from src.lib.cards import Cards, CARD_DOG, CARD_MAH
+from src.lib.cards import Card, Cards, CARD_DOG, CARD_MAH
 from src.lib.combinations import Combination, build_action_space, remove_combinations, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, SINGLE, STREET, BOMB
 from src.lib.partitions import partition_quality, filter_playable_combinations, filter_playable_partitions
 from src.lib.prob import calc_statistic
@@ -65,7 +65,7 @@ class HeuristicAgent(Agent):
     #       future: Future = loop.run_in_executor(pool, blocking_function)
     #       result: int = await future
 
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:  # -> List[Optional[Card]]  todo schupf_cards in kanonischer Form
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Tuple[Card, Card, Card]:
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -73,9 +73,9 @@ class HeuristicAgent(Agent):
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :return: Die Liste der Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
+        :return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner.
         """
-        schupfed = [None, None, None]
+        schupfed: List[Optional[Card]] = [None, None, None]
         for i in [2, 1, 3]:  # erst die Karte für den Partner aussuchen, dann für die Gegner
             p = (priv.player_index + i) % 4  # Index in kanonische Form
             preferred = []  # Karten, die zum Abgeben in Betracht kommen
@@ -140,11 +140,11 @@ class HeuristicAgent(Agent):
 
             if i == 2:
                 # Für den Partner nehmen wir die höchste Einzelkarte
-                schupfed[i - 1] = preferred[0]  # todo schupf_cards in kanonischer Form
+                schupfed[i - 1] = preferred[0]
             else:
                 # Für den Gegner entscheidet der Zufall
-                schupfed[i - 1] = preferred[self._random.integer(0, length)]  # todo schupf_cards in kanonischer Form
-        return schupfed
+                schupfed[i - 1] = preferred[self._random.integer(0, length)]
+        return schupfed[0], schupfed[1], schupfed[2]
 
     async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
         """

@@ -3,7 +3,7 @@ Definiert einen Zufallsagenten.
 """
 
 from src.common.rand import Random
-from src.lib.cards import Cards
+from src.lib.cards import Card, Cards
 from src.lib.combinations import Combination
 from src.players.agent import Agent
 from src.private_state import PrivateState
@@ -31,7 +31,7 @@ class RandomAgent(Agent):
     # Entscheidungen
     # ------------------------------------------------------
 
-    async def schupf(self, pub: PublicState, priv: PrivateState) -> Cards:  # -> List[Optional[Card]]  todo schupf_cards in kanonischer Form
+    async def schupf(self, pub: PublicState, priv: PrivateState) -> Tuple[Card, Card, Card]:
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
@@ -39,14 +39,13 @@ class RandomAgent(Agent):
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :return: Die Liste der Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
+        :return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner.
         """
         hand = list(priv.hand_cards)
-        return [
-            hand.pop(self._random.integer(0, 14)),
-            hand.pop(self._random.integer(0, 13)),
-            hand.pop(self._random.integer(0, 12)),
-        ]  # todo schupf_cards in kanonischer Form
+        a = hand.pop(self._random.integer(0, 14))
+        b = hand.pop(self._random.integer(0, 14))
+        c = hand.pop(self._random.integer(0, 14))
+        return a, b, c
 
     async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
         """
@@ -69,7 +68,7 @@ class RandomAgent(Agent):
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :param action_space: Mögliche Kombinationen (inklusiv Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
+        :param action_space: Mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0)).
         """
         return action_space[self._random.integer(0, len(action_space))]

@@ -3,10 +3,11 @@ Definiert die Datenstruktur für den privaten Spielzustand eines Spielers.
 """
 
 from dataclasses import dataclass, field
-from src.lib.cards import Cards, stringify_cards
+from src.lib.cards import Card, Cards, stringify_cards
 from src.lib.combinations import build_combinations, Combination
 from src.lib.partitions import build_partitions, Partition
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
+
 
 @dataclass
 class PrivateState:
@@ -17,7 +18,7 @@ class PrivateState:
 
     :ivar player_index: Der Index dieses Spielers am Tisch (zwischen 0 und 3).
     :ivar _hand_cards: (property `hand_cards`) Die aktuellen Handkarten des Spielers (absteigend sortiert, z.B. [(8,3), (2,4), (0,1)].
-    :ivar given_schupf_cards: Die drei Karten, die der Spieler zum Schupfen an den rechten Gegner, Partner und linken Gegner abgegeben hat.  todo schupf_cards in kanonischer Form
+    :ivar given_schupf_cards: Die drei Karten, die der Spieler zum Schupfen an den rechten Gegner, Partner und linken Gegner abgegeben hat.
     :ivar received_schupf_cards: Die drei Karten, die der Spieler beim Schupfen vom rechten Gegner, Partner und linken Gegner erhalten hat.
     """
     # --- Spielerinformationen ---
@@ -25,11 +26,8 @@ class PrivateState:
 
     # --- Information über die aktuelle Runde ---
     _hand_cards: Cards = field(default_factory=list)
-    given_schupf_cards: Cards = field(default_factory=list)
-    received_schupf_cards: Cards = field(default_factory=list)  # todo in test_private_state aufnehmen
-    # todo schupf_cards in kanonischer Form definieren ([Spieler 0 bis 3], wobei schupf_cards[player_index] immer None ist):
-    #  given_schupf_cards: List[Optional[Card]] = field(default_factory=lambda: [None, None, None, None])
-    #  received_schupf_cards: List[Optional[Card]] = field(default_factory=lambda: [None, None, None, None])
+    given_schupf_cards: Optional[Tuple[Card, Card, Card]] = None
+    received_schupf_cards: Optional[Tuple[Card, Card, Card]] = None
 
     # --- Private Caches (verborgene Variablen) ---
     _combination_cache: List[Tuple[Cards, Combination]] = field(default_factory=list, repr=False)  # Nur intern verwendet, daher repr=False
@@ -42,7 +40,7 @@ class PrivateState:
         return self._hand_cards
 
     @hand_cards.setter
-    def hand_cards(self, value: Cards) -> None:
+    def hand_cards(self, value: Cards):
         """Setzt die Handkarten und leert den Cache."""
         self._hand_cards = value
         self._combination_cache = []
@@ -55,14 +53,13 @@ class PrivateState:
 
         :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
         """
+        schupf_cards = self.given_schupf_cards
+        schupf_cards = list(schupf_cards)
         return {
             "player_index": self.player_index,
             "hand_cards": stringify_cards(self.hand_cards),
-            "given_schupf_cards": stringify_cards(self.given_schupf_cards),
-            "received_schupf_cards": stringify_cards(self.received_schupf_cards),
-            # todo schupf_cards in kanonischer Form
-            #  "given_schupf_cards": [stringify_cards([card]) if card else None for card in self.given_schupf_cards],
-            #  "received_schupf_cards": [stringify_cards([card]) if card else None for card in self.received_schupf_cards],
+            "given_schupf_cards": stringify_cards(self.given_schupf_cards) if self.given_schupf_cards else "",
+            "received_schupf_cards": stringify_cards(self.received_schupf_cards) if self.received_schupf_cards else "",
         }
 
     @property

@@ -71,7 +71,7 @@ async def test_random_agent_schupf(random_agent_seeded, public_state_fixture, pr
 
     # Prüfungen:
     # 1. Korrekter Typ und Länge?
-    assert isinstance(schupfed_cards, list)
+    assert isinstance(schupfed_cards, tuple)
     assert len(schupfed_cards) == 3
     assert all(isinstance(card, tuple) for card in schupfed_cards)
 
@@ -208,7 +208,7 @@ async def test_schupf(agent, pub, priv):
     priv._hand_cards = parse_cards("S4 B4 G4 R4 S3 B3 G3 R3 S2 B2 G2 R2 Ma Hu")
     pub._number_of_cards = [14, 14, 14, 14]
     result = await agent.schupf(pub, priv)
-    assert result == parse_cards("S4 B3 G4")
+    assert result == tuple(parse_cards("S4 B3 G4"))
 
 async def test_announce(agent, pub, priv):
     result = await agent.announce(pub, priv)

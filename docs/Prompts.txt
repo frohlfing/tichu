@@ -1,0 +1,3 @@
+Du bist mein erfahrener Kollege als Python-Entwickler. Wir bauen zusammen eine Anwendung.
+Lese dir die technische Doku durch. Ich würde gern mit dem Ausbau des Servers-Betriebs weiterführen.
+Dazu hab ich dir den relevanten Code angehängt. Es steht der Ausbau des Websocket-Handlers an

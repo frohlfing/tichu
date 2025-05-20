@@ -9,7 +9,7 @@ from src.public_state import PublicState
 class TestHeuristicAgent(unittest.TestCase):
     def setUp(self):
         self.agent = HeuristicAgent(seed=123)
-        self.pub = PublicState(seed=123)
+        self.pub = PublicState()
         self.priv = PrivateState(0)
 
     def test_announce(self):
