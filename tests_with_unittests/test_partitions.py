@@ -1,5 +1,5 @@
 import unittest
-from src.lib.prob.calc_statistic import calc_statistic
+from src.lib.prob.statistic import calc_statistic
 # noinspection PyProtectedMember
 from src.lib.cards import *
 from src.lib.combinations import *

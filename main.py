@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
 """
-Startet eine Arena und lässt Agenten gegeneinander spielen.
+Dieses Modul öffnet eine Arena und lässt Agenten gegeneinander spielen.
+
+**Start des Wettkampfes**:
+   ```
+   python main.py
+   ```
 """
 
 import argparse

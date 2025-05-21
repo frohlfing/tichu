@@ -31,7 +31,7 @@ class TestPublicState(unittest.TestCase):
 
         # Karten legen
         self.pub.current_turn_index = 0
-        combi1 = parse_cards("RK"), (SINGLE, 1, 13)
+        combi1 = parse_cards("RK"), (CombinationType.SINGLE, 1, 13)
         self.pub.play(combi1)
         played_cards.append((13, 1))
         self.assertEqual(played_cards, self.pub.played_cards)
@@ -117,7 +117,7 @@ class TestPublicState(unittest.TestCase):
     def test_clear_trick(self):
         self.pub.current_turn_index = 0
         self.pub.trick_owner_index = 0
-        self.pub.trick_combination = SINGLE, 1, 10
+        self.pub.trick_combination = CombinationType.SINGLE, 1, 10
         self.pub._trick_counter = 5
         self.pub.is_round_over = False
         self.pub.is_double_victory = False
@@ -159,7 +159,7 @@ class TestPublicState(unittest.TestCase):
     def test_clear_trick_done(self):
         self.pub.current_turn_index = 0
         self.pub.trick_owner_index = 0
-        self.pub.trick_combination = SINGLE, 1, 10
+        self.pub.trick_combination = CombinationType.SINGLE, 1, 10
         self.pub._trick_counter = 5
         self.pub.is_round_over = True
         self.pub.is_double_victory = False
@@ -178,7 +178,7 @@ class TestPublicState(unittest.TestCase):
     def test_clear_trick_double_win(self):
         self.pub.current_turn_index = 0
         self.pub.trick_owner_index = 0
-        self.pub.trick_combination = SINGLE, 1, 10
+        self.pub.trick_combination = CombinationType.SINGLE, 1, 10
         self.pub._trick_counter = 5
         self.pub.is_round_over = True
         self.pub.is_double_victory = True

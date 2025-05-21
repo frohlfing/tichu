@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 """
-Webserver für Tichu.
+Dieses Modul implementiert den Webserver für Tichu.
 
-Startet einen aiohttp-Server, der einen WebSocket-Endpunkt bereitstellt, über den Clients (Spieler) mit dem Spiel
-interagieren können. Verwaltet den Server-Lebenszyklus und Signal-Handling für sauberes Beenden.
+**Start des Servers**:
+   ```
+   python server.py
+   ```
 """
 
 import argparse
@@ -70,14 +72,14 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
-        logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {client.player_index} zugeordnet.")
+        logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {client.index} zugeordnet.")
 
     # --- 4) Bestätigung an den Client senden. ---
     try:
         await client.on_notify("joined", {
             "player_name": client.name,
             "table_name": engine.table_name,
-            "player_index": client.player_index,
+            "player_index": client.index,
             "session_id": client.session_id,
         })
     except Exception as e:
@@ -168,7 +170,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
             logger.exception(f"Fehler beim expliziten Schließen des WebSockets für {remote_addr}: {close_e}")
 
     # --- 7) Wenn es noch menschliche Mitspieler gibt, einen Fallback-Agent einsetzen, ansonst Tisch schließen. ---
-    client_exists = any(isinstance(p, Client) for p in engine.players if p.player_index != client.player_index)
+    client_exists = any(isinstance(p, Client) for p in engine.players if p.index != client.index)
     if client_exists:
         try:
             await engine.leave_client(client)  # der Fallback-Agent spielt jetzt weiter

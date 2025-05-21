@@ -103,7 +103,7 @@ def test_private_state_combinations_property(initial_priv_state):
     assert new_combis[0][0] == parse_cards("S2")
 
 
-# Test für Partitions ist schwierig, da die Logik komplex ist.
+# Ein Test für Partitions ist schwierig, da die Logik komplex ist.
 # Man könnte testen, ob der Cache befüllt wird.
 def test_private_state_partitions_property(initial_priv_state):
     """Testet, ob die partitions-Property den Cache füllt."""

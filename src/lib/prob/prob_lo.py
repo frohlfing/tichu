@@ -1,13 +1,25 @@
+"""
+Dieses Modul bietet Funktionen zur Berechnung der Wahrscheinlichkeit, dass niedrigere Kartenkombinationen
+gespielt werden können.
+
+
+Hauptfunktionen:
+- `prob_of_lower_combi`: Wahrscheinlichkeit für eine niedrigere Kombination.
+- `possible_hands_lo`: Listet mögliche Hände mit niedrigeren Kombinationen auf.
+- `inspect`: Analyse spezifischer Kartenkombinationen und deren Wahrscheinlichkeiten.
+
+Verwendung:
+Dieses Modul dient der probabilistischen Analyse und der Entwicklung von Strategien im Spiel.
+"""
+
 __all__ = "prob_of_lower_combi",
 
 import itertools
 import math
-from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector
-from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
+from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, Cards
+from src.lib.combinations import stringify_figure, validate_figure, CombinationType
 from src.lib.prob.tables_lo import load_table_lo
 from time import time
-
-# todo Dokumentieren (reStructuredText)
 
 # -----------------------------------------------------------------------------
 # Wahrscheinlichkeitsberechnung p_low
@@ -23,18 +35,18 @@ from time import time
 # Mit dem Hund als gegebene Kombination wird 0.0 zurückgegeben, da der Hund keine Karte stechen kann.
 # Der Hund auf der Hand des Mitspielers kann aber auch keine Kombination anspielen. Daher wird der Hund ignoriert.
 #
-# Bekannter Fehler (weil die Kartenfarbe nicht berücksichtigt wird):
+# Bekannter Fehler (weil die Kartenfarbe nicht berücksichtigt wird):  todo ist das so?
 # Ist die gegebene Kombination eine Straße, und wäre eine Farbbombe mit kleinerem Rang auf der Hand, die nicht auch zu
 # einer normalen Straße zerlegt werden könnte, so würde diese Farbbombe fälschlicherweise als niedrigere Kombination gezählt.
 # Dieser Fall ist sehr selten und kann vernachlässigt werden.
 #
-# todo
-# Hat der Partner allerdings den Hund, so erhält man das Anspielrecht, was gesondert bewertet werden muss (aber nicht hier).
+# todo Hat der Partner allerdings den Hund, so erhält man das Anspielrecht, was gesondert bewertet werden muss (aber nicht hier).
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
 # figure: Typ, Länge und Rang der gegebenen Kombination
-def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
+# return: Wahrscheinlichkeit `p_low`
+def prob_of_lower_combi(cards: Cards, k: int, figure: tuple) -> float:
     if k == 0:
         return 0.0
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
@@ -48,16 +60,16 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
     t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
 
     # eine Bombe kann jede Einzelkarte aus der Hand übernehmen, allein das reicht schon
-    if t == BOMB:
+    if t == CombinationType.BOMB:
         return 1.0
 
     #debug = False
 
-    # Anzahl der Karten je Rang zählen
+    # Anzahl der Karten je Rang zählen.
     h = ranks_to_vector(cards)
 
     # Sonderbehandlung für Phönix als Einzelkarte
-    if t == SINGLE and r == 16:
+    if t == CombinationType.SINGLE and r == 16:
         # Rang des Phönix anpassen (der Phönix schlägt das Ass, aber nicht den Drachen)
         r = 15  # 14.5 aufgerundet
         # Der verfügbare Phönix hat den Rang 1 (1.5 abgerundet); er würde von sich selbst geschlagen werden.
@@ -69,16 +81,16 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
-    r_min = 1 if t == SINGLE else int(m / 2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
-    r_start = 1 if t in [SINGLE, STREET] else 2
-    for pho in range(2 if h[16] and t != BOMB else 1):
+    r_min = 1 if t == CombinationType.SINGLE else int(m / 2) + 1 if t == CombinationType.STAIR else m if t == CombinationType.STREET else m + 1 if t == CombinationType.BOMB and m >= 5 else 2
+    r_start = 1 if t in [CombinationType.SINGLE, CombinationType.STREET] else 2
+    for pho in range(2 if h[16] and t != CombinationType.BOMB else 1):
         for r_lower in range(r_min, r):
             for case in table[pho][r_lower]:
                 if sum(case) + pho > k:
                     continue
                 # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
                 matches_part = 1
-                n_remain = (n - h[16]) if t != BOMB else n
+                n_remain = (n - h[16]) if t != CombinationType.BOMB else n
                 k_remain = k - pho
                 for i in range(len(case)):
                     if h[r_start + i] < case[i]:
@@ -105,7 +117,7 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 # Test
 # -----------------------------------------------------------------------------
 
-# Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebenen anspielen kann
+# Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebenen anspielen kann.
 #
 # Wenn k größer ist als die Anzahl der ungespielten Karten, werden leere Listen zurückgegeben.
 #
@@ -114,19 +126,19 @@ def prob_of_lower_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 # einer normalen Straße zerlegt werden könnte, so würde diese Farbbombe fälschlicherweise als niedrigere Kombination gezählt.
 # Dieser Fall ist sehr selten und kann vernachlässigt werden.
 #
-# Diese Methode wird nur für Testzwecke verwendet. Je mehr ungespielte Karten es gibt, desto langsamer wird sie.
+# Diese Methode wird nur für Testzwecke verwendet. Je mehr ungespielte Karten es gibt, desto langsamer werden sie.
 # Ab ca. 20 Karten ist sie praktisch unbrauchbar.
 #
 # unplayed_cards: Ungespielte Karten
 # k: Anzahl Handkarten
 # figure: Typ, Länge, Rang der Kombination
-def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tuple[list, list]:
+def possible_hands_lo(unplayed_cards: Cards, k: int, figure: tuple) -> tuple[list, list]:
     hands = list(itertools.combinations(unplayed_cards, k))  # die Länge der Liste entspricht math.comb(len(unplayed_cards), k)
     matches = []
     t, m, r = figure  # type, length, rank
     for hand in hands:
         b = False
-        if t == SINGLE:  # Einzelkarte
+        if t == CombinationType.SINGLE:  # Einzelkarte
             if r == 15:  # Drache
                 b = any(v not in [0, 15] for v, _ in hand)  # jede Karte, die nicht der Hund ist, kann der Drache stechen
             elif 2 <= r <= 14:  # von der 2 bis zum Ass
@@ -137,13 +149,13 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                 assert r == 16
                 b = any(0 < v < 15 for v, _ in hand)  # jede Karte, die nicht Hund oder Drache ist, kann der Phönix stechen
         else:
-            r_min = int(m / 2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
-            #r_min = 3 if t == STAIR else 5 if t == STREET else 6 if t == BOMB and m >= 5 else 2
+            r_min = int(m / 2) + 1 if t == CombinationType.STAIR else m if t == CombinationType.STREET else m + 1 if t == CombinationType.BOMB and m >= 5 else 2
+            #r_min = 3 if t == CombinationType.STAIR else 5 if t == CombinationType.STREET else 6 if t == CombinationType.BOMB and m >= 5 else 2
             for rlo in range(r_min, r):  # rlo = Rang kleiner als der Rang der gegebenen Kombination
-                if t in [PAIR, TRIPLE]:  # Paar oder Drilling
+                if t in [CombinationType.PAIR, CombinationType.TRIPLE]:  # Paar oder Drilling
                     b = sum(1 for v, _ in hand if v in [rlo, 16]) >= m
 
-                elif t == STAIR:  # Treppe
+                elif t == CombinationType.STAIR:  # Treppe
                     steps = int(m / 2)
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(steps):
@@ -153,7 +165,7 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                     else:
                         b = all(sum(1 for v, _ in hand if v == rlo - i) >= 2 for i in range(steps))
 
-                elif t == FULLHOUSE:  # Fullhouse
+                elif t == CombinationType.FULLHOUSE:  # Fullhouse
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(2, 15):
                             b = (sum(1 for v, _ in hand if v == rlo) >= (2 if rlo == j else 3)
@@ -164,7 +176,7 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                         b = (sum(1 for v, _ in hand if v == rlo) >= 3
                              and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != rlo))
 
-                elif t == STREET:  # Straße
+                elif t == CombinationType.STREET:  # Straße
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         a = rlo < 14  # die Straße könnte nach oben hin mit dem Phönix verlängert werden
                         for j in range(m - 1 if a else m):  # der Phönix wird möglichst nicht an das untere Ende der Straße eingereiht
@@ -174,7 +186,7 @@ def possible_hands_lo(unplayed_cards: list[tuple], k: int, figure: tuple) -> tup
                     else:
                         b = all(sum(1 for v, _ in hand if v == rlo - i) >= 1 for i in range(m))
 
-                elif t == BOMB:  # Bombe
+                elif t == CombinationType.BOMB:  # Bombe
                     b = k > 0  # bereits jede Einzelkarte ist einer Bombe unterlegen
 
                 else:

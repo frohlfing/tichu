@@ -6,7 +6,7 @@ import asyncio
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import Card, Cards, deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH
-from src.lib.combinations import Combination, CombinationType, build_action_space, FIGURE_DRA, FIGURE_DOG, FIGURE_PASS, FIGURE_PHO, FIGURE_MAH, SINGLE
+from src.lib.combinations import Combination, CombinationType, build_action_space, FIGURE_DRA, FIGURE_DOG, FIGURE_PASS, FIGURE_PHO, FIGURE_MAH
 from src.players.agent import Agent
 from src.players.client import Client
 from src.players.player import Player
@@ -21,7 +21,7 @@ class GameEngine:
     Steuert den Spielablauf eines Tisches.
 
     :ivar game_loop_task: Der asyncio Task, der die Hauptspielschleife ausführt.
-    :ivar interrupt_event: globales Interrupt.
+    :ivar interrupt_event: Globales Interrupt.
     """
 
     def __init__(self, table_name: str, default_agents: Optional[List[Agent]] = None, seed: Optional[int] = None):
@@ -63,7 +63,7 @@ class GameEngine:
 
         # Sitzplätze der Reihe nach vergeben (0 bis 3) und Interrupt-Event durchreichen
         for i, default_agent in enumerate(self._default_agents):
-            default_agent.player_index = i
+            default_agent.index = i
             default_agent.interrupt_event = self.interrupt_event  # Todo Test für diese Zuweisung hinzufügen
 
         agent_names = ", ".join(default_agent.name for default_agent in self._default_agents)
@@ -119,11 +119,14 @@ class GameEngine:
         """
         Steuert den Spielablauf einer Partie.
         
-        todo PlayerInterruptError muss hier im jedem Turn abgefangen werden.
+        todo Interrupt-Handling
+         PlayerInterruptError muss hier im jedem Turn abgefangen werden.
          Nennen wir den Spieler, der den Interrupt anfordert, "Interrupter".  
-         Wenn Interrupter seine beabsichtigte Aktion (Bombe werfen oder Tichu ansagen) nicht durchführen kann oder darf, kriegt er nur eine Fehlermeldung zurück.
+         Wenn Interrupter seine beabsichtigte Aktion (Bombe werfen oder Tichu ansagen) nicht durchführen kann oder darf, kriegt er eine Fehlermeldung zurück.
          Ansonsten wird das Interrupt-Event gesetzt, so das der Spieler, der gerade am Zug ist, die Entscheidungsfindung abbricht.
-         Der Interrupter wird aufgefordert, die Aktion durchzuführen. Danach wird die Runde wie gehabt fortgesetzt.
+         Der Interrupter wird aufgefordert, die Aktion durchzuführen.
+         Danach wird interrupt_event wieder zurückgesetzt (oder sofort nach dem Setzen?)
+         Danach wird die Runde wie gehabt fortgesetzt.
 
         :param pub: (Optional) Öffentlicher Spielzustand (sichtbar für alle Spieler am Tisch). Änderungen extern möglich, aber nicht vorgesehen.
         :param privs: (Optional) Private Spielzustände (für jeden Spieler einen). Änderungen extern möglich, aber nicht vorgesehen.
@@ -157,7 +160,7 @@ class GameEngine:
             mixed_deck = list(deck)
             
             # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
-            # todo testen, ob das wirklich relevant ist
+            # todo testen, ob das wirklich einen signifikanten Geschwindigkeitsvorteil bringt
             clients_joined = any(isinstance(p, Client) for p in self._players)
             
             # Partie spielen
@@ -448,7 +451,7 @@ class GameEngine:
         # Stich aktualisieren
         pub.trick_owner_index = pub.current_turn_index
         if combination == FIGURE_PHO:
-            assert pub.trick_combination == FIGURE_PASS or pub.trick_combination[0] == SINGLE
+            assert pub.trick_combination == FIGURE_PASS or pub.trick_combination[0] == CombinationType.SINGLE
             assert pub.trick_combination != FIGURE_DRA  # Phönix auf Drachen geht nicht
             # Der Phönix ist eigentlich um 0.5 größer als der Stich, aber gleichsetzen geht auch (Anspiel == 1).
             if pub.trick_combination[2] == 0:  # Anspiel oder Hund?
@@ -682,7 +685,7 @@ class GameEngine:
         if available_index == -1:
             return False
         self._players[available_index] = client
-        client.player_index = available_index
+        client.index = available_index
         client.interrupt_event = self.interrupt_event   # Todo Test für diese Zuweisung hinzufügen
         return True
 
@@ -692,13 +695,13 @@ class GameEngine:
         :param client: Der Client, der gehen will.
         :raise ValueError: Wenn der Client nicht gefunden werden kann.
         """
-        index = client.player_index
+        index = client.index
         if index < 0 or index > 3:
             raise ValueError(f"Der Index des Spielers {client.name} ist nicht korrekt: {index}")
         if self._players[index].session_id != client.session_id:
             raise ValueError(f"Der Spielers {client.name} kann den Tisch {self._table_name} nicht verlassen, er sitz dort nicht.")
         self._players[index] = self._default_agents[index]
-        client.player_index = -1
+        client.index = -1
 
     async def broadcast(self, message_type: str, payload: Optional[dict] = None) -> None:
         """
@@ -722,7 +725,7 @@ class GameEngine:
         """
         for player in self._players:
             if isinstance(player, Client):  
-                await player.on_notify("state", {"pub": pub, "priv": privs[player.player_index]})
+                await player.on_notify("state", {"pub": pub, "priv": privs[player.index]})
 
     async def on_interrupt(self, client: Client, reason: str):
         """
@@ -731,33 +734,28 @@ class GameEngine:
         :param client: Der anfragende Client.
         :param reason: Grund für den Interrupt ("bomb" oder "tichu").
         """
-        logger.info(f"Tisch '{self.table_name}': Spieler {client.name} fordert Interrupt an: '{reason}'")
+        logger.debug(f"Tisch '{self.table_name}': Spieler {client.name} fordert Interrupt an: '{reason}'")
 
         # Prüfungen
         if self._interrupt_reason:
-            logger.warning(f"Tisch '{self.table_name}': Interrupt von Spieler {client.name} ignoriert (anderer Interrupt läuft bereits).")
+            logger.debug(f"Tisch '{self.table_name}': Interrupt von Spieler {client.name} wird ignoriert, weil ein anderer Interrupt bereits läuft.")
             await client.on_notify("error", {"message": "Ein anderer Interrupt wird gerade bearbeitet. Bitte warte."})
             return
 
-        # todo darf der Spieler das jetzt tun?
+        # todo darf der Spieler die beabsichtigte Aktion, wofür er das Interrupt ausgelöst hat, jetzt tun?
         # if not ok:
         #   return
 
         # Sperre setzen
         self._interrupt_reason = True
-        self._interrupt_player_index = client.player_index
+        self._interrupt_player_index = client.index
         try:
             # Signalisiere den wartenden Tasks, dass Tichu angesagt wurde
             self.interrupt_event.set()
+            logger.debug(f"Tisch '{self.table_name}': Interrupt für Spieler {client.name} ausgelöst.")
         except Exception as e:
             logger.exception(f"Tisch '{self.table_name}': Fehler bei Interrupt-Verarbeitung für Spieler {client.name}: {e}")
             await client.on_notify("error", {"message": "Interner Fehler bei Interrupt-Verarbeitung."})
-        finally:
-            # todo hier noch nicht die Sperre aufrufen. Das muss in run_game_loop passieren!
-            # Sperre aufheben
-            self._interrupt_reason = False
-            self._interrupt_player_index = None
-            logger.debug(f"Interrupt-Verarbeitung für Spieler {client.name} beendet.")
 
     # ------------------------------------------------------
     # Hilfsfunktionen

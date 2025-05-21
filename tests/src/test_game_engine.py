@@ -91,8 +91,8 @@ def mock_agents(mocker) -> List[AsyncMock]:
         # Erstelle einen Mock, der vorgibt, ein Player-Objekt zu sein
         player_mock = mocker.create_autospec(Agent, instance=True)
         player_mock.__class__ = Agent
-        # Wichtig: Da Player Methoden wie play async sind, ersetzen wir sie explizit
-        # durch AsyncMocks NACHDEM create_autospec die Signatur erstellt hat.
+        # Wichtig: Da Player Methoden wie play async sind, ersetzen wir sie explizit durch AsyncMocks,
+        # NACHDEM create_autospec die Signatur erstellt hat.
         player_mock.schupf = AsyncMock(name=f'schupf_mock_{i}')
         player_mock.announce = AsyncMock(name=f'announce_mock_{i}')
         player_mock.play = AsyncMock(name=f'play_mock_{i}') # play statt combination
@@ -102,7 +102,7 @@ def mock_agents(mocker) -> List[AsyncMock]:
 
         # Setze Standard-Attribute für den Mock
         player_mock.name = f"MockPlayer_{i}"
-        player_mock.player_index = i
+        player_mock.index = i
         player_mock.session_id = f"session_{i}"
         # Stellt sicher, dass die Index-Properties des Mocks funktionieren
         player_mock.partner_index = (i + 2) % 4
@@ -124,7 +124,7 @@ def game_engine(mock_agents) -> GameEngine:
     - return GameEngine(...): Erstellt die Engine mit diesen Mocks als "Spieler".
       So können wir das Verhalten der Engine testen, ohne echte Agenten-Logik auszuführen.
     """
-    # Seed setzen für reproduzierbare Zufälligkeit in Tests, falls nötig
+    # Seed setzen (für reproduzierbare Zufälligkeit in Tests, falls nötig)
     return GameEngine(table_name="TestEngineTable", default_agents=mock_agents, seed=12345)
 
 @pytest.fixture
@@ -154,7 +154,7 @@ def test_game_engine_initialization(game_engine, mock_agents):
     assert game_engine.players[2] is mock_agents[2]
     assert game_engine.players[3] is mock_agents[3]
     # Prüfen, ob die Namen im PublicState (falls schon gesetzt) passen
-    # (Engine setzt die Namen eventuell erst später, je nach Implementierung)
+    # (Engine setzt die Namen eventuell erst später, je nach Implementierung).
     # assert game_engine._players[0].name == "MockPlayer_0" # Zugriff auf _players ist unschön
 
 # --- Tests für State Resets ---
@@ -223,7 +223,7 @@ def test_take_cards(game_engine, initial_private_states):
 
 # --- Tests für Spielzüge (Methoden, die den State ändern) ---
 # Hier testen wir die *statischen* Methoden der GameEngine, die den Zustand ändern.
-# Wir brauchen keine laufende Game Loop dafür.
+# Wir brauchen keine laufende Gameloop dafür.
 
 def test_engine_announce(initial_public_state):
     """Testet das Setzen einer Tichu-Ansage im PublicState."""
@@ -385,7 +385,7 @@ def test_engine_clear_trick_round_end(initial_public_state):
 
     # 1. Letzter Stich (5 Pkt) geht an den Stich-Besitzer (Spieler 2)
     # pub.points = [45, 10, 25, 0]
-    # 2. Handkarten des Losers (20 Pkt) kriegt das gegnerische Team (rechte Gegner, Spieler 2)
+    # 2. Handkarten des Losers (20 Pkt) kriegt das gegnerische Team (rechten Gegner, Spieler 2)
     # pub.points = [45, 10, 45, 0]
     # 3. Looser gibt seine kassierten Punkte an den Gewinner
     # pub.points = [55, 0, 45, 0]
@@ -444,9 +444,8 @@ def test_engine_turn_with_dog(initial_public_state):
 
 async def test_schupf(game_engine, initial_public_state, initial_private_states, mock_agents):
     """
-    Testet die schupf-Methode.
+    Testet die Schupf-Methode.
     """
-    pub = initial_public_state
     privs = initial_private_states
     player_index = 0
     privs[player_index].hand_cards = parse_cards("S2 B3 G4 R5 G5 B5 R6 G6 B6 R7 G7 B7 R8 G8")

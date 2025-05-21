@@ -1,7 +1,11 @@
 from src.common.rand import Random
 from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_MAH, CARD_DRA
-from src.lib.combinations import SINGLE, FIGURE_PASS, FIGURE_MAH, FIGURE_PHO, FIGURE_DRA, FIGURE_DOG, build_combinations
+from src.lib.combinations import FIGURE_PASS, FIGURE_MAH, FIGURE_PHO, FIGURE_DRA, FIGURE_DOG, build_combinations
 from src.lib.partitions import build_partitions
+
+# Figur-Typen
+
+SINGLE = 1     # Einzelkarte
 
 
 class PublicState:

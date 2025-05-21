@@ -1,3 +1,7 @@
+"""
+Dieses Modul definiert Funktionen zur Erstellung und Verwaltung einer Kartenpartition.
+"""
+
 __all__ = "Partition", \
     "build_partitions", "remove_partitions", \
     "filter_playable_partitions", "filter_playable_combinations", \
@@ -17,7 +21,7 @@ from typing import List, Tuple, Optional
 # -----------------------------------------------------------------------------
 
 # Type-Alias für eine Partition
-# Typ Partition ist technisch gleich Typ Combinations, aber in der Partition kommt keine Karten mehrfach vor.
+# Typ Partition ist technisch gleich Typ Combinations, aber in der Partition kommt keine Karte mehrfach vor.
 Partition = List[Tuple[Cards, Combination]]  # todo überall konsequent verwenden
 
 # Berechnet die Partitionen, die mit den verfügbaren Kombinationen gebildet werden können.
@@ -72,7 +76,7 @@ def remove_partitions(partitions: List[Partition], cards: Cards) -> List[Partiti
             elif list(found) == combi[0]:
                 pass  # die Kombination wird nicht übernommen, da alle Karten der Kombination betroffen sind
             else:
-                skip = True  # die gesamte Partition wird verworfen, weil die Kombi auseinander gerissen ist
+                skip = True  # die gesamte Partition wird verworfen, weil die Kombi auseinandergerissen ist
                 break
         if not skip and new_partition and new_partition not in new_partitions:
             new_partitions.append(new_partition)
@@ -104,7 +108,7 @@ def stringify_partition(partition: Partition) -> str:
     return " ".join([stringify_figure(combi[1]) for combi in partition])
 
 
-# Schätzt, die Güte der gegebener Partition
+# Schätzt, die Güte der gegebenen Partition.
 #
 # Die Güte ist ein Maß für die Qualität der Partition. Je häufiger wir das Anspielrecht erhalten, desto größer ist
 # der Wert. Je häufiger wir das Anspielrecht verlieren, desto kleiner ist der Wert. Kombinationen, mir der wir
@@ -117,14 +121,15 @@ def stringify_partition(partition: Partition) -> str:
 # action_space: spielbare Aktionen (leer, wenn die Partition jetzt nicht gespielt werden darf)
 # statistic: Ergebnis von combinations.calc_statistic()
 # return: Güte im Wertebereich [-1, 1]
+# todo vermutlich besser in lib/prob/statistic.py aufgehoben
 def partition_quality(partition: Partition, action_space: List[Tuple[Cards, Combination]], statistic: dict) -> float:
 
     # !!!!!!!!!!!!!!!!!! Neue Beschreibung  !!!!!!!!!!!!!!!!!!!
     #
     # p_lo: Wahrscheinlichkeit, dass ein Mitspieler die Kombination (mit niederem Rang) anspielen kann (Bespielbarkeit)
-    # p_hi: Wahrscheinlichkeit, dass ein Mitspieler die Kombination überstechen kann
+    # p_hi: Wahrscheinlichkeit, dass ein Mitspieler die Kombination überstechen kann.
     # p_pw = 1 - p_hi  # Wahrscheinlichkeit, mit der Kombination das Anspielrecht zu erhalten (Schlagkraft)
-    # q_combi = p_lo * p_pw  # Güte der Kombinationen = Bespielbarkeit * Schlagkraft
+    # q_combi = p_lo * p_pw # Güte der Kombinationen = Bespielbarkeit * Schlagkraft
     #
     # Für die Kombinationen, die jetzt ausgespielt werden kann und soll, ist p_lo = 1 (sie ist definitiv bespielbar).
     # q_first_combi = p_pw
@@ -132,7 +137,7 @@ def partition_quality(partition: Partition, action_space: List[Tuple[Cards, Comb
     # Für die letzte Kombination ist p_hi = 0 (kann nicht überstochen werden) und somit p_pw = 1
     # q_last_combi = p_lo
     #
-    # Die Güte der Hand ist die Summe aller Kombinationen, wobei die erste und letzte Kombinationen so gewählt sind, dass der Wert maximiert wird.
+    # Die Güte der Hand ist die Summe aller Kombinationen, wobei die erste und letzte Kombination so gewählt ist, dass der Wert maximiert wird.
     # q_hand = q_first_combi + sum(q_middle_combi) + q_last_combi
 
     assert partition
@@ -170,6 +175,6 @@ def partition_quality(partition: Partition, action_space: List[Tuple[Cards, Comb
     # normalisieren
     # Randbedingungen:
     # - Falls n_lo gleich 0 ist, ist n_hi auch 0, denn wir sind wir dran und spielen die letzte Kombi. q ist in diesem Fall 1.
-    # - Falls nur n_hi gleich 0 ist, haben wir nur noch ein Kombi, sind aber nicht dran. Dann ist nur der lo-Anteil relevant.
+    # - Falls nur n_hi gleich 0 ist, haben wir nur noch eine Kombi, sind aber nicht dran. Dann ist nur der lo-Anteil relevant.
     q = ((total_lo / n_lo) if n_lo else 1) - ((total_hi / n_hi) if n_hi else 0)
     return q

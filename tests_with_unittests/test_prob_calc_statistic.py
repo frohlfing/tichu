@@ -1,5 +1,5 @@
 import unittest
-from src.lib.prob.calc_statistic import calc_statistic
+from src.lib.prob.statistic import calc_statistic
 # noinspection PyProtectedMember
 from src.lib.combinations import *
 from src.lib.cards import *
@@ -8,7 +8,7 @@ from src.lib.cards import *
 # noinspection DuplicatedCode
 class TestProbCalcStatistic(unittest.TestCase):
     def test_calc_statistic(self):
-        # 1) Ich hab Fullhouse und Sonderkarten, Gegner hat Straße und Phönix
+        # 1) Ich habe Fullhouse und Sonderkarten, Gegner hat Straße und Phönix
         hand = parse_cards("Dr BD GD RD BZ RZ Ma Hu")
         hidden = parse_cards("Ph GA BK SD RB SZ")
         number_of_cards = [len(hand), len(hidden), 0, 0]
@@ -29,7 +29,7 @@ class TestProbCalcStatistic(unittest.TestCase):
             for k, (f1, f2) in enumerate(zip(expected[combi], result)):
                 self.assertAlmostEqual(f1, f2, 6, f"Statistik für Beispiel 1.{k} nicht ok: {stringify_cards(combi)}, {result}")
 
-        # 2) Ich hab Treppe, Gegner hat auch eine Treppe und Phönix
+        # 2) Ich habe Treppe, Gegner hat auch eine Treppe und Phönix
         hand = parse_cards("RZ GZ G9 S9 B8 G8")
         hidden = parse_cards("Ph RB BB BZ SZ B9 R8 S8 R7 G7")
         number_of_cards = [len(hand), len(hidden), 0, 0]
@@ -71,7 +71,7 @@ class TestProbCalcStatistic(unittest.TestCase):
             for k, (f1, f2) in enumerate(zip(expected[combi], result)):
                 self.assertAlmostEqual(f1, f2, 6, f"Statistik für Beispiel 3.{k} nicht ok: {stringify_cards(combi)}, {result}")
 
-        # 4) Ich hab eine Straße, Gegner hat Hu Ma Dr und eine Bombe
+        # 4) Ich habe eine Straße, Gegner hat Hu Ma Dr und eine Bombe
         hand = parse_cards("RZ G9 G8 B7 G6")
         hidden = parse_cards("RB GB BB SB Hu Ma Dr")
         number_of_cards = [len(hand), len(hidden), 0, 0]
@@ -85,7 +85,7 @@ class TestProbCalcStatistic(unittest.TestCase):
             for k, (f1, f2) in enumerate(zip(expected[combi], result)):
                 self.assertAlmostEqual(f1, f2, 6, f"Statistik für Beispiel 4.{k} nicht ok: {stringify_cards(combi)}, {result}")
 
-        # 5) Ich hab eine Bombe, Gegner hat auch eine Bombe
+        # 5) Ich habe eine Bombe, Gegner hat auch eine Bombe
         hand = parse_cards("RD GD BD SD")
         hidden = parse_cards("RB GB BB SB")
         number_of_cards = [len(hand), len(hidden), 0, 0]
@@ -99,7 +99,7 @@ class TestProbCalcStatistic(unittest.TestCase):
             for k, (f1, f2) in enumerate(zip(expected[combi], result)):
                 self.assertAlmostEqual(f1, f2, 6, f"Statistik für Beispiel 5.{k} nicht ok: {stringify_cards(combi)}, {result}")
 
-        # 6) Ich hab den Phönix und den Hund, der Gegner eine Bombe
+        # 6) Ich habe den Phönix und den Hund, der Gegner eine Bombe
         hand = parse_cards("Ph BD Hu")
         hidden = parse_cards("RB GB BB SB")
         number_of_cards = [len(hand), len(hidden), 0, 0]
@@ -114,7 +114,7 @@ class TestProbCalcStatistic(unittest.TestCase):
             for k, (f1, f2) in enumerate(zip(expected[combi], result)):
                 self.assertAlmostEqual(f1, f2, 6, f"Statistik für Beispiel 6.{k} nicht ok: {stringify_cards(combi)}, {result}")
 
-        # 7) Ich hab den Phönix, der Gegner hat den Drachen
+        # 7) Ich habe den Phönix, der Gegner hat den Drachen
         hand = parse_cards("Ph BD SD")
         hidden = parse_cards("Dr RK GK BB SB")
         number_of_cards = [len(hand), len(hidden), 0, 0]

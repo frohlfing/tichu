@@ -19,6 +19,7 @@ from src.private_state import PrivateState
 from src.public_state import PublicState
 from typing import Optional, Dict, List, Tuple
 
+
 class Client(Player):
     """
     Repräsentiert einen menschlichen Spieler, der über eine WebSocket verbunden ist.
@@ -138,7 +139,7 @@ class Client(Player):
         self._pending_requests[request_type] = response_future
 
         # --- 3. Anfrage senden ---
-        request_data = {"type": "request_action", "payload": {"request": request_type, "timeout": timeout}}
+        request_data: dict = {"type": "request_action", "payload": {"request": request_type, "timeout": timeout}}
         if context_payload:
             request_data["payload"]["context"] = context_payload  # Kontext in Payload verschachteln
         try:
@@ -156,12 +157,15 @@ class Client(Player):
             raise PlayerInteractionError(f"Fehler beim Senden der Anfrage '{request_type}': {e}") from e
 
         # --- 4. Auf Antwort warten ---
-        loop = asyncio.get_running_loop()
-        response_future = loop.create_future()
-        wait_tasks = [
-            asyncio.create_task(response_future, name=f"ClientResp_{self.player_index}_{request_type}"),
-            asyncio.create_task(self.interrupt_event.wait(), name="Interrupt"),
-        ]
+        #loop = asyncio.get_running_loop()
+        #response_future = loop.create_future()
+        #response_future_task = asyncio.create_task(response_future, name=f"ClientResp_{self.index}_{request_type}")
+        #interrupt_task = asyncio.create_task(self.interrupt_event.wait(), name="Interrupt")
+        #wait_tasks = [response_future_task, interrupt_task]
+
+        interrupt_task = asyncio.create_task(self.interrupt_event.wait(), name="Interrupt")
+        wait_tasks = [response_future, interrupt_task]
+
         pending: set[asyncio.Task] = set()
         start_time = time.monotonic()
         try:
@@ -184,7 +188,7 @@ class Client(Player):
             assert response_future in done
             response_data = response_future.result()  # Das ist das Payload-Dict von receive_response
             logger.debug(f"Client {self.name}: Antwort für '{request_type}' erfolgreich empfangen.")
-            return response_data  # Erfolg! Gib rohes Payload zurück.
+            return response_data  # Erfolg! Gib rohen Payload zurück.
 
         except asyncio.CancelledError as e:  # Shutdown
             logger.info(f"Client {self.name}: Warten auf '{request_type}' extern abgebrochen.")
@@ -250,7 +254,7 @@ class Client(Player):
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :param action_space: Mögliche Kombinationen (inklusiv Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
+        :param action_space: Mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0))
         """
         # TODO: Implementieren!

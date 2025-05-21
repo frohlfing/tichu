@@ -25,7 +25,7 @@ def test_agent_inheritance():
 def test_agent_init_generates_name():
     """Testet, ob Agent einen Namen generiert, wenn keiner angegeben wird."""
     agent = Agent() # Kein Name übergeben
-    assert agent.name.startswith("Agent_") # Sollte mit Klassenname beginnen
+    assert agent.name.startswith("Agent_") # Sollte mit Klassennamen beginnen
     assert len(agent.name) > len("Agent_") # Sollte einen UUID-Teil haben
     # class_name sollte weiterhin den spezifischen Klassennamen liefern (wenn nicht überschrieben)
     # Da Agent selbst keine __init__ hat, die class_name setzt, wird es von Player geerbt.

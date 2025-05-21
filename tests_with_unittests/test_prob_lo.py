@@ -153,7 +153,7 @@ class TestRasterProbOfLowerCombi(unittest.TestCase):
         self.assertAlmostEqual(p_expected, p_actual, places=15, msg=msg)
 
     def test_single(self):
-        t = SINGLE
+        t = CombinationType.SINGLE
         combis = [
             "SB RZ R9 G9 R8 G8 B4",
             "SB RZ GZ R9 G9 R8 G8 B4",
@@ -182,7 +182,7 @@ class TestRasterProbOfLowerCombi(unittest.TestCase):
                     self._test(cards, k, (t, m, r))
 
     def test_pair(self):
-        t = PAIR
+        t = CombinationType.PAIR
         combis = [
             "SB RZ R9 G9 R8 G8 B4",
             "SB RZ GZ R9 G9 R8 G8 B4",
@@ -209,7 +209,7 @@ class TestRasterProbOfLowerCombi(unittest.TestCase):
                 self._test(cards, k, (t, m, r))
 
     def test_tripple(self):
-        t = TRIPLE
+        t = CombinationType.TRIPLE
         combis = [
             "SB RZ R9 G9 R8 G8 B4",
             "SB RZ GZ R9 G9 R8 G8 B4",
@@ -236,7 +236,7 @@ class TestRasterProbOfLowerCombi(unittest.TestCase):
                 self._test(cards, k, (t, m, r))
 
     def test_stair(self):
-        t = STAIR
+        t = CombinationType.STAIR
         combis = [
             "SB RZ R9 G9 R8 G8 B4",
             "SB RZ GZ R9 G9 R8 G8 B4",
@@ -265,7 +265,7 @@ class TestRasterProbOfLowerCombi(unittest.TestCase):
                         self._test(cards, k, (t, m, r))
 
     def test_fullhouse(self):
-        t = FULLHOUSE
+        t = CombinationType.FULLHOUSE
         combis = [
             "SB RZ R9 G9 R8 G8 B4",
             "SB RZ GZ R9 G9 R8 G8 B4",
@@ -293,7 +293,7 @@ class TestRasterProbOfLowerCombi(unittest.TestCase):
                 self._test(cards, k, (t, m, r))
 
     def test_street(self):
-        t = STREET
+        t = CombinationType.STREET
         combis = [
             # ohne Phönix
             "GB RZ G9 R8 G7",
@@ -330,7 +330,7 @@ class TestRasterProbOfLowerCombi(unittest.TestCase):
                     self._test(cards, k, (t, m, r))
 
     def test_bomb_4(self):
-        t = BOMB  # 4er-Bombe
+        t = CombinationType.BOMB  # 4er-Bombe
         combis = [
             "SB RZ R9 G9 R8 G8 B4",
         ]
@@ -341,7 +341,7 @@ class TestRasterProbOfLowerCombi(unittest.TestCase):
                 self._test(cards, k, (t, m, r))
 
     def test_bomb_color(self):
-        t = BOMB  # Farbbombe
+        t = CombinationType.BOMB  # Farbbombe
         combis = [
             "GB GZ G9 G8 G7",
         ]

@@ -1,3 +1,28 @@
+"""
+Dieses Modul stellt zentrale Konfigurationsvariablen bereit.
+
+Die Standardwerte können mit den Umgebungsvariablen aus der `.env`-Datei überschieben werden.
+
+**Globale Konfigurationsvariablen:**
+   - `VERSION`: Versionsnummer der Anwendung (Major.Minor.Patch).
+   - `DEBUG`: Gibt an, ob asyncio im Debug-Modus ausgeführt wird.
+   - `LOG_LEVEL`: Definiert das globale Log-Level (`DEBUG`, `INFO`, etc.).
+   - `LOG_COUNT`: Maximale Anzahl an Log-Dateien, die behalten werden.
+   - `BASE_PATH`: Grundlegender Pfad der Anwendung.
+   - `DATA_PATH`: Pfad zum Datenordner.
+   - `HOST` und `PORT`: Konfiguration für den WebSocket-Server.
+   - `SECRET_KEY`: Schlüssel, um Berechtigungen zu überprüfen.
+   - `KICK_OUT_TIME`: Dauer, bis ein Client nach einem Verbindungsabbruch entfernt wird.
+   - `DEFAULT_REQUEST_TIMEOUT`: Maximale Wartezeit für Client-Antworten.
+   - `ARENA_WORKER`: Anzahl der Prozesse für die Arena.
+   - `ARENA_WIN_RATE`: Zielgewinnquote der Agenten in der Arena.
+   - `AGENT_THINKING_TIME`: Denkzeit des Agenten (von-bis in Sekunden).
+   - `PARTITIONS_MAXLEN`: Maximale Anzahl berechneter Partitionen pro Hand.
+   - `HEURISTIC_TICHU_QUALITY`: Mindestwerte für Tichu-Ansagen.
+"""
+
+# todo: Wie kommentiert man eine Konstante eines Moduls, so dass dieser beim Überfahren mit der Maus in PyCharm eingeblendet wird?
+
 import logging
 from dotenv import load_dotenv
 from os import getenv

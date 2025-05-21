@@ -8,12 +8,12 @@ Ziel: Das Netz sollte die gleichen Entscheidungen treffen wie der Heuristik-Agen
  - Erwartete Vorhersagegenauigkeit festlegen (wann ist das Netz gut genug trainiert?)
  - Architektur(en) auswählen
  - Test-, Validierungs- und Trainingsdaten durch Selbstspiel mit Heuristik-Agents generieren
- - Hyperparameter mit Keras-Tuner optimieren (Validierungsdaten dienen zum testen)
+ - Hyperparameter mit Keras-Tuner optimieren (Validierungsdaten dienen zum Testen)
  - Validierungsdaten zu den Trainingsdaten packen
  - NNetSV trainieren (mit Testdaten testen) (durch überwachtes Lernen, SV = Supervised)
  - Falls das Netz nicht gut genug ist:
-	Falls eine Überanpssung vorliegt: weitere Trainingsdaten generieren und nochmal trainieren
-	Falls keine Überanpssung voliegt: neue Validierungsdaten generieren und nochmal Hyperparameter optimieren
+	Falls eine Überanpassung vorliegt: weitere Trainingsdaten generieren und nochmal trainieren
+	Falls keine Überanpassung vorliegt: neue Validierungsdaten generieren und nochmal Hyperparameter optimieren
  - Spielstärke im Tunier messen (NNetSV-Agent vs. Heuristik-Agent) und weitere Daten sammeln
 	Falls Spielstärke noch nicht wie erwartet ist:
 		Testdaten zu Trainingsdaten packen
@@ -30,7 +30,7 @@ Ziel: Das Netz sollte die gleichen Entscheidungen treffen wie der Heuristik-Agen
 
 Diskrete Variablen
 ------------------
-Zu unterscheiden sind folgende Arten von Eingabeparameter:
+Zu unterscheiden sind folgende Arten von Eingabeparametern:
 
 - binäre (Tichu durchgebracht)
 - kategoriale (Nummer des Spielers, Typ einer Kombination)
@@ -38,21 +38,21 @@ Zu unterscheiden sind folgende Arten von Eingabeparameter:
 - diskrete Größen (Anzahl Handarten, Kartenwert, Wert und Länge einer Kombination)
 
 Annahme 1:
-Falls die Zielvariable linear oder polynomial abhängig von der diskreten Variable ist, kann die diskreten Variable wie
+Falls die Zielvariable linear oder polynomial abhängig von der diskreten Variable ist, kann die diskrete Variable wie
 eine stetige Größe als Float-Wert präsentiert werden.
-Falls sich die Zielvariable eher sprunghaft in Abhängigkeit zur diskreten Variable ändert, musss die diskrete Variable
+Falls sich die Zielvariable eher sprunghaft in Abhängigkeit zur diskreten Variable ändert, muss die diskrete Variable
 wie eine kategorische Größe per One-Hot-Kodierung präsentiert werden.
 
 Annahme 2:
-Falls die Abhängigkeit transformierbar ist (Ziel- und Eingangsvariable werden vertauscht), kann die diskreten Variable
+Falls die Abhängigkeit transformierbar ist (Ziel- und Eingangsvariable werden vertauscht), kann die diskrete Variable
 wie eine stetige Größe als Float-Wert präsentiert werden.
 Ansonsten muss die diskrete Variable wie eine kategorische Größe per One-Hot-Kodierung präsentiert werden.
 
 Um diese Frage beantworten zu können, zeigen wir folgende Größen im Zusammenhang zur Güte der Forecast-Funktion an:
-    - Anzahl der eigenen Handkarten
-    - Wert der Kombination im Stich (nur Einzelkarten; erlaubt Rückschlusss auf Kartenwert)
-    - Wert der Kombination im Stich (alle Typen)
-    - Länge der Kombination im Stich
+- Anzahl der eigenen Handkarten.
+- Wert der Kombination im Stich (nur Einzelkarten; erlaubt Rückschluss auf Kartenwert).
+- Wert der Kombination im Stich (alle Typen).
+- Länge der Kombination im Stich.
 
 
 Kartenkodierung

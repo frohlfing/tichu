@@ -103,8 +103,8 @@ def test_get_release_valid_semver_tag(mock_get_git_tag: MagicMock):
 @patch('src.common.git_utils.get_git_tag')
 def test_get_release_valid_semver_tag_with_suffix(mock_get_git_tag: MagicMock):
     """
-    Testet get_release mit einem Tag, der einen Suffix hat (z.B. von 'git describe').
-    Der Suffix sollte entfernt werden.
+    Testet get_release mit einem Tag, der ein Suffix hat (z.B. von 'git describe').
+    Das Suffix sollte entfernt werden.
     """
     mock_get_git_tag.return_value = "v1.2.3-4-foo"
     assert get_release() == "1.2.3"
@@ -179,7 +179,7 @@ def test_get_release_tag_is_just_v_returns_default(mock_get_git_tag: MagicMock):
 @patch('src.common.git_utils.get_git_tag')
 def test_get_release_complex_suffix_is_stripped(mock_get_git_tag: MagicMock):
     """
-    Testet einen komplexeren Suffix, der korrekt entfernt werden sollte.
+    Testet ein komplexeres Suffix, das korrekt entfernt werden sollte.
     """
     mock_get_git_tag.return_value = "v0.15.1-beta.2-15-foo01"
     assert get_release() == "0.15.1"

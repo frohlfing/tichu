@@ -203,7 +203,7 @@ class TestHeuristicAgent(unittest.TestCase):
         self.priv.take_cards(cards)
         self.priv._schupfed = parse_cards("G9 RD S8")
         self.priv._hand = parse_cards("Dr BA GA RK SD R8 B7 G6 S5 G4 B3 S2 R2 Ma")
-        self.pub._trick_figure = (STREET, 8, 8)
+        self.pub._trick_figure = (CombinationType.STREET, 8, 8)
         self.pub._trick_value = 5
         self.pub._trick_player_index = 0
         self.pub._played_cards = parse_cards("R8 B7 G6 S5 G4 B3 S2 Ma")

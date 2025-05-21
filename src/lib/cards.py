@@ -1,3 +1,7 @@
+"""
+Dieses Modul definiert das Kartendeck und Eigenschaften der Spielkarten.
+"""
+
 __all__ = "Card", "Cards", \
     "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
     "deck", \
@@ -6,8 +10,6 @@ __all__ = "Card", "Cards", \
     "is_wish_in", "sum_card_points", "other_cards",
 
 from typing import Tuple, List, Iterable
-
-# todo Dokumentieren (reStructuredText)
 
 # -----------------------------------------------------------------------------
 # Spielkarten
@@ -162,9 +164,9 @@ def stringify_cards(cards: Iterable[Card]) -> str:
     return " ".join([_cardlabels[_deck_index[c]] for c in cards])
 
 
-# Zählt die Anzahl der Karten je Rang
+# Zählt die Anzahl der Karten je Rang.
 #
-# Zurückgegeben wird eine Liste mit 17 Integer, wobei der Index den Rang entspricht und
+# Zurückgegeben wird eine Liste mit 17 Integer, wobei der Index dem Rang entspricht und
 # der Wert die Anzahl der Karten mit diesem Rang.
 def ranks_to_vector(cards: Cards) -> list[int]:
     # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph

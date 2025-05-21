@@ -1,7 +1,5 @@
 """
 Dieses Modul stellt Funktionen zur Interaktion mit Git bereit.
-
-Aktuell enthält es nur eine Funktion, um den neuesten Git-Tag aus dem aktuellen Repository zu ermitteln.
 """
 
 __all__ = "get_git_tag", "get_release",
@@ -10,7 +8,7 @@ import subprocess
 
 def get_git_tag() -> str:
     """
-    Ermittelt den neuesten Git-Tag aus dem Repository von Github.
+    Ermittelt den neuesten Git-Tag aus dem Repository von GitHub.
 
     :return: Den neuesten Git-Tag.
     """
@@ -23,7 +21,7 @@ def get_git_tag() -> str:
 
 def get_release() -> str:
     """
-    Ermittelt die aktuelle Versionsnummer des Repositories von Github.
+    Ermittelt die aktuelle Versionsnummer des Repositories von GitHub.
 
     Es wird vorausgesetzt, dass die Versionsnummer im Git-Tag als v<MAJOR>.<MINOR>.<PATCH> angegeben ist.
 

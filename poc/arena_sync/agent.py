@@ -3,11 +3,21 @@ import math
 from poc.arena_sync.state import PublicState, PrivateState
 from src.common.rand import Random
 from src.lib.cards import Card, CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO
-from src.lib.combinations import Combination, PAIR, SINGLE, build_action_space, FIGURE_PASS, FIGURE_DOG, BOMB, FIGURE_DRA, remove_combinations, STREET, TRIPLE, FULLHOUSE, STAIR, FIGURE_PHO
+from src.lib.combinations import Combination, build_action_space, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, remove_combinations, FIGURE_PHO
 from src.lib.partitions import partition_quality, filter_playable_partitions, filter_playable_combinations
 from typing import Optional, List, Tuple
 from uuid import uuid4
 
+
+# Figur-Typen
+PASS = 0       # Passen
+SINGLE = 1     # Einzelkarte
+PAIR = 2       # Paar
+TRIPLE = 3     # Drilling
+STAIR = 4      # Treppe
+FULLHOUSE = 5  # Full House
+STREET = 6     # Straße
+BOMB = 7       # Vierer-Bombe oder Farbbombe
 
 class Player:
     def __init__(self, name: str, session: Optional[str] = None):
@@ -45,7 +55,7 @@ class Player:
         # Fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'wish' implementieren.")
 
-    def gift(self, pub: PublicState, priv: PrivateState) -> int:  # todo besseren Namen finden
+    def gift(self, pub: PublicState, priv: PrivateState) -> int:
         # Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'gift' implementieren.")
 

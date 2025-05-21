@@ -63,7 +63,7 @@ def test_random_agent_inheritance():
 async def test_random_agent_schupf(random_agent_seeded, public_state_fixture, private_state_fixture):
     """Testet RandomAgent.schupf."""
     agent = random_agent_seeded
-    agent.player_index = private_state_fixture.player_index # Agent Index setzen
+    agent.index = private_state_fixture.player_index # Agent Index setzen
     original_hand_copy = list(private_state_fixture.hand_cards)
 
     # Rufe schupf auf
@@ -91,7 +91,7 @@ async def test_random_agent_schupf(random_agent_seeded, public_state_fixture, pr
 async def test_random_agent_announce(random_agent_unseeded, public_state_fixture, private_state_fixture, grand):
     """Testet RandomAgent.announce (nur Typ und Wertbereich)."""
     agent = random_agent_unseeded
-    agent.player_index = private_state_fixture.player_index
+    agent.index = private_state_fixture.player_index
 
     result = await agent.announce(public_state_fixture, private_state_fixture, grand=grand)
     assert isinstance(result, bool)
@@ -100,7 +100,7 @@ async def test_random_agent_announce(random_agent_unseeded, public_state_fixture
 async def test_random_agent_play(random_agent_seeded, public_state_fixture, private_state_fixture):
     """Testet RandomAgent.play."""
     agent = random_agent_seeded # Seed für reproduzierbare Auswahl
-    agent.player_index = private_state_fixture.player_index
+    agent.index = private_state_fixture.player_index
 
     # Erstelle einen Beispiel-Action-Space
     combi1_cards = parse_cards("S2 B2")
@@ -131,17 +131,11 @@ async def test_random_agent_play(random_agent_seeded, public_state_fixture, priv
     # 2. Wurde eine Aktion aus dem action_space gewählt?
     assert chosen_action in action_space
 
-    # Beispiel: Mit Seed 42 wird das letzte Element gewählt (Index 2)
-    # agent_seeded_42 = RandomAgent(seed=42)
-    # agent_seeded_42.player_index = 1
-    # chosen_action_42 = await agent_seeded_42.play(public_state_fixture, private_state_fixture, action_space)
-    # assert chosen_action_42 == action_space[2] # Index 2 bei Wahl aus 3 Elementen
-
 @pytest.mark.asyncio
 async def test_random_agent_play_empty_action_space_raises_error(random_agent_seeded, public_state_fixture, private_state_fixture):
     """Testet, dass RandomAgent.play bei leerem Action Space einen Fehler wirft."""
     agent = random_agent_seeded
-    agent.player_index = private_state_fixture.player_index
+    agent.index = private_state_fixture.player_index
     empty_action_space = []
 
     # Erwarte einen ValueError, da random.integer(0, 0) oder random.choice([]) fehlschlägt
@@ -152,7 +146,7 @@ async def test_random_agent_play_empty_action_space_raises_error(random_agent_se
 async def test_random_agent_wish(random_agent_unseeded, public_state_fixture, private_state_fixture):
     """Testet RandomAgent.wish."""
     agent = random_agent_unseeded
-    agent.player_index = private_state_fixture.player_index
+    agent.index = private_state_fixture.player_index
 
     wishes = set()
     for _ in range(50): # Mehrere Versuche
@@ -166,7 +160,7 @@ async def test_random_agent_wish(random_agent_unseeded, public_state_fixture, pr
 async def test_random_agent_give_dragon_away(random_agent_unseeded, public_state_fixture, private_state_fixture):
     """Testet RandomAgent.give_dragon_away."""
     agent = random_agent_unseeded
-    agent.player_index = private_state_fixture.player_index # Spieler 1
+    agent.index = private_state_fixture.player_index # Spieler 1
 
     possible_opponents = {
         agent.opponent_left_index, # Spieler 0
@@ -188,7 +182,7 @@ async def test_random_agent_give_dragon_away(random_agent_unseeded, public_state
 @pytest.fixture
 def agent():
     agent = RandomAgent("Agent_1", seed=123)
-    agent.player_index = 1
+    agent.index = 1
     return agent
 
 @pytest.fixture
@@ -216,7 +210,7 @@ async def test_announce(agent, pub, priv):
 
 async def test_play(agent, pub, priv):
     #List[Tuple[Cards, Combination]]
-    action_space = [([(3,2)], (CombinationType, 1, 3)), ([], (CombinationType.PASS, 0, 0))]
+    action_space = [([(CombinationType.SINGLE, 3, 2)], (CombinationType.SINGLE, 1, 3)), ([], (CombinationType.PASS, 0, 0))]
     result = await agent.play(pub, priv, action_space)
     assert result in action_space
 

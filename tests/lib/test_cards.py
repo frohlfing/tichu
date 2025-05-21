@@ -99,7 +99,7 @@ def test_is_wish_in(wish_value: int, hand: Cards, expected_result: bool):
 
 def test_other_cards_empty_hand():
     """Testet, dass bei leerer Hand das gesamte Deck zurückgegeben wird."""
-    # Muss sortiert werden, da Reihenfolge von 'deck' und 'other_cards' garantiert ist
+    # Muss sortiert werden, da die Reihenfolge von 'deck' und 'other_cards' garantiert ist
     assert sorted(other_cards([])) == sorted(list(deck))
 
 def test_other_cards_partial_hand():
@@ -127,7 +127,7 @@ def test_ranks_to_vector_simple():
 def test_cards_to_vector_simple():
     """Testet die Umwandlung in den vollständigen Karten-Vektor."""
     hand: Cards = [(2, 1), CARD_MAH] # Schwarz 2, MahJong
-    # Erwarteter Vektor (Länge 56): Nur an den Indizes für S2 und MahJong ist eine 1
+    # Erwarteter Vektor (Länge 56): Nur an den Indizes für S2 und MahJong ist eine 1.
     # Index von S2 in _deck_index: 2
     # Index von Ma in _deck_index: 1
     expected_vector = [0] * 56

@@ -1,3 +1,8 @@
+"""
+Dieses Modul erstellt und verwaltet Tabellen, die für die Berechnung der Wahrscheinlichkeit `p_high`
+benötigt werden.
+"""
+
 __all__ = "load_table_hi",
 
 import config
@@ -5,10 +10,8 @@ import gzip
 import itertools
 import pickle
 from os import path, mkdir
-from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_type
+from src.lib.combinations import stringify_type, CombinationType
 from time import time
-
-# todo Dokumentieren (reStructuredText)
 
 # -----------------------------------------------------------------------------
 # Generierung von Hilfstabellen für die Wahrscheinlichkeitsberechnung p_high
@@ -18,7 +21,7 @@ from time import time
 #
 # t: Typ der Kombination
 # m: Länge der Kombination (nur für Treppe, Straße und Bombe relevant)
-def get_filename_hi(t: int, m: int = None):
+def get_filename_hi(t: CombinationType, m: int = None):
     folder = path.join(config.DATA_PATH, "lib/prob")
     if not path.exists(folder):
         mkdir(folder)
@@ -31,7 +34,7 @@ def get_filename_hi(t: int, m: int = None):
 #
 # t: Typ der Kombination
 # m: Länge der Kombination
-def save_table_hi(t: int, m: int, table: list):
+def save_table_hi(t: CombinationType, m: int, table: list):
     file = get_filename_hi(t, m)
 
     # # unkomprimiert speichern
@@ -63,7 +66,7 @@ _cache = {t: {} for t in range(1, 8)}
 #
 # t: Typ der Kombination
 # m: Länge der Kombination
-def load_table_hi(t: int, m: int) -> list:
+def load_table_hi(t: CombinationType, m: int) -> list:
     global _cache
     if m in _cache[t]:
         return _cache[t][m]
@@ -136,8 +139,8 @@ def load_table_hi(t: int, m: int) -> list:
 # t: Typ der Kombination
 # m: Länge der Kombination
 # row: Datensatz, Kartenanzahl pro Rang (row[0] == Hund, ..., row[14] == Ass, row[15] == Drache, row[16] == Phönix)
-def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
-    if t == SINGLE:
+def get_max_rank(t: CombinationType, m: int, row: tuple) -> tuple[int, list]:
+    if t == CombinationType.SINGLE:
         # Der Hund wird ignoriert.
         for r in [15, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]:  # erst den Drachen prüfen, dann den Phönix (höchste Schlagkraft zuerst)
             if row[r] >= 1:
@@ -146,7 +149,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                     r = 15  # 14.5 aufgerundet
                 return r, row[r:-1]  # vom Rang der Einzelkarte bis zum Drachen
 
-    if t == PAIR:
+    if t == CombinationType.PAIR:
         for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
             if row[16]:  # mit Phönix
                 if row[r] >= 1:
@@ -155,7 +158,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                 if row[r] >= 2:
                     return r, row[r:-2]  # vom Rang des Pärchens bis zum Ass
 
-    elif t == TRIPLE:
+    elif t == CombinationType.TRIPLE:
         for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
             if row[16]:  # mit Phönix
                 if row[r] >= 2:
@@ -164,7 +167,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                 if row[r] >= 3:
                     return r, row[r:-2]  # vom Rang des Drillings bis zum Ass
 
-    elif t == STAIR:
+    elif t == CombinationType.STAIR:
         steps = int(m / 2)
         for r in range(14, steps, -1):  # [14 ... 3] (höchster Rang zuerst)
             r_start = r - steps + 1
@@ -177,7 +180,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                 if all(row[i] >= 2 for i in range(r_start, r_end)):
                     return r, row[r - steps + 1:-2]  # vom Anfang der Treppe bis zum Ass
 
-    elif t == FULLHOUSE:
+    elif t == CombinationType.FULLHOUSE:
         for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
             if row[16]:  # mit Phönix
                 if row[r] >= 3:  # Drilling mit Rang r
@@ -194,7 +197,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                         if i != r and row[i] >= 2:  # irgendein Pärchen zw. 14 und 2
                             return r, row[min(r, i):-2]  # vom Rang des Pärchens bzw. Drillings bis zum Ass
 
-    elif t == STREET:
+    elif t == CombinationType.STREET:
         for r in range(14, m - 1, -1):  # [14 ... 5] (höchster Rang zuerst)
             r_start = r - m + 1
             r_end = r + 1  # exklusiv
@@ -206,7 +209,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
                 if all(row[i] >= 1 for i in range(r_start, r_end)):
                     return r, row[r - m + 1:-2]  # vom Anfang der Straße bis zum Ass
 
-    elif t == BOMB:
+    elif t == CombinationType.BOMB:
         if m == 4:
             # 4er-Bombe
             for r in range(14, 1, -1):  # [14 ... 2] (höchster Rang zuerst)
@@ -221,7 +224,7 @@ def get_max_rank(t: int, m: int, row: tuple) -> tuple[int, list]:
     return -1, []
 
 
-# Bildet das Produkt beider Listen
+# Bildet das Produkt beider Listen.
 #
 # Die erste Liste beinhaltet mögliche Muster (Anzahl Karten pro Rang).
 # Die zweite Liste führt die mögliche Anzahl Karten für den nächsten Rang.
@@ -250,23 +253,23 @@ def combine_lists(list1, list2, k: int):
 
 
 # Generiert eine Hilfstabelle für den gegebenen Typ, höhere Ränge werden bevorzugt.
-def create_table_hi(t: int, m: int):
-    if t == STAIR:
+def create_table_hi(t: CombinationType, m: int):
+    if t == CombinationType.STAIR:
         assert m % 2 == 0 and 4 <= m <= 14
-    elif t == STREET:
+    elif t == CombinationType.STREET:
         assert 5 <= m <= 14
-    elif t == BOMB:
+    elif t == CombinationType.BOMB:
         assert 4 <= m <= 14
     else:
         assert m == t
 
     # Mögliche Ränge von/bis (der Hund wird ignoriert)
-    r_start = 1 if t == SINGLE else int(m/2) + 1 if t == STAIR else m if t == STREET else m + 1 if t == BOMB and m >= 5 else 2
-    r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
+    r_start = 1 if t == CombinationType.SINGLE else int(m/2) + 1 if t == CombinationType.STAIR else m if t == CombinationType.STREET else m + 1 if t == CombinationType.BOMB and m >= 5 else 2
+    r_end = 16 if t == CombinationType.SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
 
     # Wir suchen höhere Kombinationen, also brauchen wir den kleinstmöglichen Rang nicht zu speichern.
     # Nur für Bomben brauchen wir alle Ränge.
-    if t != BOMB:
+    if t != CombinationType.BOMB:
         r_start += 1
 
     # Hilfstabelle
@@ -278,36 +281,36 @@ def create_table_hi(t: int, m: int):
     # 1. Schritt:
     # alle möglichen Kombinationen (Kartenanzahl je Rang reduziert) durchlaufen und passende auflisten
 
-    for pho in range(1 if t == BOMB else 2):
+    for pho in range(1 if t == CombinationType.BOMB else 2):
         print(f"Erzeuge Hilfstabelle {stringify_type(t, m)}[{pho}]...")
         data = {r: [] for r in range(r_start, r_end)}
 
         # reduzierte Kartenanzahl je Rang
-        if t == SINGLE:
+        if t == CombinationType.SINGLE:
             a = [0, 1]
-        elif t == PAIR:
+        elif t == CombinationType.PAIR:
             a = [0, 1] if pho else [1, 2]
-        elif t == TRIPLE:
+        elif t == CombinationType.TRIPLE:
             a = [1, 2] if pho else [2, 3]
-        elif t == STAIR:
+        elif t == CombinationType.STAIR:
             a = [0, 1, 2] if pho else [1, 2]
-        elif t == FULLHOUSE:
+        elif t == CombinationType.FULLHOUSE:
             a = [0, 1, 2, 3] if pho else [1, 2, 3]
-        elif t == STREET:
+        elif t == CombinationType.STREET:
             a = [0, 1]
         else:
-            assert t == BOMB
+            assert t == CombinationType.BOMB
             if m == 4:  # 4er-Bombe
                 a = [3, 4]
             else:  # Farbbombe
                 a = [0, 1]
 
         # Iterator für die Product-Operation
-        if t == SINGLE:
+        if t == CombinationType.SINGLE:
             #         0   1  2  3  4  5  6  7  8  9 10 11 12 13 14 15   16
             iter1 = [[0], a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, [pho]]
             c_max = len(a) ** 15
-        elif t == STREET:
+        elif t == CombinationType.STREET:
             #         0   1  2  3  4  5  6  7  8  9 10 11 12 13 14  15    16
             iter1 = [[0], a, a, a, a, a, a, a, a, a, a, a, a, a, a, [0], [pho]]  # Dummy für Hund und Drache
             c_max = len(a) ** 14
@@ -336,11 +339,11 @@ def create_table_hi(t: int, m: int):
                 cases = []
                 for i, v in enumerate(unique):
                     if a == [0, 1]:
-                        if t == BOMB:  # Farbbombe
+                        if t == CombinationType.BOMB:  # Farbbombe
                             assert m >= 5
                             # für die Berechnung einer Farbbombe werden die Karten je Farbe vorgelegt, es gibt sie also pro Rang nur einmal
                             v_expand = [v]
-                        elif t in [SINGLE, STREET] and r - m + 1 + i in [0, 1, 15, 16]:  # Sonderkarte
+                        elif t in [CombinationType.SINGLE, CombinationType.STREET] and r - m + 1 + i in [0, 1, 15, 16]:  # Sonderkarte
                             v_expand = [v]
                         else:
                             v_expand = [1, 2, 3, 4] if v == 1 else [0]
@@ -373,24 +376,25 @@ def create_table_hi(t: int, m: int):
 
 # Erzeugt alle Hilfstabellen, falls nicht vorhanden
 def create_tables_hi():
+    t: CombinationType
     for t in range(1, 8):
-        if t == STAIR:
+        if t == CombinationType.STAIR:
             for m in range(4, 15, 2):
                 file = get_filename_hi(t, m)
                 if not path.exists(file):
                     create_table_hi(t, m)
-        elif t == STREET:
+        elif t == CombinationType.STREET:
             for m in range(5, 15):
                 file = get_filename_hi(t, m)
                 if not path.exists(file):
                     create_table_hi(t, m)
-        elif t == BOMB:
+        elif t == CombinationType.BOMB:
             for m in range(4, 15):
                 file = get_filename_hi(t, m)
                 if not path.exists(file):
                     create_table_hi(t, m)
         else:
-            assert t in [SINGLE, PAIR, TRIPLE, FULLHOUSE]
+            assert t in [CombinationType.SINGLE, CombinationType.PAIR, CombinationType.TRIPLE, CombinationType.FULLHOUSE]
             file = get_filename_hi(t)
             if not path.exists(file):
                 create_table_hi(t, t)

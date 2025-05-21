@@ -1,21 +1,24 @@
+"""
+Dieses Modul bietet Funktionen zur Berechnung der Wahrscheinlichkeit, dass höhere Kartenkombinationen
+gespielt werden können.
+"""
+
 __all__ = "prob_of_higher_combi", "prob_of_higher_combi_or_bomb",
 
 import itertools
 import math
-from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector
-from src.lib.combinations import SINGLE, PAIR, TRIPLE, STAIR, FULLHOUSE, STREET, BOMB, stringify_figure, validate_figure
+from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector, Cards
+from src.lib.combinations import stringify_figure, validate_figure, CombinationType
 from src.lib.prob.tables_hi import load_table_hi
 from time import time
 from timeit import timeit
-
-# todo Dokumentieren (reStructuredText)
 
 # -----------------------------------------------------------------------------
 # Wahrscheinlichkeitsberechnung p_high
 # -----------------------------------------------------------------------------
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Farbbombe überstechen kann
-# (entweder durch einen höheren Rang, oder durch eine längere Bombe)
+# (entweder durch einen höheren Rang, oder durch eine längere Bombe).
 #
 # Mit m = r = 5 wird die Wahrscheinlichkeit berechnet, dass irgendeine Farbbombe auf der Hand ist.
 #
@@ -23,7 +26,7 @@ from timeit import timeit
 # k: Anzahl der Handkarten
 # m: Länge der gegebenen Farbbombe
 # r: Rang der gegebenen Farbbombe
-def prob_of_higher_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5) -> float:
+def prob_of_higher_color_bomb(cards: Cards, k: int, m: int = 5, r: int = 5) -> float:
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
@@ -36,8 +39,8 @@ def prob_of_higher_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5
     h = cards_to_vector(cards)
 
     # Hilfstabellen laden
-    table = load_table_hi(BOMB, m)
-    table_longer = load_table_hi(BOMB, m + 1) if m < 14 and r > 5 else [{}, {}]
+    table = load_table_hi(CombinationType.BOMB, m)
+    table_longer = load_table_hi(CombinationType.BOMB, m + 1) if m < 14 and r > 5 else [{}, {}]
 
     # für jede der vier Farben alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
@@ -65,7 +68,7 @@ def prob_of_higher_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5
                     matches_part = math.comb(n_remain, k_remain)
                     if debug:
                         print(f"r={r_curr}, color={color}, case={case}, matches_part={matches_part}")
-                    # Anzahl Möglichkeiten, die sich aus den der übrigen Karten ergeben, berechnen und zum Gesamtergebnis addieren
+                    # Anzahl Möglichkeiten, die sich aus den übrigen Karten ergeben, berechnen und zum Gesamtergebnis addieren
                     matches += matches_part
                     # die Anzahl Möglichkeiten, zwei Bomben gleichzeitig zu haben, müssen wieder abgezogen werden (Prinzip von Inklusion und Exklusion)
                     for color2 in range(color + 1, 4):
@@ -102,16 +105,16 @@ def prob_of_higher_color_bomb(cards: list[tuple], k: int, m: int = 5, r: int = 5
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
-def prob_of_any_4_bomb(cards: list[tuple], k: int) -> float:
+def prob_of_any_4_bomb(cards: Cards, k: int) -> float:
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
 
-    # Anzahl der Karten je Rang zählen
+    # Anzahl der Karten je Rang zählen.
     h = ranks_to_vector(cards)
 
     # Hilfstabelle laden
-    table = load_table_hi(BOMB, 4)
+    table = load_table_hi(CombinationType.BOMB, 4)
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
@@ -139,19 +142,20 @@ def prob_of_any_4_bomb(cards: list[tuple], k: int) -> float:
     return p
 
 
-# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann, ohne sie zu bomben
+# Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination überstechen kann, ohne sie zu bomben.
 #
 # Sonderkarte Phönix:
 # Wenn die gegebene Kombination der Phönix ist (d.h. als Einzelkarte), so wird sie als Anspielkarte gewertet.
 # Sollte der Phönix nicht die Anspielkarte sein, so muss die vom Phönix gestochene Karte angegeben werden.
 #
 # Sonderkarte Hund:
-# Mit dem Hund als gegebene Kombination wird 1.0 zurückgegeben (man wird "überstochen"; man verliert das Anspielrecht).
+# Mit dem Hund als gegebene Kombination wird 1.0 zurückgegeben (man wird "überstochen"; man verliert das
+# Anspielrecht).
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
 # figure: Typ, Länge und Rang der gegebenen Kombination
-def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
+def prob_of_higher_combi(cards: Cards, k: int, figure: tuple) -> float:
     if k == 0:
         return 0.0
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
@@ -167,14 +171,14 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
     #debug = True
 
     # Farbbombe ausrangieren
-    if t == BOMB and m >= 5:
+    if t == CombinationType.BOMB and m >= 5:
         return prob_of_higher_color_bomb(cards, k, m, r)
 
-    # Anzahl der Karten je Rang zählen
+    # Anzahl der Karten je Rang zählen.
     h = ranks_to_vector(cards)
 
     # Sonderbehandlung für Phönix als Einzelkarte
-    if t == SINGLE and r == 16:
+    if t == CombinationType.SINGLE and r == 16:
         # Rang des Phönix anpassen (der Phönix im Anspiel wird von der 2 geschlagen, aber nicht vom Mahjong)
         r = 1  # 1.5 abgerundet
         # Der verfügbare Phönix hat den Rang 15 (14.5 aufgerundet); er würde sich selbst schlagen.
@@ -186,8 +190,8 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 
     # alle Muster der Hilfstabelle durchlaufen und mögliche Kombinationen zählen
     matches = 0
-    r_end = 16 if t == SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
-    for pho in range(2 if h[16] and t != BOMB else 1):
+    r_end = 16 if t == CombinationType.SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
+    for pho in range(2 if h[16] and t != CombinationType.BOMB else 1):
         for r_higher in range(r + 1, r_end):
             for case in table[pho][r_higher]:
                 if sum(case) + pho > k:
@@ -195,7 +199,7 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
                 r_start = r_end - len(case)
                 # jeweils den Binomialkoeffizienten von allen Rängen im Muster berechnen und multiplizieren
                 matches_part = 1
-                n_remain = (n - h[16]) if t != BOMB else n
+                n_remain = (n - h[16]) if t != CombinationType.BOMB else n
                 k_remain = k - pho
                 for i in range(len(case)):
                     if h[r_start + i] < case[i]:
@@ -230,10 +234,11 @@ def prob_of_higher_combi(cards: list[tuple], k: int, figure: tuple) -> float:
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
 # figure: Typ, Länge und Rang der gegebenen Kombination
-def prob_of_higher_combi_or_bomb(cards: list[tuple], k: int, figure: tuple) -> tuple[float, float]:
+# return: Wahrscheinlichkeit `p_high`
+def prob_of_higher_combi_or_bomb(cards: Cards, k: int, figure: tuple) -> tuple[float, float]:
     p_combi = prob_of_higher_combi(cards, k, figure)  # Wahrscheinlichkeit einer höheren Kombination als die gegebene
     t, m, r = figure
-    if t == BOMB:
+    if t == CombinationType.BOMB:
         if m == 4:  # 4er-Bombe
             p_color = prob_of_higher_color_bomb(cards, k)  # Wahrscheinlichkeit einer Farbbombe
             p_min = max(p_combi, p_color)
@@ -253,24 +258,24 @@ def prob_of_higher_combi_or_bomb(cards: list[tuple], k: int, figure: tuple) -> t
 # Test
 # -----------------------------------------------------------------------------
 
-# Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebene überstechen kann
+# Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebene überstechen kann.
 #
 # Wenn k größer ist als die Anzahl der ungespielten Karten, werden leere Listen zurückgegeben.
 #
-# Diese Methode wird nur für Testzwecke verwendet. Je mehr ungespielte Karten es gibt, desto langsamer wird sie.
+# Diese Methode wird nur für Testzwecke verwendet. Je mehr ungespielte Karten es gibt, desto langsamer wird die Methode.
 # Ab ca. 20 Karten ist sie praktisch unbrauchbar.
 #
 # unplayed_cards: Ungespielte Karten
 # k: Anzahl Handkarten
 # figure: Typ, Länge, Rang der Kombination
 # with_bombs: Wenn gesetzt, werden auch Möglichkeiten markiert, die die gegebene Kombination bomben können
-def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_bombs: bool) -> tuple[list, list]:
+def possible_hands_hi(unplayed_cards: Cards, k: int, figure: tuple, with_bombs: bool) -> tuple[list, list]:
     hands = list(itertools.combinations(unplayed_cards, k))  # die Länge der Liste entspricht math.comb(len(unplayed_cards), k)
     matches = []
     t, m, r = figure  # type, length, rank
     for hand in hands:
         b = False
-        if t == SINGLE:  # Einzelkarte
+        if t == CombinationType.SINGLE:  # Einzelkarte
             if r == 15:  # Drache
                 b = False
             elif 1 <= r <= 14:  # vom Mahjong bis zum Ass
@@ -282,10 +287,10 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_b
                 b = any(1 < v < 16 for v, _ in hand)
         else:
             for rhi in range(r + 1, 15):  # rhi = Rang größer als der Rang der gegebenen Kombination
-                if t in [PAIR, TRIPLE]:  # Paar oder Drilling
+                if t in [CombinationType.PAIR, CombinationType.TRIPLE]:  # Paar oder Drilling
                     b = sum(1 for v, _ in hand if v in [rhi, 16]) >= m
 
-                elif t == STAIR:  # Treppe
+                elif t == CombinationType.STAIR:  # Treppe
                     steps = int(m / 2)
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(steps):
@@ -295,7 +300,7 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_b
                     else:
                         b = all(sum(1 for v, _ in hand if v == rhi - i) >= 2 for i in range(steps))
 
-                elif t == FULLHOUSE:  # Fullhouse
+                elif t == CombinationType.FULLHOUSE:  # Fullhouse
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(2, 15):
                             b = (sum(1 for v, _ in hand if v == rhi) >= (2 if rhi == j else 3)
@@ -306,7 +311,7 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_b
                         b = (sum(1 for v, _ in hand if v == rhi) >= 3
                              and any(sum(1 for v2, _ in hand if v2 == r2) >= 2 for r2 in range(2, 15) if r2 != rhi))
 
-                elif t == STREET:  # Straße
+                elif t == CombinationType.STREET:  # Straße
                     if any(v == 16 for v, _ in hand):  # Phönix vorhanden?
                         for j in range(int(m)):
                             b = all(sum(1 for v, _ in hand if v == rhi - i) >= (0 if i == j else 1) for i in range(m))
@@ -315,10 +320,10 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_b
                     else:
                         b = all(sum(1 for v, _ in hand if v == rhi - i) >= 1 for i in range(m))
 
-                elif t == BOMB and m == 4:  # 4er-Bombe
+                elif t == CombinationType.BOMB and m == 4:  # 4er-Bombe
                     b = sum(1 for v, _ in hand if v == rhi) >= 4
 
-                elif t == BOMB and m >= 5:  # Farbbombe (hier werden zunächst nur Farbbomben gleicher Länge verglichen)
+                elif t == CombinationType.BOMB and m >= 5:  # Farbbombe (hier werden zunächst nur Farbbomben gleicher Länge verglichen)
                     b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m)) for color in range(1, 5))
                 else:
                     assert False
@@ -327,7 +332,7 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_b
                     break
 
         # falls die gegebene Kombination eine Farbbombe ist, kann sie von einer längeren Farbbombe überstochen werden
-        if not b and t == BOMB and m >= 5:
+        if not b and t == CombinationType.BOMB and m >= 5:
             m2 = m + 1
             for rhi in range(m2 + 1, r + 1):
                 b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
@@ -336,14 +341,14 @@ def possible_hands_hi(unplayed_cards: list[tuple], k: int, figure: tuple, with_b
 
         if with_bombs:
             # falls die gegebene Kombination keine Bombe ist, kann sie von einer 4er-Bombe überstochen werden
-            if not b and t != BOMB:
+            if not b and t != CombinationType.BOMB:
                 for rhi in range(2, 15):
                     b = sum(1 for v, _ in hand if v == rhi) >= 4
                     if b:
                         break
 
             # falls die gegebene Kombination keine Farbbombe ist, kann sie von einer beliebigen Farbbombe überstochen werden
-            if not b and not (t == BOMB and m >= 5):
+            if not b and not (t == CombinationType.BOMB and m >= 5):
                 m2 = 5
                 for rhi in range(m2 + 1, 15):
                     b = any(all(sum(1 for v, c in hand if v == rhi - i and c == color) >= 1 for i in range(m2)) for color in range(1, 5))
@@ -419,11 +424,11 @@ def benchmark():  # pragma: no cover
 
 def report():  # pragma: no cover
     # Anzahl Muster je Tabelle
-    table = load_table_hi(STREET, 5)
-    print("STREET", len(table[0]), len(table[1]))  # 516570, 1236896
+    table = load_table_hi(CombinationType.STREET, 5)
+    print("CombinationType.STREET", len(table[0]), len(table[1]))  # 516570, 1236896
 
-    table = load_table_hi(FULLHOUSE, 5)
-    print("FULLHOUSE", sum(len(cases) for cases in table[0].values()), sum(len(cases) for cases in table[1].values()))  # 926393, 151034
+    table = load_table_hi(CombinationType.FULLHOUSE, 5)
+    print("CombinationType.FULLHOUSE", sum(len(cases) for cases in table[0].values()), sum(len(cases) for cases in table[1].values()))  # 926393, 151034
 
 
 if __name__ == "__main__":  # pragma: no cover

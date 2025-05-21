@@ -34,7 +34,7 @@ def test_player_init_valid_name():
     """Testet die Initialisierung mit gültigem Namen."""
     player = Player(name=" Alice ") # Mit Leerzeichen
     assert player.name == "Alice" # Name sollte gestrippt sein
-    assert player.player_index is None # Initial kein Index
+    assert player.index is None # Initial kein Index
     # Session sollte eine gültige UUID sein
     assert isinstance(UUID(player.session_id, version=4), UUID)
 
@@ -54,7 +54,7 @@ def test_player_init_with_session():
 def test_player_properties():
     """Testet die Standard-Properties eines Players."""
     player = Player(name="Charlie")
-    player.player_index = 2 # Index manuell setzen für Test
+    player.index = 2 # Index manuell setzen für Test
 
     assert player.name == "Charlie"
     assert player.class_name == "Player" # Gibt den Klassennamen zurück

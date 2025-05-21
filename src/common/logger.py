@@ -1,4 +1,7 @@
-# todo Datei Dokumentieren (reStructuredText)
+"""
+Diese Datei definiert eine zentrale Logger-Instanz zur Protokollierung von Ereignissen und Ausgaben im System.
+Sie unterstützt die Protokollierung in eine Datei sowie die farbliche Ausgabe im Terminal.
+"""
 
 __all__ = "logger",
 
@@ -48,6 +51,7 @@ class AnsiColorizer:
     def write(self, text: str, color: str) -> None:
         """
         Write the given text to the stream in the given color.
+
         @param text: Text to be written to the stream.
         @param color: A string label for a color. e.g. "red", "white".
         """

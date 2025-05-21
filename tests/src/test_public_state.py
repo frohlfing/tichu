@@ -42,10 +42,10 @@ def test_public_state_initialization(initial_pub_state):
     assert pub.wish_value == 0
     assert pub.dragon_recipient == -1
     assert pub.trick_owner_index == -1
-    assert pub.trick_cards == [] # Hängt von Implementierung ab, ob dies noch genutzt wird
+    assert pub.trick_cards == []  # hängt von der Implementierung ab, ob dies noch genutzt wird
     assert pub.trick_combination == (CombinationType.PASS, 0, 0)
     assert pub.trick_points == 0
-    assert pub.tricks == [] # Vormals round_history
+    assert pub.tricks == []
     assert pub.points == [0, 0, 0, 0]
     assert pub.winner_index == -1
     assert pub.loser_index == -1

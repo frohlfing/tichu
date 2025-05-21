@@ -159,7 +159,7 @@ async def test_run_game_with_initial_states(mock_agents, mock_public_state_win_t
     initial_pub = MockPublicState()
     initial_privs = mock_private_states
 
-    # Konfiguriere den MockGameEngine, um den übergebenen pub State zu modifizieren
+    # Konfiguriere den MockGameEngine, um den übergebenen pub State zu modifizieren.
     # oder stelle sicher, dass MockGameEngine.run_game_loop das korrekt handhabt
     class CustomMockGameEngine(MockGameEngine):
         async def run_game_loop(self, pub: Optional[MockPublicState], privs: Optional[List[MockPrivateState]], break_time: int) -> MockPublicState:
@@ -204,8 +204,8 @@ def test_arena_initialization_multi_worker_event(mock_agents):
     # können wir den Typ des Events prüfen.
     arena = Arena(mock_agents, max_games=10, worker=2)
     assert arena._worker == 2
-    # Überprüfen, ob es sich um einen Event-Typ handelt, der von multiprocessing.Manager stammt
-    # Genauer gesagt, es ist ein EventProxy.
+    # Überprüfen, ob es sich um einen Event-Typ handelt, der von multiprocessing.Manager stammt.
+    # Genauer gesagt, ist es ein EventProxy.
     assert isinstance(arena._stop_event, EventProxy)
 
 def test_arena_initialization_invalid_agents():
@@ -375,7 +375,7 @@ def test_arena_run_multi_worker(_mock_arena_play_game_method_placeholder, mock_p
     mock_pool_instance = MagicMock()
     mock_pool_cls.return_value = mock_pool_instance
 
-    # Ergebnisse, die `apply_async` über den `callback` an `_update` liefern soll
+    # Ergebnisse, die `apply_async` über den `callback` an `_update` liefern soll.
     # Der Callback wird mit dem Ergebnis von _play_game aufgerufen
     # _play_game gibt (game_index, pub_state) zurück.
     # Wir müssen also den Callback `arena._update` mit diesem Tupel aufrufen lassen.
@@ -384,7 +384,7 @@ def test_arena_run_multi_worker(_mock_arena_play_game_method_placeholder, mock_p
     # Wir simulieren das, indem wir `apply_async` so mocken, dass es den Callback direkt ausführt.
     # Die `args` für `_play_game` (game_index) werden an `apply_async` übergeben.
 
-    # Hilfsfunktion, um den apply_async-Aufruf zu simulieren, der den Callback auslöst
+    # Hilfsfunktion, um den apply_async-Aufruf zu simulieren, der den Callback auslöst.
     # Der Callback (arena._update) erwartet das Ergebnis von _play_game
     update_calls = []
 

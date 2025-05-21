@@ -1,4 +1,7 @@
-# todo Dokumentieren (reStructuredText)
+"""
+Dieses Modul implementiert eine benutzerdefinierte Zufallsgenerator-Klasse, die speziell auf die Verarbeitung
+mit Multiprocessing ausgelegt ist.
+"""
 
 import random
 from typing import Any, Optional
@@ -25,7 +28,7 @@ class Random:
         return self._random.randint(0, 1) == 1
 
     def choice(self, seq: list|tuple, weights: list|tuple = None) -> Any:
-        # Wählt ein zufälliges Element aus einer Sequenz aus
+        # Wählt ein zufälliges Element aus einer Sequenz aus.
         # Wenn weights angegeben ist, erfolgt die Auswahl nach dieser Gewichtung.
         # Beispiel 1: decision = self._rand_choice([False, True])
         # Beispiel 2: action = self._rand_choice([Action.PASS, Action.PLAY], [1, len(combinations)])

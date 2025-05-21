@@ -1,5 +1,5 @@
 """
-Definiert die Arena, in denen Agenten gegeneinander spielen können.
+Definiert die Arena, in der Agenten gegeneinander spielen können.
 """
 
 import asyncio

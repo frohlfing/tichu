@@ -18,7 +18,7 @@ class Player:
 
     Definiert die grundlegenden Eigenschaften und Methoden, die jeder Spieler haben muss.
 
-    :ivar player_index: Der Index des Spielers am Tisch (0 bis 3, None == Spieler sitzt noch nicht am Tisch).
+    :ivar index: Der Index des Spielers am Tisch (0 bis 3, None == Spieler sitzt noch nicht am Tisch).
     :ivar interrupt_event: Das globale Interrupt-Event.
     """
 
@@ -36,7 +36,7 @@ class Player:
             raise ValueError("Spielername darf nicht leer sein.")
         self._name: str = name_stripped
         self._session_id: str = session_id if session_id else str(uuid4())
-        self.player_index: Optional[int] = None  # wird von der GameEngine gesetzt  todo in index umbenennen
+        self.index: Optional[int] = None  # wird von der GameEngine gesetzt
         self.interrupt_event: Optional[asyncio.Event] = None  # wird von der Engine gesetzt
         logger.debug(f"Player '{self._name}' (Session: {self._session_id}) erstellt.")
 
@@ -118,7 +118,7 @@ class Player:
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'wish' implementieren.")
 
-    async def give_dragon_away(self, pub: PublicState, priv: PrivateState) -> int:  # todo besseren Namen finden
+    async def give_dragon_away(self, pub: PublicState, priv: PrivateState) -> int:
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 
@@ -153,14 +153,14 @@ class Player:
     @property
     def partner_index(self) -> int:
         """Der Index des Partners (0-3)."""
-        return (self.player_index + 2) % 4
+        return (self.index + 2) % 4
 
     @property
     def opponent_right_index(self) -> int:
         """Der Index des rechten Gegners (0-3)."""
-        return (self.player_index + 1) % 4
+        return (self.index + 1) % 4
 
     @property
     def opponent_left_index(self) -> int:
         """Der Index des linken Gegners (0-3)."""
-        return (self.player_index + 3) % 4
+        return (self.index + 3) % 4

@@ -107,7 +107,7 @@ def test_color_stream_handler_emit(color_stream_handler, mock_stream):
 # === Tests für die globale Logger-Konfiguration (Beispielhaft) ===
 # Diese Tests sind empfindlicher wegen des globalen Setups beim Import.
 
-# ACHTUNG: Diese Tests prüfen den Zustand NACHDEM logger.py importiert wurde.
+# ACHTUNG: Diese Tests prüfen den Zustand, NACHDEM logger.py importiert wurde.
 # Sie können durch andere Tests beeinflusst werden, wenn diese logger importieren.
 
 def test_logger_instance_created():
