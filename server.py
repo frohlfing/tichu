@@ -76,11 +76,10 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
 
     # --- 4) Bestätigung an den Client senden. ---
     try:
-        await client.on_notify("joined", {
-            "player_name": client.name,
-            "table_name": engine.table_name,
-            "player_index": client.index,
+        await client.on_notify("joined_confirmation", {
             "session_id": client.session_id,
+            "public_state": pub,
+            "private_state": priv,
         })
     except Exception as e:
         logger.warning(f"Senden der Beitrittsbestätigung an {client.name} fehlgeschlagen: {e}.")
@@ -119,8 +118,8 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     elif msg_type == "interrupt":  # explizite Interrupt-Anfrage
                         await engine.on_interrupt(client, payload.get("reason"))
 
-                    elif msg_type == "response":  # Antwort auf eine vorherige Anfrage (die mittels _ask() gestellt wurde)
-                        await client.on_websocket_response(payload.get("action"), payload.get("data", {}))
+                    elif msg_type == "response":  # Antwort auf eine vorherige Anfrage (die mittels client._ask() gestellt wurde)
+                        await client.on_websocket_response(payload.get("request_id"), payload.get("data", {}))
 
                     else:
                         logger.error(f"Message-Type '{msg_type}' nicht erwartet")

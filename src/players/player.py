@@ -37,7 +37,7 @@ class Player:
         self._name: str = name_stripped
         self._session_id: str = session_id if session_id else str(uuid4())
         self.index: Optional[int] = None  # wird von der GameEngine gesetzt
-        self.interrupt_event: Optional[asyncio.Event] = None  # wird von der Engine gesetzt
+        self.interrupt_event: Optional[asyncio.Event] = None  # wird von der GameEngine gesetzt
         logger.debug(f"Player '{self._name}' (Session: {self._session_id}) erstellt.")
 
     def __repr__(self) -> str:

@@ -78,17 +78,25 @@ Das Projekt umfasst zwei Hauptbetriebsarten:
 
 ### 2.2 Kernkomponenten
 
-Die Hauptkomponenten des Systems sind modular aufgebaut, um eine Wiederverwendung der Spiellogik in beiden Betriebsarten zu ermöglichen:
+Die Komponenten des Systems sind modular aufgebaut, um eine Wiederverwendung der Spiellogik in beiden Betriebsarten zu ermöglichen:
 
+*   **Arena (`Arena`):** Orchestriert Spiele zwischen Agenten im Arena-Modus.
+*   **WebSocket-Server & Handler (für Live-Modus):** Verwalten Verbindungen zu menschlichen Spielern, empfangen deren Aktionen und senden Spiel-Events. (In Entwicklung)
+*   **Game-Factory (für Live-Modus):** Verantwortlich für die Erstellung und Verwaltung von `GameEngine`-Instanzen für verschiedene Spieltische. (In Entwicklung)
 *   **Spiellogik-Kern (`GameEngine`, Karten- und Kombinationsbibliotheken):** Enthält die Regeln des Tichu-Spiels, die Validierung von Zügen und die Verwaltung des Spielzustands.
 *   **Spieler-Abstraktion (`Player`, `Agent`, `Client`):** Definiert eine einheitliche Schnittstelle für alle Arten von Spielern (Mensch oder KI).
     *   `Player`: Abstrakte Basisklasse.
     *   `Agent`: Basisklasse für KI-gesteuerte Spieler.
     *   `Client`: Repräsentiert den serverseitigen Endpunkt einer WebSocket-Verbindung zu einem menschlichen Spieler.
-*   **Zustandsverwaltung (`PublicState`, `PrivateState`):** Datenklassen zur Kapselung des öffentlichen und privaten Spielzustands.
-*   **Arena (`Arena`):** Orchestriert Spiele zwischen Agenten im Arena-Modus.
-*   **WebSocket-Server & Handler (für Live-Modus):** Verwalten Verbindungen zu menschlichen Spielern, empfangen deren Aktionen und senden Spiel-Events. (In Entwicklung)
-*   **Game-Factory (für Live-Modus):** Verantwortlich für die Erstellung und Verwaltung von `GameEngine`-Instanzen für verschiedene Spieltische. (In Entwicklung)
+
+Der Zugriff von einer Komponente auf eine andere erfolgt in eine Richtung (top-down); es gibt keinen Zirkelbezug:
+      
+*   Für den Arena-Betrieb: `Arena → GameEngine → Player`  
+*   Für den Server-Betrieb: `Server → GameFactory → GameEngine → Player`
+
+Zur Kapselung des öffentlichen und privaten Spielzustands gibt es zwei Datenklassen:
+*   `PublicState`
+*   `PrivateState` 
 
 ### 2.3 Technologie-Stack (aktuell)
 
@@ -269,15 +277,22 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 
 **Proaktive Nachrichten vom Server an den Spieler:**
 
-| Type                        | Payload                                                                                                        | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                               |
-|-----------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|-------------------------------------------------------------|
-| `"joined_confirmation"`     | `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}`                           | Der Spieler hat sich an den Tisch gesetzt bzw. ist (bzw. ist nach einem Verbindungsabbruch wieder zurück).  | keine Antwort              |                                                             |
-| `"deal_cards"`              | `{hand_cards: str}`                                                                                            | Eine neue Runde hat begonnen und der jeweilige Spieler hat seine Handkarten bekommen (erst 8 dann alle 14). | keine Antwort              |                                                             |
-| `"schupf_cards_received"`   | `{from_opponent_right: str, from_partner: str, from_opponent_left: str}`                                       | Die Tauschkarten wurden an den jeweiligen Spieler abgegeben.                                                | keine Antwort              |                                                             |
-| `"request"`  (s. 7.2.1)     | `{action: str, public_state: PublicStateDict, private_state: PrivateStateDict, request_id: uuid}`              | Server fordert den Spieler auf, eine Entscheidung zu treffen. Der volle Spielzustand ist Teil der Anfrage.  | `"response"`               | `{data: dict, request_id: uuid (aus der Request-Nachrich)}` | 
-| `"notification"` (s. 7.2.2) | `{event: str, data: dict}`                                                                                     | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort              |                                                             |
-| `"error"` (s. 7.2.3)        | `{message: str, code: int, details: dict (optional), request_id: uuid (optional, aus der Response-Nachricht)}` | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort              |                                                             |
+| Type                        | Payload                                                                                                        | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                                        |
+|-----------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|----------------------------------------------------------------------|
+| `"joined_confirmation"`     | `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}`                           | Der Spieler hat sich an den Tisch gesetzt bzw. ist (bzw. ist nach einem Verbindungsabbruch wieder zurück).  | keine Antwort              |                                                                      |
+| `"deal_cards"`              | `{hand_cards: str}`                                                                                            | Eine neue Runde hat begonnen und der jeweilige Spieler hat seine Handkarten bekommen (erst 8 dann alle 14). | keine Antwort              |                                                                      |
+| `"schupf_cards_received"`   | `{from_opponent_right: str, from_partner: str, from_opponent_left: str}`                                       | Die Tauschkarten wurden an den jeweiligen Spieler abgegeben.                                                | keine Antwort              |                                                                      |
+| `"request"`  (s. 7.2.1)     | `{request_id: uuid, action: str, public_state: PublicStateDict, private_state: PrivateStateDict}`              | Der Server fordert den Spieler auf, eine Entscheidung zu treffen.                                           | `"response"`               | `{request_id: uuid (aus der Request-Nachrich), response_data: dict}` | 
+| `"notification"` (s. 7.2.2) | `{event: str, data: dict}`                                                                                     | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort              |                                                                      |
+| `"error"` (s. 7.2.3)        | `{message: str, code: int, details: dict (optional), request_id: uuid (optional, aus der Response-Nachricht)}` | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort              |                                                                      |
 
+Anmerkung zur `request`-Nachricht:
+*   Der aktuelle Spielzustand sollte dem Spieler eigentlich bekannt sein, sofern er keine Notification-Nachrichten verpasst und entsprechend den Zustand angepasst hat.
+    Sollte dies (warum auch immer) mal nicht der Fall sein, würde der Spieler, der sich auf seinen intern gespeicherten Zustand verlässt, u.U. eine ungültige Antwort liefern. 
+    Eine Fehlerroutine müsste dann den intern gespeicherten Spielzustand mit dem aktuellen abgleichen. Wir vermeiden dieses Synchronisationsproblem ganz einfach, indem wir bei 
+    jeder Anfrage stets den aktuellen Zustand mitsenden, so dass der Spieler sich abgleichen kann, bevor er antwortet. 
+*   Keine der definierten Aktionen erfordert einen Kontext (ergänzende Informationen). Daher fällt `context` aus dem Payload raus. 
+  
 #### 7.2.1 Request-/Response-Nachrichten
 
 | Request Action (vom Server) | Response Data (vom Spieler)                                        | Beschreibung                                                         |
@@ -292,20 +307,20 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 
 Benachrichtigung an alle Spieler
 
-| Notification Event    | Notification Data                                                   | Beschreibung                                                    |
-|-----------------------|---------------------------------------------------------------------|-----------------------------------------------------------------|
-| "player_joined"       | `{player_index: int, player_index: str}`                            | Der Spieler spielt jetzt mit.                                   |
-| "player_left"         | `{player_index: int, replaced_by_name: str}`                        | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen. |
-| "interrupt_processed" | `{player_index: int, reason: "tichu"` oder `"bomb"}`                | Der Spieler hat Halt gerufen. (Dies wurde akzeptiert.)          |
-| "lobby_update"        | `{action: "assign_team", team: list}` oder `{action: "start_game"}` | Der Spieler hat das Team gebildet oder das Spiel gestartet.     |
-| "schupfed_by_player"  | `{player_index: int}`                                               | Der Spieler hat 3 Karten zum Tausch abgegeben.                  |
-| "tichu_announced"     | `{player_index: int, announced: bool}`                              | Der Spieler hat Tichu angesagt oder abgelehnt.                  |
-| "played"              | `{player_index: int, cards: str}`                                   | Der Spieler hat Karten ausgespielt oder hat gepasst.            |
-| "wish_made"           | `{player_index: int, wish_value: int}`                              | Der Spieler hat sich einen Kartenwert gewünscht.                |
-| "trick_taken"         | `{player_index: int}`                                               | Der Spieler hat den Stich kassiert.                             |
-| "player_turn_changed" | `{current_turn_index: int}`                                         | Der Spieler ist jetzt am Zug.                                   |
-| "round_over"          | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Karten werden neu gemischt.        |
-| "game_over"           | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Partie ist entschieden.            |
+| Notification Event    | Notification Data                                                   | Beschreibung                                                                                |
+|-----------------------|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| "player_joined"       | `{player_index: int, player_index: str}`                            | Der Spieler spielt jetzt mit.                                                               |
+| "player_left"         | `{player_index: int, replaced_by_name: str}`                        | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                             |
+| "interrupt_processed" | `{player_index: int, reason: "tichu"` oder `"bomb"}`                | Der Spieler hat Halt gerufen. (Dies wurde akzeptiert.)                                      |
+| "lobby_update"        | `{action: "assign_team", team: list}` oder `{action: "start_game"}` | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
+| "schupfed_by_player"  | `{player_index: int}`                                               | Der Spieler hat 3 Karten zum Tausch abgegeben.                                              |
+| "tichu_announced"     | `{player_index: int, announced: bool}`                              | Der Spieler hat Tichu angesagt oder abgelehnt.                                              |
+| "played"              | `{player_index: int, cards: str}`                                   | Der Spieler hat Karten ausgespielt oder hat gepasst.                                        |
+| "wish_made"           | `{player_index: int, wish_value: int}`                              | Der Spieler hat sich einen Kartenwert gewünscht.                                            |
+| "trick_taken"         | `{player_index: int}`                                               | Der Spieler hat den Stich kassiert.                                                         |
+| "player_turn_changed" | `{current_turn_index: int}`                                         | Der Spieler ist jetzt am Zug.                                                               |
+| "round_over"          | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Karten werden neu gemischt.                                    |
+| "game_over"           | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Partie ist entschieden.                                        |
 
 ### 7.2.3. Fehlermeldungen
 

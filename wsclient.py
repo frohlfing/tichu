@@ -102,14 +102,14 @@ async def receive_messages(ws: ClientWebSocketResponse):
                     print(f"  Vom linken Gegner: {received.get('from_opponent_left', 'N/A')}")
 
                 elif msg_type == "request":
-                    action_to_perform = payload.get("action")
-                    #public_state = payload.get("public_state", {})
-                    #private_state = payload.get("private_state", {})
                     last_request_id = payload.get("request_id", "")
+                    action_to_perform = payload.get("action")
+                    _public_state = payload.get("public_state", {})
+                    _private_state = payload.get("private_state", {})
                     print(f"--- SERVER ANFRAGE ---")
                     print(f"  Aktion angefordert: {action_to_perform}")
                     print(f"  Request ID: {last_request_id}")
-                    print(f"  Tipp: Antworte mit: {{\"type\": \"response\", \"payload\": {{\"request_id\": \"{last_request_id}\", \"data\": {{...deine Daten...}}}}}}")
+                    print(f"  Tipp: Antworte mit: {{\"type\": \"response\", \"payload\": {{\"request_id\": \"{last_request_id}\", \"response_data\": {{...deine Daten...}}}}}}")
 
                 elif msg_type == "notification":  # Benachrichtigung an alle Spieler
                     event = payload.get("event")
@@ -181,17 +181,17 @@ async def main(args: argparse.Namespace):
 
         # Antworten von Server-Anfragen
         # schupf
-        {"type": "response", "payload": {"data": {"to_opponent_right": "B2", "to_partner": "SK", "to_opponent_left": "B3"}, "request_id": "<request_id>"}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"to_opponent_right": "B2", "to_partner": "SK", "to_opponent_left": "B3"}}},
         # announce
-        {"type": "response", "payload": {"data": {"announced": False}, "request_id": "<request_id>"}},
-        {"type": "response", "payload": {"data": {"announced": True}, "request_id": "<request_id>"}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "announced": False}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "announced": True}}},
         # play
-        {"type": "response", "payload": {"data": {"cards": []}, "request_id": "<request_id>"}},
-        {"type": "response", "payload": {"data": {"cards": ["Dr", "S9"]}, "request_id": "<request_id>"}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "cards": []}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "cards": ["Dr", "S9"]}}},
         # wish
-        {"type": "response", "payload": {"data": {"wish_value": 8}, "request_id": "<request_id>"}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "wish_value": 8}}},
         # give_dragon_away
-        {"type": "response", "payload": {"data": {"player_index": 2}, "request_id": "<request_id>"}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "player_index": 2}}},
     ]
 
     async with ClientSession() as http:

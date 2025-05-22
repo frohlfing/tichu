@@ -18,6 +18,7 @@ from src.players.player import Player
 from src.private_state import PrivateState
 from src.public_state import PublicState
 from typing import Optional, Dict, List, Tuple
+from uuid import uuid4
 
 
 class Client(Player):
@@ -42,8 +43,6 @@ class Client(Player):
         super().__init__(name, session_id=session_id)
         self._websocket = websocket
         self._random = Random(seed)  # Zufallsgenerator
-        # todo es wird immer nur eine Anfrage gestellt. Bevor die nicht beantwortet ist, wird keine zweite gestellt.
-        #  Daher reicht es, nur ein Future festzuhalten: self._pending_requests: Optional[asyncio.Future] = None
         self._pending_requests: Dict[str, asyncio.Future] = {}  # die noch unbeantworteten Websocket-Anfragen
 
     async def cleanup(self):
@@ -63,24 +62,35 @@ class Client(Player):
     # WebSocket
     # ------------------------------------------------------
 
-    async def on_websocket_response(self, action: str, data: dict):
+    async def send_join_confirmation(self, pub: PublicState, priv: PrivateState):
         """
-        Wird aufgerufen, wenn eine Antwort vom realen Spieler empfangen wurde.
+        Sendet die Bestätigung, dass der Client nun an dem gewünschten Tisch sitzt.
 
-        :param action: Die Aktion der ursprünglichen Anfrage.
-        :param data: Die Daten der Antwort als Dictionary.
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: Die Antwort des Clients (`response_data`) bei Erfolg.
+        :raises ClientDisconnectedError: Wenn der Client nicht verbunden ist.
+        :raises asyncio.CancelledError: Wenn der wartende Task extern abgebrochen wird.
         """
-        if action in self._pending_requests:
-            future = self._pending_requests[action]
-            if not future.done():
-                future.set_result(data)
-                logger.debug(f"Client {self._name}: Antwort für '{action}' an wartende Methode weitergeleitet.")
-            else:
-                # Die Future wurde bereits gesetzt (z.B. Timeout, Cancelled) oder die Antwort kam zu spät.
-                logger.warning(f"Client {self._name}: Antwort für bereits abgeschlossene Aktion '{action}' erhalten: {data}")
-        else:
-            # Keine wartende Anfrage für diesen Typ gefunden.
-            logger.warning(f"Client {self._name}: Unerwartete Antwort für '{action}' erhalten: {data}")
+        if self._websocket.closed:
+            logger.warning(f"Kann joined_confirmation nicht an {self.name} senden (nicht verbunden).")
+            return
+
+        message = {
+            "type": "joined_confirmation",
+            "payload": {
+                "session_id": self.session_id,
+                "public_state": pub.to_dict(),
+                "private_state": priv.to_dict()
+            }
+        }
+        try:
+            logger.debug(f"Sende 'joined_confirmation' an {self.name}: {message}")
+            await self._websocket.send_json(message)
+        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+            logger.warning(f"Senden der Nachricht 'joined_confirmation' fehlgeschlagen: {e}")
+        except Exception as e:
+            logger.exception(f"Fehler beim Senden von 'joined_confirmation' an {self.name}: {e}")
 
     async def on_notify(self, msg_type: str, payload: Optional[dict]=None):
         """
@@ -107,101 +117,96 @@ class Client(Player):
         except Exception as e:
             logger.exception(f"Unerwarteter Fehler beim Senden der Nachricht {msg_type} an {self._name}: {e}")
 
-    async def _ask(self, request_type: str, context_payload: Optional[dict] = None, timeout: float = config.DEFAULT_REQUEST_TIMEOUT) -> dict | None:
+    async def _ask(self, action: str, pub: PublicState, priv: PrivateState) -> dict | None:
         """
         Sendet eine Anfrage an den Client und wartet auf dessen Antwort.
 
-        :param request_type: Eindeutiger Bezeichner für die Art der Anfrage (z.B. "play", "schupf").
-        :param context_payload: Zusätzliche Daten, die mit der Anfrage an den Client gesendet werden (z.B. mögliche Aktionen).
-        :param timeout: Maximale Wartezeit in Sekunden (0 == unbegrenzt).
-        :return: Das 'payload'-Dictionary aus der Antwort des Clients bei Erfolg.
+        :param action: Aktion (z.B. "play", "schupf"), die der Spieler ausführen soll.
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: Die Antwort des Clients (`response_data`) bei Erfolg.
         :raises ClientDisconnectedError: Wenn der Client nicht verbunden ist.
         :raises PlayerInterruptError: Wenn die Anfrage durch ein Engine-Event unterbrochen wird.
         :raises PlayerTimeoutError: Wenn der Client nicht innerhalb des Timeouts antwortet.
         :raises asyncio.CancelledError: Wenn der wartende Task extern abgebrochen wird.
         :raises PlayerInteractionError: Bei anderen Fehlern während des Sendevorgangs oder Wartens.
         """
-        # --- 1. Prüfen, ob Client verbunden ist ---
+        # sicherstellen, dass der Client noch verbunden ist
         if self._websocket.closed:
-            logger.warning(f"Client {self.name}: Aktion '{request_type}' nicht möglich (nicht verbunden).")
+            #logger.warning(f"Client {self.name}: Aktion '{action}' nicht möglich (nicht verbunden).")
             raise ClientDisconnectedError(f"Client {self.name} ist nicht verbunden.")
 
-        logger.debug(f"Client {self.name}: Starte Anfrage '{request_type}'.")
+        logger.debug(f"Client {self.name}: Starte Anfrage '{action}'.")
 
-        # --- 2. Future erstellen und registrieren ---
-        if request_type in self._pending_requests:
-            logger.warning(f"Client {self.name}: Überschreibe bereits laufende Anfrage für '{request_type}'.")
-            old_future = self._pending_requests[request_type]
-            if not old_future.done():
-                old_future.cancel("Neue Anfrage ersetzt alte")
+        # Future erstellen und registrieren
         loop = asyncio.get_running_loop()
+        request_id = str(uuid4())
         response_future = loop.create_future()
-        self._pending_requests[request_type] = response_future
+        self._pending_requests[request_id] = response_future
 
-        # --- 3. Anfrage senden ---
-        request_data: dict = {"type": "request_action", "payload": {"request": request_type, "timeout": timeout}}
-        if context_payload:
-            request_data["payload"]["context"] = context_payload  # Kontext in Payload verschachteln
+        # Anfrage senden
+        request_message: dict = {
+            "type": "request",
+            "payload": {
+                "request_id": request_id,
+                "action": action,
+                "public_state": pub.to_dict(),
+                "private_state": priv.to_dict(),
+            }
+        }
         try:
-            logger.debug(f"Sende Anfrage an {self.name}: {request_data}")
-            await self._websocket.send_json(request_data)
+            logger.debug(f"Sende Anfrage an {self.name}: {request_message}")
+            await self._websocket.send_json(request_message)
         except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
-            logger.warning(f"Senden der Anfrage '{request_type}' an {self.name} fehlgeschlagen (Verbindungsfehler): {e}. Markiere als getrennt.")
+            logger.warning(f"Senden der Anfrage '{action}' an {self.name} fehlgeschlagen (Verbindungsfehler): {e}. Markiere als getrennt.")
             # noinspection PyAsyncCall
-            self._pending_requests.pop(request_type, None)  # Future entfernen
-            raise ClientDisconnectedError(f"Senden der Anfrage '{request_type}' fehlgeschlagen.") from e
+            self._pending_requests.pop(request_id, None)  # Future entfernen
+            raise ClientDisconnectedError(f"Senden der Anfrage '{action}' fehlgeschlagen.") from e
         except Exception as e:
-            logger.exception(f"Unerwarteter Fehler beim Senden der Anfrage '{request_type}' an {self.name}: {e}")
+            logger.exception(f"Unerwarteter Fehler beim Senden der Anfrage '{action}' an {self.name}: {e}")
             # noinspection PyAsyncCall
-            self._pending_requests.pop(request_type, None)  # Future entfernen
-            raise PlayerInteractionError(f"Fehler beim Senden der Anfrage '{request_type}': {e}") from e
+            self._pending_requests.pop(request_id, None)  # Future entfernen
+            raise PlayerInteractionError(f"Fehler beim Senden der Anfrage '{action}': {e}") from e
 
-        # --- 4. Auf Antwort warten ---
-        #loop = asyncio.get_running_loop()
-        #response_future = loop.create_future()
-        #response_future_task = asyncio.create_task(response_future, name=f"ClientResp_{self.index}_{request_type}")
-        #interrupt_task = asyncio.create_task(self.interrupt_event.wait(), name="Interrupt")
-        #wait_tasks = [response_future_task, interrupt_task]
-
+        # auf Antwort warten
         interrupt_task = asyncio.create_task(self.interrupt_event.wait(), name="Interrupt")
-        wait_tasks = [response_future, interrupt_task]
-
-        pending: set[asyncio.Task] = set()
+        wait_tasks: List[asyncio.Future | asyncio.Task] = [response_future, interrupt_task]
+        pending: set[asyncio.Future | asyncio.Task] = set()
         start_time = time.monotonic()
         try:
-            done, pending = await asyncio.wait(wait_tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+            done, pending = await asyncio.wait(wait_tasks, timeout=config.DEFAULT_REQUEST_TIMEOUT, return_when=asyncio.FIRST_COMPLETED)
 
-            # --- 5. Ergebnis auswerten ---
+            # Ergebnis auswerten
             if not done:
                 # Timeout
                 elapsed = time.monotonic() - start_time
-                logger.warning(f"Client {self.name}: Timeout ({elapsed:.1f}s > {timeout}s) beim Warten auf Antwort für '{request_type}'.")
-                raise PlayerTimeoutError(f"Timeout bei '{request_type}' für Spieler {self.name}")
+                logger.warning(f"Client {self.name}: Timeout ({elapsed:.1f}s > {config.DEFAULT_REQUEST_TIMEOUT}s) beim Warten auf Antwort für '{action}'.")
+                raise PlayerTimeoutError(f"Timeout bei '{action}' für Spieler {self.name}")
 
-            if self.interrupt_event in done:
+            if interrupt_task in done:
                 # Interrupt
+                self.interrupt_event.clear()  # Wichtig: Event zurücksetzen!
                 elapsed = time.monotonic() - start_time
-                logger.info(f"Client {self.name}: Warten auf '{request_type}' nach {elapsed:.1f}s unterbrochen aufgrund Interrupt-Event.")
-                raise PlayerInterruptError()
+                logger.info(f"Client {self.name}: Warten auf '{action}' nach {elapsed:.1f}s unterbrochen aufgrund Interrupt-Event.")
+                raise PlayerInterruptError(f"Aktion '{action}' unterbrochen.")
 
             # Antwort erhalten
             assert response_future in done
-            response_data = response_future.result()  # Das ist das Payload-Dict von receive_response
-            logger.debug(f"Client {self.name}: Antwort für '{request_type}' erfolgreich empfangen.")
-            return response_data  # Erfolg! Gib rohen Payload zurück.
+            response_data = response_future.result()
+            logger.debug(f"Client {self.name}: Antwort für '{action}' erfolgreich empfangen: {response_data}.")
+            return response_data  # Erfolg!
 
         except asyncio.CancelledError as e:  # Shutdown
-            logger.info(f"Client {self.name}: Warten auf '{request_type}' extern abgebrochen.")
+            logger.info(f"Client {self.name}: Warten auf '{action}' extern abgebrochen.")
             raise e
         except ClientDisconnectedError as e:
-            logger.info(f"Client {self.name}: Verbindungsabbruch. Warten auf '{request_type}' abgebrochen.")
+            logger.info(f"Client {self.name}: Verbindungsabbruch. Warten auf '{action}' abgebrochen.")
             raise e
         except Exception as e:
-            logger.exception(f"Client {self.name}: Kritischer Fehler während des Wartens auf '{request_type}': {e}")
-            raise PlayerInteractionError(f"Unerwarteter Fehler bei '{request_type}': {e}") from e
+            logger.exception(f"Client {self.name}: Kritischer Fehler während des Wartens auf '{action}': {e}")
+            raise PlayerInteractionError(f"Unerwarteter Fehler bei '{action}': {e}") from e
         finally:
-            # --- 6. Aufräumen ---
-            logger.debug(f"Client {self.name}: Räume Warte-Tasks für '{request_type}' auf.")
+            logger.debug(f"Client {self.name}: Räume Warte-Tasks für '{action}' auf.")
             for task in pending:
                 if not task.done():
                     task.cancel()
@@ -211,9 +216,27 @@ class Client(Player):
                     pass
                 except Exception as cleanup_e:
                     logger.error(f"Fehler beim Aufräumen von Task {task.get_name()}: {cleanup_e}")
-            # Entferne die Future für diese Anfrage aus dem Tracking
             # noinspection PyAsyncCall
-            self._pending_requests.pop(request_type, None)
+            self._pending_requests.pop(request_id, None)
+
+    async def on_websocket_response(self, request_id: str, response_data: dict):
+        """
+        Wird aufgerufen, wenn eine Antwort vom realen Spieler empfangen wurde.
+
+        :param request_id:  Die UUID der Anfrage.
+        :param response_data: Die Daten der Antwort.
+        """
+        future = self._pending_requests.pop(request_id, None)  # hole und entferne die Future aus _pending_requests
+        if future:
+            if not future.done():  # _ask() wartet noch auf die Antwort
+                future.set_result(response_data)  # dadurch erhält _ask() die Daten der Antwort und kann weitermachen
+                logger.debug(f"Client {self._name}: Antwort an wartende Methode weitergeleitet (Request-ID {request_id}).")
+            else:  # _ask() hat inzwischen das Warten auf diese Antwort aufgegeben (wegen Timeout, Interrupt oder Server beenden)
+                logger.warning(f"Client {self._name}: Antwort ist veraltet (Request-ID {request_id}).")
+                # todo Fehler an den Spieler senden
+        else:  # keine wartende Anfrage für diese Antwort gefunden
+            logger.warning(f"Client {self._name}: Keine wartende Anfrage für diese Antwort gefunden (Request-ID {request_id}).")
+            # todo Fehler an den Spieler senden
 
     # ------------------------------------------------------
     # Entscheidungen
@@ -297,13 +320,13 @@ class Client(Player):
         :param new_websocket: Das neue WebSocketResponse-Objekt.
         """
         # Über die alte Verbindung noch Anfragen offen sind, diese verwerfen.
-        for request_type, future in list(self._pending_requests.items()):
+        for request_id, future in list(self._pending_requests.items()):
             if not future.done():
-                logger.warning(f"Client {self._name}: Breche alte Anfrage '{request_type}' ab.")
+                logger.warning(f"Client {self._name}: Breche alte Anfrage '{request_id}' ab.")
                 future.cancel()
-            self._pending_requests.pop(request_type, None)
+            self._pending_requests.pop(request_id, None)
 
-        # WEbSocket übernehmen
+        # WebSocket übernehmen
         logger.info(f"Aktualisiere WebSocket für Client {self._name} ({self._session_id}).")
         self._websocket = new_websocket
 
