@@ -1,38 +1,41 @@
 # Technische Projektdokumentation: Tichu Webanwendung
 
 **Datum:** 26. Mai 2024
-**Version:** 0.2.0 (Entwurfsphase Live-Betrieb)
+**Version:** 0.2.0 (Entwurfsphase für zweite Ausbaustufe)
 **Autor:** [Frank Rohlfing]
 
 **Inhaltsverzeichnis**
 
 1.  [Projektziele](#1-projektziele)
+
 2.  [Regelwerk](#2-regelwerk)
     1.  [Spielregeln](#21-spielregeln)
     2.  [Ablauf einer Partie](#22-ablauf-einer-partie)
-    3.  [Ausnahmeregeln](#23-ausnahmeregeln)
-3.  [Systemarchitektur](#3-systemarchitektur)
+    3.  [Sonderfälle](#23-sonderfälle)
+    
+3.  [Systemarchitektur](#3-systemarchitektur)  
     1.  [Technologie-Stack](#31-technologie-stack)
     2.  [Klassenhierarchie](#32-klassenhierarchie)
-4.  [Modulübersicht und Verzeichnisse](#4-modulübersicht-und-verzeichnisse)
+    
+4.  [Modulübersicht und Verzeichnisse](#4-modulübersicht-und-verzeichnisse)  todo Verzeichnisstruktur zum Anhang packen
     1.  [`src/`-Verzeichnis](#41-src-verzeichnis)
     2.  [`tests/`-Verzeichnis](#42-tests-verzeichnis)
     3.  [Start-Skripte](#43-start-skripte)
 
-5. [Daten, Konstanten, Typen](#5-daten-konstanten-typen)
+5. [Daten, Konstanten, Typen](#5-daten-konstanten-typen)  todo zur ersten Ausbaustufe packen
     1.  [Datenklassen](#51-datenklassen)
     2.  [Karte](#52-karte)
     3.  [Kombination](#53-kombination)
     4.  [Spielphasen](#54-spielphasen)
 
-6.  [Arena-Betrieb](#6-arena-betrieb)
+6.  [Arena-Betrieb (erste Ausbaustufe)](#6-arena-betrieb-erste-ausbaustufe)
     1.  [Zweck](#61-zweck)
     2.  [Agenten (KI-gesteuerter Spieler)](#62-agenten-ki-gesteuerter-spieler)
         1.  [Basisklassen](#621-basisklassen)
         2.  [Agenten-Typen](#622-agenten-typen) 
     3.  [Implementierung](#63-implementierung)
 
-7.  [Live-Betrieb (Spiel mit realen Spielern)](#7-live-betrieb-spiel-mit-realen-spielern)
+7.  [Server-Betrieb (zweite Ausbaustufe)](#7-server-betrieb-zweite-ausbaustufe)
     1.  [Query-Parameer der Websocket-URL](#71-query-parameer-der-websocket-url)
     2.  [WebSocket-Nachrichten](#72websocket-nachrichten)
         1.  [Request-/Response-Nachrichten](#721-request-response-nachrichten)
@@ -44,7 +47,7 @@
         3.  [Game-Engine](#733-game-engine)
         4.  [Client](#734-client)
         
-8. [Frontend (Geplant)](#8-frontend)
+8. [Frontend (zweite Ausbaustufe)](#8-frontend-zweite-ausbaustufe)
 
 **ANHANG**
 
@@ -74,7 +77,7 @@
 Dieses Dokument beschreibt die technische Implementierung einer Webanwendung für das Kartenspiel "Tichu". Ziel des Projekts ist es, eine Plattform zu schaffen, auf der sowohl KI-gesteuerte Agenten als auch menschliche Spieler gegeneinander Tichu spielen können.
 
 Das Projekt umfasst zwei Hauptbetriebsarten:
-*   Eine **Arena** für schnelle Simulationen zwischen Agenten optimiert für Forschungs- und Entwicklungszwecke (z.B. Training von KI-Agenten).
+*   Eine **Arena** für schnelle Simulationen zwischen Agenten optimiert. Für Forschungs- und Entwicklungszwecke (z.B. Training von KI-Agenten).
 *   Einen **Live-Betrieb**, der menschlichen Spielern via WebSockets ermöglicht, gegen Agenten oder andere menschliche Spieler anzutreten.
 
 ## 2. Regelwerk
@@ -105,7 +108,7 @@ Die detaillierten Spielregeln für Tichu sind hier zu finden:
 13. **Partie-Ende:** Wenn die Runde beendet ist und die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), leitet der Server automatisch eine neue Runde ein (beginnend bei Punkt 2: Kartenausgabe).
 14. **Neustart:** Wenn die Partie beendet ist, beginnt der Prozess wieder in der Lobby (Punkt 1).
 
-### 2.3 Ausnahmeregeln
+### 2.3 Sonderfälle
 
 Diese Punkte stammen aus dem offiziellen Regelwerk.
 
@@ -117,8 +120,8 @@ Diese Punkte stammen aus dem offiziellen Regelwerk.
     *   **Phönix als Einzelkarte (Kombination):** Die Kombination "Phönix als Einzelkarte" hat den Rang 14.5 (schlägt das Ass, aber nicht den Drachen).
     *   **Phönix im Stich:** Sticht der Phönix eine Einzelkarte, so ist sein Rang im Stich 0.5 höher die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
 
-* Um Fehlentscheidungen aufgrund Synchronisationsprobleme zu umgehen, werden diese Regeln definiert:
-    *   Hat ein Spieler ein großes oder normales Tichu angesagt, kann der Partner kein Tichu mehr ansagen.
+* Darüber hinaus werden für dieses Projekt folgende Sonderregeln definiert:
+    *   Hat ein Spieler ein großes oder normales Tichu angesagt, kann der Partner kein Tichu mehr ansagen. Das vermeidet Fehlentscheidungen aufgrund Synchronisationsprobleme.
 
 ## 3. Systemarchitektur
 
@@ -134,7 +137,7 @@ Diese Punkte stammen aus dem offiziellen Regelwerk.
 
 Der Zugriff von einer Komponente auf eine andere erfolgt in eine Richtung (top-down); es gibt keinen Zirkelbezug.
       
-*   Arena-Betrieb   
+*   Arena-Betrieb (erste Ausbaustufe)  
 
 ```
 Arena  
@@ -146,7 +149,7 @@ Arena
 ┴┐ 
 ```
 
-*   Server-Betrieb 
+*   Server-Betrieb (zweite Ausbaustufe)
 
 ```
 WebsocketHandler  
@@ -232,7 +235,7 @@ TODO!
 
 (siehe hierzu [Ablauf einer Partie](#22-ablauf-einer-partie))
 
-## 6. Arena-Betrieb
+## 6. Arena-Betrieb (erste Ausbaustufe)
 
 ### 6.1 Zweck
 
@@ -269,7 +272,7 @@ Die `Arena`-Klasse:
 *   Sammelt Statistiken über die gespielten Partien (Siege, Niederlagen, Spieldauer, Anzahl Runden/Stiche).
 *   Unterstützt "Early Stopping", um den Wettkampf zu beenden, wenn eine bestimmte Gewinnrate erreicht oder uneinholbar wird.
 
-## 7. Live-Betrieb (Spiel mit realen Spielern)
+## 7. Server-Betrieb (zweite Ausbaustufe)
 
 (in Entwicklung)
 
@@ -289,6 +292,8 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 
 **Proaktive Nachrichten vom Spieler an den Server:**
 
+Der WebSocket-Handler bearbeitet diese Nachrichten direkt oder leitet sie weiter an die Engine. Die `Cliemt`-Instanz wird hier nicht verwendet.
+
 | Type             | Payload                                                                                 | Beschreibung                                                                              | Antwort vom Server (Type) | Antwort vom Server (Payload)                                                         |
 |------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------|
 | `"leave"`        |                                                                                         | Der Spieler möchte den Tisch verlassen.                                                   | keine Antwort             |                                                                                      |
@@ -298,14 +303,16 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 
 **Proaktive Nachrichten vom Server an den Spieler:**
 
-| Type                        | Payload                                                                                                        | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                                        |
-|-----------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|----------------------------------------------------------------------|
-| `"joined_confirmation"`     | `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}`                           | Der Spieler hat sich an den Tisch gesetzt bzw. ist (bzw. ist nach einem Verbindungsabbruch wieder zurück).  | keine Antwort              |                                                                      |
-| `"deal_cards"`              | `{hand_cards: str}`                                                                                            | Eine neue Runde hat begonnen und der jeweilige Spieler hat seine Handkarten bekommen (erst 8 dann alle 14). | keine Antwort              |                                                                      |
-| `"schupf_cards_received"`   | `{from_opponent_right: str, from_partner: str, from_opponent_left: str}`                                       | Die Tauschkarten wurden an den jeweiligen Spieler abgegeben.                                                | keine Antwort              |                                                                      |
-| `"request"`  (s. 7.2.1)     | `{request_id: uuid, action: str, public_state: PublicStateDict, private_state: PrivateStateDict}`              | Der Server fordert den Spieler auf, eine Entscheidung zu treffen.                                           | `"response"`               | `{request_id: uuid (aus der Request-Nachrich), response_data: dict}` | 
-| `"notification"` (s. 7.2.2) | `{event: str, data: dict}`                                                                                     | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort              |                                                                      |
-| `"error"` (s. 7.2.3)        | `{message: str, code: int, details: dict (optional), request_id: uuid (optional, aus der Response-Nachricht)}` | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort              |                                                                      |
+Die Engine (bzw. bei `welcome` der WebSocket-Handler) nutzt die Client-Instanz, um diese Nachrichten zu versenden. Die `response`-Nachricht des Spielers wird vom WebSocket-Handler an den Client weitergeleitet. 
+
+| Type                        | Payload                                                                                           | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                                        |
+|-----------------------------|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|----------------------------------------------------------------------|
+| `"welcome"`                 | `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}`              | Der Spieler hat sich an den Tisch gesetzt bzw. ist (bzw. ist nach einem Verbindungsabbruch wieder zurück).  | keine Antwort              |                                                                      |
+| `"deal_cards"`              | `{hand_cards: str}`                                                                               | Eine neue Runde hat begonnen und der jeweilige Spieler hat seine Handkarten bekommen (erst 8 dann alle 14). | keine Antwort              |                                                                      |
+| `"deal_schupf_cards"`       | `{from_opponent_right: str, from_partner: str, from_opponent_left: str}`                          | Die Tauschkarten wurden an den jeweiligen Spieler abgegeben.                                                | keine Antwort              |                                                                      |
+| `"request"`  (s. 7.2.1)     | `{request_id: uuid, action: str, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Server fordert den Spieler auf, eine Entscheidung zu treffen.                                           | `"response"`               | `{request_id: uuid (aus der Request-Nachrich), response_data: dict}` | 
+| `"notification"` (s. 7.2.2) | `{event: str, context: dict (optional)}`                                                          | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort              |                                                                      |
+| `"error"` (s. 7.2.3)        | `{message: str, code: int, context: dict (optional)`                                              | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort              |                                                                      |
 
 Anmerkung zur `request`-Nachricht:
 *   Der aktuelle Spielzustand sollte dem Spieler eigentlich bekannt sein, sofern er keine Notification-Nachrichten verpasst und entsprechend den Zustand angepasst hat.
@@ -330,11 +337,11 @@ Benachrichtigung an alle Spieler
 
 | Notification Event    | Notification Data                                                   | Beschreibung                                                                                |
 |-----------------------|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| "player_joined"       | `{player_index: int, player_index: str}`                            | Der Spieler spielt jetzt mit.                                                               |
+| "player_joined"       | `{player_index: int, player_name: str}`                             | Der Spieler spielt jetzt mit.                                                               |
 | "player_left"         | `{player_index: int, replaced_by_name: str}`                        | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                             |
 | "interrupt_processed" | `{player_index: int, reason: "tichu"` oder `"bomb"}`                | Der Spieler hat Halt gerufen. (Dies wurde akzeptiert.)                                      |
 | "lobby_update"        | `{action: "assign_team", team: list}` oder `{action: "start_game"}` | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
-| "schupfed_by_player"  | `{player_index: int}`                                               | Der Spieler hat 3 Karten zum Tausch abgegeben.                                              |
+| "player_schupfed"     | `{player_index: int}`                                               | Der Spieler hat 3 Karten zum Tausch abgegeben.                                              |
 | "tichu_announced"     | `{player_index: int, announced: bool}`                              | Der Spieler hat Tichu angesagt oder abgelehnt.                                              |
 | "played"              | `{player_index: int, cards: str}`                                   | Der Spieler hat Karten ausgespielt oder hat gepasst.                                        |
 | "wish_made"           | `{player_index: int, wish_value: int}`                              | Der Spieler hat sich einen Kartenwert gewünscht.                                            |
@@ -345,7 +352,7 @@ Benachrichtigung an alle Spieler
 
 ### 7.2.3. Fehlermeldungen
 
-| Error Code                                  | Error Message                                              | Details                                |
+| Error Code                                  | Error Message                                              | Context (ergänzende Informationen)     |
 |---------------------------------------------|------------------------------------------------------------|----------------------------------------|
 | **Allgemeine Fehler (100-199)**             |                                                            |                                        |
 | UNKNOWN_ERROR = 100                         | "Ein unbekannter Fehler ist aufgetreten."                  | `{exception: ExceptionClassName}`      |
@@ -372,7 +379,7 @@ Benachrichtigung an alle Spieler
 | GAME_ALREADY_STARTED = 400                  | "Das Spiel an diesem Tisch hat bereits begonnen."          | `{table_name: str}`                    |
 | NOT_LOBBY_HOST = 401                        | "Nur der Host kann diese Aktion ausführen."                | `{action: str}`                        |
 
-### 7.3 Aufgaben der Komponenten im Live-Betrieb
+### 7.3 Aufgaben der Komponenten im Server-Betrieb
 
 #### 7.3.1 WebSocket-Handler
 
@@ -413,12 +420,12 @@ Benachrichtigung an alle Spieler
 *   Validiert die Antwort und gibt die extrahierte Aktion an die `GameEngine` zurück.
 *   Empfängt Benachrichtigungen (`notification`) von der `GameEngine` und leitet diese an den realen Spieler weiter.
 
-## 8. Frontend
+## 8. Frontend (zweite Ausbaustufe)
 
 (Geplant)
 
 ### 8.1 Allgemeine Funktionsweise
-1) Das Frontend für den Live-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
+1) Das Frontend für den Server-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
 2) Es kommuniziert über WebSockets mit dem Python-Backend. 
 3) Mit Verbindungsaufbau über die WebSocket sendet der reale Spieler als Query-Parameter in der URL den Tisch-Namen und seinen Namen mit. 
 4) Beim Wiederaufbau nach Verbindungsabbruch sendet der Spieler stattdessen die letzte Session-Id.
@@ -530,7 +537,7 @@ Das Format für die Docstrings ist `reStructuredText`.
     *   Öffentliche Instanzvariablen werden mit `:ivar <name>: <Beschreibung>` aufgelistet.
     *   Öffentliche Klassenkonstanten werden mit `:cvar <name>: <Beschreibung>` aufgelistet.
 *   Jede Funktion/Klassenmethode hat eine Überschrift und optional eine ergänzende Beschreibung. 
-    * Die Parameter werden mit `:param <name>: <Beschreibung>` aufgelistet.
+    * Die Parameter werden mit `:param <name>: <Beschreibung>` aufgelistet. Optionale Parameter werden mit `:param <name>: (Optional) <Beschreibung>` gekennzeichnet.  
     * Der Rückgabewert wird mit `:result: <Beschreibung>` dokumentiert. Rückgabe `None` wird nicht erwähnt.
     * Mögliche Exceptions werden mit `:raises <ErrorClass> <Beschreibung>` aufgelistet.
 

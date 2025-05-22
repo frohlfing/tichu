@@ -10,10 +10,10 @@ from aiohttp.web import WebSocketResponse
 from src.common.logger import logger
 from src.common.rand import Random
 # noinspection PyUnresolvedReferences
-from src.lib.cards import Card, Cards, stringify_cards, parse_cards
+from src.lib.cards import Card, Cards, stringify_cards, parse_cards, stringify_card
 from src.lib.combinations import Combination
 # noinspection PyUnresolvedReferences
-from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError
+from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError, ErrorCode
 from src.players.player import Player
 from src.private_state import PrivateState
 from src.public_state import PublicState
@@ -57,35 +57,6 @@ class Client(Player):
                 await self._websocket.close(code=WSCloseCode.GOING_AWAY, message="Verbindung wird geschlossen".encode('utf-8'))
             except Exception as e:
                 logger.exception(f"Fehler beim Schließen der WebSocket-Verbindung für {self._name}: {e}")
-
-    # ------------------------------------------------------
-    # WebSocket
-    # ------------------------------------------------------
-
-    async def on_notify(self, msg_type: str, payload: Optional[dict]=None):
-        """
-        Der Server ruft diese Funktion auf, um ein Spielereignis zu melden.
-
-        Die Nachricht wird über die WebSocket-Verbindung an den realen Spieler weitergeleitet.
-
-        :param msg_type: Der Typ der Nachricht.
-        :param payload: Die Nutzdaten der Nachricht als Dictionary.
-        """
-        if payload is None:
-            payload = {}
-
-        if self._websocket.closed:
-            logger.debug(f"Nachricht {msg_type} an {self._name} konnte nicht übermittelt werden. Keine Verbindung.")
-            return
-
-        message = {"type": msg_type, "payload": payload}
-        try:
-            logger.debug(f"Sende Nachricht an {self._name}: {message}")
-            await self._websocket.send_json(message)
-        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
-            logger.warning(f"Senden der Nachricht {msg_type} an {self._name} fehlgeschlagen: {e}")
-        except Exception as e:
-            logger.exception(f"Unerwarteter Fehler beim Senden der Nachricht {msg_type} an {self._name}: {e}")
 
     async def _ask(self, action: str, pub: PublicState, priv: PrivateState) -> dict | None:
         """
@@ -209,12 +180,107 @@ class Client(Player):
             # todo Fehler an den Spieler senden
 
     # ------------------------------------------------------
-    # Entscheidungen
+    # Proaktive Nachrichten vom Server an den Spieler
     # ------------------------------------------------------
+
+    async def welcome(self, pub: PublicState, priv: PrivateState) -> bool:
+        """
+        Der Server ruft diese Funktion auf, nachdem der Spieler sich angemeldet und einen Sitzplatz erhalten hat (auch nach einem Reconnect).
+
+        Die Nachricht wird über die WebSocket-Verbindung an den realen Spieler weitergeleitet.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :result: True, wenn der Spieler erfolgreich begrüßt wurde, sonst False.
+        """
+        if self._websocket.closed:
+            logger.debug(f"Die Begrüßungsnachricht konnte nicht an {self._name} übermittelt werden. Keine Verbindung.")
+            return False
+
+        welcome_message = {
+            "type": "welcome",
+            "payload": {
+                "session_id": self._session_id,
+                "public_state": pub.to_dict(),
+                "private_state": priv.to_dict()
+            }
+        }
+
+        try:
+            logger.debug(f"Sende Begrüßungsnachricht an {self._name}: {welcome_message}")
+            await self._websocket.send_json(welcome_message)
+        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+            logger.warning(f"Senden der Begrüßungsnachricht an {self._name} fehlgeschlagen: {e}")
+            return False
+        except Exception as e:
+            logger.exception(f"Unerwarteter Fehler beim Senden der Begrüßungsnachricht an {self._name}: {e}")
+            return False
+
+        return True
+
+    async def deal_cards(self, hand_cards: Cards):
+        """
+        Der Server ruft diese Funktion auf, wenn die Handkarten ausgeteilt wurden.
+
+        Die Nachricht wird über die WebSocket-Verbindung an den realen Spieler weitergeleitet.
+
+        :param hand_cards: Die Handkarten des Spielers.
+        """
+        if self._websocket.closed:
+            logger.debug(f"Die aufzunehmenden Tauschkarten konnten nicht an {self._name} übermittelt werden. Keine Verbindung.")
+            return
+
+        deal_cards_message = {
+            "type": "deal_cards",
+            "payload": {
+                "hand_cards": stringify_cards(hand_cards),
+            }
+        }
+
+        try:
+            logger.debug(f"Sende Handkarten an {self._name}: {deal_cards_message}")
+            await self._websocket.send_json(deal_cards_message)
+        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+            logger.warning(f"Senden der Handkarten an {self._name} fehlgeschlagen: {e}")
+        except Exception as e:
+            logger.exception(f"Unerwarteter Fehler beim Senden der Handkarten an {self._name}: {e}")
+
+    async def deal_schupf_cards(self, from_opponent_right: Card, from_partner: Card, from_opponent_left: Card):
+        """
+        Der Server ruft diese Funktion auf, wenn die Schupfkarten ausgetauscht wurden.
+
+        Die Nachricht wird über die WebSocket-Verbindung an den realen Spieler weitergeleitet.
+
+        :param from_opponent_right: Die Karte für den rechten Gegner.
+        :param from_partner: Die Karte für den Partner.
+        :param from_opponent_left: Die Karte für den linken Gegner.
+        """
+        if self._websocket.closed:
+            logger.debug(f"Die aufzunehmenden Tauschkarten konnten nicht an {self._name} übermittelt werden. Keine Verbindung.")
+            return
+
+        deal_schupf_message = {
+            "type": "deal_schupf_cards",
+            "payload": {
+                "from_opponent_right": stringify_card(from_opponent_right),
+                "from_partner": stringify_card(from_partner),
+                "from_opponent_left": stringify_card(from_opponent_left),
+            }
+        }
+
+        try:
+            logger.debug(f"Sende Tauschkarten an {self._name}: {deal_schupf_message}")
+            await self._websocket.send_json(deal_schupf_message)
+        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+            logger.warning(f"Senden der Tauschkarten an {self._name} fehlgeschlagen: {e}")
+        except Exception as e:
+            logger.exception(f"Unerwarteter Fehler beim Senden der Tauschkarten an {self._name}: {e}")
+
+    # --- Anfragen (diese Nachrichten erwarten eine Antwort vom Spieler ---
 
     async def schupf(self, pub: PublicState, priv: PrivateState) -> Tuple[Card, Card, Card]:
         """
-        Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
+        Der Server fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
         Muss von Subklassen implementiert werden.
 
@@ -228,7 +294,7 @@ class Client(Player):
     # todo grand? Steht nicht in der Dokumentation!
     async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
         """
-        Fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
+        Der Server fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
 
         Muss von Subklassen implementiert werden.
 
@@ -243,7 +309,7 @@ class Client(Player):
     # TODO todo action_space? Steht nicht in der Dokumentation!
     async def play(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
         """
-        Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
+        Der Server fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
@@ -255,7 +321,7 @@ class Client(Player):
 
     async def wish(self, pub: PublicState, priv: PrivateState) -> int:
         """
-        Fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
+        Der Server fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
 
         Muss von Subklassen implementiert werden.
 
@@ -268,7 +334,7 @@ class Client(Player):
 
     async def give_dragon_away(self, pub: PublicState, priv: PrivateState) -> int:
         """
-        Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
+        Der Server fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 
         Muss von Subklassen implementiert werden.
 
@@ -278,6 +344,70 @@ class Client(Player):
         """
         # TODO: Implementieren!
         return self.opponent_left_index
+
+    # --- Broadcast-Nachricht (diese Nachricht wird an jeden Spieler gesendet) ----
+
+    async def notify(self, event: str, context: Optional[dict]=None):
+        """
+        Der Server ruft diese Funktion auf, um ein Spielereignis zu melden.
+
+        Die Nachricht wird über die WebSocket-Verbindung an den realen Spieler weitergeleitet.
+
+        :param event: Das Spielereignis.
+        :param context: (Optional) Zusätzliche Informationen zum Ereignis.
+        """
+        if self._websocket.closed:
+            logger.debug(f"Das Ereignis {event} an {self._name} konnte nicht übermittelt werden. Keine Verbindung.")
+            return
+
+        notification_message = {
+            "type": "notification",
+            "payload": {
+                "event": event,
+                "context": context if context else {},
+            }
+        }
+
+        try:
+            logger.debug(f"Sende Nachricht an {self._name}: {notification_message}")
+            await self._websocket.send_json(notification_message)
+        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+            logger.warning(f"Melden des Ereignisses {event} an {self._name} fehlgeschlagen: {e}")
+        except Exception as e:
+            logger.exception(f"Unerwarteter Fehler beim Melden des Ereignisses {event} an {self._name}: {e}")
+
+    # --- Fehlermeldung ---
+
+    async def error(self, message: str, code: ErrorCode, context: Optional[Dict] = None):
+        """
+        Der Server ruft diese Funktion auf, um einen Fehler zu melden.
+
+        Die Fehlermeldung wird über die WebSocket-Verbindung an den realen Spieler weitergeleitet.
+
+        :param message: Die Fehlermeldung.
+        :param code: Der Fehlercode.
+        :param context: (Optional) Zusätzliche Informationen.
+        """
+        if self._websocket.closed:
+            logger.debug(f"Fehlermeldung {code} an {self._name} konnte nicht übermittelt werden. Keine Verbindung.")
+            return
+
+        error_message = {
+            "type": "error",
+            "payload": {
+                "message": message,
+                "code": code,
+                "context": context if context else {},
+            }
+        }
+
+        try:
+            logger.debug(f"Sende Fehlermeldung an {self._name}: {error_message} ({code})")
+            await self._websocket.send_json(error_message)
+        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+            logger.warning(f"Senden der Fehlermeldung {code} an {self._name} fehlgeschlagen: {e}")
+        except Exception as e:
+            logger.exception(f"Unerwarteter Fehler beim Senden der Fehlermeldung {code} an {self._name}: {e}")
 
     # ------------------------------------------------------
     # Hilfsfunktionen

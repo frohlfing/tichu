@@ -5,7 +5,7 @@ Dieses Modul definiert das Kartendeck und Eigenschaften der Spielkarten.
 __all__ = "Card", "Cards", \
     "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
     "deck", \
-    "parse_cards", "stringify_cards", \
+    "parse_card", "parse_cards", "stringify_card", "stringify_cards", \
     "ranks_to_vector", "cards_to_vector", \
     "is_wish_in", "sum_card_points", "other_cards",
 
@@ -142,8 +142,9 @@ _card_points = (
 
 # Parst die Karte aus dem String
 # s: z.B. "R6"
-#def parse_card(s: str) -> Card:
-#    return deck[_cardlabels_index[s]]
+# todo UnitTest hinzufügen
+def parse_card(s: str) -> Card:
+   return deck[_cardlabels_index[s]]
 
 
 # Parst die Karten aus dem String
@@ -154,8 +155,9 @@ def parse_cards(s: str) -> Cards:
 
 # Formatiert die Karte als lesbaren String
 # card: Karte, z.B. (8,3)
-#def stringify_card(card: Card) -> str:
-#    return _cardlabels[_deck_index[card]]
+# todo UnitTest hinzufügen
+def stringify_card(card: Card) -> str:
+   return _cardlabels[_deck_index[card]]
 
 
 # Formatiert Karten als lesbaren String

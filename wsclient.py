@@ -77,7 +77,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
 
                 # Proaktive Nachrichten vom Server
 
-                if msg_type == "joined_confirmation":  # snake_case
+                if msg_type == "welcome":  # snake_case
                     session_id = payload.get("session_id")
                     public_state: dict = payload.get("public_state", {})
                     private_state: dict = payload.get("private_state", {})
@@ -94,7 +94,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
                     print(f"--- KARTEN ERHALTEN ({len(hand_cards)}) ---")
                     print(f"  Deine Handkarten: {hand_cards if hand_cards else 'Keine'}")
 
-                elif msg_type == "schupf_cards_received":
+                elif msg_type == "deal_schupf_cards":
                     received = payload.get("received_cards", {})
                     print(f"--- SCHUPF-KARTEN ERHALTEN ---")
                     print(f"  Vom rechten Gegner: {received.get('from_opponent_right', 'N/A')}")

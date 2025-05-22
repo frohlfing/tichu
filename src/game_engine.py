@@ -742,7 +742,7 @@ class GameEngine:
             payload = {}
         for player in self._players:
             if isinstance(player, Client):  
-                await player.on_notify(message_type, payload)
+                await player.notify(message_type, payload)
 
     async def broadcast_state(self, pub: PublicState, privs: List[PrivateState]) -> None:
         """
@@ -753,7 +753,7 @@ class GameEngine:
         """
         for player in self._players:
             if isinstance(player, Client):  
-                await player.on_notify("state", {"pub": pub, "priv": privs[player.index]})
+                await player.notify("state", {"pub": pub, "priv": privs[player.index]})
 
     async def on_interrupt(self, client: Client, reason: str):
         """
@@ -767,7 +767,7 @@ class GameEngine:
         # Prüfungen
         if self._interrupt_reason:
             logger.debug(f"Tisch '{self.table_name}': Interrupt von Spieler {client.name} wird ignoriert, weil ein anderer Interrupt bereits läuft.")
-            await client.on_notify("error", {"message": "Ein anderer Interrupt wird gerade bearbeitet. Bitte warte."})
+            await client.notify("error", {"message": "Ein anderer Interrupt wird gerade bearbeitet. Bitte warte."})
             return
 
         # todo darf der Spieler die beabsichtigte Aktion, wofür er das Interrupt ausgelöst hat, jetzt tun?
@@ -783,7 +783,7 @@ class GameEngine:
             logger.debug(f"Tisch '{self.table_name}': Interrupt für Spieler {client.name} ausgelöst.")
         except Exception as e:
             logger.exception(f"Tisch '{self.table_name}': Fehler bei Interrupt-Verarbeitung für Spieler {client.name}: {e}")
-            await client.on_notify("error", {"message": "Interner Fehler bei Interrupt-Verarbeitung."})
+            await client.notify("error", {"message": "Interner Fehler bei Interrupt-Verarbeitung."})
 
     # ------------------------------------------------------
     # Hilfsfunktionen
