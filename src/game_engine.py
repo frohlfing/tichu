@@ -50,6 +50,10 @@ class GameEngine:
         # aktuelle Spielerliste
         self._players: List[Player] = list(self._default_agents)
 
+        # aktueller Spielzustand
+        self._public_state = self.create_public_state()
+        self._private_states = self.create_private_state()
+
         # Referenz auf den Hintergrund-Task `_run_game_loop`
         self.game_loop_task: Optional[asyncio.Task] = None
 
@@ -100,8 +104,26 @@ class GameEngine:
         logger.info(f"Bereinigung des Tisches '{self._table_name}' beendet.")
 
     # ------------------------------------------------------
-    # Partie spielen
+    # Lobby-Aktionen
     # ------------------------------------------------------
+
+    # noinspection PyMethodMayBeStatic
+    def assign_team(self, player_new_indexes: List[int]) -> bool:
+        """
+        Stellt das Team zusammen.
+        :param player_new_indexes: Liste mit den neuen Indizes der Spieler.
+        :return: True, wenn die Zuordnung erfolgte, sonst False.
+        """
+        if len(player_new_indexes) != 4:
+            return False
+
+        # todo prüfen, ob jeder Spieler einen neuen Index zw. 0 und 3 erhalten hat
+        #  prüfen, jeder Spieler einen eindeutigen Index erhalten hat
+        #  self._players und self._default_agents umsortieren
+        #  self._players[i].index = i setzen, ebenso für default_agents.
+        #  UnitTest schreiben
+
+        return True
 
     async def start_game(self):
         """
@@ -114,11 +136,15 @@ class GameEngine:
         logger.info(f"[{self.table_name}] Starte Hintergrund-Task für eine neue Partie.")
         self.game_loop_task = asyncio.create_task(self.run_game_loop(), name=f"Game Loop '{self.table_name}'")
 
+    # ------------------------------------------------------
+    # Partie spielen
+    # ------------------------------------------------------
+
     # noinspection PyUnusedLocal
     async def run_game_loop(self, pub: Optional[PublicState] = None, privs: Optional[List[PrivateState]] = None, break_time = 5) -> PublicState|None:
         """
         Steuert den Spielablauf einer Partie.
-        
+
         todo Interrupt-Handling
          PlayerInterruptError muss hier im jedem Turn abgefangen werden.
          Nennen wir den Spieler, der den Interrupt anfordert, "Interrupter".  
@@ -138,6 +164,7 @@ class GameEngine:
             logger.info(f"[{self.table_name}] Starte neue Partie...")
 
             # öffentlicher Spielzustand initialisieren
+            # todo Instanzvariable verwenden
             if pub:
                 logger.debug(f"[{self.table_name}] Verwende übergebenen PublicState.")
             else:
@@ -147,6 +174,7 @@ class GameEngine:
             pub.current_phase = "playing"
 
             # privater Spielzustände initialisieren
+            # todo Instanzvariable verwenden
             if privs:
                 if len(privs) != 4:
                     raise ValueError(f"Die Anzahl der Einträge in `privs` muss genau 4 sein.")
@@ -773,6 +801,26 @@ class GameEngine:
                 return p
         return None
 
+    def create_public_state(self) -> PublicState:
+        """
+        Initialisiert den öffentlichen Spielzustand
+        """
+        pub = PublicState()
+        pub.table_name = self.table_name
+        pub.player_names = [p.name for p in self._players]
+        pub.current_phase = "init"  # todo die Spielphasen sind noch nicht definiert
+        return pub
+
+    @staticmethod
+    def create_private_state() -> List[PrivateState]:
+        """
+        Initialisiert die privaten Spielzustände (für jeden Spieler einen)
+        """
+        privs = [PrivateState() for _ in range(4)]
+        for i, priv in enumerate(privs):
+            priv.player_index = i
+        return privs
+
     # ------------------------------------------------------
     # Eigenschaften
     # ------------------------------------------------------
@@ -784,4 +832,14 @@ class GameEngine:
 
     @property
     def players(self) -> List[Player]:
-        return self._players # Rückgabe der Liste (Änderungen extern möglich, aber nicht vorgesehen)
+        return self._players  # Mutable - Änderungen extern möglich, aber nicht vorgesehen
+
+    @property
+    def public_state(self) -> PublicState:
+        """Der öffentliche Spielzustand."""
+        return self._public_state  # Mutable - Änderungen extern möglich, aber nicht vorgesehen
+
+    @property
+    def private_states(self) -> List[PrivateState]:
+        """Die privaten Spielzustände."""
+        return self._private_states  # Mutable - Änderungen extern möglich, aber nicht vorgesehen

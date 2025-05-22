@@ -6,62 +6,70 @@
 
 **Inhaltsverzeichnis**
 
-1.  [Einleitung und Projektziele](#1-einleitung-und-projektziele)
-2.  [Systemarchitektur](#2-systemarchitektur)
-    1.  [Betriebsarten](#21-betriebsarten)
-    2.  [Kernkomponenten](#22-kernkomponenten)
-    3.  [Technologie-Stack (aktuell)](#23-technologie-stack-aktuell)
-3.  [Spiellogik und Regeln](#3-spiellogik-und-regeln)
-    1.  [Regelwerk](#31-regelwerk)
-    2.  [Wichtige Spielphasen und Ablauf einer Partie](#32-wichtige-spielphasen-und-ablauf-einer-partie)
-    3.  [Ausnahmeregeln und Spezialkarten (Phönix)](#33-ausnahmeregeln-und-spezialkarten-phönix)
+1.  [Projektziele](#1-projektziele)
+2.  [Regelwerk](#2-regelwerk)
+    1.  [Spielregeln](#21-spielregeln)
+    2.  [Ablauf einer Partie](#22-ablauf-einer-partie)
+    3.  [Ausnahmeregeln](#23-ausnahmeregeln)
+3.  [Systemarchitektur](#3-systemarchitektur)
+    1.  [Technologie-Stack](#31-technologie-stack)
+    2.  [Klassenhierarchie](#32-klassenhierarchie)
 4.  [Modulübersicht und Verzeichnisse](#4-modulübersicht-und-verzeichnisse)
-    1.  [`src/` Verzeichnis](#41-src-verzeichnis)
-        1.  [`src/common/`](#411-srccommon)
-        2.  [`src/lib/`](#412-srclib)
-        3.  [`src/players/`](#413-srcplayers)
-        4.  [Weitere Kernmodule](#414-weitere-kernmodule)
-    2.  [`tests/` Verzeichnis](#42-tests-verzeichnis)
+    1.  [`src/`-Verzeichnis](#41-src-verzeichnis)
+    2.  [`tests/`-Verzeichnis](#42-tests-verzeichnis)
     3.  [Start-Skripte](#43-start-skripte)
-5.  [Datenstrukturen](#5-datenstrukturen)
-    1.  [`PublicState`](#51-publicstate)
-    2.  [`PrivateState`](#52-privatestate)
-    3.  [Kartenrepräsentation (`Card`, `Cards`)](#53-kartenrepräsentation-card-cards)
-    4.  [Kombinationen (`Combination`)](#54-kombinationen-combination)
+
+5. [Daten, Konstanten, Typen](#5-daten-konstanten-typen)
+    1.  [Datenklassen](#51-datenklassen)
+    2.  [Karte](#52-karte)
+    3.  [Kombination](#53-kombination)
+    4.  [Spielphasen](#54-spielphasen)
+
 6.  [Arena-Betrieb](#6-arena-betrieb)
     1.  [Zweck](#61-zweck)
-    2.  [Implementierung](#62-implementierung)
+    2.  [Agenten (KI-gesteuerter Spieler)](#62-agenten-ki-gesteuerter-spieler)
+        1.  [Basisklassen](#621-basisklassen)
+        2.  [Agenten-Typen](#622-agenten-typen) 
+    3.  [Implementierung](#63-implementierung)
+
 7.  [Live-Betrieb (Spiel mit realen Spielern)](#7-live-betrieb-spiel-mit-realen-spielern)
     1.  [Query-Parameer der Websocket-URL](#71-query-parameer-der-websocket-url)
     2.  [WebSocket-Nachrichten](#72websocket-nachrichten)
-        1[Request-/Response-Nachrichten](#721-request-response-nachrichten)
-        2[Notification-Nachrichten](#722-notification-nachrichten)
-        3[Fehlermeldungen](#723-fehlermeldungen)
-    3.  [Verantwortlichkeiten der Komponenten im Live-Betrieb](#73-verantwortlichkeiten-der-komponenten-im-live-betrieb)
+        1.  [Request-/Response-Nachrichten](#721-request-response-nachrichten)
+        2.  [Notification-Nachrichten](#722-notification-nachrichten)
+        3.  [Fehlermeldungen](#723-fehlermeldungen)
+    3.  [Verantwortlichkeiten der Komponenten im Live-Betrieb](#73-aufgaben-der-komponenten-im-live-betrieb)
         1.  [WebSocket-Handler](#731-websocket-handler)
         2.  [Game-Factory](#732-game-factory)
-        3.  [Game-Engine (Server-Modus)](#733-game-engine-server-modus)
-        4.  [Client (serverseitiger WebSocket-Endpunkt des realen Spielers)](#734-client-serverseitiger-websocket-endpunkt-des-realen-Spielers)
-8.  [Agenten (KI-gesteuerter Spieler)](#8-agenten-ki-gesteuerter-spieler)
-    1.  [Basisklassen](#81-basisklassen)
-    2.  [Agenten-Typen](#82-agenten-typen)
+        3.  [Game-Engine](#733-game-engine)
+        4.  [Client](#734-client)
+        
+8. [Frontend (Geplant)](#8-frontend)
+
+**ANHANG**
+
 9.  [Entwicklungsumgebung](#9-entwicklungsumgebung)
     1.  [Systemanforderungen](#91-systemanforderungen)
     2.  [Einrichtung](#92-einrichtung)
     3.  [Testing](#93-testing)
-10. [Frontend (Geplant)](#10-frontend)
+    
+10. [Reserviert](#10-reserviert)
+
 11. [Exceptions](#11-exceptions)
+
 12. [Versionsnummer](#12-versionsnummer)
     1. [Release auf Github erstellen](#121-release-auf-github-erstellen)
+    
 13. [Styleguide](#13-styleguide)
     1. [Docstrings](#131-docstrings)
     2. [Namenskonvention](#132-namenskonvention)
     3. [Type-Hints](#133-type-hints)
+    
 14. [Glossar](#14-glossar)
 
 ---
 
-## 1. Einleitung und Projektziele
+## 1. Projektziele
 
 Dieses Dokument beschreibt die technische Implementierung einer Webanwendung für das Kartenspiel "Tichu". Ziel des Projekts ist es, eine Plattform zu schaffen, auf der sowohl KI-gesteuerte Agenten als auch menschliche Spieler gegeneinander Tichu spielen können.
 
@@ -69,53 +77,14 @@ Das Projekt umfasst zwei Hauptbetriebsarten:
 *   Eine **Arena** für schnelle Simulationen zwischen Agenten optimiert für Forschungs- und Entwicklungszwecke (z.B. Training von KI-Agenten).
 *   Einen **Live-Betrieb**, der menschlichen Spielern via WebSockets ermöglicht, gegen Agenten oder andere menschliche Spieler anzutreten.
 
-## 2. Systemarchitektur
+## 2. Regelwerk
 
-### 2.1 Betriebsarten
-
-1.  **Arena-Modus:** Dient dem schnellen Durchspielen vieler Partien zwischen KI-Agenten. Der Fokus liegt hier auf Performance und Datenerfassung. Dieser Teil ist weitgehend implementiert.
-2.  **Server-/Live-Modus:** Ermöglicht menschlichen Spielern die Teilnahme an Spielen über eine WebSocket-Schnittstelle. KI-Agenten können freie Plätze einnehmen oder als Gegner dienen. Dieser Teil befindet sich aktiv in der Entwicklung.
-
-### 2.2 Kernkomponenten
-
-Die Komponenten des Systems sind modular aufgebaut, um eine Wiederverwendung der Spiellogik in beiden Betriebsarten zu ermöglichen:
-
-*   **Arena (`Arena`):** Orchestriert Spiele zwischen Agenten im Arena-Modus.
-*   **WebSocket-Server & Handler (für Live-Modus):** Verwalten Verbindungen zu menschlichen Spielern, empfangen deren Aktionen und senden Spiel-Events. (In Entwicklung)
-*   **Game-Factory (für Live-Modus):** Verantwortlich für die Erstellung und Verwaltung von `GameEngine`-Instanzen für verschiedene Spieltische. (In Entwicklung)
-*   **Spiellogik-Kern (`GameEngine`, Karten- und Kombinationsbibliotheken):** Enthält die Regeln des Tichu-Spiels, die Validierung von Zügen und die Verwaltung des Spielzustands.
-*   **Spieler-Abstraktion (`Player`, `Agent`, `Client`):** Definiert eine einheitliche Schnittstelle für alle Arten von Spielern (Mensch oder KI).
-    *   `Player`: Abstrakte Basisklasse.
-    *   `Agent`: Basisklasse für KI-gesteuerte Spieler.
-    *   `Client`: Repräsentiert den serverseitigen Endpunkt einer WebSocket-Verbindung zu einem menschlichen Spieler.
-
-Der Zugriff von einer Komponente auf eine andere erfolgt in eine Richtung (top-down); es gibt keinen Zirkelbezug:
-      
-*   Für den Arena-Betrieb: `Arena → GameEngine → Player`  
-*   Für den Server-Betrieb: `Server → GameFactory → GameEngine → Player`
-
-Zur Kapselung des öffentlichen und privaten Spielzustands gibt es zwei Datenklassen:
-*   `PublicState`
-*   `PrivateState` 
-
-### 2.3 Technologie-Stack (aktuell)
-
-*   **Programmiersprache:** Python (Version 3.11 oder höher)
-*   **Kernbibliotheken (Python Standard Library):** `asyncio`, `dataclasses`, `multiprocessing`.
-*   **Testing:** `pytest`, `pytest-mock`, `coverage`.
-*   **WebSocket-Server: (im Aufbau)** `aiohttp`.
-*   **Frontend (geplant):** HTML, CSS, JavaScript.
-
-## 3. Spiellogik und Regeln
-
-### 3.1 Regelwerk
+### 2.1 Spielregeln
 
 Die detaillierten Spielregeln für Tichu sind hier zu finden:
 [Tichu Regeln und Anleitung](https://cardgames.wiki/de/blog/tichu-spielen-regeln-und-anleitung-einfach-erklaert)
 
-Die Implementierung versucht, diese Regeln so genau wie möglich abzubilden.
-
-### 3.2 Wichtige Spielphasen und Ablauf einer Partie
+### 2.2 Ablauf einer Partie
 
 1.  **Lobby & Spielstart:** Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
 2.  **Kartenausgabe (Initial):** Der Server verteilt je 8 Karten an jeden Spieler.
@@ -124,7 +93,7 @@ Die Implementierung versucht, diese Regeln so genau wie möglich abzubilden.
 5.  **Kleines Tichu Ansage (vor Schupfen):** Solange noch kein Spieler Karten zum Tausch (Schupfen) abgegeben hat, kann der Spieler ein Tichu ansagen. Dazu muss er vorab ein Interrupt auslösen.
 6.  **Schupfen:** Die Spieler müssen nun 3 Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler).
 7.  **Kartenaufnahme nach Schupfen:** Sobald alle Spieler die Karten zum Tauschen abgegeben haben, sendet der Server an jeden Spieler jeweils die getauschten Karten, die für ihn bestimmt sind.
-8.  **Spielphase (Kombinationen legen):**
+8.  **Kombinationen legen:**
     *   Ab jetzt kann der Spieler jederzeit a) Tichu ansagen (solange er noch 14 Karten auf der Hand hat) oder b) eine Bombe werfen (sofern er eine besitzt und den Stich überstechen kann). Dazu muss er ein Interrupt auslösen.
     *   Der Spieler mit dem MahJong muss eine Kartenkombination ablegen.
     *   Der nächste Spieler wird aufgefordert, Karten abzulegen oder zu Passen.
@@ -136,7 +105,9 @@ Die Implementierung versucht, diese Regeln so genau wie möglich abzubilden.
 13. **Partie-Ende:** Wenn die Runde beendet ist und die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), leitet der Server automatisch eine neue Runde ein (beginnend bei Punkt 2: Kartenausgabe).
 14. **Neustart:** Wenn die Partie beendet ist, beginnt der Prozess wieder in der Lobby (Punkt 1).
 
-### 3.3 Ausnahmeregeln und Spezialkarten (Phönix)
+### 2.3 Ausnahmeregeln
+
+Diese Punkte stammen aus dem offiziellen Regelwerk.
 
 *   **Kein Vierling:** Es gibt kein Vierling, daher ist ein Drilling mit Phönix nicht möglich.
 *   **Full House Restriktion:** Ein Fullhouse darf nicht aus einer 4er-Bombe mit Phönix gebildet werden (Drilling und Pärchen dürfen nicht den gleichen Rang haben).
@@ -146,43 +117,84 @@ Die Implementierung versucht, diese Regeln so genau wie möglich abzubilden.
     *   **Phönix als Einzelkarte (Kombination):** Die Kombination "Phönix als Einzelkarte" hat den Rang 14.5 (schlägt das Ass, aber nicht den Drachen).
     *   **Phönix im Stich:** Sticht der Phönix eine Einzelkarte, so ist sein Rang im Stich 0.5 höher die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
 
-## 4. Modulübersicht und Verzeichnisse
+* Um Fehlentscheidungen aufgrund Synchronisationsprobleme zu umgehen, werden diese Regeln definiert:
+    *   Hat ein Spieler ein großes oder normales Tichu angesagt, kann der Partner kein Tichu mehr ansagen.
+
+## 3. Systemarchitektur
+
+### 3.1 Technologie-Stack
+
+*   **Programmiersprache:** Python (Version 3.11 oder höher)
+*   **Kernbibliotheken (Python Standard Library):** `asyncio`, `dataclasses`, `multiprocessing`.
+*   **Testing:** `pytest`, `coverage`.
+*   **Server: (im Aufbau)** `aiohttp`.
+*   **Frontend (geplant):** HTML, CSS, JavaScript.
+
+### 3.2 Klassenhierarchie
+
+Der Zugriff von einer Komponente auf eine andere erfolgt in eine Richtung (top-down); es gibt keinen Zirkelbezug.
+      
+*   Arena-Betrieb   
+
+```
+Arena  
+└─ GameEngine 
+  ├─ PublicState
+  ├─ PrivateState
+  └─ Player --- Agent
+  
+┴┐ 
+```
+
+*   Server-Betrieb 
+
+```
+WebsocketHandler  
+└─ GameFactory 
+   └─ GameEngine 
+      ├─ PublicState
+      ├─ PrivateState
+      |            ┌─ Client
+      └─ Player ---┤
+                   └─ Agent
+┴┐ 
+```
+
+## 4 Modulübersicht und Verzeichnisse
 
 ### 4.1 `src/`-Verzeichnis
 
 Quellcode für Packages
 
-#### 4.1.1 `src/common/`
+*   Datenstrukturen:
+    *   `public_state.py`: Datenklasse `PublicState`, die den öffentlichen Spielzustand enthält, also alle Informationen, die jedem Spieler an einem Tisch bekannt sind.
+    *   `private_state.py`: Datenklasse `PrivateState`, die den privaten Spielzustand eines Spielers enthält, wie z.B. die Handkarten des Spielers.
 
-Allgemeine Hilfsmodule:
-*   `logger.py`: Konfiguration des Logging-Frameworks, inklusive farbiger Konsolenausgabe.
-*   `rand.py`: Benutzerdefinierte Zufallsgenerator-Klasse, optimiert für potenzielle Multiprocessing-Szenarien (verzögerte Initialisierung des Seeds pro Instanz).
-*   `config.py`: (Implizit vorhanden) Konfigurationsvariablen für das Projekt (z.B. Loglevel, Arena-Einstellungen).
-*   `errors.py`: Definition anwendungsspezifischer Exception-Klassen.
-*   `git_utils.py`: Hilfsfunktionen zur Interaktion mit Git (z.B. Ermittlung des aktuellen Tags/Version).
+*   Weitere Kernmodule:
+    *   `game_engine.py`: Die `GameEngine`-Klasse, die die Hauptspiellogik für einen Tisch steuert, Runden abwickelt und mit den `Player`-Instanzen interagiert.
+    *   `arena.py`: Die `Arena`-Klasse für den Arena-Betrieb, führt mehrere Spiele parallel oder sequenziell aus und sammelt Statistiken.
 
-#### 4.1.2 `src/lib/`
+*   Allgemeine Bibliotheken: 
+    * `src/common/` 
+       *   `logger.py`: Konfiguration des Logging-Frameworks, inklusive farbiger Konsolenausgabe.
+       *   `rand.py`: Benutzerdefinierte Zufallsgenerator-Klasse, optimiert für potenzielle Multiprocessing-Szenarien (verzögerte Initialisierung des Seeds pro Instanz).
+       *   `config.py`: (Implizit vorhanden) Konfigurationsvariablen für das Projekt (z.B. Loglevel, Arena-Einstellungen).
+       *   `errors.py`: Definition anwendungsspezifischer Exception-Klassen.
+       *   `git_utils.py`: Hilfsfunktionen zur Interaktion mit Git (z.B. Ermittlung des aktuellen Tags/Version).
 
-Enthält Kernbibliotheken für die Spiellogik, die relativ eigenständig sind:
-*   `cards.py`: Definition von Karten, dem Deck, Punktwerten und Hilfsfunktionen zur Kartenmanipulation (Parsen, Stringify, Vektorisierung).
-*   `combinations.py`: Definition von Kombinationstypen, Logik zur Erkennung (`get_figure`), Generierung (`build_combinations`) und Validierung von Kartenkombinationen. Enthält auch Logik zur Erstellung des gültigen Aktionsraums (`build_action_space`).
-*   `partitions.py`: (Falls vorhanden und relevant für Agenten) Logik zur Aufteilung von Handkarten in mögliche Sequenzen von Kombinationen.
+*   Projektspezifische Bibliotheken
+    * `src/lib/`
+       *   `cards.py`: Definition von Karten, dem Deck, Punktwerten und Hilfsfunktionen zur Kartenmanipulation.
+       *   `combinations.py`: Definition von Kombinationstypen, Logik zur Erkennung, Generierung und Validierung von Kartenkombinationen. Enthält auch Logik zur Erstellung des gültigen Aktionsraums.
+       *   `partitions.py`: (Falls vorhanden und relevant für Agenten) Logik zur Aufteilung von Handkarten in mögliche Sequenzen von Kombinationen.
 
-#### 4.1.3 `src/players/`
-
-Definition der verschiedenen Spieler-Typen:
-*   `player.py`: Abstrakte Basisklasse `Player` mit der Grundschnittstelle für alle Spieler.
-*   `agent.py`: Abstrakte Basisklasse `Agent`, erbt von `Player`, für KI-gesteuerte Spieler.
-*   `random_agent.py`: Konkrete Implementierung eines Agenten, der zufällige, gültige Züge macht.
-*   `heuristic_agent.py`: (Implementiert oder Geplant) Agent, der auf Heuristiken basiert.
-*   `client.py`: (Für Live-Betrieb) Klasse, die einen menschlichen Spieler repräsentiert und die WebSocket-Kommunikation auf Serverseite abwickelt.
-
-#### 4.1.4 Weitere Kernmodule
-
-*   `public_state.py`: Definition der `PublicState`-Datenklasse, die alle öffentlich sichtbaren Informationen eines Spiels enthält.
-*   `private_state.py`: Definition der `PrivateState`-Datenklasse, die die privaten Informationen eines Spielers (Handkarten etc.) enthält.
-*   `game_engine.py`: Die `GameEngine`-Klasse, die die Hauptspiellogik für einen Tisch steuert, Runden abwickelt und mit den `Player`-Instanzen interagiert.
-*   `arena.py`: Die `Arena`-Klasse für den Arena-Betrieb, führt mehrere Spiele parallel oder sequenziell aus und sammelt Statistiken.
+*   Spieler-Typen:
+    * `src/players/`
+       *   `player.py`: Abstrakte Basisklasse `Player` mit der Grundschnittstelle für alle Spieler.
+       *   `agent.py`: Abstrakte Basisklasse `Agent`, erbt von `Player`, für KI-gesteuerte Spieler.
+       *   `random_agent.py`: Konkrete Implementierung eines Agenten, der zufällige, gültige Züge macht.
+       *   `heuristic_agent.py`: (Implementiert oder Geplant) Agent, der auf Heuristiken basiert.
+       *   `client.py`: (Für Live-Betrieb) Klasse, die einen menschlichen Spieler repräsentiert und die WebSocket-Kommunikation auf Serverseite abwickelt.
 
 ### 4.2 `tests/`-Verzeichnis
 
@@ -194,41 +206,31 @@ Enthält Unit-Tests für die Module in `src/`, geschrieben mit `pytest`.
 *   `server.py`: Startet den Server für den Live-Betrieb. 
 *   `wsclient.py`: Startet einen interaktiven WebSocket-Client lediglich für Testzwecke. 
 
-## 5. Datenstrukturen
+## 5. Daten, Konstanten, Typen
 
-### 5.1 `PublicState`
+### 5.1 Datenklassen
+  
+*   `PublicState`: enthält alle Informationen, die allen Spielern an einem Tisch bekannt sind.
+*   `PrivateState`: enthält die Informationen, die nur dem jeweiligen Spieler bekannt sind.
 
-Eine `dataclass`, die alle Informationen enthält, die allen Spielern an einem Tisch bekannt sind. Dazu gehören u.a.:
-*   Namen der Spieler, aktueller Spieler am Zug (`current_turn_index`), Startspieler der Runde (`start_player_index`).
-*   Anzahl der Handkarten jedes Spielers (`count_hand_cards`).
-*   Alle bereits gespielten Karten der Runde (`played_cards`).
-*   Tichu-Ansagen (`announcements`), geäußerte Wünsche (`wish_value`).
-*   Informationen über den aktuellen Stich: gelegte Karten (`trick_cards`), Typ der Kombination (`trick_combination`), Besitzer des Stichs (`trick_owner_index`), Punkte im Stich (`trick_points`).
-*   Die `tricks`-Historie (eine Liste von Stichen, wobei jeder Stich `Trick` eine Liste von Spielzügen `Turn` ist; `Turn = Tuple[player_index, cards_played, combination_details]`).
-*   Aktuelle Punktestände der Runde (`points`) und der gesamten Partie (`game_score`).
-*   Statusinformationen (z.B. `is_round_over`, `double_victory`, `current_phase`).
+### 5.2 Karte
 
-### 5.2 `PrivateState`
+*   `Card`: Die Spielkarte
+    *   `value`: Der Kartenwert: 0 (Dog), 1 (Mah Jong), 2 bis 10, 11 (Jack/Bube), 12 (Queen/Dame), 13 (King/König), 14 (Ace/As), 15 (Dragon/Drache), 16 (Phoenix/Phönix).
+    *    `suit`: Die Farbe der Karte: 0 (Sonderkarte), 1 (Schwert/Schwarz), 2 (Pagode/Blau), 3 (Jade/Grün), 4 (Stern/Rot).
 
-Eine `dataclass`, die Informationen enthält, die nur dem jeweiligen Spieler bekannt sind:
-*   Der Index des Spielers (`player_index`).
-*   Die eigenen Handkarten (`_hand_cards`, zugreifbar über `@property hand_cards`).
-*   Die Karten, die man beim Schupfen abgegeben (`given_schupf_cards`) und erhalten (`received_schupf_cards`) hat (Format: `List[Optional[Card]]` der Länge 4).
-*   Caches für mögliche Kombinationen (`_combination_cache`) und Partitionen (`_partition_cache`) der Handkarten zur Performanceoptimierung.
+### 5.3 Kombination
 
-### 5.3 Kartenrepräsentation (`Card`, `Cards`)
-
-*   `Card`: Ein Tupel `(value: int, suit: int)`.
-    *   `value`: 0 (Dog), 1 (Mah Jong), 2 bis 10, 11 (Jack/Bube), 12 (Queen/Dame), 13 (King/König), 14 (Ace/As), 15 (Dragon/Drache), 16 (Phoenix/Phönix).
-    *   `suit`: 0 (Sonderkarte), 1 (Schwert/Schwarz), 2 (Pagode/Blau), 3 (Jade/Grün), 4 (Stern/Rot).
-*   `Cards`: Eine Liste von `Card`-Tupeln (`List[Card]`).
-
-### 5.4 Kombinationen (`Combination`)
-
-*   `Combination`: Ein Tupel `(type: CombinationType, length: int, rank: int)`.
+*   `Combination`: Merkmale einer Kartenkombination
     *   `CombinationType`: Ein `IntEnum` für den Typ (z.B. `CombinationType.SINGLE`, `CombinationType.PAIR`, `CombinationType.STREET`, `CombinationType.BOMB`).
     *   `length`: Anzahl der Karten in der Kombination.
-    *   `rank`: Der bestimmende Rang der Kombination (z.B. höchster Wert bei einer Straße, der Wert des Drillings bei einem Full House, Wert der Einzelkarte).
+    *   `rank`: Der Rang der Kombination (z.B. höchster Kartenwert bei einer Straße).
+
+### 5.4 Spielphasen
+
+TODO!
+
+(siehe hierzu [Ablauf einer Partie](#22-ablauf-einer-partie))
 
 ## 6. Arena-Betrieb
 
@@ -240,7 +242,26 @@ Der Arena-Betrieb (`arena.py` gestartet über `main.py`) dient dazu, KI-Agenten 
 *   Sammeln von Spieldaten für das Training von Machine-Learning-Agenten.
 *   Performance-Benchmarking.
 
-### 6.2 Implementierung
+### 62. Agenten (KI-gesteuerter Spieler)
+
+#### 6.2.1 Basisklassen
+
+*   `Player`: Definiert die Schnittstelle, die jeder Spieler (Mensch oder KI) implementieren muss (Methoden `schupf`, `announce`, `play`, `wish`, `choose_dragon_recipient`, `cleanup`).
+*   `Agent`: Erbt von `Player` und dient als Basis für alle KI-Implementierungen.
+
+#### 6.2.2 Agenten-Typen
+
+*   **`RandomAgent`**: Wählt zufällige, aber regelkonforme Züge. Dient als Baseline und zum Testen.
+*   **`RuleAgent`**: (Geplant/Konzept) Befolgt festgelegte Regeln.
+*   **`HeuristicAgent`**: (Geplant/Konzept) Berechnet (exakte oder durch Erfahrungswerte geschätzte) Wahrscheinlichkeiten für die Entscheidungsfindung.
+*   **`NNetAgent`**: Überbegriff für Agenten, die neuronale Netze verwenden.
+    *   **`BehaviorAgent`**: (Konzept) Lernt durch überwachtes Lernen aus Log-Daten (von bettspielwelt.de), menschliche Spielweisen zu imitieren.
+    *   **`AlphaZeroAgent`**: (Konzept) Verwendet Monte-Carlo Tree Search (MCTS) in Kombination mit neuronalen Netzen, um durch selbständiges Spielen das vortrainierte Netz von `BehaviorAgent` zu optimieren.
+
+Während ein **regelbasierter Agent** feste Regeln befolgt und ein **heuristischer Agent** zusätzlich Wahrscheinlichkeiten 
+einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
+
+### 6.3 Implementierung
 
 Die `Arena`-Klasse:
 *   Nimmt eine Liste von 4 Agenten und eine maximale Anzahl von Spielen entgegen.
@@ -297,7 +318,7 @@ Anmerkung zur `request`-Nachricht:
 
 | Request Action (vom Server) | Response Data (vom Spieler)                                        | Beschreibung                                                         |
 |-----------------------------|--------------------------------------------------------------------|----------------------------------------------------------------------|
-| "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}` | Der Spieler muss 3 Karten zum Tausch abgeben.                        |
+| "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}` | Der Spieler muss drei Karten zum Tausch abgeben.                     |
 | "announce"                  | `{announced: bool}`                                                | Der Spieler wird gefragt, ob er ein Tichu ansagen will.              |
 | "play"                      | `{cards: str}` oder `{cards: ""}` (für passen)                     | Der Spieler muss Karten ausspielen oder passen.                      |
 | "wish"                      | `{wish_value: int}`                                                | Der Spieler muss sich einen Kartenwert wünschen.                     |
@@ -351,7 +372,7 @@ Benachrichtigung an alle Spieler
 | GAME_ALREADY_STARTED = 400                  | "Das Spiel an diesem Tisch hat bereits begonnen."          | `{table_name: str}`                    |
 | NOT_LOBBY_HOST = 401                        | "Nur der Host kann diese Aktion ausführen."                | `{action: str}`                        |
 
-### 7.3 Verantwortlichkeiten der Komponenten im Live-Betrieb
+### 7.3 Aufgaben der Komponenten im Live-Betrieb
 
 #### 7.3.1 WebSocket-Handler
 
@@ -377,42 +398,34 @@ Benachrichtigung an alle Spieler
 *   Erstellt eine neue `GameEngine` für einen neuen Tisch.
 *   Schließt Tische, wenn keine realen Spieler mehr verbunden sind (nach Timeout).
 
-#### 7.3.3 Game-Engine (Server-Modus)
+#### 7.3.3 Game-Engine
 
 *   Bildet die Kern-Spiellogik ab.
 *   Interagiert über die `Player`-Schnittstelle mit Agenten und realem Spieler (unterscheidet aber nicht zw. `Agent` und `Client`).
-*   Muss auf Interrupt-Anfragen der Spieler reagieren können.
-*   Übermittelt dem Spieler, der keine Handkarten mehr hat, zusätzlich die Handkarten der Mitspieler.
+*   Reagiert auf Interrupt-Anfragen der Spieler.
 
-#### 7.3.4 Client (serverseitiger WebSocket-Endpunkt des realen Spielers)
+#### 7.3.4 Client
 
-*   Erbt von `Player`.
-*   Kapselt die WebSocket-Verbindung zu einem einzelnen realen Spieler.
+*   Serverseitiger WebSocket-Endpunkt des realen Spielers; erbt von `Player`.
 *   Empfängt Aufforderungen von der `GameEngine` (z.B. `play()`, `announce()`).
 *   Formatiert diese Aufforderungen als `request`-Nachricht und sendet sie über den WebSocket an den realen Spieler.
 *   Wartet auf eine `response`-Nachricht vom realen Spieler.
 *   Validiert die Antwort und gibt die extrahierte Aktion an die `GameEngine` zurück.
-*   Empfängt Benachrichtigungen (`state_update`, `notification` von der Engine) und leitet diese an den realen Spieler weiter.
-*   Einzige proaktive Aktion (außerhalb einer direkten Antwort auf eine Engine-Anfrage) ist das Senden eines "Interrupts" an die Engine.
+*   Empfängt Benachrichtigungen (`notification`) von der `GameEngine` und leitet diese an den realen Spieler weiter.
 
-## 8. Agenten (KI-gesteuerter Spieler)
+## 8. Frontend
 
-### 8.1 Basisklassen
+(Geplant)
 
-*   `Player`: Definiert die Schnittstelle, die jeder Spieler (Mensch oder KI) implementieren muss (Methoden `schupf`, `announce`, `play`, `wish`, `choose_dragon_recipient`, `cleanup`).
-*   `Agent`: Erbt von `Player` und dient als Basis für alle KI-Implementierungen.
-
-### 8.2 Agenten-Typen
-
-*   **`RandomAgent`**: Wählt zufällige, aber regelkonforme Züge. Dient als Baseline und zum Testen.
-*   **`RuleAgent`**: (Geplant/Konzept) Befolgt festgelegte Regeln.
-*   **`HeuristicAgent`**: (Geplant/Konzept) Berechnet (exakte oder durch Erfahrungswerte geschätzte) Wahrscheinlichkeiten für die Entscheidungsfindung.
-*   **`NNetAgent`**: Überbegriff für Agenten, die neuronale Netze verwenden.
-    *   **`BehaviorAgent`**: (Konzept) Lernt durch überwachtes Lernen aus Log-Daten (von bettspielwelt.de), menschliche Spielweisen zu imitieren.
-    *   **`AlphaZeroAgent`**: (Konzept) Verwendet Monte-Carlo Tree Search (MCTS) in Kombination mit neuronalen Netzen, um durch selbständiges Spielen das vortrainierte Netz von `BehaviorAgent` zu optimieren.
-
-Während ein **regelbasierter Agent** feste Regeln befolgt und ein **heuristischer Agent** zusätzlich Wahrscheinlichkeiten 
-einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
+### 8.1 Allgemeine Funktionsweise
+1) Das Frontend für den Live-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
+2) Es kommuniziert über WebSockets mit dem Python-Backend. 
+3) Mit Verbindungsaufbau über die WebSocket sendet der reale Spieler als Query-Parameter in der URL den Tisch-Namen und seinen Namen mit. 
+4) Beim Wiederaufbau nach Verbindungsabbruch sendet der Spieler stattdessen die letzte Session-Id.
+5) Wenn der reale Spieler das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis er durch eine KI ersetzt wird.
+6) Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
+7) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
+8) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
 
 ## 9. Entwicklungsumgebung
 
@@ -468,19 +481,7 @@ einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
 *   Die Codeabdeckung der Tests wird mit `coverage` gemessen, Konfiguration in `.coveragerc`.
     *   Ausführen: `cov.ps1`
 
-## 10. Frontend
-
-(Geplant)
-
-### 10.1 Allgemeine Funktionsweise
-1) Das Frontend für den Live-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
-2) Es kommuniziert über WebSockets mit dem Python-Backend. 
-3) Mit Verbindungsaufbau über die WebSocket sendet der reale Spieler als Query-Parameter in der URL den Tisch-Namen und seinen Namen mit. 
-4) Beim Wiederaufbau nach Verbindungsabbruch sendet der Spieler stattdessen die letzte Session-Id.
-5) Wenn der reale Spieler das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis er durch eine KI ersetzt wird.
-6) Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
-7) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
-8) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
+## 10. Reserviert
 
 ### 11. Exceptions
 

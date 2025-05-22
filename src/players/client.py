@@ -62,36 +62,6 @@ class Client(Player):
     # WebSocket
     # ------------------------------------------------------
 
-    async def send_join_confirmation(self, pub: PublicState, priv: PrivateState):
-        """
-        Sendet die Bestätigung, dass der Client nun an dem gewünschten Tisch sitzt.
-
-        :param pub: Der öffentliche Spielzustand.
-        :param priv: Der private Spielzustand.
-        :return: Die Antwort des Clients (`response_data`) bei Erfolg.
-        :raises ClientDisconnectedError: Wenn der Client nicht verbunden ist.
-        :raises asyncio.CancelledError: Wenn der wartende Task extern abgebrochen wird.
-        """
-        if self._websocket.closed:
-            logger.warning(f"Kann joined_confirmation nicht an {self.name} senden (nicht verbunden).")
-            return
-
-        message = {
-            "type": "joined_confirmation",
-            "payload": {
-                "session_id": self.session_id,
-                "public_state": pub.to_dict(),
-                "private_state": priv.to_dict()
-            }
-        }
-        try:
-            logger.debug(f"Sende 'joined_confirmation' an {self.name}: {message}")
-            await self._websocket.send_json(message)
-        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
-            logger.warning(f"Senden der Nachricht 'joined_confirmation' fehlgeschlagen: {e}")
-        except Exception as e:
-            logger.exception(f"Fehler beim Senden von 'joined_confirmation' an {self.name}: {e}")
-
     async def on_notify(self, msg_type: str, payload: Optional[dict]=None):
         """
         Der Server ruft diese Funktion auf, um ein Spielereignis zu melden.
@@ -124,7 +94,7 @@ class Client(Player):
         :param action: Aktion (z.B. "play", "schupf"), die der Spieler ausführen soll.
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :return: Die Antwort des Clients (`response_data`) bei Erfolg.
+        :return: Die Antwort des Clients (`response_data`).
         :raises ClientDisconnectedError: Wenn der Client nicht verbunden ist.
         :raises PlayerInterruptError: Wenn die Anfrage durch ein Engine-Event unterbrochen wird.
         :raises PlayerTimeoutError: Wenn der Client nicht innerhalb des Timeouts antwortet.

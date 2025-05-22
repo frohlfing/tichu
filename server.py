@@ -23,6 +23,7 @@ from src.common.logger import logger
 from src.game_factory import GameFactory
 from src.players.client import Client
 
+
 async def websocket_handler(request: Request) -> WebSocketResponse | None:
     """
     Behandelt eingehende WebSocket-Verbindungen.
@@ -75,14 +76,21 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {client.index} zugeordnet.")
 
     # --- 4) Bestätigung an den Client senden. ---
-    try:
-        await client.on_notify("joined_confirmation", {
+    # todo auslagern nach client.welcome(pub, priv) "Wird aufgerufen, wenn der Server dem Spieler einen Platz zugewiesen hat."
+    joined_message = {
+        "type": "joined_confirmation",
+        "payload": {
             "session_id": client.session_id,
-            "public_state": pub,
-            "private_state": priv,
-        })
+            "public_state": engine.public_state.to_dict(),
+            "private_state": engine.private_states[client.index].to_dict()
+        }
+    }
+    try:
+        await ws.send_json(joined_message)
+    except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+        logger.warning(f"Senden der Beitrittsbestätigung an {client.name} fehlgeschlagen: {e}")
     except Exception as e:
-        logger.warning(f"Senden der Beitrittsbestätigung an {client.name} fehlgeschlagen: {e}.")
+        logger.exception(f"Unerwarteter Fehler beim Senden der Beitrittsbestätigung an {client.name}: {e}")
         return ws
 
     # --- 5) So lange Nachrichten von der WebSocket verarbeiten, bis die Verbindung abbricht oder der Client absichtlich geht. ---
@@ -102,35 +110,61 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     logger.debug(f"Empfangen TEXT von {client.name}: {data}")
                     if not isinstance(data, dict):
                         logger.warning(f"Handler: Ungültiges Nachrichtenformat (kein dict) von {client.name}: {data}")
+                        # todo error direkt an den Spieler senden, kein Broadcast!
                         await client.on_notify("error", {"message": "Ungültiges Nachrichtenformat."})
                         continue
                     msg_type = data.get("type")  # Nachrichtentyp
-                    payload = data.get("payload", {})  # Die Nutzdaten
+                    payload = data.get("payload", {})  # die Nutzdaten
 
-                    # Nachricht weiterdelegieren
-                    if msg_type == "leave":  # Client verlässt den Tisch
+                    # Proaktive Nachricht vom Spieler auswerten
+
+                    if msg_type == "leave":  # Der Spieler verlässt den Tisch.
                         break # aus der Message-Loop springen
 
-                    elif msg_type == "ping":  # Verbindungstest
-                        logger.info(f"{client.name}: ping")
-                        await client.on_notify("pong", payload)
+                    elif msg_type == "lobby_action":  # Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel).
+                        action = payload.get("action")
+                        if action == "assign_team":
+                            engine.assign_team(payload.get("data"))
+                        elif action == "start_game":
+                            await engine.start_game()
+                        else:
+                            logger.error(f"Unbekannte Aktion '{action}' in der Lobby von {client.name}")
+                            # todo error direkt an den Spieler senden, kein Broadcast!
+                            await client.on_notify("error", {"message": "Unbekannte Aktion in der Lobby."})
 
                     elif msg_type == "interrupt":  # explizite Interrupt-Anfrage
-                        await engine.on_interrupt(client, payload.get("reason"))
+                        await engine.on_interrupt(client, payload.get("reason"))  # an die Engine weiterleiten
 
-                    elif msg_type == "response":  # Antwort auf eine vorherige Anfrage (die mittels client._ask() gestellt wurde)
-                        await client.on_websocket_response(payload.get("request_id"), payload.get("data", {}))
+                    elif msg_type == "ping":  # Verbindungstest
+                        # todo auslagern nach client.on_ping(client_name, timestamp)  "Wird aufgerufen, wenn eine Ping-Nachricht vom Spieler empfangen wurde.""
+                        logger.info(f"{client.name}: ping")
+                        ping_message = {"type": "pong", "payload": payload }
+                        try:
+                            await ws.send_json(ping_message)
+                        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+                            logger.warning(f"Senden der Pong-Nachricht an {client.name} fehlgeschlagen: {e}")
+                        except Exception as e:
+                            logger.exception(f"Unerwarteter Fehler beim Senden der Pong-Nachricht an {client.name}: {e}")
+                            return ws
+
+                    #  Antwort auf eine vorherige Anfrage (die mittels client._ask() gestellt wurde)
+
+                    elif msg_type == "response":
+                        await client.on_websocket_response(payload.get("request_id"), payload.get("data", {}))  # an den Client weiterleiten
 
                     else:
                         logger.error(f"Message-Type '{msg_type}' nicht erwartet")
+                        # todo error direkt an den Spieler senden, kein Broadcast!
                         await client.on_notify("error", {"message": "Invalide Daten."})
 
                 except json.JSONDecodeError:
                     logger.exception(f"Ungültiges JSON von {client.name}: {msg.data}")
+                    # todo error direkt an den Spieler senden, kein Broadcast!
                     await client.on_notify("error", {"message": "Ungültiges JSON-Format"})
 
                 except Exception as send_e:
                     logger.exception(f"Fehler bei Verarbeitung der Nachricht von {client.name}: {send_e}")
+                    # todo error direkt an den Spieler senden, kein Broadcast!
                     await client.on_notify("error", {"message": "Fehler bei der Verarbeitung der Anfrage."})
 
             elif msg.type == WSMsgType.BINARY:
@@ -152,7 +186,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         logger.exception(f"Unerwarteter Fehler in der Nachrichtenschleife für {client.name} von {remote_addr}: {e}")
 
     # --- 6) Bei Verbindungsabbruch etwas warten, vielleicht schlüpft der Client erneut in sein altes Ich. Ansonsten WebSocket-Verbindung serverseitig schließen. ---
-    if not client.is_connected:
+    if ws.closed:  # not client.is_connected:
         # Verbindungsabbruch
         logger.info(f"{engine.table_name}, Spieler {client.name}: Verbindungsabbruch. Starte Kick-Out-Timer...")
         await asyncio.sleep(config.KICK_OUT_TIME)
@@ -161,7 +195,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
             return ws  # keine weiteren Aufräumarbeiten erforderlich
         else:
             logger.info(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich nicht wieder verbunden.")
-    elif not ws.closed:
+    else:
         # Client will gehen
         try:
             await ws.close(code=WSCloseCode.GOING_AWAY, message="Verbindung wird serverseitig beendet".encode('utf-8'))
