@@ -303,7 +303,8 @@ Der WebSocket-Handler bearbeitet diese Nachrichten direkt oder leitet sie weiter
 
 **Proaktive Nachrichten vom Server an den Spieler:**
 
-Die Engine (bzw. bei `welcome` der WebSocket-Handler) nutzt die Client-Instanz, um diese Nachrichten zu versenden. Die `response`-Nachricht des Spielers wird vom WebSocket-Handler an den Client weitergeleitet. 
+*   Die Engine (bzw. bei `welcome` der WebSocket-Handler) nutzt die Client-Instanz, um diese Nachrichten zu versenden. 
+*   Die `response`-Nachricht des Spielers wird vom WebSocket-Handler an den Client weitergeleitet, der die Daten als Antwort an die Engine ausliefert. 
 
 | Type                        | Payload                                                                                           | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                                        |
 |-----------------------------|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|----------------------------------------------------------------------|

@@ -63,7 +63,7 @@ class PlayerResponseError(PlayerInteractionError):
 # Enum für Errorcodes (Auskommentierte Codes werden noch nicht benutzt!)
 class ErrorCode(enum.IntEnum):
     # Allgemeine Fehler (100-199)
-    #UNKNOWN_ERROR = 100  # Ein unbekannter Fehler ist aufgetreten.
+    UNKNOWN_ERROR = 100  # Ein unbekannter Fehler ist aufgetreten.
     INVALID_MESSAGE = 101  # Ungültiges Nachrichtenformat empfangen.
     #UNAUTHORIZED = 102  # Aktion nicht autorisiert.
     #SERVER_BUSY = 103  # Der Server ist momentan überlastet. Bitte später versuchen.

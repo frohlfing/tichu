@@ -149,7 +149,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
 
                 except Exception as send_e:
                     logger.exception(f"Fehler bei Verarbeitung der Nachricht von {client.name}: {send_e}")
-                    await client.error("Fehler bei der Verarbeitung der Nachricht", ErrorCode.INVALID_MESSAGE, context=msg.data)
+                    await client.error("Fehler bei der Verarbeitung der Nachricht", ErrorCode.UNKNOWN_ERROR, context=msg.data)
 
             elif msg.type == WSMsgType.BINARY:
                 logger.warning(f"Empfangen unerwartete Binary-Daten von {client.name}")
