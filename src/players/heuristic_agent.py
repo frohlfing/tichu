@@ -146,7 +146,7 @@ class HeuristicAgent(Agent):
                 schupfed[i - 1] = preferred[self._random.integer(0, length)]
         return schupfed[0], schupfed[1], schupfed[2]
 
-    async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
+    async def announce(self, pub: PublicState, priv: PrivateState) -> bool:
         """
         Fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
 
@@ -154,9 +154,9 @@ class HeuristicAgent(Agent):
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :param grand: True, wenn nach Grand Tichu gefragt wird, False für kleines Tichu.
         :return: True, wenn angesagt wird, sonst False.
         """
+        grand = pub.current_phase == "dealing" and len(priv.hand_cards) == 8
         if sum(pub.announcements) > 0:
             announcement = False  # Falls ein Mitspieler ein Tichu angesagt hat, sagen wir nichts an!
         else:

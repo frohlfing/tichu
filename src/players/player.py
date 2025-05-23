@@ -77,7 +77,7 @@ class Player:
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'schupf' implementieren.")
 
-    async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
+    async def announce(self, pub: PublicState, priv: PrivateState) -> bool:
         """
         Fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
 
@@ -85,7 +85,6 @@ class Player:
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :param grand: True, wenn nach Grand Tichu gefragt wird, False für kleines Tichu.
         :return: True, wenn angesagt wird, sonst False.
         :raises PlayerInteractionError: Wenn die Aktion fehlschlägt.
         """

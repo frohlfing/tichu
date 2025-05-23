@@ -291,8 +291,7 @@ class Client(Player):
         # TODO: Implementieren!
         return (13, 4), (5, 3), (2, 1)
 
-    # todo grand? Steht nicht in der Dokumentation!
-    async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
+    async def announce(self, pub: PublicState, priv: PrivateState) -> bool:
         """
         Der Server fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
 
@@ -300,11 +299,16 @@ class Client(Player):
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :param grand: True, wenn nach Grand Tichu gefragt wird, False für kleines Tichu.
         :return: True, wenn angesagt wird, sonst False.
         """
-        # TODO: Implementieren!
-        return False
+        #grand = pub.current_phase == "dealing" and len(priv.hand_cards) == 8
+        response_payload = await self._ask(action="announce", pub=pub, priv=priv)
+        if response_payload and isinstance(response_payload.get("announced"), bool):
+            return response_payload["announced"]
+        else:
+            logger.error(f"Client {self.name}: Ungültige Antwort für Anfrage \"announce\": {response_payload}")
+            await self.error("Ungültige Antwort für Anfrage \"announce\"", ErrorCode.INVALID_MESSAGE, context=response_payload)
+            return False  # Fallback
 
     # TODO todo action_space? Steht nicht in der Dokumentation!
     async def play(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:

@@ -47,7 +47,7 @@ class RandomAgent(Agent):
         c = hand.pop(self._random.integer(0, 14))
         return a, b, c
 
-    async def announce(self, pub: PublicState, priv: PrivateState, grand: bool = False) -> bool:
+    async def announce(self, pub: PublicState, priv: PrivateState) -> bool:
         """
         Fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
 
@@ -55,9 +55,9 @@ class RandomAgent(Agent):
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :param grand: True, wenn nach Grand Tichu gefragt wird, False für kleines Tichu.
         :return: True, wenn angesagt wird, sonst False.
         """
+        grand = pub.current_phase == "dealing" and len(priv.hand_cards) == 8
         return self._random.choice([True, False], [1, 19] if grand else [1, 9])
 
     async def play(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:

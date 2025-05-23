@@ -224,8 +224,8 @@ class GameEngine:
                     # Tichu ansagen?
                     for i in range(0, 4):
                         player = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
-                        grand = n == 8  # großes Tichu?
-                        if not pub.announcements[player] and await self._players[player].announce(pub, privs[player], grand):
+                        if not pub.announcements[player] and await self._players[player].announce(pub, privs[player]):
+                            grand = n == 8  # großes Tichu?
                             self.announce(pub, player, grand)
                             if clients_joined: 
                                 await self.broadcast("")
