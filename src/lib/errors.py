@@ -70,8 +70,8 @@ class ErrorCode(enum.IntEnum):
     #MAINTENANCE_MODE = 104  # Der Server befindet sich im Wartungsmodus.
 
     # Verbindungs- & Session-Fehler (200-299)
-    #SESSION_EXPIRED = 200  # Deine Session ist abgelaufen. Bitte neu verbinden.
-    #SESSION_NOT_FOUND = 201  # Session nicht gefunden.
+    SESSION_EXPIRED = 200  # Deine Session ist abgelaufen. Bitte neu verbinden.
+    SESSION_NOT_FOUND = 201  # Session nicht gefunden.
     #TABLE_NOT_FOUND = 202  # Tisch nicht gefunden.
     #TABLE_FULL = 203  # Der Tisch ist bereits voll.
     #NAME_TAKEN = 204  # Dieser Spielername ist an diesem Tisch bereits vergeben.

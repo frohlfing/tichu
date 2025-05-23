@@ -20,7 +20,7 @@ import sys
 from aiohttp import WSMsgType, ClientSession, ClientWebSocketResponse, ClientConnectorError
 from src.common.git_utils import get_release
 from src.common.logger import logger
-from src.lib.errors import ClientDisconnectedError
+from src.lib.errors import ClientDisconnectedError, ErrorCode
 from typing import Optional
 
 # Request-ID der letzten Server-Anfrage
@@ -121,15 +121,15 @@ async def receive_messages(ws: ClientWebSocketResponse):
                 elif msg_type == "error":
                     error_message = payload.get("message")
                     error_code = payload.get("code")
-                    error_details = payload.get("details", {})
-                    original_request_id = payload.get("request_id")  # aus der Response-Nachricht
+                    error_context = payload.get("context", {})
                     print(f"--- SERVER FEHLER (ERROR) ---")
                     print(f"  Fehlercode: {error_code}")
                     print(f"  Nachricht: {error_message}")
-                    if original_request_id:
-                        print(f"  Bezogen auf Request ID: {original_request_id}")
-                    if error_details:
-                        print(f"  Details: {json.dumps(error_details)}")
+                    if error_context:
+                        print(f"  Context: {json.dumps(error_context)}")
+                    if error_code in (ErrorCode.SESSION_EXPIRED, ErrorCode.SESSION_NOT_FOUND):
+                        save_session_id(None)
+                        print(f"Session gelöscht")
 
                 # Reaktionen des Servers auf Client-Aktionen
 
@@ -221,6 +221,7 @@ async def main(args: argparse.Namespace):
                     if cmd.lower() == 'disc':
                         raise ClientDisconnectedError("Verbindungsabbruch simuliert")
                     if cmd.lower() == 'quit':
+                        save_session_id(None)  # Session löschen
                         break
 
                     if cmd.strip().isdigit():

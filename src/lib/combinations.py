@@ -38,7 +38,6 @@ FIGURE_DRA = (CombinationType.SINGLE, 1, 15)
 FIGURE_PHO = (CombinationType.SINGLE, 1, 16)
 
 
-
 # Ermittelt, ob Typ, Länge und Rang eine gültige Kartenkombination angibt
 def validate_figure(figure: tuple) -> bool:
     t, m, r = figure
