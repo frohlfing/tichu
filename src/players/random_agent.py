@@ -41,8 +41,8 @@ class RandomAgent(Agent):
         """
         hand = list(priv.hand_cards)
         a = hand.pop(self._random.integer(0, 14))
-        b = hand.pop(self._random.integer(0, 14))
-        c = hand.pop(self._random.integer(0, 14))
+        b = hand.pop(self._random.integer(0, 13))
+        c = hand.pop(self._random.integer(0, 12))
         return a, b, c
 
     async def announce(self, pub: PublicState, priv: PrivateState) -> bool:

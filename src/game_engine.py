@@ -335,9 +335,9 @@ class GameEngine:
                 for player in range(0, 4):  # Nehmer
                     priv = privs[player]
                     priv.received_schupf_cards = (
-                        privs[(player + 1) % 4].given_schupf_cards[3],
-                        privs[(player + 2) % 4].given_schupf_cards[2],
-                        privs[(player + 3) % 4].given_schupf_cards[1],
+                        privs[(player + 1) % 4].given_schupf_cards[2],
+                        privs[(player + 2) % 4].given_schupf_cards[1],
+                        privs[(player + 3) % 4].given_schupf_cards[0],
                     )
                     assert not set(priv.received_schupf_cards).intersection(priv.hand_cards)  # darf keine Schnittmenge bilden
                     priv.hand_cards += priv.received_schupf_cards
