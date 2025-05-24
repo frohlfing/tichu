@@ -47,6 +47,12 @@ class PrivateState:
         self._partition_cache = []
         self._partitions_aborted = True
 
+    def reset_round(self):
+        """Status für eine neue Runde zurücksetzen."""
+        self.hand_cards = []
+        self.given_schupf_cards = None
+        self.received_schupf_cards = None
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Konvertiert den Zustand in ein Dictionary für JSON-Serialisierung.

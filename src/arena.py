@@ -8,12 +8,11 @@ from multiprocessing import Pool, Manager, cpu_count
 from src.common.logger import logger
 from src.game_engine import GameEngine
 from src.players.agent import Agent
-from src.private_state import PrivateState
 from src.public_state import PublicState
 from time import time
-from typing import Optional, List
+from typing import Optional
 
-async def _run_game(table_name: str, agents: list[Agent], seed: Optional[int], pub: Optional[PublicState], privs: Optional[List[PrivateState]]) -> Optional[PublicState]:
+async def _create_engine_and_run(table_name: str, agents: list[Agent], seed: Optional[int]) -> Optional[PublicState]:
     """
     Erzeugt die Game-Engine und führt eine Partie asynchron aus.
 
@@ -21,12 +20,10 @@ async def _run_game(table_name: str, agents: list[Agent], seed: Optional[int], p
 
     :param table_name: Der Name des Tisches.
     :param agents: Die 4 Agenten.
-    :param pub: (Optional) Öffentlicher Spielzustand.
-    :param privs: (Optional) Private Spielzustände (müssen 4 sein).
     """
     try:
-        engine = GameEngine(table_name, default_agents=agents, seed=seed)  # todo als Member anlegen!
-        pub = await engine.run_game_loop(pub=pub, privs=privs, break_time=0)
+        engine = GameEngine(table_name, default_agents=agents, seed=seed)
+        pub = await engine.run_game_loop(break_time=0)
         return pub
     except Exception as e:
         logger.exception(f"Fehler in der Game-Engine {table_name}: {e}")
@@ -40,7 +37,6 @@ class Arena:
 
     def __init__(self, agents: list[Agent], max_games: int, verbose: bool = False,
                  early_stopping: bool = False, win_rate: float = config.ARENA_WIN_RATE,
-                 pubs: list[PublicState] = None, privs: list[list[PrivateState]] = None,
                  worker: int = config.ARENA_WORKER,
                  seed: int = None):
         """
@@ -54,8 +50,6 @@ class Arena:
             :param verbose: Gibt an, ob der Spielverlauf detailliert angezeigt werden soll.
             :param early_stopping: Wenn True, wird der Wettkampf abgebrochen, sobald die gewünschte Gewinnquote erreicht oder nicht mehr erreicht werden kann.
             :param win_rate: Gewünschte Gewinnquote (WIN / (WIN + LOST)); wird nur verwendet, wenn early_stopping gesetzt ist.
-            :param pubs: Falls gesetzt, werden diese öffentlichen Spielzustände zum Start einer neuen Runde verwendet.
-            :param privs: Falls gesetzt, werden diese privaten Spielzustände zum Start einer neuen Runde verwendet.
             :param worker: Wenn größer 1, werden die Partien in entsprechend vielen Prozessen parallel ausgeführt.
             :param seed: Seed für den Zufallsgenerator.
             :raises AssertionError: Falls die Anzahl der Agenten nicht 4 beträgt.
@@ -66,8 +60,6 @@ class Arena:
         self._verbose = verbose
         self._early_stopping = early_stopping
         self._win_rate = win_rate
-        self._init_pubs = pubs
-        self._init_privs = privs
         self._worker = worker
         self._seed = seed
         self._stop_event = Manager().Event() if worker > 1 else asyncio.Event()  # Event zum Unterbrechen der Partie
@@ -123,13 +115,7 @@ class Arena:
             return None
 
         # Wichtig: Jeder Prozess braucht seine eigene Event-Loop.
-        pub = asyncio.run(_run_game(
-            table_name=f"Game_{game_index}",
-            agents=self._agents,
-            seed=self._seed,
-            pub = self._init_pubs[game_index] if self._init_pubs else None,
-            privs = self._init_privs[game_index] if self._init_privs else None,
-        ))
+        pub = asyncio.run(_create_engine_and_run(table_name=f"Game_{game_index}", agents=self._agents, seed=self._seed))
 
         return game_index, pub
 

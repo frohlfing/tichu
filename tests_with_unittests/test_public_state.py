@@ -214,10 +214,5 @@ class TestPublicState(unittest.TestCase):
         self.pub.turn()
         self.assertEqual(0, self.pub.current_turn_index)
 
-    def test_points_per_team(self):
-        self.pub._points = [5, 10, 20, 40]
-        self.assertEqual([25, 50], self.pub.points_per_team)
-
-
 if __name__ == "__main__":
     unittest.main()

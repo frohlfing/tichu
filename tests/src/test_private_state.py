@@ -125,6 +125,25 @@ def test_private_state_partitions_property(initial_priv_state):
     partitions_cached = priv.partitions
     assert partitions_cached is partitions
 
+def test_reset_round(initial_priv_state):
+    """Testet das Zurücksetzen eines PrivateState für eine neue Runde."""
+    priv = initial_priv_state
+
+    # Zustand "verschmutzen"
+    priv.player_index = 3
+    priv.hand_cards = parse_cards("S5 G5")
+    priv.given_schupf_cards = (2, 2), (2, 3), (2, 4)
+    priv.given_schupf_cards = (3, 2), (3, 3), (3, 4)
+
+    # Reset durchführen
+    priv.reset_round()
+
+    # Prüfen, ob die Werte korrekt zurückgesetzt wurden
+    assert priv.player_index == 3  # darf nicht zurückgesetzt werden
+    assert priv.hand_cards == []
+    assert priv.given_schupf_cards is None
+    assert priv.received_schupf_cards is None
+
 # -------------------------------------------------------
 # Alte Tests (ursprünglich mit unittest geschrieben)
 # -------------------------------------------------------

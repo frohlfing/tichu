@@ -23,6 +23,7 @@ class PublicState:
 
     :ivar table_name: Der Name des Tisches.
     :ivar player_names: Die eindeutigen Namen der 4 Spieler (Spieler mit gleichen Namen werden durchnummeriert) [Spieler 0-3].
+    :ivar current_phase: # Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
     :ivar current_turn_index: Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest).
     :ivar count_hand_cards: Anzahl der Handkarten pro Spieler [Spieler 0-3].
@@ -41,15 +42,15 @@ class PublicState:
     :ivar is_round_over: Gibt an, ob die aktuelle Runde beendet ist.
     :ivar is_double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
     :ivar game_score: Punktetabelle der Partie [Team 20, Team 31] (pro Team eine Liste von Punkten).
-    :ivar round_counter: Anzahl der abgeschlossenen Runden (nur für statistische Zwecke).
-    :ivar trick_counter: Anzahl der abgeräumten Stiche in der aktuellen Runde (nur für statistische Zwecke).
-    :ivar current_phase: # Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
+    :ivar round_counter: Anzahl der abgeschlossenen Runden der Partie (nur für statistische Zwecke).
+    :ivar trick_counter: Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie (nur für statistische Zwecke).
     """
     # --- Tisch- und Spielerinformationen ---
     table_name: str = ""
-    player_names: List[Optional[str]] = field(default_factory=lambda: [None, None, None, None])
+    player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
 
     # --- Information über die aktuelle Runde ---
+    current_phase: str = "setup"
     current_turn_index: int = -1
     start_player_index: int = -1
     count_hand_cards: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
@@ -68,6 +69,11 @@ class PublicState:
     is_round_over: bool = False
     is_double_victory: bool = False
 
+    # --- Information über die Partie ---
+    game_score: List[List[int]] = field(default_factory=lambda: [[], []])
+    round_counter: int = 0  # nur für die Statistik
+    trick_counter: int = 0  # nur für die Statistik
+
     # todo Berechnung:
     #  1) is_round_over = count_active_players == 1 or is_double_victory  # nur noch eine Spieler im Spiel oder Doppelsieg
     #  2) is_double_victory = count_active_players == 2 and count_hand_cards[(winner_index + 2) % 4] == 0  # die beiden Spieler eine Teams sind fertig, die anderen 2 Spieler noch nicht
@@ -78,15 +84,33 @@ class PublicState:
     #  4) round_counter = ??  # kann aus game_score ermittelt werden
     #  5) trick_counter = ??  # kann aus tricks ermittelt werden
 
-    # --- Information über die Partie ---
-    game_score: List[List[int]] = field(default_factory=lambda: [[], []])
+    def reset_round(self):
+        """Status für eine neue Runde zurücksetzen."""
+        self.current_phase: str = "setup"
+        self.current_turn_index = -1
+        self.start_player_index = -1
+        self.count_hand_cards = [0, 0, 0, 0]
+        self.played_cards = []
+        self.announcements = [0, 0, 0, 0]
+        self.wish_value = 0
+        self.dragon_recipient = -1
+        self.trick_owner_index = -1
+        self.trick_cards = []
+        self.trick_combination = (CombinationType.PASS, 0, 0)
+        self.trick_points = 0
+        self.tricks = []
+        self.points = [0, 0, 0, 0]
+        self.winner_index = -1
+        self.loser_index = -1
+        self.is_round_over = False
+        self.is_double_victory = False
 
-    # --- Statistik ---
-    round_counter: int = 0
-    trick_counter: int = 0
-
-    # --- Spielphase ---
-    current_phase: str = "setup"
+    def reset_game(self):
+        """Status für eine neue Partie zurücksetzen."""
+        self.reset_round()
+        self.game_score = [[], []]
+        self.round_counter = 0
+        self.trick_counter = 0
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -97,6 +121,7 @@ class PublicState:
         return {
             "table_name": self.table_name,
             "player_names": self.player_names,
+            "current_phase": self.current_phase,
             "current_turn_index": self.current_turn_index,
             "start_player_index": self.start_player_index,
             "count_hand_cards": self.count_hand_cards,
@@ -117,7 +142,6 @@ class PublicState:
             "game_score": self.game_score,
             "round_counter": self.round_counter,
             "trick_counter": self.trick_counter,
-            "current_phase": self.current_phase,
         }
 
     @property
@@ -131,11 +155,6 @@ class PublicState:
     def unplayed_cards(self) -> List[Card]:  # pragma: no cover
         """Nicht gespielte Karten (in aufsteigender Reihenfolge)"""
         return other_cards(self.played_cards)
-
-    @property
-    def points_per_team(self) -> Tuple[int, int]:
-        """Bisher kassierte Punkte in der aktuellen Runde für Team 20 und Team 31"""
-        return self.points[2] + self.points[0], self.points[3] + self.points[1]
 
     # @property
     # def is_round_over(self) -> bool:

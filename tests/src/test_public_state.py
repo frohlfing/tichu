@@ -102,14 +102,6 @@ def test_public_state_count_active_players(initial_pub_state):
     pub.count_hand_cards = [1, 1, 1, 1]
     assert pub.count_active_players == 4
 
-def test_public_state_points_per_team(initial_pub_state):
-    """Testet die Berechnung der Teampunkte."""
-    pub = initial_pub_state
-    pub.points = [10, 20, 30, 40] # Spieler 0, 1, 2, 3
-    # Team 20 = Spieler 2 + Spieler 0 = 30 + 10 = 40
-    # Team 31 = Spieler 3 + Spieler 1 = 40 + 20 = 60
-    assert pub.points_per_team == (40, 60)
-
 def test_public_state_total_score(initial_pub_state):
     """Testet die Berechnung des Gesamtspielstands."""
     pub = initial_pub_state
@@ -128,6 +120,86 @@ def test_public_state_is_game_over(initial_pub_state):
     assert pub.is_game_over is True
     pub.game_score = [[400], [1000]] # Team 31 = 1000
     assert pub.is_game_over is True
+
+def test_reset_round(initial_pub_state):
+    """Testet das Zurücksetzen des PublicState für eine neue Runde."""
+    pub = initial_pub_state
+
+    # Zustand "verschmutzen"
+    pub.table_name = "Tisch1"
+    pub.player_names = ["Anton", "Bea", "Charlie", "Doris"]
+
+    pub.current_phase = "foo"
+    pub.current_turn_index = 3
+    pub.start_player_index = 3
+    pub.count_hand_cards = [1, 2, 3, 4]
+    pub.played_cards = [(2, 1)]
+    pub.announcements = [1, 1, 1, 1]
+    pub.wish_value = 4
+    pub.dragon_recipient = 3
+    pub.trick_owner_index = 2
+    pub.trick_cards = [(2, 1)]
+    pub.trick_combination = (CombinationType.SINGLE, 1, 5)
+    pub.trick_points = 10
+    pub.tricks = [[(0, [(5, 1)], (CombinationType.SINGLE, 1, 5))]]
+    pub.points = [10, 0, 0, 0]
+    pub.winner_index = 3
+    pub.loser_index = 2
+    pub.is_round_over = True
+    pub.is_double_victory = True
+
+    pub.game_score = [[60, 10], [40, 90]]
+    pub.round_counter  = 2
+    pub.trick_counter = 3
+
+    # Reset durchführen (reset_public_state_for_round ist static)
+    pub.reset_round()
+
+    # Prüfen, ob die Werte korrekt zurückgesetzt wurden
+    assert pub.table_name == "Tisch1"  # darf nicht zurückgesetzt werden
+    assert pub.player_names == ["Anton", "Bea", "Charlie", "Doris"]  # darf nicht zurückgesetzt werden
+    assert pub.current_phase == "setup"
+    assert pub.current_turn_index == -1
+    assert pub.start_player_index == -1
+    assert pub.count_hand_cards == [0, 0, 0, 0]
+    assert pub.played_cards == []
+    assert pub.announcements == [0, 0, 0, 0]
+    assert pub.wish_value == 0
+    assert pub.dragon_recipient == -1
+    assert pub.trick_owner_index == -1
+    assert pub.trick_cards == []
+    assert pub.trick_combination == (CombinationType.PASS, 0, 0)
+    assert pub.trick_points == 0
+    assert pub.tricks == []
+    assert pub.points == [0, 0, 0, 0]
+    assert pub.winner_index == -1
+    assert pub.loser_index == -1
+    assert pub.is_round_over == False
+    assert pub.is_double_victory == False
+    assert pub.game_score == [[60, 10], [40, 90]]  # darf nicht zurückgesetzt werden
+    assert pub.round_counter == 2  # darf nicht zurückgesetzt werden
+    assert pub.trick_counter == 3  # darf nicht zurückgesetzt werden
+
+def test_reset_game(initial_pub_state):
+    """Testet das Zurücksetzen des PublicState für eine neue Partie."""
+    pub = initial_pub_state
+
+    # Zustand "verschmutzen"
+    pub.table_name = "Tisch1"
+    pub.player_names = ["Anton", "Bea", "Charlie", "Doris"]
+    pub.game_score = [[60, 10], [40, 90]]
+    pub.round_counter  = 2
+    pub.trick_counter = 3
+
+    # Reset durchführen (reset_public_state_for_round ist static)
+    pub.reset_game()
+
+    # Prüfen, ob die Werte korrekt zurückgesetzt wurden
+    pub.table_name = "Tisch1"  # darf nicht zurückgesetzt werden
+    pub.player_names = ["Anton", "Bea", "Charlie", "Doris"]  # darf nicht zurückgesetzt werden
+    assert pub.game_score == [[], []]
+    assert pub.round_counter == 0
+    assert pub.trick_counter == 0
 
 # -------------------------------------------------------
 # Alte Tests (ursprünglich mit unittest geschrieben)

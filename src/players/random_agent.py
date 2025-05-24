@@ -35,8 +35,6 @@ class RandomAgent(Agent):
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
-        Muss von Subklassen implementiert werden.
-
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
         :return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner.
@@ -51,8 +49,6 @@ class RandomAgent(Agent):
         """
         Fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
 
-        Muss von Subklassen implementiert werden.
-
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
         :return: True, wenn angesagt wird, sonst False.
@@ -63,8 +59,6 @@ class RandomAgent(Agent):
     async def play(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
-
-        Muss von Subklassen implementiert werden.
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
@@ -77,8 +71,6 @@ class RandomAgent(Agent):
         """
         Fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
 
-        Muss von Subklassen implementiert werden.
-
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
         :return: Der gewünschte Kartenwert (2-14).
@@ -88,8 +80,6 @@ class RandomAgent(Agent):
     async def give_dragon_away(self, pub: PublicState, priv: PrivateState) -> int:
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
-
-        Muss von Subklassen implementiert werden.
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
