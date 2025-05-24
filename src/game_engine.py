@@ -418,7 +418,7 @@ class GameEngine:
                             assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
                             priv.hand_cards = [card for card in priv.hand_cards if card not in cards]
                             pub.count_hand_cards[pub.current_turn_index] -= combination[1]
-                            assert len(priv.hand_cards) == pub.count_hand_cards[priv.player_index] - combination[1]
+                            #assert len(priv.hand_cards) == pub.count_hand_cards[priv.player_index] - combination[1]
                             assert pub.count_hand_cards[pub.current_turn_index] >= combination[1]
                             assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
 
