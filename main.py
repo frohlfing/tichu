@@ -9,14 +9,13 @@ Dieses Modul öffnet eine Arena und lässt Agenten gegeneinander spielen.
    ```
 """
 
-import argparse
 import config
-from src.players.agent import Agent
-
 config.LOG_LEVEL = "WARNING"
 
+import argparse
 from src.common.git_utils import get_release
 from src.arena import Arena
+from src.players.agent import Agent
 from src.players.heuristic_agent import HeuristicAgent
 from src.players.random_agent import RandomAgent
 

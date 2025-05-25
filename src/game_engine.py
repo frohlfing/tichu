@@ -317,33 +317,33 @@ class GameEngine:
                 # los geht's - das eigentliche Spiel kann beginnen...
                 assert 0 <= pub.current_turn_index <= 3
                 while not pub.is_round_over:
-                    priv = privs[pub.current_turn_index]
-                    assert priv.player_index == pub.current_turn_index
-                    player = self._players[pub.current_turn_index]
-                    assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
-                    assert 0 <= pub.count_hand_cards[priv.player_index] <= 14
+                    assert 0 <= pub.count_hand_cards[pub.current_turn_index] <= 14
 
                     # falls der aktuelle Spieler den Stich kassieren darf oder den Stich evtl. bedienen könnte (kein Anspiel), jeden Mitspieler fragen, ob er eine Bombe werfen will
                     bomb: Optional[Tuple[Cards, Combination]] = None
-                    # todo hier ist noch ein Fehler versteckt
-                    # if ((pub.trick_owner_index == priv.player_index and pub.trick_combination != FIGURE_DOG)  # der Stich kann kassiert werden
-                    #     or (pub.count_hand_cards[priv.player_index] > 0 and pub.trick_owner_index >= 0)):  # der Spieler könnte evtl. den Stich bedienen (kein Anspiel)
-                    #     # todo alle Spieler gleichzeitig ansprechen
-                    #     for i in range(0, 4):
-                    #         player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
-                    #         if player_index != pub.current_turn_index and self._private_states[player_index].has_bomb:
-                    #             bomb = await self._players[player_index].bomb(pub, self._private_states[player_index])
-                    #             if bomb:
-                    #                 pub.current_turn_index = player_index
-                    #                 break
+                    if ((pub.trick_owner_index == pub.current_turn_index and pub.trick_combination != FIGURE_DOG)  # der Stich kann kassiert werden
+                        or (pub.count_hand_cards[pub.current_turn_index] > 0 and pub.trick_owner_index >= 0)):  # der Spieler könnte evtl. den Stich bedienen (kein Anspiel)
+                        # todo alle Spieler gleichzeitig ansprechen
+                        for i in range(0, 4):
+                            player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
+                            if player_index != pub.current_turn_index and self._private_states[player_index].has_bomb:
+                                bomb = await self._players[player_index].bomb(pub, self._private_states[player_index])
+                                if bomb:
+                                    pub.current_turn_index = player_index
+                                    break
+
+                    priv = privs[pub.current_turn_index]
+                    assert priv.player_index == pub.current_turn_index
+                    assert len(priv.hand_cards) == pub.count_hand_cards[pub.current_turn_index]
+                    player = self._players[pub.current_turn_index]
 
                     # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
-                    if not bomb and pub.trick_owner_index == priv.player_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt liegen
+                    if not bomb and pub.trick_owner_index == pub.current_turn_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt liegen
                         assert pub.trick_combination != FIGURE_PASS
                         if pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                             # Stich verschenken
                             opponent = await player.give_dragon_away(pub, priv)
-                            assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
+                            assert opponent in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
                             assert CARD_DRA in pub.played_cards
                             assert pub.dragon_recipient == -1
                             pub.dragon_recipient = opponent
@@ -364,22 +364,22 @@ class GameEngine:
                         pub.trick_counter += 1
 
                     # hat der Spieler noch Karten?
-                    if pub.count_hand_cards[priv.player_index] > 0:
+                    if pub.count_hand_cards[pub.current_turn_index] > 0:
                         if bomb:
                             # der Spieler hat bereits die Bombe geworfen, wir müssen nicht nochmal nach einer Kombination fragen
                             cards, combination = bomb
                             bomb = None
                         else:
                             # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein normales Tichu angesagt werden
-                            if pub.count_hand_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
+                            if pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
                                 if await player.announce(pub, priv):
                                     # Spieler hat Tichu angesagt
-                                    pub.announcements[priv.player_index] = 1
+                                    pub.announcements[pub.current_turn_index] = 1
                                     if clients_joined:
-                                        await self._broadcast("tichu_announced", {"player_index": priv.player_index})
+                                        await self._broadcast("tichu_announced", {"player_index": pub.current_turn_index})
                             cards, combination = await player.play(pub, priv)
 
-                        assert combination[1] <= pub.count_hand_cards[priv.player_index] <= 14
+                        assert combination[1] <= pub.count_hand_cards[pub.current_turn_index] <= 14
                         assert combination[1] == len(cards)
 
                         # Entscheidung des Spielers festhalten
@@ -394,12 +394,12 @@ class GameEngine:
                         # Kombination ausspielen, falls nicht gepasst wurde
                         if combination != FIGURE_PASS:
                             # Handkarten aktualisieren
-                            assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
+                            assert pub.count_hand_cards[pub.current_turn_index] == len(priv.hand_cards)
                             priv.hand_cards = [card for card in priv.hand_cards if card not in cards]
                             assert pub.count_hand_cards[pub.current_turn_index] >= combination[1]
                             pub.count_hand_cards[pub.current_turn_index] -= combination[1]
-                            #assert len(priv.hand_cards) == pub.count_hand_cards[priv.player_index] - combination[1]
-                            assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
+                            #assert len(priv.hand_cards) == pub.count_hand_cards[pub.current_turn_index] - combination[1]
+                            assert pub.count_hand_cards[pub.current_turn_index] == len(priv.hand_cards)
 
                             # Stich aktualisieren
                             pub.trick_owner_index = pub.current_turn_index
@@ -452,7 +452,7 @@ class GameEngine:
                             if pub.is_round_over:
                                 # Runde ist vorbei; letzten Stich abräumen
                                 assert pub.trick_combination != FIGURE_PASS
-                                assert pub.trick_owner_index == priv.player_index
+                                assert pub.trick_owner_index == pub.current_turn_index
                                 if pub.is_double_victory:
                                     # Doppelsieg! Die Karten müssen nicht gezählt werden.
                                     assert pub.is_round_over
@@ -465,7 +465,7 @@ class GameEngine:
                                     if pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                                         # Stich verschenken
                                         opponent = await player.give_dragon_away(pub, priv)
-                                        assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
+                                        assert opponent in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
                                         assert CARD_DRA in pub.played_cards
                                         assert pub.dragon_recipient == -1
                                         pub.dragon_recipient = opponent
