@@ -44,6 +44,15 @@ class HeuristicAgent(Agent):
         self.__statistic = {}
         self._statistic_key = ()
 
+    # Wahrscheinlichkeit, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können
+    def _statistic(self, pub: PublicState, priv: PrivateState) -> dict:
+        n = pub.count_hand_cards
+        key = (priv.player_index, priv.hand_cards, n)
+        if self._statistic_key != key:
+            self._statistic_key = key
+            self.__statistic = calc_statistic(priv.player_index, priv.hand_cards, priv.combinations, n, pub.trick_combination, pub.unplayed_cards)
+        return self.__statistic
+
     # ------------------------------------------------------
     # Entscheidungen
     # ------------------------------------------------------
@@ -65,11 +74,42 @@ class HeuristicAgent(Agent):
     #       future: Future = loop.run_in_executor(pool, blocking_function)
     #       result: int = await future
 
+    async def announce(self, pub: PublicState, priv: PrivateState) -> bool:
+        """
+        Fragt den Spieler, ob er ein Tichu (normales oder großes) ansagen möchte.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: True, wenn angesagt wird, sonst False.
+        """
+        grand = pub.start_player_index == -1 and len(priv.hand_cards) == 8
+        if sum(pub.announcements) > 0:
+            announcement = False  # Falls ein Mitspieler ein Tichu angesagt hat, sagen wir nichts an!
+        else:
+            # Mindestwert für die Güte einer guten Partition
+            min_q = self._quality[int(grand)]
+
+            # Falls wir am Zug sind, spielbare Kombinationen ermitteln (ansonsten ist der Aktionsraum leer)
+            my_turn = pub.current_turn_index == priv.player_index or (pub.start_player_index == -1 and CARD_MAH in priv.hand_cards)
+            action_space = build_action_space(priv.combinations, pub.trick_combination, pub.wish_value) if my_turn else []
+
+            # Kürzeste Partition bewerten
+            len_min = 14
+            shortest_partition = []
+            for partition in priv.partitions:
+                n = len(partition)
+                if len_min >= n:
+                    len_min = n
+                    shortest_partition = partition
+            q = partition_quality(shortest_partition, action_space if my_turn else [], self._statistic(pub, priv))
+            announcement = q >= min_q
+        return announcement
+
     async def schupf(self, pub: PublicState, priv: PrivateState) -> Tuple[Card, Card, Card]:
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
-        Muss von Subklassen implementiert werden.
+        Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
@@ -146,50 +186,19 @@ class HeuristicAgent(Agent):
                 schupfed[i - 1] = preferred[self._random.integer(0, length)]
         return schupfed[0], schupfed[1], schupfed[2]
 
-    async def announce(self, pub: PublicState, priv: PrivateState) -> bool:
-        """
-        Fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
-
-        Muss von Subklassen implementiert werden.
-
-        :param pub: Der öffentliche Spielzustand.
-        :param priv: Der private Spielzustand.
-        :return: True, wenn angesagt wird, sonst False.
-        """
-        grand = pub.current_phase == "dealing" and len(priv.hand_cards) == 8
-        if sum(pub.announcements) > 0:
-            announcement = False  # Falls ein Mitspieler ein Tichu angesagt hat, sagen wir nichts an!
-        else:
-            # Mindestwert für die Güte einer guten Partition
-            min_q = self._quality[int(grand)]
-
-            # Falls wir am Zug sind, spielbare Kombinationen ermitteln (ansonsten ist der Aktionsraum leer)
-            my_turn = pub.current_turn_index == priv.player_index or (pub.start_player_index == -1 and CARD_MAH in priv.hand_cards)
-            action_space = build_action_space(priv.combinations, pub.trick_combination, pub.wish_value) if my_turn else []
-
-            # Kürzeste Partition bewerten
-            len_min = 14
-            shortest_partition = []
-            for partition in priv.partitions:
-                n = len(partition)
-                if len_min >= n:
-                    len_min = n
-                    shortest_partition = partition
-            q = partition_quality(shortest_partition, action_space if my_turn else [], self._statistic(pub, priv))
-            announcement = q >= min_q
-        return announcement
-
-    async def play(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
+    async def play(self, pub: PublicState, priv: PrivateState) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
-        Muss von Subklassen implementiert werden.
+        Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :param action_space: Mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0)).
         """
+        # mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle)
+        action_space = build_action_space(priv.combinations, pub.trick_combination, pub.wish_value)
+
         action_len = len(action_space)
         assert action_len > 0
         if action_len == 1:
@@ -337,13 +346,28 @@ class HeuristicAgent(Agent):
                 best_combi = combi
         return best_combi
 
+    async def bomb(self, pub: PublicState, priv: PrivateState) -> Optional[Tuple[Cards, Combination]]:
+        """
+        Fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
+
+        Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Wert)) oder None, wenn keine Bombe geworfen wird.
+        """
+        # todo Statistik verwenden (hier wird noch durch Zufall entschieden)
+        if not self._random.choice([True, False], [1, 2]):  # einmal Ja, zweimal Nein
+            return None
+        combinations = [combi for combi in priv.combinations if combi[1][0] == CombinationType.BOMB]
+        action_space = build_action_space(combinations, pub.trick_combination, pub.wish_value)
+        return action_space[self._random.integer(0, len(action_space))]
+
     # Welcher Kartenwert wird gewünscht?
     # return: Der gewünschte Kartenwert (2-14).
     async def wish(self, pub: PublicState, priv: PrivateState) -> int:
         """
         Fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
-
-        Muss von Subklassen implementiert werden.
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
@@ -380,8 +404,6 @@ class HeuristicAgent(Agent):
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 
-        Muss von Subklassen implementiert werden.
-
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
         :return: Der Index (0-3) des Gegners, der den Stich erhält.
@@ -397,12 +419,3 @@ class HeuristicAgent(Agent):
         else:
             opp = priv.opponent_right_index if self._random.integer(0, 2) == 1 else priv.opponent_left_index
         return opp
-
-    # Wahrscheinlichkeit, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können
-    def _statistic(self, pub: PublicState, priv: PrivateState) -> dict:
-        n = pub.count_hand_cards
-        key = (priv.player_index, priv.hand_cards, n)
-        if self._statistic_key != key:
-            self._statistic_key = key
-            self.__statistic = calc_statistic(priv.player_index, priv.hand_cards, priv.combinations, n, pub.trick_combination, pub.unplayed_cards)
-        return self.__statistic

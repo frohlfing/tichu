@@ -1,8 +1,3 @@
-# tests/test_game_engine.py
-"""
-Tests für die GameEngine-Klasse.
-"""
-
 from typing import List
 import pytest
 from unittest.mock import AsyncMock
@@ -24,7 +19,7 @@ def mock_agents(mocker) -> List[AsyncMock]:
         # Wichtig: Da Player Methoden wie play async sind, ersetzen wir sie explizit durch AsyncMocks,
         # NACHDEM create_autospec die Signatur erstellt hat.
         player_mock.schupf = AsyncMock(name=f'schupf_mock_{i}')
-        player_mock.announce = AsyncMock(name=f'announce_mock_{i}')
+        player_mock.announce_grand_tichu = AsyncMock(name=f'announce_mock_{i}')
         player_mock.play = AsyncMock(name=f'play_mock_{i}') # play statt combination
         player_mock.wish = AsyncMock(name=f'wish_mock_{i}')
         player_mock.give_dragon_away = AsyncMock(name=f'gift_mock_{i}') # Umbenannt

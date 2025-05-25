@@ -20,10 +20,10 @@ class TestHeuristicAgent(unittest.TestCase):
         cards = self.pub.deal_out(0, 14)
         self.priv.take_cards(cards)
         self.pub._number_of_cards = [14, 14, 14, 14]
-        result = self.agent.announce(self.pub, self.priv, False)
+        result = self.agent.announce_grand_tichu(self.pub, self.priv, False)
         self.assertTrue(result)
         self.pub._announcements = [0, 0, 0, 1]
-        result = self.agent.announce(self.pub, self.priv, False)
+        result = self.agent.announce_grand_tichu(self.pub, self.priv, False)
         self.assertFalse(result)
 
     def test_schupf(self):

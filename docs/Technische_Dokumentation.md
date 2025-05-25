@@ -290,7 +290,7 @@ Nach einem Reconnect teilt der Spieler statt dessen seine letzte Session-ID übe
 
 Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `payload`-Feld.
 
-**Proaktive Nachrichten vom Spieler an den Server:**
+**Proaktive (d.h. unaufgeforderte) Nachrichten vom Spieler an den Server:**
 
 Der WebSocket-Handler bearbeitet diese Nachrichten direkt oder leitet sie weiter an die Engine. Die `Cliemt`-Instanz wird hier nicht verwendet.
 
@@ -298,10 +298,10 @@ Der WebSocket-Handler bearbeitet diese Nachrichten direkt oder leitet sie weiter
 |------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------|
 | `"leave"`        |                                                                                         | Der Spieler möchte den Tisch verlassen.                                                   | keine Antwort             |                                                                                      |
 | `"lobby_action"` | `{action: "assign_team", "data": [player_new_index,...]}` oder `{action: "start_game"}` | Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel). | Keine Antwort             |                                                                                      |
-| `"interrupt"`    | `{reason: "tichu"}` oder `{reason: "bomb"}`                                             | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen oder eine Bombe werfen. | Keine Antwort             |                                                                                      |
+| `"interrupt"`    | `{reason: "tichu"}` oder `{reason: "bomb", cards: str}`                                 | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen oder eine Bombe werfen. | Keine Antwort             |                                                                                      |
 | `"ping"`         | `{timestamp: "ISO8601_string"}`                                                         | Verbindungstest.                                                                          | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}`                                    |
 
-**Proaktive Nachrichten vom Server an den Spieler:**
+**Proaktive Nachrichten vom Server an den Spieler (das sind alle außer `pong`) :**
 
 *   Die Engine (bzw. bei `welcome` der WebSocket-Handler) nutzt die Client-Instanz, um diese Nachrichten zu versenden. 
 *   Die `response`-Nachricht des Spielers wird vom WebSocket-Handler an den Client weitergeleitet, der die Daten als Antwort an die Engine ausliefert. 
@@ -311,9 +311,9 @@ Der WebSocket-Handler bearbeitet diese Nachrichten direkt oder leitet sie weiter
 | `"welcome"`                 | `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}`              | Der Spieler hat sich an den Tisch gesetzt bzw. ist (bzw. ist nach einem Verbindungsabbruch wieder zurück).  | keine Antwort              |                                                                      |
 | `"deal_cards"`              | `{hand_cards: str}`                                                                               | Eine neue Runde hat begonnen und der jeweilige Spieler hat seine Handkarten bekommen (erst 8 dann alle 14). | keine Antwort              |                                                                      |
 | `"deal_schupf_cards"`       | `{from_opponent_right: str, from_partner: str, from_opponent_left: str}`                          | Die Tauschkarten wurden an den jeweiligen Spieler abgegeben.                                                | keine Antwort              |                                                                      |
-| `"request"`  (s. 7.2.1)     | `{request_id: uuid, action: str, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Server fordert den Spieler auf, eine Entscheidung zu treffen.                                           | `"response"`               | `{request_id: uuid (aus der Request-Nachrich), response_data: dict}` | 
 | `"notification"` (s. 7.2.2) | `{event: str, context: dict (optional)}`                                                          | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort              |                                                                      |
 | `"error"` (s. 7.2.3)        | `{message: str, code: int, context: dict (optional)`                                              | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort              |                                                                      |
+| `"request"`  (s. 7.2.1)     | `{request_id: uuid, action: str, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Server fordert den Spieler auf, eine Entscheidung zu treffen.                                           | `"response"`               | `{request_id: uuid (aus der Request-Nachrich), response_data: dict}` | 
 
 Anmerkung zur `request`-Nachricht:
 *   Der aktuelle Spielzustand sollte dem Spieler eigentlich bekannt sein, sofern er keine Notification-Nachrichten verpasst und entsprechend den Zustand angepasst hat.
@@ -324,32 +324,35 @@ Anmerkung zur `request`-Nachricht:
   
 #### 7.2.1 Request-/Response-Nachrichten
 
-| Request Action (vom Server) | Response Data (vom Spieler)                                        | Beschreibung                                                         |
-|-----------------------------|--------------------------------------------------------------------|----------------------------------------------------------------------|
-| "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}` | Der Spieler muss drei Karten zum Tausch abgeben.                     |
-| "announce"                  | `{announced: bool}`                                                | Der Spieler wird gefragt, ob er ein Tichu ansagen will.              |
-| "play"                      | `{cards: str}` oder `{cards: ""}` (für passen)                     | Der Spieler muss Karten ausspielen oder passen.                      |
-| "wish"                      | `{wish_value: int}`                                                | Der Spieler muss sich einen Kartenwert wünschen.                     |
-| "give_dragon_away"          | `{player_index: int}`                                              | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll. |
+| Request Action (vom Server) | Response Data (vom Spieler)                                        | Beschreibung                                                                                               |
+|-----------------------------|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| "announce"                  | `{announced: bool}`                                                | Der Spieler wird gefragt, ob er ein Tichu (je nach Spielphase normales oder großes) ansagen will.          |
+| "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}` | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden. |
+| "play"                      | `{cards: str}` oder `{cards: ""}` (für passen)                     | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.  |
+| "wish"                      | `{wish_value: int}`                                                | Der Spieler muss sich einen Kartenwert wünschen.                                                           |
+| "give_dragon_away"          | `{player_index: int}`                                              | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
 
 #### 7.2.2 Notification-Nachrichten
 
 Benachrichtigung an alle Spieler
 
-| Notification Event    | Notification Data                                                   | Beschreibung                                                                                |
-|-----------------------|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| "player_joined"       | `{player_index: int, player_name: str}`                             | Der Spieler spielt jetzt mit.                                                               |
-| "player_left"         | `{player_index: int, replaced_by_name: str}`                        | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                             |
-| "interrupt_processed" | `{player_index: int, reason: "tichu"` oder `"bomb"}`                | Der Spieler hat Halt gerufen. (Dies wurde akzeptiert.)                                      |
-| "lobby_update"        | `{action: "assign_team", team: list}` oder `{action: "start_game"}` | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
-| "player_schupfed"     | `{player_index: int}`                                               | Der Spieler hat 3 Karten zum Tausch abgegeben.                                              |
-| "tichu_announced"     | `{player_index: int, announced: bool}`                              | Der Spieler hat Tichu angesagt oder abgelehnt.                                              |
-| "played"              | `{player_index: int, cards: str}`                                   | Der Spieler hat Karten ausgespielt oder hat gepasst.                                        |
-| "wish_made"           | `{player_index: int, wish_value: int}`                              | Der Spieler hat sich einen Kartenwert gewünscht.                                            |
-| "trick_taken"         | `{player_index: int}`                                               | Der Spieler hat den Stich kassiert.                                                         |
-| "player_turn_changed" | `{current_turn_index: int}`                                         | Der Spieler ist jetzt am Zug.                                                               |
-| "round_over"          | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Karten werden neu gemischt.                                    |
-| "game_over"           | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Partie ist entschieden.                                        |
+| Notification Event      | Notification Context                                                | Beschreibung                                                                                |
+|-------------------------|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| "player_joined"         | `{player_index: int, player_name: str}`                             | Der Spieler spielt jetzt mit.                                                               |
+| "player_left"           | `{player_index: int, replaced_by_name: str}`                        | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                             |
+| "lobby_update"          | `{action: "assign_team", team: list}` oder `{action: "start_game"}` | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
+| "grand_tichu_announced" | `{player_index: int, announced: bool}`                              | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.                                   |
+| "player_schupfed"       | `{player_index: int}`                                               | Der Spieler hat drei Karten zum Tausch abgegeben.                                           |
+| "tichu_announced"       | `{player_index: int}`                                               | Der Spieler hat ein normales Tichu angesagt.                                                |
+| "bombed"                | `{player_index: int}`                                               | Der Spieler hat eine Bombe geworfen.                                                        |
+| "passed"                | `{player_index: int}`                                               | Der Spieler hat hat gepasst.                                                                |
+| "played"                | `{player_index: int, cards: str}`                                   | Der Spieler hat Karten ausgespielt.                                                         |
+| "wish_made"             | `{wish_value: int}`                                                 | Ein Kartenwert wurde sich gewünscht.                                                        |
+| "wish_fulfilled"        |                                                                     | Der Wunsch wurde erfüllt.                                                                   |
+| "trick_taken"           | `{player_index: int}`                                               | Der Spieler hat den Stich kassiert.                                                         |
+| "player_turn_changed"   | `{current_turn_index: int}`                                         | Der Spieler ist jetzt am Zug.                                                               |
+| "round_over"            | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Karten werden neu gemischt.                                    |
+| "game_over"             | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Partie ist entschieden.                                        |
 
 ### 7.2.3. Fehlermeldungen
 
@@ -360,7 +363,8 @@ Benachrichtigung an alle Spieler
 | INVALID_MESSAGE = 101                       | "Ungültiges Nachrichtenformat empfangen."                  | `{message: dict}`                      |
 | UNAUTHORIZED = 102                          | "Aktion nicht autorisiert."                                | `{action: str}`                        |
 | SERVER_BUSY = 103                           | "Server ist momentan überlastet. Bitte später versuchen."  |                                        |
-| MAINTENANCE_MODE = 104                      | "Server befindet sich im Wartungsmodus."                   |                                        |
+| SERVER_DOWN = 104                           | "Server wurde heruntergefahren."                           |                                        |
+| MAINTENANCE_MODE = 105                      | "Server befindet sich im Wartungsmodus."                   |                                        |
 | **Verbindungs- & Session-Fehler (200-299)** |                                                            |                                        |
 | SESSION_EXPIRED = 200                       | "Deine Session ist abgelaufen. Bitte neu verbinden."       |                                        |
 | SESSION_NOT_FOUND = 201                     | "Session nicht gefunden."                                  | `{session_id: uuid}`                   |

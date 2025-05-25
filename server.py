@@ -121,7 +121,8 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                             await client.error("Unbekannte Aktion in der Lobby", ErrorCode.INVALID_MESSAGE, context=msg.data)
 
                     elif msg_type == "interrupt":  # explizite Interrupt-Anfrage
-                        await engine.on_interrupt(client, payload.get("reason"))  # an die Engine weiterleiten
+                        #await engine.on_interrupt(client, payload.get("reason"))  # an die Engine weiterleiten
+                        print("Interrupt")  # todo Interrupt handeln
 
                     elif msg_type == "ping":  # Verbindungstest
                         logger.info(f"{client.name}: ping")

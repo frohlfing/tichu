@@ -1,69 +1,3 @@
-# tests/test_arena.py
-
-"""
-Tests für die Arena-Klasse mit Schwerpunkt auf deren Orchestrierungs- und Statistiklogik.
-
-Diese Testsuite verwendet vereinfachte Mock-Objekte für „Agent“, „PublicState“, „PrivateState“ und „GameEngine“,
-um die Funktionalität der Arena von der Komplexität des eigentlichen Tichu-Gameplays zu isolieren.
-
-Zusammenfassung der Tests für Arena:
-- Initialisierung:
-    - Korrekte Übernahme von Parametern (Agenten, max_games, worker-Anzahl).
-    - Auswahl des korrekten Event-Typs (`asyncio.Event` vs. `multiprocessing.managers.EventProxy`)
-      basierend auf der Worker-Anzahl.
-    - Validierung der Anzahl der Agenten (AssertionError bei falscher Anzahl).
-
-- Spielausführungssimulation (`_run_game`):
-    - Testet die Hilfsfunktion `_run_game` (die normalerweise ein komplettes Spiel ausführt)
-      durch Mocking der `GameEngine`.
-    - Überprüft, ob `_run_game` den `PublicState` von der gemockten Engine korrekt zurückgibt.
-    - Stellt sicher, dass `_run_game` initiale `PublicState` und `PrivateState` Objekte
-      korrekt an die gemockte Engine weitergibt.
-    - Verifiziert, dass Exceptions innerhalb der gemockten Engine von `_run_game` abgefangen
-      und `None` zurückgegeben wird, sowie dass eine Log-Meldung erfolgt.
-
-- Interne Spielsteuerung (`_play_game`):
-    - Testet die Methode `_play_game` (die ein einzelnes Spiel im Kontext der Arena steuert).
-    - Mockt die darunterliegende `_run_game` Funktion, um das Ergebnis eines Spiels zu simulieren.
-    - Überprüft, ob `_play_game` die korrekten Parameter (Tischnamen, Agenten, Seed,
-      initiale States) an `_run_game` weitergibt.
-    - Stellt sicher, dass `_play_game` `None` zurückgibt, wenn das `_stop_event` der Arena gesetzt ist.
-
-- Statistik-Aktualisierung (`_update`):
-    - Korrekte Inkrementierung der Zähler für Spiele, Runden und Stiche.
-    - Korrekte Aktualisierung des `_rating`-Arrays (Siege, Niederlagen, Unentschieden für Team 0)
-      basierend auf dem `game_score` des übergebenen `PublicState`.
-    - Korrekte Berechnung der Gesamtspielzeit (`_seconds`).
-    - Stellt sicher, dass `_update` bei einem `None`-Ergebnis (z.B. abgebrochenes Spiel)
-      die Statistiken nicht verändert.
-
-- Early Stopping Logik (innerhalb `_update`):
-    - Überprüfung, ob das `_stop_event` korrekt gesetzt wird, wenn die konfigurierte
-      Siegquote (`win_rate`) sicher erreicht ist.
-    - Überprüfung, ob das `_stop_event` korrekt gesetzt wird, wenn die konfigurierte
-      Siegquote nicht mehr erreicht werden kann.
-    - Stellt sicher, dass das Event nicht gesetzt wird, wenn die Bedingungen nicht erfüllt sind.
-
-- Ablaufsteuerung (`run` Methode):
-    - Single-Worker-Modus:
-        - Mockt `_play_game` auf der Arena-Instanz, um die Ausführung tatsächlicher Spiele zu vermeiden.
-        - Überprüft, ob `run` die gemockte `_play_game`-Methode für die korrekte Anzahl
-          an Spielen (`max_games`) aufruft.
-        - Überprüft, ob `run` die `_update`-Methode mit den Ergebnissen von `_play_game` aufruft.
-    - Multi-Worker-Modus:
-        - Mockt die `multiprocessing.Pool`-Klasse.
-        - Überprüft, ob `run` einen `Pool` mit der korrekten Anzahl an Prozessen erstellt.
-        - Verifiziert, dass `Pool.apply_async` für jedes Spiel mit den korrekten Parametern
-          (Zielfunktion `arena._play_game`, Spielindex-Argumente, Callback `arena._update`)
-          aufgerufen wird.
-        - Stellt sicher, dass `Pool.close()` und `Pool.join()` aufgerufen werden.
-
-- Hilfsfunktionen und Properties:
-    - Testet die statische Methode `Arena.cpu_count()` durch Mocking von `src.arena.cpu_count`.
-    - Überprüft die korrekte Funktionsweise der Read-Only Properties
-      (`seconds`, `games`, `rounds`, `tricks`, `rating`).
-"""
-
 import pytest
 from typing import Optional, List
 from src.players.agent import Agent
@@ -72,14 +6,8 @@ from unittest.mock import patch, MagicMock, call
 # noinspection PyUnresolvedReferences,PyProtectedMember
 from multiprocessing.managers import EventProxy
 # noinspection PyProtectedMember
-from src.arena import Arena, _run_game
+from src.arena import Arena, _create_engine_and_run
 
-# Importiere deine echten Klassen, wenn du sie nicht mocken willst (oder die Mocks von oben)
-# from src.players.agent import Agent # Ersetzt durch MockAgent
-# from src.public_state import PublicState # Ersetzt durch MockPublicState
-# from src.private_state import PrivateState # Ersetzt durch MockPrivateState
-# from src.game_engine import GameEngine # Ersetzt durch MockGameEngine
-# from src.common.logger import logger # Könnte auch gemockt werden
 
 # --- Dummies/Mocks für Abhängigkeiten (wie oben definiert) ---
 class MockAgent:
@@ -114,14 +42,7 @@ class MockGameEngine:
         # Wird im run_game_loop gesetzt oder durch Parameter pub überschrieben
         self.pub_state_to_return = MockPublicState(game_score=([100], [50]), round_counter=5, trick_counter=20, game_over=True)
 
-    async def run_game_loop(self, pub: Optional[MockPublicState], privs: Optional[List[MockPrivateState]], break_time: int) -> MockPublicState:
-        if pub:
-            # Simuliere, dass der übergebene pub state modifiziert wird
-            pub.game_score = self.pub_state_to_return.game_score
-            pub.round_counter = self.pub_state_to_return.round_counter
-            pub.trick_counter = self.pub_state_to_return.trick_counter
-            pub.game_over = True
-            return pub
+    async def run_game_loop(self) -> MockPublicState:
         return self.pub_state_to_return
 
 @pytest.fixture
@@ -148,35 +69,10 @@ def mock_private_states():
 # --- Tests für _run_game ---
 @pytest.mark.asyncio
 @patch('src.arena.GameEngine', new=MockGameEngine)  # Mock GameEngine für _run_game
-async def test_run_game_success(mock_agents, mock_public_state_win_team0):
-    pub_state = await _run_game("TestTable", mock_agents, seed=123, pub=None, privs=None)
+async def test_create_engine_and_run_success(mock_agents, mock_public_state_win_team0):
+    pub_state = await _create_engine_and_run("TestTable", mock_agents, seed=123)
     assert pub_state is not None
     assert pub_state.game_score == ([100], [50])
-
-@pytest.mark.asyncio
-@patch('src.arena.GameEngine', new=MockGameEngine)
-async def test_run_game_with_initial_states(mock_agents, mock_public_state_win_team0, mock_private_states):
-    initial_pub = MockPublicState()
-    initial_privs = mock_private_states
-
-    # Konfiguriere den MockGameEngine, um den übergebenen pub State zu modifizieren.
-    # oder stelle sicher, dass MockGameEngine.run_game_loop das korrekt handhabt
-    class CustomMockGameEngine(MockGameEngine):
-        async def run_game_loop(self, pub: Optional[MockPublicState], privs: Optional[List[MockPrivateState]], break_time: int) -> MockPublicState:
-            assert pub is initial_pub
-            assert privs is initial_privs
-            pub.game_score = ([100], [50])  # Simuliere Modifikation
-            pub.round_counter = 1
-            pub.trick_counter = 1
-            pub.game_over = True
-            return pub
-
-    with patch('src.arena.GameEngine', new=CustomMockGameEngine):
-        # noinspection PyTypeChecker
-        returned_pub = await _run_game("TestTable", mock_agents, seed=123, pub=initial_pub, privs=initial_privs)
-
-    assert returned_pub is initial_pub  # Sollte dasselbe Objekt sein, modifiziert
-    assert returned_pub.game_score == ([100], [50])
 
 @pytest.mark.asyncio
 @patch('src.arena.GameEngine')  # Standard MagicMock
@@ -186,7 +82,7 @@ async def test_run_game_exception_in_engine(mock_game_engine_cls, mock_agents):
     mock_game_engine_cls.return_value = mock_engine_instance
 
     with patch('src.arena.logger.exception') as mock_logger_exception:
-        pub_state = await _run_game("TestTableError", mock_agents, seed=123, pub=None, privs=None)
+        pub_state = await _create_engine_and_run("TestTableError", mock_agents, seed=123)
         assert pub_state is None
         mock_logger_exception.assert_called_once()
         assert "Engine Boom!" in mock_logger_exception.call_args[0][0]
@@ -249,7 +145,7 @@ def test_arena_play_game_with_initial_states(mock_run_game_async, mock_agents, m
     init_privs = [mock_private_states]  # Liste von Listen von PrivateStates
 
     # noinspection PyTypeChecker
-    arena = Arena(mock_agents, max_games=1, worker=1, pubs=init_pubs, privs=init_privs)
+    arena = Arena(mock_agents, max_games=1, worker=1)
     arena._play_game(0)
 
     mock_run_game_async.assert_called_once_with(

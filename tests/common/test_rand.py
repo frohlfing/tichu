@@ -1,29 +1,3 @@
-# tests/test_rand.py
-"""
-Tests für src.common.rand.
-
-Zusammenfassung der Tests für Random:
-- Initialisierung:
-    Prüft, ob der Seed korrekt gespeichert und der interne Generator (_random) anfangs None ist.
-
-- Lazy Initialization:
-Stellt sicher, dass _random erst beim ersten Aufruf einer Methode initialisiert wird und dabei der korrekte Seed verwendet wird.
-
-- Methoden-Tests (integer, boolean, choice, sample, shuffle):
-    - Prüfen die Rückgabetypen.
-    - Prüfen, ob die Werte im erwarteten Bereich liegen bzw. aus der Eingabesequenz stammen.
-    - Testen Randfälle (z.B. integer mit nur einem möglichen Wert, sample mit k=Länge).
-    - Testen grundlegend die Logik (z.B. Einzigartigkeit bei sample, Änderung bei shuffle, Gewichtung bei choice).
-
-- Reproduzierbarkeit:
-    Der wichtigste Test hier! Stellt sicher, dass zwei Instanzen mit demselben Seed exakt dieselbe Sequenz von
-    Zufallsereignissen über verschiedene Methoden hinweg erzeugen.
-
-- Unterschiedlichkeit:
-    Stellt sicher, dass unterschiedliche Seeds (oder keine Seeds) zu unterschiedlichen Ergebnissen führen (mit hoher
-    Wahrscheinlichkeit).
-"""
-
 import pytest
 import random as std_random
 from src.common.rand import Random

@@ -4,7 +4,7 @@ Definiert die Datenstruktur für den privaten Spielzustand eines Spielers.
 
 from dataclasses import dataclass, field
 from src.lib.cards import Card, Cards, stringify_cards
-from src.lib.combinations import build_combinations, Combination
+from src.lib.combinations import build_combinations, Combination, CombinationType
 from src.lib.partitions import build_partitions, Partition
 from typing import List, Dict, Any, Tuple, Optional
 
@@ -96,3 +96,9 @@ class PrivateState:
         if not self._partition_cache and self.hand_cards:
             self._partitions_aborted = not build_partitions(self._partition_cache, combis=self.combinations, counter=len(self.hand_cards))
         return self._partition_cache
+
+    @property
+    def has_bomb(self) -> bool:
+        """True, wenn der Spieler eine Bombe hat"""
+        combi = self.combinations
+        return True if combi and combi[0][1][0] == CombinationType.BOMB else False

@@ -1,22 +1,3 @@
-# tests/test_player.py
-
-"""
-Tests für die abstrakte Basisklasse Player.
-
-Zusammenfassung der Tests für Player:
-- Initialisierung:
-    - Korrekte Verarbeitung und Bereinigung des Spielernamens.
-    - Korrekte Generierung einer Session-UUID, wenn keine angegeben ist.
-    - Korrekte Übernahme einer explizit angegebenen Session.
-    - Sicherstellung, dass `player_index` initial `None` ist.
-- Properties:
-    - Korrekte Rückgabe des Namens (`name`).
-    - Korrekte Rückgabe des Klassennamens (`class_name`).
-    - Korrekte Berechnung der Indizes für Partner und Gegner (`partner_index`, `opponent_right_index`, `opponent_left_index`).
-- Abstrakte Natur:
-    - Verifizierung durch eine Dummy-Subklasse, dass der Aufruf der nicht implementierten, abstrakten Entscheidungsmethoden (`schupf`, `announce`, `play`, `wish`, `give_dragon_away`) einen `NotImplementedError` auslöst.
-"""
-
 import pytest
 from uuid import UUID
 
@@ -26,9 +7,6 @@ from src.players.player import Player
 # Benötigte Klassen/Daten für den Test der abstrakten Methoden
 from src.public_state import PublicState
 from src.private_state import PrivateState
-from src.lib.combinations import FIGURE_PASS # CombinationType.PASS wäre besser
-
-# === Testfälle für Player (Basisklasse) ===
 
 def test_player_init_valid_name():
     """Testet die Initialisierung mit gültigem Namen."""
@@ -81,16 +59,14 @@ async def test_player_abstract_methods_raise_not_implemented():
     player = IncompletePlayer(name="Dummy")
     pub_state = PublicState() # Leere States für den Aufruf
     priv_state = PrivateState()
-    # Beispiel Action Space (nur für den play-Aufruf benötigt)
-    action_space = [([], FIGURE_PASS)]
 
     # Prüfe jede abstrakte Methode
     with pytest.raises(NotImplementedError):
         await player.schupf(pub_state, priv_state)
     with pytest.raises(NotImplementedError):
-        await player.announce(pub_state, priv_state)
+        await player.announce_grand_tichu(pub_state, priv_state)
     with pytest.raises(NotImplementedError):
-        await player.play(pub_state, priv_state, action_space) # play statt combination
+        await player.play(pub_state, priv_state) # play statt combination
     with pytest.raises(NotImplementedError):
         await player.wish(pub_state, priv_state)
     with pytest.raises(NotImplementedError):

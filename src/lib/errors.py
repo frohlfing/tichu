@@ -67,7 +67,8 @@ class ErrorCode(enum.IntEnum):
     INVALID_MESSAGE = 101  # Ungültiges Nachrichtenformat empfangen.
     #UNAUTHORIZED = 102  # Aktion nicht autorisiert.
     #SERVER_BUSY = 103  # Der Server ist momentan überlastet. Bitte später versuchen.
-    #MAINTENANCE_MODE = 104  # Der Server befindet sich im Wartungsmodus.
+    SERVER_DOWN = 104  # Der Server wurde heruntergefahren.
+    #MAINTENANCE_MODE = 105  # Der Server befindet sich im Wartungsmodus.
 
     # Verbindungs- & Session-Fehler (200-299)
     SESSION_EXPIRED = 200  # Deine Session ist abgelaufen. Bitte neu verbinden.

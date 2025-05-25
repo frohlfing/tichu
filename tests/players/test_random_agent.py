@@ -93,7 +93,7 @@ async def test_random_agent_announce(random_agent_unseeded, public_state_fixture
     agent = random_agent_unseeded
     agent.index = private_state_fixture.player_index
 
-    result = await agent.announce(public_state_fixture, private_state_fixture, grand=grand)
+    result = await agent.announce_grand_tichu(public_state_fixture, private_state_fixture, grand=grand)
     assert isinstance(result, bool)
 
 @pytest.mark.asyncio
@@ -205,7 +205,7 @@ async def test_schupf(agent, pub, priv):
     assert result == tuple(parse_cards("S4 B3 G4"))
 
 async def test_announce(agent, pub, priv):
-    result = await agent.announce(pub, priv)
+    result = await agent.announce_grand_tichu(pub, priv)
     assert result in [True, False]
 
 async def test_play(agent, pub, priv):

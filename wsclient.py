@@ -176,15 +176,15 @@ async def main(args: argparse.Namespace):
         {"type": "lobby_action", "payload": {"action": "assign_team", "data": [3,0,2,1]}},
         {"type": "lobby_action", "payload": {"action": "start_game"}},
         {"type": "interrupt", "payload": {"reason": "tichu"}},
-        {"type": "interrupt", "payload": {"reason": "bomb"}},
+        {"type": "interrupt", "payload": {"reason": "bomb", "cards": []}},
         {"type": "ping", "payload": {"timestamp": "<timestamp>"}},
 
         # Antworten von Server-Anfragen
-        # schupf
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"to_opponent_right": "B2", "to_partner": "SK", "to_opponent_left": "B3"}}},
-        # announce
+        # announce_grand_tichu
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "announced": False}}},
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "announced": True}}},
+        # schupf
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"to_opponent_right": "B2", "to_partner": "SK", "to_opponent_left": "B3"}}},
         # play
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "cards": []}}},
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "cards": ["Dr", "S9"]}}},

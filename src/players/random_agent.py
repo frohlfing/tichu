@@ -4,7 +4,7 @@ Definiert einen Zufallsagenten.
 
 from src.common.rand import Random
 from src.lib.cards import Card, Cards
-from src.lib.combinations import Combination
+from src.lib.combinations import Combination, build_action_space, CombinationType
 from src.players.agent import Agent
 from src.private_state import PrivateState
 from src.public_state import PublicState
@@ -31,9 +31,22 @@ class RandomAgent(Agent):
     # Entscheidungen
     # ------------------------------------------------------
 
+    async def announce(self, pub: PublicState, priv: PrivateState) -> bool:
+        """
+        Fragt den Spieler, ob er ein Tichu (normales oder großes) ansagen möchte.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: True, wenn angesagt wird, sonst False.
+        """
+        grand = pub.start_player_index == -1 and len(priv.hand_cards) == 8
+        return self._random.choice([True, False], [1, 19] if grand else [1, 9])
+
     async def schupf(self, pub: PublicState, priv: PrivateState) -> Tuple[Card, Card, Card]:
         """
         Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
+
+        Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
@@ -45,26 +58,34 @@ class RandomAgent(Agent):
         c = hand.pop(self._random.integer(0, 12))
         return a, b, c
 
-    async def announce(self, pub: PublicState, priv: PrivateState) -> bool:
-        """
-        Fragt den Spieler, ob er Tichu (oder Grand Tichu) ansagen möchte.
-
-        :param pub: Der öffentliche Spielzustand.
-        :param priv: Der private Spielzustand.
-        :return: True, wenn angesagt wird, sonst False.
-        """
-        grand = pub.current_phase == "dealing" and len(priv.hand_cards) == 8
-        return self._random.choice([True, False], [1, 19] if grand else [1, 9])
-
-    async def play(self, pub: PublicState, priv: PrivateState, action_space: List[Tuple[Cards, Combination]]) -> Tuple[Cards, Combination]:
+    async def play(self, pub: PublicState, priv: PrivateState) -> Tuple[Cards, Combination]:
         """
         Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
+        Diese Aktion kann durch ein Interrupt abgebrochen werden.
+
         :param pub: Der öffentliche Spielzustand.
         :param priv: Der private Spielzustand.
-        :param action_space: Mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle).
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0)).
         """
+        # mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle)
+        action_space = build_action_space(priv.combinations, pub.trick_combination, pub.wish_value)
+        return action_space[self._random.integer(0, len(action_space))]
+
+    async def bomb(self, pub: PublicState, priv: PrivateState) -> Optional[Tuple[Cards, Combination]]:
+        """
+        Fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
+
+        Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Wert)) oder None, wenn keine Bombe geworfen wird.
+        """
+        if not self._random.choice([True, False], [1, 2]):  # einmal Ja, zweimal Nein
+            return None
+        combinations = [combi for combi in priv.combinations if combi[1][0] == CombinationType.BOMB]
+        action_space = build_action_space(combinations, pub.trick_combination, pub.wish_value)
         return action_space[self._random.integer(0, len(action_space))]
 
     async def wish(self, pub: PublicState, priv: PrivateState) -> int:

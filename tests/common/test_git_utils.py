@@ -1,13 +1,6 @@
-# tests/test_git_utils.py
-"""
-Tests für src.common.git_utils
-"""
 import subprocess
 from unittest.mock import patch, MagicMock # Importiere patch und MagicMock
 from src.common.git_utils import get_git_tag, get_release
-
-
-# === Testfälle für get_git_tag ===
 
 # Der Decorator @patch ersetzt 'subprocess.check_output' im Modul 'src.common.git_utils'
 # während der Ausführung dieses Tests durch einen Mock.
@@ -85,9 +78,6 @@ def test_get_git_tag_empty_output_from_git(mock_check_output: MagicMock):
     mock_check_output.assert_called_once_with(["git", "describe", "--tags"])
     assert actual_tag == "" # strip() and decode() sollten einen leeren String ergeben
     
-    
-# === Testfälle für get_release ===
-
 # Wir können die Funktion get_git_tag innerhalb des Moduls mocken,
 # wenn get_release sie aufruft. Das macht die Tests für get_release
 # unabhängig von der Implementierung (und den Mocks) von get_git_tag.

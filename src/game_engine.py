@@ -5,15 +5,16 @@ Definiert die Spiellogik.
 import asyncio
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH
-from src.lib.combinations import CombinationType, build_action_space, FIGURE_DRA, FIGURE_DOG, FIGURE_PASS, FIGURE_PHO, FIGURE_MAH
+from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH, Cards
+from src.lib.combinations import CombinationType, FIGURE_DRA, FIGURE_DOG, FIGURE_PASS, FIGURE_PHO, FIGURE_MAH, Combination
+from src.lib.errors import ErrorCode
 from src.players.agent import Agent
 from src.players.client import Client
 from src.players.player import Player
 from src.players.random_agent import RandomAgent
 from src.private_state import PrivateState
 from src.public_state import PublicState
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple
 
 
 class GameEngine:
@@ -41,7 +42,7 @@ class GameEngine:
 
         # Default-Agenten initialisieren
         if default_agents:
-            if len(default_agents) != 4 or any(not isinstance(player, Agent) for player in default_agents):
+            if len(default_agents) != 4 or any(not isinstance(agent, Agent) for agent in default_agents):
                 raise ValueError(f"`default_agents` muss genau 4 Agenten auflisten.")
             self._default_agents: List[Agent] = list(default_agents)  # Kopie erstellen (immutable machen)
         else:
@@ -157,40 +158,6 @@ class GameEngine:
         client.index = -1
 
     # ------------------------------------------------------
-    # Interrupt auslösen
-    # ------------------------------------------------------
-
-    async def on_interrupt(self, client: Client, reason: str):
-        """
-        Wird aufgerufen, wenn ein Client einen Interrupt anfordert (er meldet sich und sagt "Halt").
-
-        :param client: Der anfragende Client.
-        :param reason: Grund für den Interrupt ("bomb" oder "tichu").
-        """
-        logger.debug(f"Tisch '{self.table_name}': Spieler {client.name} fordert Interrupt an: '{reason}'")
-
-        # Prüfungen
-        if self._interrupt_reason:
-            logger.debug(f"Tisch '{self.table_name}': Interrupt von Spieler {client.name} wird ignoriert, weil ein anderer Interrupt bereits läuft.")
-            await client.notify("error", {"message": "Ein anderer Interrupt wird gerade bearbeitet. Bitte warte."})
-            return
-
-        # todo darf der Spieler die beabsichtigte Aktion, wofür er das Interrupt ausgelöst hat, jetzt tun?
-        # if not ok:
-        #   return
-
-        # Sperre setzen
-        self._interrupt_reason = True
-        self._interrupt_player_index = client.index
-        try:
-            # Signalisiere den wartenden Tasks, dass Tichu angesagt wurde
-            self.interrupt_event.set()
-            logger.debug(f"Tisch '{self.table_name}': Interrupt für Spieler {client.name} ausgelöst.")
-        except Exception as e:
-            logger.exception(f"Tisch '{self.table_name}': Fehler bei Interrupt-Verarbeitung für Spieler {client.name}: {e}")
-            await client.notify("error", {"message": "Interner Fehler bei Interrupt-Verarbeitung."})
-
-    # ------------------------------------------------------
     # Lobby-Aktionen
     # ------------------------------------------------------
 
@@ -232,15 +199,6 @@ class GameEngine:
         """
         Steuert den Spielablauf einer Partie.
 
-        todo Interrupt-Handling
-         PlayerInterruptError muss hier im jedem Turn abgefangen werden.
-         Nennen wir den Spieler, der den Interrupt anfordert, "Interrupter".  
-         Wenn Interrupter seine beabsichtigte Aktion (Bombe werfen oder Tichu ansagen) nicht durchführen kann oder darf, kriegt er eine Fehlermeldung zurück.
-         Ansonsten wird das Interrupt-Event gesetzt, so das der Spieler, der gerade am Zug ist, die Entscheidungsfindung abbricht.
-         Der Interrupter wird aufgefordert, die Aktion durchzuführen.
-         Danach wird interrupt_event wieder zurückgesetzt (oder sofort nach dem Setzen?)
-         Danach wird die Runde wie gehabt fortgesetzt.
-
         :param break_time: Pause in Sekunden zwischen den Runden.
         :return: Der öffentliche Spielzustand.
         :raises ValueError: Wenn Parameter nicht ok sind.
@@ -254,16 +212,14 @@ class GameEngine:
         for i, priv in enumerate(privs):
             assert priv.player_index == i
 
-        try:
-            logger.info(f"[{self.table_name}] Starte neue Partie...")
+        # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
+        clients_joined = any(isinstance(p, Client) for p in self._players)
 
-            # Kopie des sortierten Standarddecks - wird jede Runde neu durchgemischt
-            mixed_deck = list(deck)
-            
-            # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
-            # todo testen, ob das wirklich einen signifikanten Geschwindigkeitsvorteil bringt
-            clients_joined = any(isinstance(p, Client) for p in self._players)
-            
+        # Kopie des sortierten Standarddecks - wird jede Runde neu durchgemischt
+        mixed_deck = list(deck)
+
+        logger.info(f"[{self.table_name}] Starte neue Partie...")
+        try:
             # Partie spielen
             while not pub.is_game_over:
                 # Neue Runde...
@@ -275,8 +231,8 @@ class GameEngine:
                     priv.reset_round()
 
                 # Agents zurücksetzen
-                for agent in self._players:
-                    agent.reset_round()
+                for player in self._players:
+                    player.reset_round()
 
                 # Spielphase aktualisieren
                 pub.current_phase = "playing"  # todo Spielphasen müssen noch definiert werden
@@ -288,39 +244,41 @@ class GameEngine:
                 first = self._random.integer(0, 4)  # wählt zufällig eine Zahl zwischen 0 und 3
                 for n in (8, 14):
                     # Karten verteilen (deal out)
-                    for player in range(0, 4):
-                        offset = player * 14
-                        privs[player].hand_cards = sorted(mixed_deck[offset:offset + n], reverse=True)  # absteigend sortiert!
-                        pub.count_hand_cards[player] = n
-                    if clients_joined:
-                        await self._broadcast("")
+                    for player_index in range(0, 4):
+                        offset = player_index * 14
+                        privs[player_index].hand_cards = sorted(mixed_deck[offset:offset + n], reverse=True)  # absteigend sortiert!
+                        pub.count_hand_cards[player_index] = n
+                        await self._players[player_index].deal_cards(privs[player_index].hand_cards)
 
-                    # möchte ein Spieler ein großes Tichu ansagen?
-                    if n == 8:
-                        # todo alle Spieler gleichzeitig ansprechen
-                        for i in range(0, 4):
-                            player = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
-                            if await self._players[player].announce(pub, privs[player]):
-                                # Spieler hat großes Tichu angesagt
-                                assert pub.announcements[player] == 0
-                                pub.announcements[player] = 2
-                                if clients_joined:
-                                    await self._broadcast("")
+                    # möchte ein Spieler ein Tichu ansagen?
+                    # todo alle Spieler gleichzeitig ansprechen
+                    for i in range(0, 4):
+                        player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
+                        grand = n == 8  # großes Tichu?
+                        announced = not pub.announcements[player_index] and await self._players[player_index].announce(pub, privs[player_index])
+                        if announced:
+                            pub.announcements[player_index] = 2 if grand else 1  # Spieler hat Tichu angesagt
+                        if clients_joined:
+                            if grand:
+                                await self._broadcast("grand_tichu_announced", {"player_index": player_index, "announced": announced})
+                            elif announced:
+                                await self._broadcast("tichu_announced", {"player_index": player_index})
 
                 # jetzt müssen die Spieler schupfen
 
                 # a) Tauschkarten abgeben
                 # todo alle Spieler gleichzeitig ansprechen
-                for player in range(0, 4):  # Geber
-                    priv = privs[player]
+                for i in range(0, 4):  # Geber
+                    player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
+                    priv = privs[player_index]
                     assert len(priv.hand_cards) == 14
-                    priv.given_schupf_cards = await self._players[player].schupf(pub, priv)
+                    priv.given_schupf_cards = await self._players[player_index].schupf(pub, priv)
                     assert len(priv.given_schupf_cards) == 3
                     priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
                     assert len(priv.hand_cards) == 11
-                    pub.count_hand_cards[player] = 11
+                    pub.count_hand_cards[player_index] = 11
                     if clients_joined:
-                        await self._broadcast("")
+                        await self._broadcast("player_schupfed", {"player_index": player_index})
 
                 # b) Tauscharten aufnehmen
                 # Karten-Index der abgegebenen Karte:
@@ -332,94 +290,115 @@ class GameEngine:
                 #   2| 2  3  -  1
                 #   3| 1  2  3  -
                 # todo alle Spieler gleichzeitig ansprechen
-                for player in range(0, 4):  # Nehmer
-                    priv = privs[player]
+                for player_index in range(0, 4):  # Nehmer
+                    priv = privs[player_index]
                     priv.received_schupf_cards = (
-                        privs[(player + 1) % 4].given_schupf_cards[2],
-                        privs[(player + 2) % 4].given_schupf_cards[1],
-                        privs[(player + 3) % 4].given_schupf_cards[0],
+                        privs[(player_index + 1) % 4].given_schupf_cards[2],
+                        privs[(player_index + 2) % 4].given_schupf_cards[1],
+                        privs[(player_index + 3) % 4].given_schupf_cards[0],
                     )
                     assert not set(priv.received_schupf_cards).intersection(priv.hand_cards)  # darf keine Schnittmenge bilden
                     priv.hand_cards += priv.received_schupf_cards
                     priv.hand_cards.sort(reverse=True)
                     assert len(priv.hand_cards) == 14
-                    pub.count_hand_cards[player] = 14
-
-                if clients_joined:
-                    await self._broadcast("")
+                    pub.count_hand_cards[player_index] = 14
+                    await self._players[player_index].deal_schupf_cards(*priv.received_schupf_cards)
 
                 # Startspieler bekannt geben
-                for player in range(0, 4):
-                    if CARD_MAH in privs[player].hand_cards:
+                for player_index in range(0, 4):
+                    if CARD_MAH in privs[player_index].hand_cards:
                         assert pub.start_player_index == -1
-                        pub.start_player_index = player
-                        pub.current_turn_index = player
+                        pub.start_player_index = player_index
+                        pub.current_turn_index = player_index
                         break
                 if clients_joined:
-                    await self._broadcast("")
+                    await self._broadcast("player_turn_changed", {"current_turn_index": pub.current_turn_index})
 
                 # los geht's - das eigentliche Spiel kann beginnen...
                 assert 0 <= pub.current_turn_index <= 3
                 while not pub.is_round_over:
                     priv = privs[pub.current_turn_index]
                     assert priv.player_index == pub.current_turn_index
-
-                    agent = self._players[pub.current_turn_index]
+                    player = self._players[pub.current_turn_index]
                     assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
                     assert 0 <= pub.count_hand_cards[priv.player_index] <= 14
-                    if clients_joined: 
-                        await self._broadcast("")
+
+                    # falls der aktuelle Spieler den Stich kassieren darf oder den Stich evtl. bedienen könnte (kein Anspiel), jeden Mitspieler fragen, ob er eine Bombe werfen will
+                    bomb: Optional[Tuple[Cards, Combination]] = None
+                    # todo hier ist noch ein Fehler versteckt
+                    # if ((pub.trick_owner_index == priv.player_index and pub.trick_combination != FIGURE_DOG)  # der Stich kann kassiert werden
+                    #     or (pub.count_hand_cards[priv.player_index] > 0 and pub.trick_owner_index >= 0)):  # der Spieler könnte evtl. den Stich bedienen (kein Anspiel)
+                    #     # todo alle Spieler gleichzeitig ansprechen
+                    #     for i in range(0, 4):
+                    #         player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
+                    #         if player_index != pub.current_turn_index and self._private_states[player_index].has_bomb:
+                    #             bomb = await self._players[player_index].bomb(pub, self._private_states[player_index])
+                    #             if bomb:
+                    #                 pub.current_turn_index = player_index
+                    #                 break
 
                     # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
-                    if pub.trick_owner_index == priv.player_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt aber immer liegen
+                    if not bomb and pub.trick_owner_index == priv.player_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt liegen
                         assert pub.trick_combination != FIGURE_PASS
                         if pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                             # Stich verschenken
-                            opponent = await agent.give_dragon_away(pub, priv)
+                            opponent = await player.give_dragon_away(pub, priv)
                             assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                             assert CARD_DRA in pub.played_cards
                             assert pub.dragon_recipient == -1
                             pub.dragon_recipient = opponent
                             pub.points[opponent] += pub.trick_points
                             assert -25 <= pub.points[opponent] <= 125
+                            if clients_joined:
+                                await self._broadcast("trick_taken", {"player_index": opponent})
                         else:
                             # Stich selbst kassieren
                             pub.points[pub.trick_owner_index] += pub.trick_points
                             assert -25 <= pub.points[pub.trick_owner_index] <= 125
+                            if clients_joined:
+                                await self._broadcast("trick_taken", {"player_index": pub.trick_owner_index})
                         # Stich zurücksetzen
                         pub.trick_owner_index = -1
                         pub.trick_combination = (CombinationType.PASS, 0, 0)
                         pub.trick_points = 0
                         pub.trick_counter += 1
-                        if clients_joined:
-                            await self._broadcast("")
 
                     # hat der Spieler noch Karten?
                     if pub.count_hand_cards[priv.player_index] > 0:
-                        # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf Tichu angesagt werden
-                        if pub.count_hand_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
-                            if await agent.announce(pub, priv):
-                                # Spieler hat Tichu angesagt
-                                assert pub.announcements[priv.player_index] == 0
-                                assert pub.count_hand_cards[priv.player_index] == 14
-                                pub.announcements[priv.player_index] = 1
-                                if clients_joined:
-                                    await self._broadcast("")
+                        if bomb:
+                            # der Spieler hat bereits die Bombe geworfen, wir müssen nicht nochmal nach einer Kombination fragen
+                            cards, combination = bomb
+                            bomb = None
+                        else:
+                            # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein normales Tichu angesagt werden
+                            if pub.count_hand_cards[priv.player_index] == 14 and not pub.announcements[priv.player_index]:
+                                if await player.announce(pub, priv):
+                                    # Spieler hat Tichu angesagt
+                                    pub.announcements[priv.player_index] = 1
+                                    if clients_joined:
+                                        await self._broadcast("tichu_announced", {"player_index": priv.player_index})
+                            cards, combination = await player.play(pub, priv)
 
-                        # Kombination auswählen
-                        action_space = build_action_space(priv.combinations, pub.trick_combination, pub.wish_value)
-                        cards, combination = await agent.play(pub, priv, action_space)
                         assert combination[1] <= pub.count_hand_cards[priv.player_index] <= 14
                         assert combination[1] == len(cards)
 
-                        # Kombination ausspielen
+                        # Entscheidung des Spielers festhalten
+                        assert pub.current_turn_index != -1
+                        if pub.trick_owner_index == -1:  # neuer Stich?
+                            assert combination != FIGURE_PASS  # beim Anspiel darf nicht gepasst werden, der erste Eintrag im Stich sind also Karten
+                            pub.tricks.append([(player.index, cards, combination)])
+                        else:
+                            assert len(pub.tricks) > 0
+                            pub.tricks[-1].append((player.index, cards, combination))
+
+                        # Kombination ausspielen, falls nicht gepasst wurde
                         if combination != FIGURE_PASS:
                             # Handkarten aktualisieren
                             assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
                             priv.hand_cards = [card for card in priv.hand_cards if card not in cards]
+                            assert pub.count_hand_cards[pub.current_turn_index] >= combination[1]
                             pub.count_hand_cards[pub.current_turn_index] -= combination[1]
                             #assert len(priv.hand_cards) == pub.count_hand_cards[priv.player_index] - combination[1]
-                            assert pub.count_hand_cards[pub.current_turn_index] >= combination[1]
                             assert pub.count_hand_cards[priv.player_index] == len(priv.hand_cards)
 
                             # Stich aktualisieren
@@ -438,14 +417,18 @@ class GameEngine:
                             # Gespielte Karten merken
                             assert not set(cards).intersection(pub.played_cards)  # darf keine Schnittmenge bilden
                             pub.played_cards += cards
+                            if clients_joined:
+                                await self._broadcast("played", {"player_index": player.index, "cards": cards})
 
                             # Wunsch erfüllt?
                             assert pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
                             if pub.wish_value > 0 and is_wish_in(pub.wish_value, cards):
                                 assert CARD_MAH in pub.played_cards
                                 pub.wish_value = -pub.wish_value
+                                if clients_joined:
+                                    await self._broadcast("wish_fulfilled")
 
-                            # Runde beendet?
+                            # ermitteln, ob die Runde beendet ist
                             if pub.count_hand_cards[pub.current_turn_index] == 0:
                                 n = pub.count_active_players
                                 assert 1 <= n <= 3
@@ -459,25 +442,12 @@ class GameEngine:
                                         pub.is_double_victory = True
                                 elif n == 1:
                                     pub.is_round_over = True
-                                    for player in range(0, 4):
-                                        if pub.count_hand_cards[player] > 0:
+                                    for player_index in range(0, 4):
+                                        if pub.count_hand_cards[player_index] > 0:
                                             assert pub.loser_index == -1
-                                            pub.loser_index = player
+                                            pub.loser_index = player_index
                                             break
 
-                        # Spielverlauf festhalten
-                        assert pub.current_turn_index != -1
-                        if pub.trick_owner_index == -1:  # neuer Stich?
-                            pub.tricks.append([(pub.current_turn_index, cards, combination)])
-                            assert combination != FIGURE_PASS  # beim Anspiel darf nicht gepasst werden, der erste Eintrag im Stich sind also Karten
-                        else:
-                            assert len(pub.tricks) > 0
-                            pub.tricks[-1].append((pub.current_turn_index, cards, combination))
-
-                        if clients_joined:
-                            await self._broadcast("")
-
-                        if combination != FIGURE_PASS:
                             # Runde vorbei?
                             if pub.is_round_over:
                                 # Runde ist vorbei; letzten Stich abräumen
@@ -494,7 +464,7 @@ class GameEngine:
                                     # Punkte im Stich zählen
                                     if pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                                         # Stich verschenken
-                                        opponent = await agent.give_dragon_away(pub, priv)
+                                        opponent = await player.give_dragon_away(pub, priv)
                                         assert opponent in ((1, 3) if priv.player_index in (0, 2) else (0, 2))
                                         assert CARD_DRA in pub.played_cards
                                         assert pub.dragon_recipient == -1
@@ -529,29 +499,30 @@ class GameEngine:
                                 pub.trick_counter += 1
 
                                 # Bonus für Tichu-Ansage
-                                for player in range(0, 4):
-                                    if pub.announcements[player]:
-                                        if player == pub.winner_index:
-                                            pub.points[player] += 100 * pub.announcements[player]
+                                for player_index in range(0, 4):
+                                    if pub.announcements[player_index]:
+                                        if player_index == pub.winner_index:
+                                            pub.points[player_index] += 100 * pub.announcements[player_index]
                                         else:
-                                            pub.points[player] -= 100 * pub.announcements[player]
+                                            pub.points[player_index] -= 100 * pub.announcements[player_index]
 
                                 # Ergebnis der Runde in die Punktetabelle der Partie eintragen
                                 pub.game_score[0].append(pub.points[2] + pub.points[0])
                                 pub.game_score[1].append(pub.points[3] + pub.points[1])
                                 pub.round_counter += 1
-
-                                if clients_joined:
-                                    await self._broadcast("")
                                 break  # while not pub.is_round_over
 
                             # falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden
                             if CARD_MAH in cards:
                                 assert pub.wish_value == 0
-                                pub.wish_value = await agent.wish(pub, priv)
+                                pub.wish_value = await player.wish(pub, priv)
                                 assert 2 <= pub.wish_value <= 14
                                 if clients_joined:
-                                    await self._broadcast("")
+                                    await self._broadcast("wish_made", {"wish_value": pub.wish_value})
+
+                        else:  # Spieler hat gepasst
+                            if clients_joined:
+                                await self._broadcast("passed", {"player_index": player.index})
 
                     # nächster Spieler ist an der Reihe
                     assert not pub.is_round_over
@@ -560,33 +531,41 @@ class GameEngine:
                         pub.current_turn_index = (pub.current_turn_index + 2) % 4
                     else:
                         pub.current_turn_index = (pub.current_turn_index + 1) % 4
+                    if clients_joined:
+                        await self._broadcast("player_turn_changed", {"current_turn_index": pub.current_turn_index})
 
                 # Runde ist beendet
                 if break_time:
                     await asyncio.sleep(break_time)
+                if clients_joined:
+                    await self._broadcast("round_over", {"game_score": pub.game_score, "is_double_victory": pub.is_double_victory})
 
             # Partie ist beendet
             score20, score31 = pub.total_score
             logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {score20}, Team 31: {score31}")
             if clients_joined:
-                await self._broadcast("")
+                await self._broadcast("game_over", {"game_score": pub.game_score, "is_double_victory": pub.is_double_victory})
             return pub
 
         except asyncio.CancelledError:
-            logger.info(f"[{self.table_name}] Spiel-Loop extern abgebrochen.")
+            msg = f"[{self.table_name}] Spiel-Loop extern abgebrochen."
+            logger.info(msg)
             pub.current_phase = "aborted"
             # noinspection PyBroadException
             try:
-                await self._broadcast("")
+                if clients_joined:
+                    await self._broadcast_error(msg, ErrorCode.SERVER_DOWN)
             except Exception:
                 pass
 
         except Exception as e:
-            logger.exception(f"[{self.table_name}] Kritischer Fehler im Spiel-Loop: {e}")
+            msg = f"[{self.table_name}] Kritischer Fehler im Spiel-Loop: {e}"
+            logger.exception(msg)
             pub.current_phase = "error"
             # noinspection PyBroadException
             try:
-                await self._broadcast("")
+                if clients_joined:
+                    await self._broadcast_error(msg, ErrorCode.UNKNOWN_ERROR)
             except Exception:
                 pass
 
@@ -600,18 +579,28 @@ class GameEngine:
     # Hilfsfunktionen
     # ------------------------------------------------------
 
-    async def _broadcast(self, message_type: str, payload: Optional[dict] = None) -> None:
+    async def _broadcast(self, message_type: str, payload: Optional[dict] = None):
         """
         Sendet eine Nachricht an alle Clients.
 
         :param message_type: Der Typ der Nachricht.
         :param payload: (Optional) Die Nutzdaten der Nachricht.
         """
-        if payload is None:
-            payload = {}
         for player in self._players:
             if isinstance(player, Client):
                 await player.notify(message_type, payload)
+
+    async def _broadcast_error(self, message: str, code: ErrorCode, context: Optional[Dict] = None):
+        """
+        Sendet eine Fehlermeldung an alle Clients.
+
+        :param message: Die Fehlermeldung.
+        :param code: Der Fehlercode.
+        :param context: (Optional) Zusätzliche Informationen.
+        """
+        for player in self._players:
+            if isinstance(player, Client):
+                await player.error(message, code, context)
 
     # ------------------------------------------------------
     # Eigenschaften

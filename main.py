@@ -11,6 +11,8 @@ Dieses Modul öffnet eine Arena und lässt Agenten gegeneinander spielen.
 
 import argparse
 import config
+from src.players.agent import Agent
+
 config.LOG_LEVEL = "WARNING"
 
 from src.common.git_utils import get_release
@@ -24,7 +26,7 @@ agent_classes = {
     "RandomAgent": RandomAgent,
 }
 
-def create_agent(class_name):
+def create_agent(class_name) -> Agent:
     """
     Erzeugt anhand der Klasse eine Agent-Instanz.
 
@@ -46,8 +48,7 @@ def main(args: argparse.Namespace):
     print(f"Verfügbare CPU-Kerne: {Arena.cpu_count()}")
     print(f"Eingesetzte Worker: {args.worker}")
     print(f"Maximale Anzahl zu spielende Partien: {args.max_games}")
-    print("Los gehts...")
-    #logger.debug('Los gehts')
+    print("--- Los gehts ---")
 
     # Wettkampf durchführen
     arena = Arena(agents=agents, max_games=args.max_games, worker=args.worker, verbose=args.verbose)
@@ -61,11 +62,12 @@ def main(args: argparse.Namespace):
     print(f"Zeit/Runde: {arena.seconds * 1000 / arena.rounds:5.3f} ms")
     print(f"Runden/Partie: {arena.rounds / arena.games:2.1f}")
     print(f"Stiche/Runde: {arena.tricks / arena.rounds:2.1f}")
-    print("\nBewertung")
+    print("--- Ergebnis ---")
     wins, lost, draws = arena.rating
     print(f"Team 20 gewonnen: {wins:>5d} - {wins * 100 / arena.games:4.1f} %")
     print(f"Team 31 gewonnen: {lost:>5d} - {lost * 100 / arena.games:4.1f} %")
     print(f"Unentschieden:    {draws:>5d} - {draws * 100 / arena.games:4.1f} %")
+    print("")
 
 
 if __name__ == "__main__":

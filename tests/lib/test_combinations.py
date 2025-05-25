@@ -1,24 +1,3 @@
-# tests/test_combinations.py
-"""
-Tests für src.lib.combinations.
-
-Zusammenfassung der Tests für combinations:
-- Kombinationen-Ermittlung (`get_figure`):
-    - Korrekte Bestimmung von Typ, Länge und Rang für verschiedene gültige Kartenkombinationen (Singles, Paare, Drillinge, Treppen, Full Houses, Straßen, 4er-Bomben).
-    - Korrekte Handhabung des SINGLE-16 bei der Rangkalkulation (z.B. bei Einzelkarte, Paaren, Straßen).
-    - Hinweis: Testet nicht explizit Farbbomben, da `get_figure` die Farbe nicht primär prüft (dies geschieht in `build_combinations`).
-- Kombinationen-Generierung (`build_combinations`):
-    - Sicherstellung, dass für Beispielhände bekannte, gültige Kombinationen generiert werden.
-    - Korrekte Berücksichtigung des SINGLE-16 bei der Generierung von Paaren, Drillingen, Treppen etc.
-    - Erkennung von Bomben (4er).
-- Aktionsraum-Erstellung (`build_action_space`):
-    - Korrekte Erstellung des erlaubten Aktionsraums beim Anspiel (alle Handkombinationen, kein Passen).
-    - Korrekte Erstellung des Aktionsraums, wenn eine Kombination geschlagen werden muss (nur passende Typen/Längen mit höherem Rang oder Bomben + Passen).
-    - Korrekte Filterung des Aktionsraums, wenn ein (erfüllbarer oder unerfüllbarer) Wunsch aktiv ist.
-- Validierung (`validate_figure`):
-    - Überprüfung, ob Tupel aus (Typ, Länge, Rang) gültigen Tichu-Kombinationen entsprechen.
-"""
-
 import pytest
 # noinspection PyProtectedMember
 from src.lib.combinations import *
@@ -40,9 +19,6 @@ def find_combination(target_cards: Cards, combinations_list: List[Tuple[Cards, C
         if sorted(cards) == target_sorted:
             return combi
     return None
-
-
-# --- Tests für get_figure ---
 
 @pytest.mark.parametrize("cards_str, trick_value, expected_figure", [
     # Singles
@@ -96,8 +72,6 @@ def test_get_figure_color_bomb_type():
      cards = parse_cards("S5 S6 S7 S8 S9") # 5 Karten aufsteigend, gleiche Farbe
      assert get_figure(list(cards), 0) == (CombinationType.BOMB, 5, 9)
 
-# --- Tests für build_combinations ---
-
 def test_build_combinations_simple():
     """Testet die Generierung von Kombinationen für eine einfache Hand."""
     hand = parse_cards("S5 G5 S6 B6 S7") # Zwei Paare, eine Single
@@ -141,8 +115,6 @@ def test_build_combinations_bomb():
     hand = parse_cards("S5 G5 B5 R5 S6") # 4er-Bombe 5, Single 6
     combis = build_combinations(hand)
     assert find_combination(parse_cards("S5 G5 B5 R5"), combis) == (CombinationType.BOMB, 4, 5)
-
-# --- Tests für build_action_space ---
 
 # Fixture für eine Beispielhand und daraus resultierende Kombinationen
 @pytest.fixture
@@ -232,8 +204,6 @@ def test_action_space_wish_unfulfillable(sample_hand_and_combis):
     # Da Wunsch nicht erfüllbar, ist der normale Action Space für Anspiel aktiv
     assert FIGURE_PASS_TUPLE not in action_space
     assert len(action_space) == len(combis) # Alle Kombis der Hand
-
-# --- Tests für validate_figure --- (Beispielhaft)
 
 @pytest.mark.parametrize("figure, expected_valid", [
     (FIGURE_PASS, True),

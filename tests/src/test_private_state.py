@@ -1,20 +1,7 @@
-# tests/test_private_state.py
-"""
-Tests für die PrivateState-Datenklasse.
-
-Zusammenfassung der Tests für PrivateState:
-- Initialisierung:
-    - Überprüfung der korrekten Standardwerte (Index, leere Listen für Karten/Caches).
-- Cache-Verhalten:
-    - Sicherstellung, dass das Setzen von `hand_cards` die Caches für Kombinationen und Partitionen leert/zurücksetzt.
-    - Überprüfung, ob der Zugriff auf die Properties `combinations` und `partitions` den jeweiligen Cache füllt und bei erneutem Zugriff wiederverwendet.
-- Serialisierung (`to_dict`):
-    - Korrekte Umwandlung des privaten Zustands in ein Dictionary (Index, Handkarten, Schupf-Karten).
-- Berechnete Properties:
-    - Korrekte Berechnung der Indizes für Partner und Gegner.
-"""
 
 import pytest
+from unittest.mock import create_autospec, patch
+from src.lib.combinations import CombinationType
 from src.private_state import PrivateState
 from src.lib.cards import parse_cards
 
@@ -33,6 +20,25 @@ def test_private_state_initialization(initial_priv_state):
     assert priv._combination_cache == []
     assert priv._partition_cache == []
     assert priv._partitions_aborted is True
+
+def test_reset_round(initial_priv_state):
+    """Testet das Zurücksetzen eines PrivateState für eine neue Runde."""
+    priv = initial_priv_state
+
+    # Zustand "verschmutzen"
+    priv.player_index = 3
+    priv.hand_cards = parse_cards("S5 G5")
+    priv.given_schupf_cards = (2, 2), (2, 3), (2, 4)
+    priv.given_schupf_cards = (3, 2), (3, 3), (3, 4)
+
+    # Reset durchführen
+    priv.reset_round()
+
+    # Prüfen, ob die Werte korrekt zurückgesetzt wurden
+    assert priv.player_index == 3  # darf nicht zurückgesetzt werden
+    assert priv.hand_cards == []
+    assert priv.given_schupf_cards is None
+    assert priv.received_schupf_cards is None
 
 def test_private_state_hand_cards_setter_clears_cache(initial_priv_state):
     """Testet, ob das Setzen der Handkarten die Caches leert."""
@@ -102,7 +108,6 @@ def test_private_state_combinations_property(initial_priv_state):
     assert len(new_combis) == 1
     assert new_combis[0][0] == parse_cards("S2")
 
-
 # Ein Test für Partitions ist schwierig, da die Logik komplex ist.
 # Man könnte testen, ob der Cache befüllt wird.
 def test_private_state_partitions_property(initial_priv_state):
@@ -125,24 +130,60 @@ def test_private_state_partitions_property(initial_priv_state):
     partitions_cached = priv.partitions
     assert partitions_cached is partitions
 
-def test_reset_round(initial_priv_state):
-    """Testet das Zurücksetzen eines PrivateState für eine neue Runde."""
-    priv = initial_priv_state
+# -------------------------------------------------
+# test_has_bomb mit drei verschiedene Techniken
 
-    # Zustand "verschmutzen"
-    priv.player_index = 3
-    priv.hand_cards = parse_cards("S5 G5")
-    priv.given_schupf_cards = (2, 2), (2, 3), (2, 4)
-    priv.given_schupf_cards = (3, 2), (3, 3), (3, 4)
+# Variante a) Mit create_autospec ein Mock-Objekt von PrivateState erstellen.
 
-    # Reset durchführen
-    priv.reset_round()
+@pytest.mark.parametrize(
+    "combinations, expected",
+    [
+        ([([], (CombinationType.BOMB, 4, 12))], True),
+        ([([], (CombinationType.TRIPLE, 3, 11))], False),
+        ([], False),
+    ],
+)
+def test_has_bomb_with_autospec(combinations, expected):
+    """
+    Test für Property has_bomb.
+    """
+    mock_private_state = create_autospec(PrivateState, instance=True)
+    type(mock_private_state).combinations = combinations
+    type(mock_private_state).has_bomb = PrivateState.has_bomb
+    assert mock_private_state.has_bomb is expected
 
-    # Prüfen, ob die Werte korrekt zurückgesetzt wurden
-    assert priv.player_index == 3  # darf nicht zurückgesetzt werden
-    assert priv.hand_cards == []
-    assert priv.given_schupf_cards is None
-    assert priv.received_schupf_cards is None
+# Variante b) Mock-Klasse durch Vererbung erstellen
+
+class MockPrivateState(PrivateState):
+    def __init__(self, combinations):
+        self.hand_cards = []
+        self._combination_cache = combinations or []
+
+@pytest.mark.parametrize(
+    "combinations, expected",
+    [
+        ([([], (CombinationType.BOMB, 4, 12))], True),
+        ([([], (CombinationType.TRIPLE, 3, 11))], False),
+        ([], False),
+    ],
+)
+def test_has_bomb_with_mock_class(combinations, expected):
+    """
+    Test für Property has_bomb.
+    """
+    state = MockPrivateState(combinations)
+    assert state.has_bomb == expected
+
+@patch("src.private_state.build_combinations")
+def test_has_bomb_with_mocked_build_partitions(mock_build_combinations):
+    """
+    Test für Property has_bomb.
+    Variante c) build_partitions patchen.
+    """
+    mock_build_combinations.return_value = [([], (CombinationType.BOMB, 4, 12))]
+    priv = PrivateState(player_index=1)
+    priv._hand_cards = [(2,2)]
+    assert priv.has_bomb is True
 
 # -------------------------------------------------------
 # Alte Tests (ursprünglich mit unittest geschrieben)

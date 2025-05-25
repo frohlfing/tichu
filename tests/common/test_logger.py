@@ -1,25 +1,3 @@
-# tests/test_logger.py
-"""
-Tests für src.common.logger.
-
-Zusammenfassung der Tests für Logger:
-- `AnsiColorizer`:
-    - Korrektes Schreiben der Farbcodes in einen Stream.
-    - Korrekte Handhabung von unbekannten Farben (Fallback auf Default).
-    - Funktion des `supported()`-Checks (gemockt für TTY/no-TTY).
-- `ColorStreamHandler`:
-    - Korrekte Auswahl der Farbe basierend auf dem Log-Level des Records.
-    - Korrektes Emittieren der formatierten Nachricht mit Farbcodes in den Stream.
-- Globale Logger-Konfiguration (Smoke Tests):
-    - Überprüfung der Existenz des globalen `logger`-Objekts nach dem Import.
-    - Überprüfung, ob das Log-Level des Loggers dem aus `config` entspricht.
-    - Überprüfung, ob die erwarteten Handler (File, Console) am Logger registriert sind.
-- Handler-Konfiguration (Stichproben):
-    - Überprüfung grundlegender Einstellungen der registrierten Handler (Level, Stream/Dateiname, Formatter, backupCount).
-- Basis-Logging:
-    - Sicherstellung, dass Aufrufe wie `logger.info()` die interne `handle`-Methode des Loggers mit dem korrekten LogRecord auslösen (Level-Filterung wird hierbei auch implizit geprüft).
-"""
-
 import pytest
 import logging
 import sys
@@ -34,8 +12,6 @@ from src.common.logger import logger, AnsiColorizer, ColorStreamHandler
 
 # Importiere config, um es evtl. zu mocken
 import config
-
-# === Tests für AnsiColorizer ===
 
 @pytest.fixture
 def mock_stream():
@@ -62,10 +38,6 @@ def test_ansi_colorizer_write(_mock_supported, mock_stream):
 def test_ansi_colorizer_supported_no_tty(_mock_isatty):
     """Testet, ob supported() False zurückgibt, wenn kein TTY vorhanden ist."""
     assert AnsiColorizer.supported(sys.stdout) is False
-
-# Weitere Tests für supported() mit/ohne curses sind komplexer und plattformabhängig.
-
-# === Tests für ColorStreamHandler ===
 
 @pytest.fixture
 def color_stream_handler(mock_stream):

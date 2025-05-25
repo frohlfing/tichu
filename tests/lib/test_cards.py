@@ -1,21 +1,3 @@
-# tests/test_cards.py
-"""
-Tests für src.lib.cards.
-
-Zusammenfassung der Tests für cards:
-- Konvertierung:
-    - String-zu-Karte (`parse_cards`) und Karte-zu-String (`stringify_cards`).
-    - Umwandlung von Kartenlisten in Vektorrepräsentationen (`ranks_to_vector`, `cards_to_vector`).
-- Punktberechnung:
-    - Korrekte Berechnung der Summe der Kartenpunkte (`sum_card_points`), inklusive der Sonderkarten Drache und Phönix.
-- Kartenlogik:
-    - Korrekte Prüfung, ob ein gewünschter Kartenwert in einer Hand enthalten ist (`is_wish_in`).
-    - Korrekte Ermittlung der im Deck fehlenden Karten anhand einer Hand (`other_cards`).
-- Validierung:
-    - Sicherstellung, dass ungültige Kartennamen beim Parsen Fehler auslösen.
-    - Testen von Randfällen wie leeren Listen/Strings.
-"""
-
 import pytest
 # noinspection PyProtectedMember
 from src.lib.cards import _deck_index, _cardlabels, _cardlabels_index

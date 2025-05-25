@@ -1,21 +1,3 @@
-# tests/test_public_state.py
-"""
-Tests für die PublicState-Datenklasse.
-
-Zusammenfassung der Tests für PublicState:
-- Initialisierung:
-    - Überprüfung der korrekten Standardwerte aller Felder nach der Instanziierung.
-- Serialisierung (`to_dict`):
-    - Korrekte Umwandlung des Zustands in ein Dictionary.
-    - Korrekte Formatierung von Karten (Strings), Kombinationen (Enum-Namen) und der Stich-Historie (`tricks`).
-- Berechnete Properties:
-    - Korrekte Berechnung von `count_active_players`.
-    - Korrekte Berechnung von `points_per_team`.
-    - Korrekte Berechnung von `total_score`.
-    - Korrekte Erkennung, ob das Spiel beendet ist (`is_game_over`).
-    - (Implizit über Initialisierung/to_dict: Struktur von `tricks` als Liste von Listen von Spielzügen).
-"""
-
 import pytest
 from src.public_state import PublicState
 from src.lib.cards import parse_cards
@@ -88,8 +70,6 @@ def test_public_state_to_dict(initial_pub_state):
     assert pub_dict["tricks"][0][0] == (0, "S5 G5", ("PAIR", 2, 5))
     # Prüfe den zweiten Spielzug (Passen)
     assert pub_dict["tricks"][0][1] == (1, "", ("PASS", 0, 0))
-
-# --- Tests für Properties (Beispiele) ---
 
 def test_public_state_count_active_players(initial_pub_state):
     """Testet die Zählung aktiver Spieler."""
