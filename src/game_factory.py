@@ -67,7 +67,7 @@ class GameFactory:
         """
         Gibt die GameEngine-Instanz zurück, die den Spieler mit der gegebenen Session verwaltet.
         :param session: Die Session des Spielers.
-        :return: Die GameEngine-Instanz falls die Session existiert, sonst None.
+        :return: Die GameEngine-Instanz, falls die Session existiert, sonst None.
         """
         for engine in self._engines.values():
             for p in engine.players:

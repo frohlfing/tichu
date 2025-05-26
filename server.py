@@ -59,6 +59,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
+        if not await engine.rejoin_client(client):
         logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich wiederverbunden.")
     else:
         try:
@@ -74,16 +75,9 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
-        logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {client.index} zugeordnet.")
+        logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {client.priv.player_index} zugeordnet.")
 
-    # --- 4) Spieler begrüßen und dabei den aktuellen Spielzustand mitteilen. ---
-    if not client.welcome(engine.public_state, engine.private_states[client.index]):
-        error_message = f"Fehler bei de Begrüßung des Spielers {client.name} am Tisch '{engine.table_name}'."
-        logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
-        await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
-        return ws
-
-    # --- 5) So lange Nachrichten von der WebSocket verarbeiten, bis die Verbindung abbricht oder der Client absichtlich geht. ---
+    # 4) So lange Nachrichten von der WebSocket verarbeiten, bis die Verbindung abbricht oder der Client absichtlich geht.
     try:
         msg: WSMessage
         async for msg in ws:
@@ -170,7 +164,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
     except Exception as e:  # fängt unerwartete Fehler während der Verbindung oder im Handler ab
         logger.exception(f"Unerwarteter Fehler in der Nachrichtenschleife für {client.name} von {remote_addr}: {e}")
 
-    # --- 6) Bei Verbindungsabbruch etwas warten, vielleicht schlüpft der Client erneut in sein altes Ich. Ansonsten WebSocket-Verbindung serverseitig schließen. ---
+    # 5) Bei Verbindungsabbruch etwas warten, vielleicht schlüpft der Client erneut in sein altes Ich. Ansonsten WebSocket-Verbindung serverseitig schließen.
     if ws.closed:  # not client.is_connected:
         # Verbindungsabbruch
         logger.info(f"{engine.table_name}, Spieler {client.name}: Verbindungsabbruch. Starte Kick-Out-Timer...")
@@ -187,8 +181,8 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         except Exception as close_e:
             logger.exception(f"Fehler beim expliziten Schließen des WebSockets für {remote_addr}: {close_e}")
 
-    # --- 7) Wenn es noch menschliche Mitspieler gibt, einen Fallback-Agent einsetzen, ansonst Tisch schließen. ---
-    client_exists = any(isinstance(p, Client) for p in engine.players if p.index != client.index)
+    # 6) Wenn es noch menschliche Mitspieler gibt, einen Fallback-Agent einsetzen, ansonst Tisch schließen.
+    client_exists = any(isinstance(p, Client) for p in engine.players if p.session_id != client.session_id)
     if client_exists:
         try:
             await engine.leave_client(client)  # der Fallback-Agent spielt jetzt weiter

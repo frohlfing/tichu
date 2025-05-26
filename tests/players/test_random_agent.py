@@ -14,6 +14,7 @@ Zusammenfassung der Tests für RandomAgent:
 - Reproduzierbarkeit (implizit durch `random_agent_seeded`):
     - Verwendung eines Agenten mit festem Seed ermöglicht prinzipiell reproduzierbare Testergebnisse für spezifische Zufallswahlen (obwohl hier primär Typen/Grenzen getestet werden).
 """
+from unittest.mock import patch
 
 import pytest
 from src.public_state import PublicState
@@ -93,7 +94,7 @@ async def test_random_agent_announce(random_agent_unseeded, public_state_fixture
     agent = random_agent_unseeded
     agent.index = private_state_fixture.player_index
 
-    result = await agent.announce_grand_tichu(public_state_fixture, private_state_fixture, grand=grand)
+    result = await agent.announce(public_state_fixture, private_state_fixture)
     assert isinstance(result, bool)
 
 @pytest.mark.asyncio
@@ -117,7 +118,7 @@ async def test_random_agent_play(random_agent_seeded, public_state_fixture, priv
     private_state_fixture.hand_cards = parse_cards("S2 B2 S3 G3")
 
     # Rufe play auf
-    chosen_action = await agent.play(public_state_fixture, private_state_fixture, action_space)
+    chosen_action = await agent.play(public_state_fixture, private_state_fixture)
 
     # Prüfungen:
     # 1. Korrekter Typ?
@@ -132,15 +133,15 @@ async def test_random_agent_play(random_agent_seeded, public_state_fixture, priv
     assert chosen_action in action_space
 
 @pytest.mark.asyncio
-async def test_random_agent_play_empty_action_space_raises_error(random_agent_seeded, public_state_fixture, private_state_fixture):
+@patch("src.players.random_agent.build_action_space")
+async def test_random_agent_play_empty_action_space_raises_error(mock_build_action_space, random_agent_seeded, public_state_fixture, private_state_fixture):
     """Testet, dass RandomAgent.play bei leerem Action Space einen Fehler wirft."""
     agent = random_agent_seeded
     agent.index = private_state_fixture.player_index
-    empty_action_space = []
-
+    mock_build_action_space.return_value = []
     # Erwarte einen ValueError, da random.integer(0, 0) oder random.choice([]) fehlschlägt
     with pytest.raises(ValueError):
-       await agent.play(public_state_fixture, private_state_fixture, empty_action_space)
+       await agent.play(public_state_fixture, private_state_fixture)
 
 @pytest.mark.asyncio
 async def test_random_agent_wish(random_agent_unseeded, public_state_fixture, private_state_fixture):
@@ -163,8 +164,8 @@ async def test_random_agent_give_dragon_away(random_agent_unseeded, public_state
     agent.index = private_state_fixture.player_index # Spieler 1
 
     possible_opponents = {
-        agent.opponent_left_index, # Spieler 0
-        agent.opponent_right_index # Spieler 2
+        agent.priv.opponent_left_index, # Spieler 0
+        agent.priv.opponent_right_index # Spieler 2
     }
 
     chosen_opponents = set()
@@ -205,14 +206,15 @@ async def test_schupf(agent, pub, priv):
     assert result == tuple(parse_cards("S4 B3 G4"))
 
 async def test_announce(agent, pub, priv):
-    result = await agent.announce_grand_tichu(pub, priv)
+    result = await agent.announce(pub, priv)
     assert result in [True, False]
 
-async def test_play(agent, pub, priv):
+@patch("src.players.random_agent.build_action_space")
+async def test_play(mock_build_action_space, agent, pub, priv):
     #List[Tuple[Cards, Combination]]
-    action_space = [([(CombinationType.SINGLE, 3, 2)], (CombinationType.SINGLE, 1, 3)), ([], (CombinationType.PASS, 0, 0))]
-    result = await agent.play(pub, priv, action_space)
-    assert result in action_space
+    mock_build_action_space.return_value = [([(CombinationType.SINGLE, 3, 2)], (CombinationType.SINGLE, 1, 3)), ([], (CombinationType.PASS, 0, 0))]
+    result = await agent.play(pub, priv)
+    assert result in mock_build_action_space.return_value
 
 async def test_wish(agent, pub, priv):
     result = await agent.wish(pub, priv)
@@ -220,5 +222,5 @@ async def test_wish(agent, pub, priv):
 
 async def test_give_dragon_away(agent, pub, priv):
     result = await agent.give_dragon_away(pub, priv)
-    assert result in [agent.opponent_right_index, agent.opponent_left_index]
-    assert result in [priv.opponent_right_index, priv.opponent_left_index]
+    assert result in [agent.priv.opponent_right_index, agent.priv.opponent_left_index]
+    assert result in [priv.priv.opponent_right_index, priv.priv.opponent_left_index]

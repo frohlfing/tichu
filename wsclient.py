@@ -77,31 +77,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
 
                 # Proaktive Nachrichten vom Server
 
-                if msg_type == "welcome":  # snake_case
-                    session_id = payload.get("session_id")
-                    public_state: dict = payload.get("public_state", {})
-                    private_state: dict = payload.get("private_state", {})
-                    print(f"--- ERFOLGREICH BEIGETRETEN ---")
-                    print(f"  Session ID: {session_id}")
-                    print(f"  Tischname: {public_state.get('table_name', 'N/A')}, Spieler: {public_state.get('player_names', [])}")
-                    print(f"  Dein Spieler-Index: {private_state.get("player_index", "N/A")}")
-                    print(f"  Deine Handkarten: {private_state.get('hand_cards', 'N/A')}")
-                    # neue Session-ID speichern
-                    save_session_id(session_id)
-
-                elif msg_type == "deal_cards":
-                    hand_cards = payload.get("hand_cards")
-                    print(f"--- KARTEN ERHALTEN ({len(hand_cards)}) ---")
-                    print(f"  Deine Handkarten: {hand_cards if hand_cards else 'Keine'}")
-
-                elif msg_type == "deal_schupf_cards":
-                    received = payload.get("received_cards", {})
-                    print(f"--- SCHUPF-KARTEN ERHALTEN ---")
-                    print(f"  Vom rechten Gegner: {received.get('from_opponent_right', 'N/A')}")
-                    print(f"  Vom Partner: {received.get('from_partner', 'N/A')}")
-                    print(f"  Vom linken Gegner: {received.get('from_opponent_left', 'N/A')}")
-
-                elif msg_type == "request":
+                if msg_type == "request":
                     last_request_id = payload.get("request_id", "")
                     action_to_perform = payload.get("action")
                     _public_state = payload.get("public_state", {})
@@ -113,10 +89,20 @@ async def receive_messages(ws: ClientWebSocketResponse):
 
                 elif msg_type == "notification":  # Benachrichtigung an alle Spieler
                     event = payload.get("event")
-                    event_data = payload.get("data", {})
+                    context = payload.get("context", {})
                     print(f"--- SERVER BENACHRICHTIGUNG ---")
                     print(f"  Event: {event}")
-                    print(f"  Daten: {json.dumps(event_data)}")
+                    print(f"  Context: {json.dumps(context)}")
+                    if event == "player_joined" and "session_id" in context:
+                        session_id = payload.get("session_id")
+                        public_state: dict = payload.get("public_state", {})
+                        private_state: dict = payload.get("private_state", {})
+                        print(f"  Session ID: {session_id}")
+                        print(f"  Tischname: {public_state.get('table_name', 'N/A')}, Spieler: {public_state.get('player_names', [])}")
+                        print(f"  Dein Spieler-Index: {private_state.get("player_index", "N/A")}")
+                        print(f"  Deine Handkarten: {private_state.get('hand_cards', 'N/A')}")
+                        # neue Session-ID speichern
+                        save_session_id(session_id)
 
                 elif msg_type == "error":
                     error_message = payload.get("message")

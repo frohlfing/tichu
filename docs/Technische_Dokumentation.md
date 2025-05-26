@@ -17,12 +17,12 @@
     1.  [Technologie-Stack](#31-technologie-stack)
     2.  [Klassenhierarchie](#32-klassenhierarchie)
     
-4.  [Modulübersicht und Verzeichnisse](#4-modulübersicht-und-verzeichnisse)  todo Verzeichnisstruktur zum Anhang packen
+4.  [Modulübersicht und Verzeichnisse](#4-modulübersicht-und-verzeichnisse) TODO Verzeichnisstruktur zum Anhang packen
     1.  [`src/`-Verzeichnis](#41-src-verzeichnis)
     2.  [`tests/`-Verzeichnis](#42-tests-verzeichnis)
     3.  [Start-Skripte](#43-start-skripte)
 
-5. [Daten, Konstanten, Typen](#5-daten-konstanten-typen)  todo zur ersten Ausbaustufe packen
+5. [Daten, Konstanten, Typen](#5-daten-konstanten-typen) TODO zur ersten Ausbaustufe packen
     1.  [Datenklassen](#51-datenklassen)
     2.  [Karte](#52-karte)
     3.  [Kombination](#53-kombination)
@@ -41,7 +41,7 @@
         1.  [Request-/Response-Nachrichten](#721-request-response-nachrichten)
         2.  [Notification-Nachrichten](#722-notification-nachrichten)
         3.  [Fehlermeldungen](#723-fehlermeldungen)
-    3.  [Verantwortlichkeiten der Komponenten im Live-Betrieb](#73-aufgaben-der-komponenten-im-live-betrieb)
+    3.  [Verantwortlichkeiten der Komponenten im Live-Betrieb](#73-aufgaben-der-komponenten-im-server-betrieb)
         1.  [WebSocket-Handler](#731-websocket-handler)
         2.  [Game-Factory](#732-game-factory)
         3.  [Game-Engine](#733-game-engine)
@@ -51,24 +51,22 @@
 
 **ANHANG**
 
-9.  [Entwicklungsumgebung](#9-entwicklungsumgebung)
-    1.  [Systemanforderungen](#91-systemanforderungen)
-    2.  [Einrichtung](#92-einrichtung)
-    3.  [Testing](#93-testing)
-    
-10. [Reserviert](#10-reserviert)
+A1.  [Entwicklungsumgebung](#a1-entwicklungsumgebung)
+    1.  [Systemanforderungen](#a11-systemanforderungen)
+    2.  [Einrichtung](#a12-einrichtung)
+    3.  [Testing](#a13-testing)
 
-11. [Exceptions](#11-exceptions)
+A2. [Exceptions](#a2-exceptions)
 
-12. [Versionsnummer](#12-versionsnummer)
-    1. [Release auf Github erstellen](#121-release-auf-github-erstellen)
+A3. [Versionsnummer](#a3-versionsnummer)
+    1. [Release auf Github erstellen](#a31-release-auf-github-erstellen)
     
-13. [Styleguide](#13-styleguide)
-    1. [Docstrings](#131-docstrings)
-    2. [Namenskonvention](#132-namenskonvention)
-    3. [Type-Hints](#133-type-hints)
+A4. [Styleguide](#a4-styleguide)
+    1. [Docstrings](#a41-docstrings)
+    2. [Namenskonvention](#a42-namenskonvention)
+    3. [Type-Hints](#a43-type-hints)
     
-14. [Glossar](#14-glossar)
+A4. [Glossar](#a5-glossar)
 
 ---
 
@@ -308,15 +306,12 @@ Der WebSocket-Handler bearbeitet diese Nachrichten direkt oder leitet sie weiter
 
 | Type                        | Payload                                                                                           | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                                        |
 |-----------------------------|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|----------------------------------------------------------------------|
-| `"welcome"`                 | `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}`              | Der Spieler hat sich an den Tisch gesetzt bzw. ist (bzw. ist nach einem Verbindungsabbruch wieder zurück).  | keine Antwort              |                                                                      |
-| `"deal_cards"`              | `{hand_cards: str}`                                                                               | Eine neue Runde hat begonnen und der jeweilige Spieler hat seine Handkarten bekommen (erst 8 dann alle 14). | keine Antwort              |                                                                      |
-| `"deal_schupf_cards"`       | `{from_opponent_right: str, from_partner: str, from_opponent_left: str}`                          | Die Tauschkarten wurden an den jeweiligen Spieler abgegeben.                                                | keine Antwort              |                                                                      |
+| `"request"`  (s. 7.2.1)     | `{request_id: uuid, action: str, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Server fordert den Spieler auf, eine Entscheidung zu treffen.                                           | `"response"`               | `{request_id: uuid (aus der Request-Nachrich), response_data: dict}` | 
 | `"notification"` (s. 7.2.2) | `{event: str, context: dict (optional)}`                                                          | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort              |                                                                      |
 | `"error"` (s. 7.2.3)        | `{message: str, code: int, context: dict (optional)`                                              | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort              |                                                                      |
-| `"request"`  (s. 7.2.1)     | `{request_id: uuid, action: str, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Server fordert den Spieler auf, eine Entscheidung zu treffen.                                           | `"response"`               | `{request_id: uuid (aus der Request-Nachrich), response_data: dict}` | 
 
 Anmerkung zur `request`-Nachricht:
-*   Der aktuelle Spielzustand sollte dem Spieler eigentlich bekannt sein, sofern er keine Notification-Nachrichten verpasst und entsprechend den Zustand angepasst hat.
+*   Der aktuelle Spielzustand sollte dem Spieler eigentlich bekannt sein, sofern er keine Nachrichten verpasst und entsprechend den Zustand angepasst hat.
     Sollte dies (warum auch immer) mal nicht der Fall sein, würde der Spieler, der sich auf seinen intern gespeicherten Zustand verlässt, u.U. eine ungültige Antwort liefern. 
     Eine Fehlerroutine müsste dann den intern gespeicherten Spielzustand mit dem aktuellen abgleichen. Wir vermeiden dieses Synchronisationsproblem ganz einfach, indem wir bei 
     jeder Anfrage stets den aktuellen Zustand mitsenden, so dass der Spieler sich abgleichen kann, bevor er antwortet. 
@@ -326,33 +321,43 @@ Anmerkung zur `request`-Nachricht:
 
 | Request Action (vom Server) | Response Data (vom Spieler)                                        | Beschreibung                                                                                               |
 |-----------------------------|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| "announce"                  | `{announced: bool}`                                                | Der Spieler wird gefragt, ob er ein Tichu (je nach Spielphase normales oder großes) ansagen will.          |
+| "announce_grand_tichu"      | `{announced: bool}`                                                | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                             |
 | "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}` | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden. |
 | "play"                      | `{cards: str}` oder `{cards: ""}` (für passen)                     | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.  |
 | "wish"                      | `{wish_value: int}`                                                | Der Spieler muss sich einen Kartenwert wünschen.                                                           |
 | "give_dragon_away"          | `{player_index: int}`                                              | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
 
+Wird die Antwort vom Spieler akzeptiert, wird eine entsprechende [Notification-Nachricht](#722-notification-nachrichten) gesendet.
+Andernfalls sendet der Server eine Error-Nachricht zurück. 
+
+Die Anfragen des Servers, ob der Spieler ein normales Tichu ansagen möchte, oder ob er eine Bombe werfen will, werden nicht an den realen Spieler weitergereicht, denn diese Entscheidungen trifft der reale Spieler proaktiv (im Gegensatz zur KI, die immer explizit gefragt wird).
+
 #### 7.2.2 Notification-Nachrichten
 
 Benachrichtigung an alle Spieler
 
-| Notification Event      | Notification Context                                                | Beschreibung                                                                                |
-|-------------------------|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| "player_joined"         | `{player_index: int, player_name: str}`                             | Der Spieler spielt jetzt mit.                                                               |
-| "player_left"           | `{player_index: int, replaced_by_name: str}`                        | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                             |
-| "lobby_update"          | `{action: "assign_team", team: list}` oder `{action: "start_game"}` | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
-| "grand_tichu_announced" | `{player_index: int, announced: bool}`                              | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.                                   |
-| "player_schupfed"       | `{player_index: int}`                                               | Der Spieler hat drei Karten zum Tausch abgegeben.                                           |
-| "tichu_announced"       | `{player_index: int}`                                               | Der Spieler hat ein normales Tichu angesagt.                                                |
-| "bombed"                | `{player_index: int}`                                               | Der Spieler hat eine Bombe geworfen.                                                        |
-| "passed"                | `{player_index: int}`                                               | Der Spieler hat hat gepasst.                                                                |
-| "played"                | `{player_index: int, cards: str}`                                   | Der Spieler hat Karten ausgespielt.                                                         |
-| "wish_made"             | `{wish_value: int}`                                                 | Ein Kartenwert wurde sich gewünscht.                                                        |
-| "wish_fulfilled"        |                                                                     | Der Wunsch wurde erfüllt.                                                                   |
-| "trick_taken"           | `{player_index: int}`                                               | Der Spieler hat den Stich kassiert.                                                         |
-| "player_turn_changed"   | `{current_turn_index: int}`                                         | Der Spieler ist jetzt am Zug.                                                               |
-| "round_over"            | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Karten werden neu gemischt.                                    |
-| "game_over"             | `{game_score: (list, list), is_double_victory: bool}`               | Die Runde ist vorbei und die Partie ist entschieden.                                        |
+| Notification Event      | Notification Context                                                                                                              | Beschreibung                                                                                |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| "player_joined"         | `{player_index: int, player_name: str}` (->) `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Spieler spielt jetzt mit.                                                               |
+| "player_left"           | `{player_index: int, replaced_by_name: str}`                                                                                      | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                             |
+| "lobby_update"          | `{action: "assign_team", team: list}` oder `{action: "start_game"}`                                                               | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
+| "hand_cards_dealt"      | `{count: int}` -> `{hand_cards: str}`                                                                                             | Handkarten wurden an die Spieler verteilt.                                                  |
+| "grand_tichu_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.                                   |
+| "tichu_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein normales Tichu angesagt.                                                |
+| "player_schupfed"       | `{player_index: int}`                                                                                                             | Der Spieler hat drei Karten zum Tausch abgegeben.                                           |
+| "schupf_cards_dealt"    | `None` -> `{received_schupf_cards: str}`                                                                                          | Die Tauschkarten wurden an die Spieler verteilt.                                            |
+| "passed"                | `{player_index: int}`                                                                                                             | Der Spieler hat hat gepasst.                                                                |
+| "played"                | `{player_index: int, cards: str}`                                                                                                 | Der Spieler hat Karten ausgespielt.                                                         |
+| "bombed"                | `{player_index: int, cards: str}`                                                                                                 | Der Spieler hat eine Bombe geworfen.                                                        |
+| "wish_made"             | `{wish_value: int}`                                                                                                               | Ein Kartenwert wurde sich gewünscht.                                                        |
+| "wish_fulfilled"        |                                                                                                                                   | Der Wunsch wurde erfüllt.                                                                   |
+| "trick_taken"           | `{player_index: int}`                                                                                                             | Der Spieler hat den Stich kassiert.                                                         |
+| "player_turn_changed"   | `{current_turn_index: int}`                                                                                                       | Der Spieler ist jetzt am Zug.                                                               |
+| "round_over"            | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Karten werden neu gemischt.                                    |
+| "game_over"             | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Partie ist entschieden.                                        |
+
+"->" bedeutet, dass der Client den vom Server gesendeten Kontext mit privaten Informationen des Spielers anreichert, bevor er es über die Websocket an den Spieler weiterleitet.
+Bei "played_joined" wird der Context nur geändert, wenn es sich um den eigenen Spieler handelt.
 
 ### 7.2.3. Fehlermeldungen
 
@@ -439,14 +444,16 @@ Benachrichtigung an alle Spieler
 7) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
 8) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
 
-## 9. Entwicklungsumgebung
+# Anhang 
 
-### 9.1 Systemanforderungen
+## A1. Entwicklungsumgebung
+
+### A1.1 Systemanforderungen
 
 *   **Entwicklung:** Windows 11, Python >= 3.11.
 *   **Produktivbetrieb (geplant):** Raspberry Pi 5 (Bookworm OS), Python >= 3.11.
 
-### 9.2 Einrichtung
+### A1.2 Einrichtung
 
 1.  Python 3.11 (oder neuer) installieren.
 2.  **Repository klonen:**
@@ -485,7 +492,7 @@ Benachrichtigung an alle Spieler
     pip freeze
     ```
 
-### 9.3 Testing
+### A1.3 Testing
 
 *   Unit-Tests werden mit `pytest` geschrieben und befinden sich im `tests/`-Verzeichnis.
     *   Ausführen der Tests: `python -m pytest`.
@@ -493,9 +500,7 @@ Benachrichtigung an alle Spieler
 *   Die Codeabdeckung der Tests wird mit `coverage` gemessen, Konfiguration in `.coveragerc`.
     *   Ausführen: `cov.ps1`
 
-## 10. Reserviert
-
-### 11. Exceptions
+## A2. Exceptions
 
 | Error                    | Beschreibung                                                                                                                           |
 |--------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
@@ -505,7 +510,7 @@ Benachrichtigung an alle Spieler
 | PlayerTimeoutError -     | Wird ausgelöst, wenn ein Spieler nicht innerhalb des vorgegebenen Zeitlimits auf eine Anfrage reagiert hat.                            |
 | PlayerResponseError-     | Wird ausgelöst, wenn ein Spieler (Client) eine ungültige, unerwartete oder nicht zum Kontext passende Antwort auf eine Anfrage sendet. |
 
-## 12. Versionsnummer
+## A3. Versionsnummer
 
 Die Versionsnummer wird gemäß dem [Semantic Versioning-Schema](https://semver.org/) vergeben.
 
@@ -514,7 +519,7 @@ Das bedeutet, wir erhöhen bei gegebener Versionsnummer MAJOR.MINOR.PATCH die:
 - MINOR-Version, wenn wir Funktionen abwärtskompatibel hinzufügen
 - PATCH-Version, wenn wir abwärtskompatible Fehlerbehebungen vornehmen
 
-### 12.1. Release auf Github erstellen
+### A3.1. Release auf Github erstellen
 
 - Schritt 1: Tag erstellen (falls noch nicht geschehen)
 ```bash
@@ -528,11 +533,11 @@ git push --tags
   - Beschreibung für das Release eingeben (Änderungen, Features, Bugfixes etc.)
   - Auf "Publish release" klicken.
 
-## 13. Styleguide
+## A4. Styleguide
 
 Der Code folgt den offiziellen Python-Styleguide-Essay [PEP 8](https://peps.python.org/pep-0008/) und Docstring-Konventionen [PEP 257](https://peps.python.org/pep-0257/).
 
-### 13.1 Docstrings
+### A4.1 Docstrings
 
 Das Format für die Docstrings ist `reStructuredText`.
 
@@ -546,7 +551,7 @@ Das Format für die Docstrings ist `reStructuredText`.
     * Der Rückgabewert wird mit `:result: <Beschreibung>` dokumentiert. Rückgabe `None` wird nicht erwähnt.
     * Mögliche Exceptions werden mit `:raises <ErrorClass> <Beschreibung>` aufgelistet.
 
-### 13.2 Namenskonvention
+### A4.2 Namenskonvention
 
 | Type                                     | Schreibweise   |
 |------------------------------------------|----------------|
@@ -559,11 +564,11 @@ Das Format für die Docstrings ist `reStructuredText`.
 
 Interne Funktionen und Variablen werden mit einem führenden Unterstrich gekennzeichnet.
 
-### 13.3 Type-Hints
+### A4.3 Type-Hints
 
 Es werden ausgiebig Type-Hints verwendet, insbesondere bei der Funktion-Signatur und bei Klassenvariablen.
 
-## 14. Glossar
+## A5. Glossar
 
 *   **Spieler und Teams**: Die Spieler werden gegen den Uhrzeigersinn mit 0 beginnend durchnummeriert. Spieler 0 und 2 bildet das Team 20 sowie Spieler 1 und 3 das Team 31. Ein Spieler hat 3 Mitspieler. Der Mitspieler gegenüber ist der Partner, die beiden anderen Mitspieler sind rechter und linker Gegner.
 *   **Spielzug (turn)**: Ein Spieler spielt eine Kartenkombination aus oder passt.

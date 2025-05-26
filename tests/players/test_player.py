@@ -25,20 +25,16 @@ def test_player_init_empty_name_raises_error():
 
 def test_player_init_with_session():
     """Testet die Initialisierung mit einer vorgegebenen Session."""
-    custom_session = "my-test-session-123"
-    player = Player(name="Bob", session_id=custom_session)
-    assert player.session_id == custom_session
+    custom_session_id = "my-test-session-123"
+    player = Player(name="Bob", session_id=custom_session_id)
+    assert player.session_id == custom_session_id
 
 def test_player_properties():
     """Testet die Standard-Properties eines Players."""
     player = Player(name="Charlie")
     player.index = 2 # Index manuell setzen für Test
-
     assert player.name == "Charlie"
     assert player.class_name == "Player" # Gibt den Klassennamen zurück
-    assert player.partner_index == 0 # (2 + 2) % 4
-    assert player.opponent_right_index == 3 # (2 + 1) % 4
-    assert player.opponent_left_index == 1 # (2 + 3) % 4
 
 # Testen der abstrakten Methoden ist schwierig, da man Player nicht instanziieren sollte,
 # aber wir können prüfen, ob eine Subklasse, die sie NICHT implementiert, Fehler wirft.
@@ -64,7 +60,7 @@ async def test_player_abstract_methods_raise_not_implemented():
     with pytest.raises(NotImplementedError):
         await player.schupf(pub_state, priv_state)
     with pytest.raises(NotImplementedError):
-        await player.announce_grand_tichu(pub_state, priv_state)
+        await player.announce(pub_state, priv_state)
     with pytest.raises(NotImplementedError):
         await player.play(pub_state, priv_state) # play statt combination
     with pytest.raises(NotImplementedError):

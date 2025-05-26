@@ -5,13 +5,12 @@ from src.players.agent import Agent
 from src.game_engine import GameEngine
 from src.public_state import PublicState
 from src.private_state import PrivateState
-from src.lib.cards import Cards, parse_cards, CARD_MAH, CARD_DRA, deck
-from src.lib.combinations import CombinationType, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA
 
 @pytest.fixture
 def mock_agents(mocker) -> List[AsyncMock]:
     """Erstellt eine Liste von 4 Mock-Objekten, die sich wie Player verhalten."""
     players = []
+    pub = PublicState(table_name="TestEngineTable", player_names=["P0", "P1", "P2", "P3"])
     for i in range(4):
         # Erstelle einen Mock, der vorgibt, ein Player-Objekt zu sein
         player_mock = mocker.create_autospec(Agent, instance=True)
@@ -26,14 +25,10 @@ def mock_agents(mocker) -> List[AsyncMock]:
         player_mock.cleanup = AsyncMock(name=f'cleanup_mock_{i}') # Auch cleanup mocken
 
         # Setze Standard-Attribute für den Mock
-        player_mock.name = f"MockPlayer_{i}"
-        player_mock.index = i
+        player_mock.name = f"P{i}"
+        player_mock.pub = pub
+        player_mock.priv = PrivateState(player_index=i)
         player_mock.session_id = f"session_{i}"
-
-        # Index-Properties setzen
-        player_mock.partner_index = (i + 2) % 4
-        player_mock.opponent_right_index = (i + 1) % 4
-        player_mock.opponent_left_index = (i + 3) % 4
 
         players.append(player_mock)
     return players

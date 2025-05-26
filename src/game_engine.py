@@ -138,9 +138,36 @@ class GameEngine:
                 break
         if available_index == -1:
             return False
+
         self._players[available_index] = client
-        client.index = available_index
-        client.interrupt_event = self.interrupt_event   # Todo Test für diese Zuweisung hinzufügen
+        self._public_state.player_names[available_index] = client.name
+        client.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        client.priv = self._private_states[available_index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        client.interrupt_event = self.interrupt_event   # # todo unittest für dies Zuweisung
+        await self._broadcast("player_joined", {"player_index": available_index, "replaced_by_name": client.name})
+        return True
+
+    async def rejoin_client(self, client: Client) -> bool:
+        """
+        Lässt den Client weiterspielen.
+        :param client: Der Client, der weiterspielen möchte.
+        :return: True, wenn der Client an einem Sitzplatz des Tisches sitzt.
+        """
+        # Sitzplatz suchen, an dem der Client (leblos) sitzt.
+        index = -1
+        for i, p in enumerate(self._players):
+            if p.session_id == client.session_id:
+                index = i
+                break
+        if index == -1:
+            return False
+
+        self._players[index] = client
+        self._public_state.player_names[index] = client.name
+        client.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        client.priv = self._private_states[index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        client.interrupt_event = self.interrupt_event  # # todo unittest für dies Zuweisung
+        await self._broadcast("player_joined", {"player_index": index, "replaced_by_name": client.name})
         return True
 
     async def leave_client(self, client: Client) -> None:
@@ -149,13 +176,18 @@ class GameEngine:
         :param client: Der Client, der gehen will.
         :raise ValueError: Wenn der Client nicht gefunden werden kann.
         """
-        index = client.index
+        index = client.priv.player_index
         if index < 0 or index > 3:
             raise ValueError(f"Der Index des Spielers {client.name} ist nicht korrekt: {index}")
         if self._players[index].session_id != client.session_id:
             raise ValueError(f"Der Spielers {client.name} kann den Tisch {self._table_name} nicht verlassen, er sitz dort nicht.")
+
         self._players[index] = self._default_agents[index]
-        client.index = -1
+        self._public_state.player_names[index] = self._default_agents[index].name
+        client.pub = None
+        client.priv = None
+        client.interrupt_event = None
+        await self._broadcast("player_left", {"player_index": index, "replaced_by_name": self._players[index].name})
 
     # ------------------------------------------------------
     # Lobby-Aktionen
@@ -248,14 +280,15 @@ class GameEngine:
                         offset = player_index * 14
                         privs[player_index].hand_cards = sorted(mixed_deck[offset:offset + n], reverse=True)  # absteigend sortiert!
                         pub.count_hand_cards[player_index] = n
-                        await self._players[player_index].deal_cards(privs[player_index].hand_cards)
+                        if clients_joined:
+                            await self._broadcast("hand_cards_dealt", {"count": n})
 
                     # möchte ein Spieler ein Tichu ansagen?
                     # todo alle Spieler gleichzeitig ansprechen
                     for i in range(0, 4):
                         player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                         grand = n == 8  # großes Tichu?
-                        announced = not pub.announcements[player_index] and await self._players[player_index].announce(pub, privs[player_index])
+                        announced = not pub.announcements[player_index] and await self._players[player_index].announce()
                         if announced:
                             pub.announcements[player_index] = 2 if grand else 1  # Spieler hat Tichu angesagt
                         if clients_joined:
@@ -272,7 +305,7 @@ class GameEngine:
                     player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                     priv = privs[player_index]
                     assert len(priv.hand_cards) == 14
-                    priv.given_schupf_cards = await self._players[player_index].schupf(pub, priv)
+                    priv.given_schupf_cards = await self._players[player_index].schupf()
                     assert len(priv.given_schupf_cards) == 3
                     priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
                     assert len(priv.hand_cards) == 11
@@ -302,7 +335,8 @@ class GameEngine:
                     priv.hand_cards.sort(reverse=True)
                     assert len(priv.hand_cards) == 14
                     pub.count_hand_cards[player_index] = 14
-                    await self._players[player_index].deal_schupf_cards(*priv.received_schupf_cards)
+                    if clients_joined:
+                        await self._broadcast("schupf_cards_dealt")
 
                 # Startspieler bekannt geben
                 for player_index in range(0, 4):
@@ -327,7 +361,7 @@ class GameEngine:
                         for i in range(0, 4):
                             player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                             if player_index != pub.current_turn_index and self._private_states[player_index].has_bomb:
-                                bomb = await self._players[player_index].bomb(pub, self._private_states[player_index])
+                                bomb = await self._players[player_index].bomb()
                                 if bomb:
                                     pub.current_turn_index = player_index
                                     break
@@ -342,7 +376,7 @@ class GameEngine:
                         assert pub.trick_combination != FIGURE_PASS
                         if pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                             # Stich verschenken
-                            opponent = await player.give_dragon_away(pub, priv)
+                            opponent = await player.give_dragon_away()
                             assert opponent in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
                             assert CARD_DRA in pub.played_cards
                             assert pub.dragon_recipient == -1
@@ -372,12 +406,12 @@ class GameEngine:
                         else:
                             # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein normales Tichu angesagt werden
                             if pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
-                                if await player.announce(pub, priv):
+                                if await player.announce():
                                     # Spieler hat Tichu angesagt
                                     pub.announcements[pub.current_turn_index] = 1
                                     if clients_joined:
                                         await self._broadcast("tichu_announced", {"player_index": pub.current_turn_index})
-                            cards, combination = await player.play(pub, priv)
+                            cards, combination = await player.play()
 
                         assert combination[1] <= pub.count_hand_cards[pub.current_turn_index] <= 14
                         assert combination[1] == len(cards)
@@ -386,10 +420,10 @@ class GameEngine:
                         assert pub.current_turn_index != -1
                         if pub.trick_owner_index == -1:  # neuer Stich?
                             assert combination != FIGURE_PASS  # beim Anspiel darf nicht gepasst werden, der erste Eintrag im Stich sind also Karten
-                            pub.tricks.append([(player.index, cards, combination)])
+                            pub.tricks.append([(player.priv.player_index, cards, combination)])
                         else:
                             assert len(pub.tricks) > 0
-                            pub.tricks[-1].append((player.index, cards, combination))
+                            pub.tricks[-1].append((player.priv.player_index, cards, combination))
 
                         # Kombination ausspielen, falls nicht gepasst wurde
                         if combination != FIGURE_PASS:
@@ -418,7 +452,7 @@ class GameEngine:
                             assert not set(cards).intersection(pub.played_cards)  # darf keine Schnittmenge bilden
                             pub.played_cards += cards
                             if clients_joined:
-                                await self._broadcast("played", {"player_index": player.index, "cards": cards})
+                                await self._broadcast("played", {"player_index": player.priv.player_index, "cards": cards})
 
                             # Wunsch erfüllt?
                             assert pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
@@ -464,7 +498,7 @@ class GameEngine:
                                     # Punkte im Stich zählen
                                     if pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                                         # Stich verschenken
-                                        opponent = await player.give_dragon_away(pub, priv)
+                                        opponent = await player.give_dragon_away()
                                         assert opponent in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
                                         assert CARD_DRA in pub.played_cards
                                         assert pub.dragon_recipient == -1
@@ -515,14 +549,14 @@ class GameEngine:
                             # falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden
                             if CARD_MAH in cards:
                                 assert pub.wish_value == 0
-                                pub.wish_value = await player.wish(pub, priv)
+                                pub.wish_value = await player.wish()
                                 assert 2 <= pub.wish_value <= 14
                                 if clients_joined:
                                     await self._broadcast("wish_made", {"wish_value": pub.wish_value})
 
                         else:  # Spieler hat gepasst
                             if clients_joined:
-                                await self._broadcast("passed", {"player_index": player.index})
+                                await self._broadcast("passed", {"player_index": player.priv.player_index})
 
                     # nächster Spieler ist an der Reihe
                     assert not pub.is_round_over
