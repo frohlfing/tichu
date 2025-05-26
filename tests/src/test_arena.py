@@ -42,7 +42,7 @@ class MockGameEngine:
         # Wird im run_game_loop gesetzt oder durch Parameter pub überschrieben
         self.pub_state_to_return = MockPublicState(game_score=([100], [50]), round_counter=5, trick_counter=20, game_over=True)
 
-    async def run_game_loop(self) -> MockPublicState:
+    async def run_game_loop(self, break_time = 5) -> MockPublicState:
         return self.pub_state_to_return
 
 @pytest.fixture
@@ -66,9 +66,9 @@ def mock_public_state_draw():
 def mock_private_states():
     return [MockPrivateState() for _ in range(4)]
 
-# --- Tests für _run_game ---
+# --- Tests für _create_engine_and_run ---
 @pytest.mark.asyncio
-@patch('src.arena.GameEngine', new=MockGameEngine)  # Mock GameEngine für _run_game
+@patch('src.arena.GameEngine', new=MockGameEngine)  # Mock GameEngine für _create_engine_and_run
 async def test_create_engine_and_run_success(mock_agents, mock_public_state_win_team0):
     pub_state = await _create_engine_and_run("TestTable", mock_agents, seed=123)
     assert pub_state is not None
@@ -76,7 +76,7 @@ async def test_create_engine_and_run_success(mock_agents, mock_public_state_win_
 
 @pytest.mark.asyncio
 @patch('src.arena.GameEngine')  # Standard MagicMock
-async def test_run_game_exception_in_engine(mock_game_engine_cls, mock_agents):
+async def test_create_engine_and_run_exception_in_engine(mock_game_engine_cls, mock_agents):
     mock_engine_instance = MagicMock()
     mock_engine_instance.run_game_loop.side_effect = Exception("Engine Boom!")
     mock_game_engine_cls.return_value = mock_engine_instance
@@ -109,51 +109,40 @@ def test_arena_initialization_invalid_agents():
         # noinspection PyTypeChecker
         Arena([MockAgent()] * 3, max_games=10)  # Nur 3 Agenten
 
-@patch('src.arena._run_game')  # Mocke die interne _run_game Funktion
-def test_arena_play_game_single_run(mock_run_game_async, mock_agents, mock_public_state_win_team0):
-    # Mock _run_game, um ein PublicState zurückzugeben
-    async def async_mock_run_game(*_args, **_kwargs):
+@patch('src.arena._create_engine_and_run')  # Mocke die interne __create_engine_and_run Funktion
+def test_arena_play_game_single_run(mock_create_engine_and_run_async, mock_agents, mock_public_state_win_team0):
+    # Mock __create_engine_and_run, um ein PublicState zurückzugeben
+    async def async_mock_create_engine_and_run(*_args, **_kwargs):
         return mock_public_state_win_team0
 
-    mock_run_game_async.side_effect = async_mock_run_game
+    mock_create_engine_and_run_async.side_effect = async_mock_create_engine_and_run
 
     arena = Arena(mock_agents, max_games=1, worker=1)
     game_index, pub_result = arena._play_game(0)
 
     assert game_index == 0
     assert pub_result == mock_public_state_win_team0
-    mock_run_game_async.assert_called_once_with(
+    mock_create_engine_and_run_async.assert_called_once_with(
         table_name="Game_0",
         agents=mock_agents,
         seed=None,  # Default
-        pub=None,
-        privs=None
     )
 
-@patch('src.arena._run_game')
-def test_arena_play_game_with_initial_states(mock_run_game_async, mock_agents, mock_public_state_win_team0, mock_private_states):
-    async def async_mock_run_game(*_args, **kwargs):
-        # Stelle sicher, dass pub und privs korrekt durchgereicht wurden
-        assert kwargs.get('pub') is mock_public_state_win_team0
-        privs = kwargs.get('privs')
-        assert privs is mock_private_states
+@patch('src.arena._create_engine_and_run')
+def test_arena_play_game_with_initial_states(mock_create_engine_and_run_async, mock_agents, mock_public_state_win_team0, mock_private_states):
+    async def async_mock_create_engine_and_run(*_args, **kwargs):
         return mock_public_state_win_team0
 
-    mock_run_game_async.side_effect = async_mock_run_game
-
-    init_pubs = [mock_public_state_win_team0]
-    init_privs = [mock_private_states]  # Liste von Listen von PrivateStates
+    mock_create_engine_and_run_async.side_effect = async_mock_create_engine_and_run
 
     # noinspection PyTypeChecker
     arena = Arena(mock_agents, max_games=1, worker=1)
     arena._play_game(0)
 
-    mock_run_game_async.assert_called_once_with(
+    mock_create_engine_and_run_async.assert_called_once_with(
         table_name="Game_0",
         agents=mock_agents,
-        seed=None,
-        pub=init_pubs[0],
-        privs=init_privs[0]
+        seed=None
     )
 
 def test_arena_play_game_stop_event_set(mock_agents):

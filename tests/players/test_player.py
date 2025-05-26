@@ -12,7 +12,8 @@ def test_player_init_valid_name():
     """Testet die Initialisierung mit gültigem Namen."""
     player = Player(name=" Alice ") # Mit Leerzeichen
     assert player.name == "Alice" # Name sollte gestrippt sein
-    assert player.index is None # Initial kein Index
+    assert player.pub is None # Initial kein Zustand
+    assert player.priv is None # Initial kein Zustand
     # Session sollte eine gültige UUID sein
     assert isinstance(UUID(player.session_id, version=4), UUID)
 
@@ -58,12 +59,12 @@ async def test_player_abstract_methods_raise_not_implemented():
 
     # Prüfe jede abstrakte Methode
     with pytest.raises(NotImplementedError):
-        await player.schupf(pub_state, priv_state)
+        await player.schupf()
     with pytest.raises(NotImplementedError):
-        await player.announce(pub_state, priv_state)
+        await player.announce()
     with pytest.raises(NotImplementedError):
-        await player.play(pub_state, priv_state) # play statt combination
+        await player.play() # play statt combination
     with pytest.raises(NotImplementedError):
-        await player.wish(pub_state, priv_state)
+        await player.wish()
     with pytest.raises(NotImplementedError):
-        await player.give_dragon_away(pub_state, priv_state) # Umbenannt
+        await player.give_dragon_away() # Umbenannt

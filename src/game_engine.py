@@ -52,7 +52,7 @@ class GameEngine:
             self._default_agents: List[Agent] = [RandomAgent(name=f"RandomAgent_{i + 1}") for i in range(4)]
 
         # aktuelle Spielerliste
-        self._players: List[Player] = list(self._default_agents)
+        self._players: List[Player] = list(self._default_agents)  # die Liste ist eine Kopie, die Einträge nicht!
 
         # aktueller Spielzustand
         self._public_state = PublicState(
@@ -73,14 +73,15 @@ class GameEngine:
         # Zufallsgenerator, geeignet für Multiprocessing
         self._random = Random(seed)
 
-        # Sitzplätze der Reihe nach vergeben (0 bis 3) und Interrupt-Event durchreichen
-        for i, default_agent in enumerate(self._default_agents):
-            default_agent.index = i
-            default_agent.interrupt_event = self.interrupt_event  # Todo Test für diese Zuweisung hinzufügen
+        # jedem Spieler eine Referenz auf den Spielzustand und auf das Interrupt-Event geben
+        # (Mutable - Änderungen sind durch Player möglich, aber nicht vorgesehen)
+        for i, agent in enumerate(self._default_agents):
+            agent.pub = self._public_state
+            agent.priv = self._private_states[i]
+            agent.interrupt_event = self.interrupt_event  # Todo Test für diese Zuweisung hinzufügen
 
         agent_names = ", ".join(default_agent.name for default_agent in self._default_agents)
         logger.debug(f"[{self.table_name}] Agenten initialisiert: {agent_names}.")
-
         logger.info(f"GameEngine für Tisch '{table_name}' erstellt.")
 
     async def cleanup(self):
@@ -215,11 +216,10 @@ class GameEngine:
         if len(player_new_indexes) != 4:
             return False
 
-        # todo prüfen, ob jeder Spieler einen neuen Index zw. 0 und 3 erhalten hat
-        #  prüfen, jeder Spieler einen eindeutigen Index erhalten hat
+        # todo
         #  self._players und self._default_agents umsortieren
-        #  self._players[i].index = i setzen, ebenso für default_agents.
-        #  UnitTest schreiben
+        #  self._players[i].priv = self._private_states[i] setzen, ebenso für default_agents.
+        #  UnitTest schreiben (mit pytest)
 
         return True
 
