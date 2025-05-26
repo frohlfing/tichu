@@ -3,6 +3,9 @@ Definiert die Spiellogik.
 """
 
 import asyncio
+
+from aiohttp.web_ws import WebSocketResponse
+
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH, Cards
@@ -127,6 +130,7 @@ class GameEngine:
     async def join_client(self, client: Client) -> bool:
         """
         Lässt den Client mitspielen.
+
         :param client: Der Client, der mitspielen möchte.
         :return: True, wenn der Client einen Sitzplatz bekommen hat, ansonsten False.
         """
@@ -147,26 +151,34 @@ class GameEngine:
         await self._broadcast("player_joined", {"player_index": available_index, "replaced_by_name": client.name})
         return True
 
-    async def rejoin_client(self, client: Client) -> bool:
+    async def rejoin_client(self, client: Player, websocket: WebSocketResponse) -> bool:
         """
         Lässt den Client weiterspielen.
+
         :param client: Der Client, der weiterspielen möchte.
+        :param websocket: Das neue WebSocketResponse-Objekt.
         :return: True, wenn der Client an einem Sitzplatz des Tisches sitzt.
         """
         # Sitzplatz suchen, an dem der Client (leblos) sitzt.
-        index = -1
-        for i, p in enumerate(self._players):
-            if p.session_id == client.session_id:
-                index = i
-                break
-        if index == -1:
+        index = client.priv.player_index
+        if self._players[index].session_id != client.session_id or not isinstance(client, Client) or client.is_connected:
             return False
 
-        self._players[index] = client
-        self._public_state.player_names[index] = client.name
-        client.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        client.priv = self._private_states[index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        client.interrupt_event = self.interrupt_event  # # todo unittest für dies Zuweisung
+        # neue WebSocket-Verbindung übernehmen
+        client.set_websocket(websocket)
+
+        assert self._players[index] == client
+        assert self._public_state.player_names[index] == client.name
+        assert client.pub == self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        assert client.priv == self._private_states[index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        assert client.interrupt_event == self.interrupt_event  # # todo unittest für dies Zuweisung
+
+        # self._players[index] = client
+        # self._public_state.player_names[index] = client.name
+        # client.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        # client.priv = self._private_states[index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        # client.interrupt_event = self.interrupt_event  # # todo unittest für dies Zuweisung
+
         await self._broadcast("player_joined", {"player_index": index, "replaced_by_name": client.name})
         return True
 

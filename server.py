@@ -52,19 +52,16 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
     if session_id:
         engine = factory.get_engine_by_session(session_id)
         client = engine.get_player_by_session(session_id) if engine else None
-        if isinstance(client, Client) and not client.is_connected:
-            client.set_websocket(ws)
-        else:
+        if not client or not await engine.rejoin_client(client, websocket=ws):
             error_message = "Query-Parameter 'session_id' fehlerhaft."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
-        if not await engine.rejoin_client(client):
         logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich wiederverbunden.")
     else:
         try:
             engine = factory.get_or_create_engine(params.get("table_name"))
-            client = Client(params.get("player_name"), websocket=ws) if engine else None
+            client = Client(params.get("player_name"), websocket=ws)
         except ValueError:
             error_message = "Query-Parameter 'player_name' oder 'table_name' fehlerhaft."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
