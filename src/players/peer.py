@@ -15,17 +15,16 @@ from src.lib.combinations import Combination, build_action_space, CombinationTyp
 # noinspection PyUnresolvedReferences
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError, ErrorCode
 from src.players.player import Player
-from src.private_state import PrivateState
-from src.public_state import PublicState
 from typing import Optional, Dict, List, Tuple
 from uuid import uuid4
 
 
-class Client(Player):
+class Peer(Player):
     """
-    Repräsentiert einen menschlichen Spieler, der über eine WebSocket verbunden ist.
+    Repräsentiert den serverseitigen Endpunkt der WebSocket-Verbindung zu einem verbundenen Client.
 
-    Erbt von der Basisklasse `Player`.
+    Dieser Client kann ein menschlicher Spieler sein (der z.B. über einen Browser interagiert) oder
+    potenziell auch ein anderer Bot, der das definierte Tichu-Protokoll spricht.
     """
 
     def __init__(self, name: str,
@@ -33,7 +32,7 @@ class Client(Player):
                  session_id: Optional[str] = None,
                  seed: Optional[int] = None):
         """
-        Initialisiert einen neuen Client.
+        Initialisiert einen neuen Peer.
 
         :param name: Der Name des Spielers.
         :param websocket: Das WebSocketResponse-Objekt der initialen Verbindung.
@@ -52,7 +51,7 @@ class Client(Player):
         Versucht, die WebSocket-Verbindung serverseitig aktiv und sauber zu schließen.
         """
         if self._websocket and not self._websocket.closed:
-            logger.debug(f"Schließe WebSocket für Client {self._name}.")
+            logger.debug(f"Schließe WebSocket für Peer {self._name}.")
             try:
                 await self._websocket.close(code=WSCloseCode.GOING_AWAY, message="Verbindung wird geschlossen".encode('utf-8'))
             except Exception as e:
@@ -67,12 +66,12 @@ class Client(Player):
         # Über die alte Verbindung noch Anfragen offen sind, diese verwerfen.
         for request_id, future in list(self._pending_requests.items()):
             if not future.done():
-                logger.warning(f"Client {self._name}: Breche alte Anfrage '{request_id}' ab.")
+                logger.warning(f"Peer {self._name}: Breche alte Anfrage '{request_id}' ab.")
                 future.cancel()
             self._pending_requests.pop(request_id, None)
 
         # WebSocket übernehmen
-        logger.info(f"Aktualisiere WebSocket für Client {self._name} ({self._session_id}).")
+        logger.info(f"Aktualisiere WebSocket für Peer {self._name} ({self._session_id}).")
         self._websocket = new_websocket
 
     # ------------------------------------------------------
@@ -93,10 +92,10 @@ class Client(Player):
         """
         # sicherstellen, dass der Client noch verbunden ist
         if self._websocket.closed:
-            #logger.warning(f"Client {self.name}: Aktion '{action}' nicht möglich (nicht verbunden).")
+            #logger.warning(f"Peer {self.name}: Aktion '{action}' nicht möglich (nicht verbunden).")
             raise ClientDisconnectedError(f"Client {self.name} ist nicht verbunden.")
 
-        logger.debug(f"Client {self.name}: Starte Anfrage '{action}'.")
+        logger.debug(f"Peer {self.name}: Starte Anfrage '{action}'.")
 
         # Future erstellen und registrieren
         loop = asyncio.get_running_loop()
@@ -140,33 +139,33 @@ class Client(Player):
             if not done:
                 # Timeout
                 elapsed = time.monotonic() - start_time
-                logger.warning(f"Client {self.name}: Timeout ({elapsed:.1f}s > {config.DEFAULT_REQUEST_TIMEOUT}s) beim Warten auf Antwort für '{action}'.")
+                logger.warning(f"Peer {self.name}: Timeout ({elapsed:.1f}s > {config.DEFAULT_REQUEST_TIMEOUT}s) beim Warten auf Antwort für '{action}'.")
                 raise PlayerTimeoutError(f"Timeout bei '{action}' für Spieler {self.name}")
 
             if interrupt_task in done:
                 # Interrupt
                 self.interrupt_event.clear()  # Wichtig: Event zurücksetzen!
                 elapsed = time.monotonic() - start_time
-                logger.info(f"Client {self.name}: Warten auf '{action}' nach {elapsed:.1f}s unterbrochen aufgrund Interrupt-Event.")
+                logger.info(f"Peer {self.name}: Warten auf '{action}' nach {elapsed:.1f}s unterbrochen aufgrund Interrupt-Event.")
                 raise PlayerInterruptError(f"Aktion '{action}' unterbrochen.")
 
             # Antwort erhalten
             assert response_future in done
             response_data = response_future.result()
-            logger.debug(f"Client {self.name}: Antwort für '{action}' erfolgreich empfangen: {response_data}.")
+            logger.debug(f"Peer {self.name}: Antwort für '{action}' erfolgreich empfangen: {response_data}.")
             return response_data  # Erfolg!
 
         except asyncio.CancelledError as e:  # Shutdown
-            logger.info(f"Client {self.name}: Warten auf '{action}' extern abgebrochen.")
+            logger.info(f"Peer {self.name}: Warten auf '{action}' extern abgebrochen.")
             raise e
         except ClientDisconnectedError as e:
-            logger.info(f"Client {self.name}: Verbindungsabbruch. Warten auf '{action}' abgebrochen.")
+            logger.info(f"Peer {self.name}: Verbindungsabbruch. Warten auf '{action}' abgebrochen.")
             raise e
         except Exception as e:
-            logger.exception(f"Client {self.name}: Kritischer Fehler während des Wartens auf '{action}': {e}")
+            logger.exception(f"Peer {self.name}: Kritischer Fehler während des Wartens auf '{action}': {e}")
             raise PlayerInteractionError(f"Unerwarteter Fehler bei '{action}': {e}") from e
         finally:
-            logger.debug(f"Client {self.name}: Räume Warte-Tasks für '{action}' auf.")
+            logger.debug(f"Peer {self.name}: Räume Warte-Tasks für '{action}' auf.")
             for task in pending:
                 if not task.done():
                     task.cancel()
@@ -190,12 +189,12 @@ class Client(Player):
         if future:
             if not future.done():  # _ask() wartet noch auf die Antwort
                 future.set_result(response_data)  # dadurch erhält _ask() die Daten der Antwort und kann weitermachen
-                logger.debug(f"Client {self._name}: Antwort an wartende Methode weitergeleitet (Request-ID {request_id}).")
+                logger.debug(f"Peer {self._name}: Antwort an wartende Methode weitergeleitet (Request-ID {request_id}).")
             else:  # _ask() hat inzwischen das Warten auf diese Antwort aufgegeben (wegen Timeout, Interrupt oder Server beenden)
-                logger.warning(f"Client {self._name}: Antwort ist veraltet (Request-ID {request_id}).")
+                logger.warning(f"Peer {self._name}: Antwort ist veraltet (Request-ID {request_id}).")
                 # todo Fehler an den Spieler senden
         else:  # keine wartende Anfrage für diese Antwort gefunden
-            logger.warning(f"Client {self._name}: Keine wartende Anfrage für diese Antwort gefunden (Request-ID {request_id}).")
+            logger.warning(f"Peer {self._name}: Keine wartende Anfrage für diese Antwort gefunden (Request-ID {request_id}).")
             # todo Fehler an den Spieler senden
 
     async def announce(self) -> bool:
@@ -209,7 +208,7 @@ class Client(Player):
         if response_payload and isinstance(response_payload.get("announced"), bool):
             return response_payload["announced"]
         else:
-            logger.error(f"Client {self.name}: Ungültige Antwort für Anfrage \"announce_tichu\": {response_payload}")
+            logger.error(f"Peer {self.name}: Ungültige Antwort für Anfrage \"announce_tichu\": {response_payload}")
             await self.error("Ungültige Antwort für Anfrage \"announce_tichu\"", ErrorCode.INVALID_MESSAGE, context=response_payload)
             return False  # Fallback
 
@@ -358,7 +357,7 @@ class Client(Player):
     @property
     def is_connected(self) -> bool:
         """
-        Gibt zurück, ob der Client aktuell verbunden ist.
+        Gibt zurück, ob der Peer aktuell verbunden ist.
 
         :return: True, wenn verbunden, sonst False.
         """

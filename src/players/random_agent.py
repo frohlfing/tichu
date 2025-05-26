@@ -11,8 +11,6 @@ from typing import Optional, Tuple
 class RandomAgent(Agent):
     """
     Repräsentiert einen Agenten, der seine Entscheidungen zufällig trifft.
-
-    Erbt von der Basisklasse `Agent`.
     """
     def __init__(self, name: Optional[str] = None, session_id: Optional[str] = None, seed: int = None):
         """

@@ -22,7 +22,7 @@ from src.common.git_utils import get_release
 from src.common.logger import logger
 from src.game_factory import GameFactory
 from src.lib.errors import ErrorCode
-from src.players.client import Client
+from src.players.peer import Peer
 
 
 async def websocket_handler(request: Request) -> WebSocketResponse | None:
@@ -47,32 +47,32 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
     remote_addr = request.remote if request.remote else "Unbekannt"  # Client-Adresse
     logger.debug(f"WebSocket Verbindung hergestellt von {remote_addr} mit Parametern: {params}")
 
-    # --- 3) Referenz auf die Game-Engine holen, Client anlegen und der Engine zuordnen. ---
+    # --- 3) Referenz auf die Game-Engine holen, Peer anlegen und der Engine zuordnen. ---
     session_id = params.get("session_id")
     if session_id:
         engine = factory.get_engine_by_session(session_id)
-        client = engine.get_player_by_session(session_id) if engine else None
-        if not client or not await engine.rejoin_client(client, websocket=ws):
+        peer = engine.get_peer_by_session(session_id) if engine else None
+        if not peer or not await engine.rejoin_client(peer, websocket=ws):
             error_message = "Query-Parameter 'session_id' fehlerhaft."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
-        logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich wiederverbunden.")
+        logger.info(f"Client {peer.name} (Session {peer.session_id}) erfolgreich wiederverbunden.")
     else:
         try:
             engine = factory.get_or_create_engine(params.get("table_name"))
-            client = Client(params.get("player_name"), websocket=ws)
+            peer = Peer(params.get("player_name"), websocket=ws)
         except ValueError:
             error_message = "Query-Parameter 'player_name' oder 'table_name' fehlerhaft."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
-        if not await engine.join_client(client):
+        if not await engine.join_client(peer):
             error_message = f"Kein freier Platz am Tisch '{engine.table_name}'."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
-        logger.info(f"Client {client.name} (Session {client.session_id}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {client.priv.player_index} zugeordnet.")
+        logger.info(f"Client {peer.name} (Session {peer.session_id}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {peer.priv.player_index} zugeordnet.")
 
     # 4) So lange Nachrichten von der WebSocket verarbeiten, bis die Verbindung abbricht oder der Client absichtlich geht.
     try:
@@ -81,17 +81,17 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
             if msg.type == WSMsgType.TEXT:
 
                 # # Ignoriere Nachrichten, wenn der Client intern bereits als getrennt markiert ist.
-                # if not client.is_connected:
-                #     logger.warning(f"Websocket-Nachricht von {client.name} empfangen, obwohl intern als disconnected markiert.")
+                # if not peer.is_connected:
+                #     logger.warning(f"Websocket-Nachricht von {peer.name} empfangen, obwohl intern als disconnected markiert.")
                 #     break  # Schleife verlassen -> finally wird ausgeführt.
 
                 try:
                     # Nachricht laden
                     data = json.loads(msg.data)
-                    logger.debug(f"Empfangen TEXT von {client.name}: {data}")
+                    logger.debug(f"Empfangen TEXT von {peer.name}: {data}")
                     if not isinstance(data, dict):
-                        logger.warning(f"Handler: Ungültiges Nachrichtenformat von {client.name}: {msg.data}")
-                        await client.error("Ungültiges Nachrichtenformat", ErrorCode.INVALID_MESSAGE, context=msg.data)
+                        logger.warning(f"Handler: Ungültiges Nachrichtenformat von {peer.name}: {msg.data}")
+                        await peer.error("Ungültiges Nachrichtenformat", ErrorCode.INVALID_MESSAGE, context=msg.data)
                         continue
                     msg_type = data.get("type")  # Nachrichtentyp
                     payload = data.get("payload", {})  # die Nutzdaten
@@ -108,69 +108,69 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                         elif action == "start_game":
                             await engine.start_game()
                         else:
-                            logger.error(f"Unbekannte Aktion '{action}' in der Lobby von {client.name}")
-                            await client.error("Unbekannte Aktion in der Lobby", ErrorCode.INVALID_MESSAGE, context=msg.data)
+                            logger.error(f"Unbekannte Aktion '{action}' in der Lobby von {peer.name}")
+                            await peer.error("Unbekannte Aktion in der Lobby", ErrorCode.INVALID_MESSAGE, context=msg.data)
 
                     elif msg_type == "interrupt":  # explizite Interrupt-Anfrage
-                        #await engine.on_interrupt(client, payload.get("reason"))  # an die Engine weiterleiten
+                        #await engine.on_interrupt(peer, payload.get("reason"))  # an die Engine weiterleiten
                         print("Interrupt")  # todo Interrupt handeln
 
                     elif msg_type == "ping":  # Verbindungstest
-                        logger.info(f"{client.name}: ping")
+                        logger.info(f"{peer.name}: ping")
                         ping_message = {"type": "pong", "payload": payload }
                         try:
                             await ws.send_json(ping_message)
                         except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
-                            logger.warning(f"Senden der Pong-Nachricht an {client.name} fehlgeschlagen: {e}")
+                            logger.warning(f"Senden der Pong-Nachricht an {peer.name} fehlgeschlagen: {e}")
                         except Exception as e:
-                            logger.exception(f"Unerwarteter Fehler beim Senden der Pong-Nachricht an {client.name}: {e}")
+                            logger.exception(f"Unerwarteter Fehler beim Senden der Pong-Nachricht an {peer.name}: {e}")
                             return ws
 
-                    #  Antwort auf eine vorherige Anfrage (die mittels client._ask() gestellt wurde)
+                    #  Antwort auf eine vorherige Anfrage (die mittels peer._ask() gestellt wurde)
 
                     elif msg_type == "response":
-                        await client.on_websocket_response(payload.get("request_id"), payload.get("data", {}))  # an den Client weiterleiten
+                        await peer.on_websocket_response(payload.get("request_id"), payload.get("data", {}))  # an den Client weiterleiten
 
                     else:
                         logger.error(f"Message-Type '{msg_type}' nicht erwartet")
-                        await client.error("Message-Type nicht erwartet", ErrorCode.INVALID_MESSAGE, context=msg.data)
+                        await peer.error("Message-Type nicht erwartet", ErrorCode.INVALID_MESSAGE, context=msg.data)
 
                 except json.JSONDecodeError:
-                    logger.exception(f"Ungültiges JSON von {client.name}: {msg.data}")
-                    await client.error("Ungültiges JSON-Format", ErrorCode.INVALID_MESSAGE, context=msg.data)
+                    logger.exception(f"Ungültiges JSON von {peer.name}: {msg.data}")
+                    await peer.error("Ungültiges JSON-Format", ErrorCode.INVALID_MESSAGE, context=msg.data)
 
                 except Exception as send_e:
-                    logger.exception(f"Fehler bei Verarbeitung der Nachricht von {client.name}: {send_e}")
-                    await client.error("Fehler bei der Verarbeitung der Nachricht", ErrorCode.UNKNOWN_ERROR, context=msg.data)
+                    logger.exception(f"Fehler bei Verarbeitung der Nachricht von {peer.name}: {send_e}")
+                    await peer.error("Fehler bei der Verarbeitung der Nachricht", ErrorCode.UNKNOWN_ERROR, context=msg.data)
 
             elif msg.type == WSMsgType.BINARY:
-                logger.warning(f"Empfangen unerwartete Binary-Daten von {client.name}")
+                logger.warning(f"Empfangen unerwartete Binary-Daten von {peer.name}")
 
             elif msg.type == WSMsgType.ERROR:
-                logger.error(f'WebSocket-Fehler für {client.name}: {ws.exception()}')
+                logger.error(f'WebSocket-Fehler für {peer.name}: {ws.exception()}')
                 break
 
             elif msg.type == WSMsgType.CLOSE:  # der Client hat die Verbindung aktiv geschlossen (normaler Vorgang)
-                logger.debuf(f"WebSocket-CLOSE Nachricht von {client.name} empfangen.")
+                logger.debuf(f"WebSocket-CLOSE Nachricht von {peer.name} empfangen.")
                 break
                 
     except asyncio.CancelledError:  # der Server wird heruntergefahren (z.B. durch Signal)
-        client_name_log = client.name if client else remote_addr
+        client_name_log = peer.name if peer else remote_addr
         logger.debug(f"WebSocket Handler für {client_name_log} abgebrochen (Server Shutdown).")
         raise  # Wichtig: CancelledError weitergeben für sauberes Beenden.
     except Exception as e:  # fängt unerwartete Fehler während der Verbindung oder im Handler ab
-        logger.exception(f"Unerwarteter Fehler in der Nachrichtenschleife für {client.name} von {remote_addr}: {e}")
+        logger.exception(f"Unerwarteter Fehler in der Nachrichtenschleife für {peer.name} von {remote_addr}: {e}")
 
     # 5) Bei Verbindungsabbruch etwas warten, vielleicht schlüpft der Client erneut in sein altes Ich. Ansonsten WebSocket-Verbindung serverseitig schließen.
-    if ws.closed:  # not client.is_connected:
+    if ws.closed:  # not peer.is_connected:
         # Verbindungsabbruch
-        logger.info(f"{engine.table_name}, Spieler {client.name}: Verbindungsabbruch. Starte Kick-Out-Timer...")
+        logger.info(f"{engine.table_name}, Spieler {peer.name}: Verbindungsabbruch. Starte Kick-Out-Timer...")
         await asyncio.sleep(config.KICK_OUT_TIME)
-        if client.is_connected:
-            logger.info(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich inzwischen wieder verbunden.")
+        if peer.is_connected:
+            logger.info(f"{engine.table_name}, Spieler {peer.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich inzwischen wieder verbunden.")
             return ws  # keine weiteren Aufräumarbeiten erforderlich
         else:
-            logger.info(f"{engine.table_name}, Spieler {client.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich nicht wieder verbunden.")
+            logger.info(f"{engine.table_name}, Spieler {peer.name}: Kick-Out-Zeit abgelaufen. Der Spieler hat sich nicht wieder verbunden.")
     else:
         # Client will gehen
         try:
@@ -179,16 +179,16 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
             logger.exception(f"Fehler beim expliziten Schließen des WebSockets für {remote_addr}: {close_e}")
 
     # 6) Wenn es noch menschliche Mitspieler gibt, einen Fallback-Agent einsetzen, ansonst Tisch schließen.
-    client_exists = any(isinstance(p, Client) for p in engine.players if p.session_id != client.session_id)
+    client_exists = any(isinstance(p, Peer) for p in engine.players if p.session_id != peer.session_id)
     if client_exists:
         try:
-            await engine.leave_client(client)  # der Fallback-Agent spielt jetzt weiter
+            await engine.leave_client(peer)  # der Fallback-Agent spielt jetzt weiter
         except ValueError as e:
-            logger.error(f"Fehler beim Entfernen des Clients {client.name} aus {engine.table_name}: {e}")
+            logger.error(f"Fehler beim Entfernen des Clients {peer.name} aus {engine.table_name}: {e}")
     else:
         await factory.remove_engine(engine.table_name)
 
-    logger.debug(f"{engine.table_name}, Spieler {client.name}: WebSocket geschlossen.")
+    logger.debug(f"{engine.table_name}, Spieler {peer.name}: WebSocket geschlossen.")
     return ws
 
 

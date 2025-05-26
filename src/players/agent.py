@@ -9,8 +9,6 @@ from uuid import uuid4
 class Agent(Player):
     """
     Die Abstrakte Basisklasse für einen KI-gesteuerten Spieler.
-
-    Erbt von der Basisklasse `Player`.
     """
 
     def __init__(self, name: Optional[str] = None, session_id: Optional[str] = None):

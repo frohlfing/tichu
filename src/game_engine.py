@@ -12,7 +12,7 @@ from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_D
 from src.lib.combinations import CombinationType, FIGURE_DRA, FIGURE_DOG, FIGURE_PASS, FIGURE_PHO, FIGURE_MAH, Combination
 from src.lib.errors import ErrorCode
 from src.players.agent import Agent
-from src.players.client import Client
+from src.players.peer import Peer
 from src.players.player import Player
 from src.players.random_agent import RandomAgent
 from src.private_state import PrivateState
@@ -116,90 +116,84 @@ class GameEngine:
     # Client anmelden / abmelden
     # ------------------------------------------------------
 
-    def get_player_by_session(self, session: str) -> Optional[Player]:
+    def get_peer_by_session(self, session: str) -> Optional[Peer]:
         """
-        Gibt den Spieler anhand der Session zurück.
+        Gibt den Peer anhand der Session zurück.
 
         :param session: Die Session des Spielers.
-        :return: Die Player-Instanz, falls die Session existiert, sonst None.
+        :return: Der Peer, falls die Session existiert, sonst None.
         """
-        for p in self._players:
-            if p.session_id == session:
-                return p
+        for player in self._players:
+            if player.session_id == session:
+                return player if isinstance(player, Peer) else None
         return None
 
-    async def join_client(self, client: Client) -> bool:
+    async def join_client(self, peer: Peer) -> bool:
         """
         Lässt den Client mitspielen.
 
-        :param client: Der Client, der mitspielen möchte.
+        :param peer: Der Client, der mitspielen möchte.
         :return: True, wenn der Client einen Sitzplatz bekommen hat, ansonsten False.
         """
         # Sitzplatz suchen, der von der KI besetzt ist
         available_index = -1
-        for i, p in enumerate(self._players):
-            if not isinstance(p, Client):
+        for i, player in enumerate(self._players):
+            if not isinstance(player, Peer):
                 available_index = i
                 break
         if available_index == -1:
             return False
 
-        self._players[available_index] = client
-        self._public_state.player_names[available_index] = client.name
-        client.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        client.priv = self._private_states[available_index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        client.interrupt_event = self.interrupt_event   # # todo unittest für dies Zuweisung
-        await self._broadcast("player_joined", {"player_index": available_index, "replaced_by_name": client.name})
+        self._players[available_index] = peer
+        self._public_state.player_names[available_index] = peer.name
+        peer.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        peer.priv = self._private_states[available_index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
+        peer.interrupt_event = self.interrupt_event   # # todo unittest für dies Zuweisung
+        await self._broadcast("player_joined", {"player_index": available_index, "replaced_by_name": peer.name})
         return True
 
-    async def rejoin_client(self, client: Player, websocket: WebSocketResponse) -> bool:
+    async def rejoin_client(self, peer: Peer, websocket: WebSocketResponse) -> bool:
         """
         Lässt den Client weiterspielen.
 
-        :param client: Der Client, der weiterspielen möchte.
+        :param peer: Der Client, der weiterspielen möchte.
         :param websocket: Das neue WebSocketResponse-Objekt.
         :return: True, wenn der Client an einem Sitzplatz des Tisches sitzt.
         """
         # Sitzplatz suchen, an dem der Client (leblos) sitzt.
-        index = client.priv.player_index
-        if self._players[index].session_id != client.session_id or not isinstance(client, Client) or client.is_connected:
+        index = peer.priv.player_index
+        if self._players[index].session_id != peer.session_id or not isinstance(peer, Peer) or peer.is_connected:
             return False
 
         # neue WebSocket-Verbindung übernehmen
-        client.set_websocket(websocket)
+        peer.set_websocket(websocket)
 
-        assert self._players[index] == client
-        assert self._public_state.player_names[index] == client.name
-        assert client.pub == self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        assert client.priv == self._private_states[index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        assert client.interrupt_event == self.interrupt_event  # # todo unittest für dies Zuweisung
+        assert self._players[index] == peer
+        assert self._public_state.player_names[index] == peer.name
+        assert peer.pub == self._public_state
+        assert peer.priv == self._private_states[index]
+        assert peer.interrupt_event == self.interrupt_event
 
-        # self._players[index] = client
-        # self._public_state.player_names[index] = client.name
-        # client.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        # client.priv = self._private_states[index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        # client.interrupt_event = self.interrupt_event  # # todo unittest für dies Zuweisung
-
-        await self._broadcast("player_joined", {"player_index": index, "replaced_by_name": client.name})
+        await self._broadcast("player_joined", {"player_index": index, "replaced_by_name": peer.name})
         return True
 
-    async def leave_client(self, client: Client) -> None:
+    async def leave_client(self, peer: Peer) -> None:
         """
         Lässt den Client gehen.
-        :param client: Der Client, der gehen will.
+        :param peer: Der Client, der gehen will.
         :raise ValueError: Wenn der Client nicht gefunden werden kann.
         """
-        index = client.priv.player_index
+        index = peer.priv.player_index
         if index < 0 or index > 3:
-            raise ValueError(f"Der Index des Spielers {client.name} ist nicht korrekt: {index}")
-        if self._players[index].session_id != client.session_id:
-            raise ValueError(f"Der Spielers {client.name} kann den Tisch {self._table_name} nicht verlassen, er sitz dort nicht.")
+            raise ValueError(f"Der Index des Spielers {peer.name} ist nicht korrekt: {index}")
+        if self._players[index].session_id != peer.session_id:
+            raise ValueError(f"Der Spielers {peer.name} kann den Tisch {self._table_name} nicht verlassen, er sitz dort nicht.")
 
         self._players[index] = self._default_agents[index]
         self._public_state.player_names[index] = self._default_agents[index].name
-        client.pub = None
-        client.priv = None
-        client.interrupt_event = None
+        peer.pub = None
+        peer.priv = None
+        peer.interrupt_event = None
         await self._broadcast("player_left", {"player_index": index, "replaced_by_name": self._players[index].name})
 
     # ------------------------------------------------------
@@ -257,7 +251,7 @@ class GameEngine:
             assert priv.player_index == i
 
         # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
-        clients_joined = any(isinstance(p, Client) for p in self._players)
+        clients_joined = any(isinstance(player, Peer) for player in self._players)
 
         # Kopie des sortierten Standarddecks - wird jede Runde neu durchgemischt
         mixed_deck = list(deck)
@@ -627,25 +621,25 @@ class GameEngine:
 
     async def _broadcast(self, message_type: str, payload: Optional[dict] = None):
         """
-        Sendet eine Nachricht an alle Clients.
+        Sendet eine Nachricht an alle Spieler.
 
         :param message_type: Der Typ der Nachricht.
         :param payload: (Optional) Die Nutzdaten der Nachricht.
         """
         for player in self._players:
-            if isinstance(player, Client):
+            if isinstance(player, Peer):
                 await player.notify(message_type, payload)
 
     async def _broadcast_error(self, message: str, code: ErrorCode, context: Optional[Dict] = None):
         """
-        Sendet eine Fehlermeldung an alle Clients.
+        Sendet eine Fehlermeldung an alle Spieler.
 
         :param message: Die Fehlermeldung.
         :param code: Der Fehlercode.
         :param context: (Optional) Zusätzliche Informationen.
         """
         for player in self._players:
-            if isinstance(player, Client):
+            if isinstance(player, Peer):
                 await player.error(message, code, context)
 
     # ------------------------------------------------------

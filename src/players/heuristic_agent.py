@@ -21,8 +21,6 @@ class HeuristicAgent(Agent):
     Repräsentiert einen KI-gesteuerten Spieler.
 
     Die Entscheidungen werden aufgrund statistischer Berechnungen und Regeln aus Expertenwissen getroffen.
-
-    Erbt von der Basisklasse `Agent`.
     """
     def __init__(self, name: Optional[str] = None, session_id: Optional[str] = None,
                  grand_quality: list[float] = config.HEURISTIC_TICHU_QUALITY, seed: int = None):

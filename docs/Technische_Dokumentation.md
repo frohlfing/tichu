@@ -45,7 +45,7 @@
         1.  [WebSocket-Handler](#731-websocket-handler)
         2.  [Game-Factory](#732-game-factory)
         3.  [Game-Engine](#733-game-engine)
-        4.  [Client](#734-client)
+        4.  [Peer](#734-peer)
         
 8. [Frontend (zweite Ausbaustufe)](#8-frontend-zweite-ausbaustufe)
 
@@ -155,9 +155,9 @@ WebsocketHandler
    └─ GameEngine 
       ├─ PublicState
       ├─ PrivateState
-      |            ┌─ Client
+      |            ┌─ Agent
       └─ Player ---┤
-                   └─ Agent
+                   └─ Peer
 ┴┐ 
 ```
 
@@ -195,7 +195,7 @@ Quellcode für Packages
        *   `agent.py`: Abstrakte Basisklasse `Agent`, erbt von `Player`, für KI-gesteuerte Spieler.
        *   `random_agent.py`: Konkrete Implementierung eines Agenten, der zufällige, gültige Züge macht.
        *   `heuristic_agent.py`: (Implementiert oder Geplant) Agent, der auf Heuristiken basiert.
-       *   `client.py`: (Für Live-Betrieb) Klasse, die einen menschlichen Spieler repräsentiert und die WebSocket-Kommunikation auf Serverseite abwickelt.
+       *   `peer.py`: (Für Server-Betrieb) Klasse, die den serverseitigen Endpunkt der WebSocket-Verbindung zu einem verbundenen Client repräsentiert.
 
 ### 4.2 `tests/`-Verzeichnis
 
@@ -288,9 +288,10 @@ Nach einem Reconnect teilt der Spieler statt dessen seine letzte Session-ID übe
 
 Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `payload`-Feld.
 
-**Proaktive (d.h. unaufgeforderte) Nachrichten vom Spieler an den Server:**
+**Proaktive (d.h. unaufgeforderte) Nachrichten vom Client an den Server:**
 
-Der WebSocket-Handler bearbeitet diese Nachrichten direkt oder leitet sie weiter an die Engine. Die `Cliemt`-Instanz wird hier nicht verwendet.
+Der WebSocket-Handler empfängt diese Nachrichten und leitet sie an die Game-Engine weiter. 
+Ausnahme: Ein `ping` wird direkt vom WebSocket-Handler mit einem `pong` quittiert.
 
 | Type             | Payload                                                                                 | Beschreibung                                                                              | Antwort vom Server (Type) | Antwort vom Server (Payload)                                                         |
 |------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------|
@@ -299,10 +300,10 @@ Der WebSocket-Handler bearbeitet diese Nachrichten direkt oder leitet sie weiter
 | `"interrupt"`    | `{reason: "tichu"}` oder `{reason: "bomb", cards: str}`                                 | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen oder eine Bombe werfen. | Keine Antwort             |                                                                                      |
 | `"ping"`         | `{timestamp: "ISO8601_string"}`                                                         | Verbindungstest.                                                                          | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}`                                    |
 
-**Proaktive Nachrichten vom Server an den Spieler (das sind alle außer `pong`) :**
+**Proaktive Nachrichten vom Server an den Client:**
 
-*   Die Engine (bzw. bei `welcome` der WebSocket-Handler) nutzt die Client-Instanz, um diese Nachrichten zu versenden. 
-*   Die `response`-Nachricht des Spielers wird vom WebSocket-Handler an den Client weitergeleitet, der die Daten als Antwort an die Engine ausliefert. 
+Die Engine sendet diese Nachrichten über den Peer an den Client. Bei der `request`-Nachricht wartet der Peer auf die `response`-Nachricht des Clients.
+Erhält er sie, liefert der Peer die Daten als Antwort an die Engine aus. 
 
 | Type                        | Payload                                                                                           | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                                        |
 |-----------------------------|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|----------------------------------------------------------------------|
@@ -310,7 +311,7 @@ Der WebSocket-Handler bearbeitet diese Nachrichten direkt oder leitet sie weiter
 | `"notification"` (s. 7.2.2) | `{event: str, context: dict (optional)}`                                                          | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort              |                                                                      |
 | `"error"` (s. 7.2.3)        | `{message: str, code: int, context: dict (optional)`                                              | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort              |                                                                      |
 
-Anmerkung zur `request`-Nachricht:
+**Anmerkung zur `request`-Nachricht:**
 *   Der aktuelle Spielzustand sollte dem Spieler eigentlich bekannt sein, sofern er keine Nachrichten verpasst und entsprechend den Zustand angepasst hat.
     Sollte dies (warum auch immer) mal nicht der Fall sein, würde der Spieler, der sich auf seinen intern gespeicherten Zustand verlässt, u.U. eine ungültige Antwort liefern. 
     Eine Fehlerroutine müsste dann den intern gespeicherten Spielzustand mit dem aktuellen abgleichen. Wir vermeiden dieses Synchronisationsproblem ganz einfach, indem wir bei 
@@ -319,7 +320,7 @@ Anmerkung zur `request`-Nachricht:
   
 #### 7.2.1 Request-/Response-Nachrichten
 
-| Request Action (vom Server) | Response Data (vom Spieler)                                        | Beschreibung                                                                                               |
+| Request Action (vom Server) | Response Data (vom Client)                                         | Beschreibung                                                                                               |
 |-----------------------------|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
 | "announce_grand_tichu"      | `{announced: bool}`                                                | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                             |
 | "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}` | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden. |
@@ -327,10 +328,12 @@ Anmerkung zur `request`-Nachricht:
 | "wish"                      | `{wish_value: int}`                                                | Der Spieler muss sich einen Kartenwert wünschen.                                                           |
 | "give_dragon_away"          | `{player_index: int}`                                              | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
 
-Wird die Antwort vom Spieler akzeptiert, wird eine entsprechende [Notification-Nachricht](#722-notification-nachrichten) gesendet.
-Andernfalls sendet der Server eine Error-Nachricht zurück. 
+Akzeptiert die Engine die Client-Antwort, sendet sie eine entsprechende [Notification-Nachricht](#722-notification-nachrichten) an alle Spieler.
+Andernfalls sendet die Engine eine Fehlermeldung über den Peer an den Client.
 
-Die Anfragen des Servers, ob der Spieler ein normales Tichu ansagen möchte, oder ob er eine Bombe werfen will, werden nicht an den realen Spieler weitergereicht, denn diese Entscheidungen trifft der reale Spieler proaktiv (im Gegensatz zur KI, die immer explizit gefragt wird).
+**Anmerkung:**
+Die Anfragen des Servers, ob der Spieler ein normales Tichu ansagen möchte, oder ob er eine Bombe werfen will, leitet der Peer nicht an den Client weiter, 
+denn diese Entscheidungen trifft der Client proaktiv (im Gegensatz zur KI, die immer explizit gefragt wird).
 
 #### 7.2.2 Notification-Nachrichten
 
@@ -356,8 +359,8 @@ Benachrichtigung an alle Spieler
 | "round_over"            | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Karten werden neu gemischt.                                    |
 | "game_over"             | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Partie ist entschieden.                                        |
 
-"->" bedeutet, dass der Client den vom Server gesendeten Kontext mit privaten Informationen des Spielers anreichert, bevor er es über die Websocket an den Spieler weiterleitet.
-Bei "played_joined" wird der Context nur geändert, wenn es sich um den eigenen Spieler handelt.
+"->" bedeutet, dass der Peer den vom Server gesendeten Kontext mit privaten Informationen des Spielers anreichert, bevor er es an den Spieler weiterleitet.
+Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigenen Spieler handelt.
 
 ### 7.2.3. Fehlermeldungen
 
@@ -400,12 +403,12 @@ Bei "played_joined" wird der Context nur geändert, wenn es sich um den eigenen 
     *   Ist noch mind. ein Platz frei (d.h. der Platz ist belegt von einer KI), kann der Spieler sich an den Platz setzen (ersetzt die KI) und erhält den aktuellen Spielzustand.
 *   Reagiert darauf, wenn der Spieler das Spiel verlassen will: 
     *   Wenn der reale Spieler geht, übernimmt automatisch die KI wieder den Platz, damit die übrigen Spieler weiterspielen können. 
-    *   Ist der letzte reale Spieler vom Tisch aufgestanden, wird der Tisch geschlossen (über die `Game-Factory`).
+    *   Hat der letzte Client den Tisch verlassen, wird der Tisch geschlossen (über die `Game-Factory`).
 *   Händelt Verbindungsabbrüche:  
     *   Bei einem Verbindungsabbruch wartet der Server 20 Sekunden, bevor die KI den Platz einnimmt. 
-    *   Sollte der Spieler sich wiederverbinden (er versucht es automatisch jede Sekunde), nimmt er den alten Platz wieder ein (sofern nicht in der Zwischenzeit ein anderer realer Spieler sich dort hingesetzt hat) und erhält den aktuellen Spielzustand.
-*   Empfangt Nachrichten von realen Spielern:
-    *   Leitet reguläre Spielaktionen (Antworten auf Requests) an die `Client`-Instanz des Spielers weiter.
+    *   Sollte der Client sich wiederverbinden (er versucht es automatisch jede Sekunde), nimmt er den alten Platz wieder ein (sofern nicht in der Zwischenzeit ein anderer Client den Platz eingenommen hat) und erhält den aktuellen Spielzustand.
+*   Empfangt Nachrichten vom Client:
+    *   Leitet reguläre Spielaktionen (Antworten auf Requests) an den zugehörigen Peer weiter.
     *   Leitet Interrupt-Anfragen (`"interrupt"`) direkt an die zuständige `GameEngine` weiter.
     *   Verarbeitet Meta-Nachrichten (Join, Leave, Ping, Lobby-Aktionen).
 
@@ -418,12 +421,12 @@ Bei "played_joined" wird der Context nur geändert, wenn es sich um den eigenen 
 #### 7.3.3 Game-Engine
 
 *   Bildet die Kern-Spiellogik ab.
-*   Interagiert über die `Player`-Schnittstelle mit Agenten und realem Spieler (unterscheidet aber nicht zw. `Agent` und `Client`).
+*   Interagiert mit den Spielern (unterscheidet idealerweise nicht zw. `Agent` und `Peer`).
 *   Reagiert auf Interrupt-Anfragen der Spieler.
 
-#### 7.3.4 Client
+#### 7.3.4 Peer
 
-*   Serverseitiger WebSocket-Endpunkt des realen Spielers; erbt von `Player`.
+*   Serverseitiger WebSocket-Endpunkt des Clients (ein realer Spieler, der z.B. über einen Browser interagiert, könnte aber auch ein Bot sein); erbt von `Player`.
 *   Empfängt Aufforderungen von der `GameEngine` (z.B. `play()`, `announce()`).
 *   Formatiert diese Aufforderungen als `request`-Nachricht und sendet sie über den WebSocket an den realen Spieler.
 *   Wartet auf eine `response`-Nachricht vom realen Spieler.
@@ -502,13 +505,13 @@ Bei "played_joined" wird der Context nur geändert, wenn es sich um den eigenen 
 
 ## A2. Exceptions
 
-| Error                    | Beschreibung                                                                                                                           |
-|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| PlayerInteractionError-  | Basisklasse für Fehler, die während der Interaktion mit einem Spieler auftreten können.                                                |
-| ClientDisconnectedError- | Wird ausgelöst, wenn versucht wird, eine Aktion mit einem Client auszuführen, der nicht (mehr) verbunden ist.                          |
-| PlayerInterruptError -   | Wird ausgelöst, wenn eine wartende Spieleraktion durch ein Engine-internes Ereignis (z.B. Tichu-Ansage, Bombe) unterbrochen wird.      |
-| PlayerTimeoutError -     | Wird ausgelöst, wenn ein Spieler nicht innerhalb des vorgegebenen Zeitlimits auf eine Anfrage reagiert hat.                            |
-| PlayerResponseError-     | Wird ausgelöst, wenn ein Spieler (Client) eine ungültige, unerwartete oder nicht zum Kontext passende Antwort auf eine Anfrage sendet. |
+| Error                    | Beschreibung                                                                                                                      |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| PlayerInteractionError-  | Basisklasse für Fehler, die während der Interaktion mit einem Spieler auftreten können.                                           |
+| ClientDisconnectedError- | Wird ausgelöst, wenn versucht wird, eine Aktion mit einem Client auszuführen, der nicht (mehr) verbunden ist.                     |
+| PlayerInterruptError -   | Wird ausgelöst, wenn eine wartende Spieleraktion durch ein Engine-internes Ereignis (z.B. Tichu-Ansage, Bombe) unterbrochen wird. |
+| PlayerTimeoutError -     | Wird ausgelöst, wenn ein Spieler nicht innerhalb des vorgegebenen Zeitlimits auf eine Anfrage reagiert hat.                       |
+| PlayerResponseError-     | Wird ausgelöst, wenn ein Spieler eine ungültige, unerwartete oder nicht zum Kontext passende Antwort auf eine Anfrage sendet.     |
 
 ## A3. Versionsnummer
 
