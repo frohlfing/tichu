@@ -247,6 +247,8 @@ class Peer(Player):
         :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Wert)) oder None, wenn keine Bombe geworfen wird.
         """
         # TODO: Implementieren!
+        #  Der Peer leitet hier nicht die Anfrage an den CLient weiter, sondern schaut im Puffer, ob der Client
+        #  proaktiv eine Bombe geworfen hat.
         if not self._random.choice([True, False], [1, 2]):  # einmal Ja, zweimal Nein
             return None
         combinations = [combi for combi in self.priv.combinations if combi[1][0] == CombinationType.BOMB]
