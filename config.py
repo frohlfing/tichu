@@ -80,7 +80,7 @@ DATA_PATH = getenv("DATA_PATH", f'{BASE_PATH}/data')
 
 # WebSocket-Host und Port
 HOST = getenv("HOST", "localhost")
-PORT = int(getenv("PORT", 8080))
+PORT = int(getenv("PORT", 8765))
 
 # Wer das nicht kennt, darf nicht mitspielen
 SECRET_KEY = getenv("SECRET_KEY", "secret")

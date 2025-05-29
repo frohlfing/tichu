@@ -89,11 +89,11 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     msg_type = data.get("type")  # Nachrichtentyp
                     payload = data.get("payload", {})  # die Nutzdaten
 
-                    if msg_type == "leave":  # Der Spieler verlässt den Tisch.
+                    if msg_type == "leave":  # der Client verlässt den Tisch.
                         # todo muss der Warte-Task von _ask() nicht unterbrochen werden?
                         break # aus der Message-Loop springen
 
-                    elif msg_type == "lobby_action":  # Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel).
+                    elif msg_type == "lobby_action":  # der Client führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel).
                         action = payload.get("action")
                         if action == "assign_team":
                             engine.assign_team(payload.get("data"))
@@ -114,10 +114,10 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                             logger.exception(f"Unerwarteter Fehler beim Senden der Pong-Nachricht an {peer.name}: {e}")
                             return ws
 
-                    elif msg_type == "announce":  # der Spieler hat ein einfaches Tichu angesagt
+                    elif msg_type == "announce":  # proaktive Tichu-Ansage vom Client
                         await peer.client_announce()
 
-                    elif msg_type == "bomb":  # der Spieler hat eine Bombe geworfen
+                    elif msg_type == "bomb":  # proaktiver Bombenwurf vom Client
                         await peer.client_bomb(payload.get("cards"))
 
                     elif msg_type == "response":  # Antwort auf eine vorherige Anfrage
@@ -202,6 +202,9 @@ async def main(args: argparse.Namespace):
     # Route für den WebSocket-Endpunkt '/ws' hinzufügen und mit dem Handler verknüpfen.
     app.router.add_get('/ws', websocket_handler)
 
+    # Route für das Frontend hinzufügen
+    app.router.add_static('/', path=os.path.join(config.BASE_PATH, "web"), name='web_root')
+
     # Plattformspezifisches Signal-Handling
     # Notwendig, um auf Strg+C (SIGINT) und Terminate-Signale (SIGTERM) zu reagieren und einen geordneten Shutdown einzuleiten.
     if sys.platform == 'win32':
@@ -228,8 +231,8 @@ async def main(args: argparse.Namespace):
     site = TCPSite(runner, args.host, args.port)  # Server an Host und Port aus der Konfiguration binden
     try:
         await site.start()  # startet den Server
-        logger.debug(f"aiohttp Server gestartet auf http://{args.host}:{args.port}")
-        logger.debug(f"WebSocket verfügbar unter ws://{args.host}:{args.port}/ws")
+        logger.debug(f"Web-App verfügbar unter http://{args.host}:{args.port}/index.html")
+        logger.debug(f"WebSocket verfügbar unter ws://{args.host}:{args.port}/ws/")
         await asyncio.Event().wait()  # hält den Haupt-Task am Laufen, bis ein Ereignis (z.B. CancelledError durch shutdown) eintritt
     except asyncio.CancelledError:  # wird ausgelöst, wenn shutdown() die Tasks abbricht.
         logger.debug("Haupt-Task abgebrochen, beginne Shutdown-Sequenz.")

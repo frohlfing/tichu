@@ -1,0 +1,172 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+    background-color: #333;
+    color: #fff;
+    height: 100%;
+    overflow: hidden; /* Verhindert Scrollbalken durch große Hintergründe */
+}
+
+#app-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Lobby Styling */
+#lobby-view {
+    width: 100%;
+    height: 100%;
+    display: flex; /* Standardmäßig sichtbar */
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+}
+
+.lobby-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('dragon_background.jpg'); /* PFAD ZUM DRACHENBILD */
+    background-size: cover;
+    background-position: center;
+    opacity: 0.3; /* Damit der Text lesbar bleibt */
+    z-index: -1;
+}
+
+.lobby-content {
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+#join-form input, #join-form button {
+    display: block;
+    width: 80%;
+    margin: 10px auto;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid #555;
+}
+
+#join-form button {
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+}
+#join-form button:hover {
+    background-color: #45a049;
+}
+
+#player-list {
+    list-style: none;
+    padding: 0;
+}
+#player-list li {
+    padding: 5px;
+    border-bottom: 1px solid #444;
+}
+
+.message {
+    color: #ffc107; /* Gelb für Nachrichten/Fehler */
+    margin-top: 10px;
+}
+
+
+/* Spieltisch Styling (sehr rudimentär für den Anfang) */
+#table-view {
+    width: 100%;
+    height: 100%;
+    background-color: #006400; /* Dunkelgrün für den Tisch */
+    display: flex;
+    flex-direction: column;
+    position: relative; /* Für absolute Positionierung des Turn-Indicators */
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background-color: #222;
+}
+
+.player-area {
+    padding: 10px;
+    text-align: center;
+}
+
+.player-top { background-color: rgba(0,0,0,0.1); }
+.middle-area { display: flex; flex-grow: 1; }
+.player-left { background-color: rgba(0,0,0,0.1); width: 150px; /* Beispielbreite */ }
+#trick-area { flex-grow: 1; background-color: rgba(0,0,0,0.2); padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.player-right { background-color: rgba(0,0,0,0.1); width: 150px; }
+.player-bottom { background-color: rgba(0,0,0,0.1); }
+
+#player-hand-area {
+    height: 120px; /* Höhe für Karten */
+    background-color: #555;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 5px;
+    overflow-x: auto; /* Falls viele Karten */
+}
+
+.card { /* Beispiel-Styling für eine Karte */
+    width: 70px;
+    height: 100px;
+    background-color: white;
+    border: 1px solid black;
+    border-radius: 5px;
+    margin: 0 2px;
+    color: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    cursor: pointer;
+    position: relative; /* Für das Hochrutschen */
+    bottom: 0;
+    transition: bottom 0.2s ease-in-out;
+}
+.card.selected {
+    bottom: 20px; /* Rutscht nach oben */
+    border: 2px solid gold;
+}
+
+.player-actions button, #bomb-button {
+    padding: 10px 15px;
+    margin: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+#bomb-button {
+    background: none;
+    border: none;
+    width: 50px; /* Beispiel */
+    height: 50px;
+}
+#bomb-button img { width: 100%; height: 100%; }
+
+/* Turn Indicator (einfacher Kreis) - Positionierung muss angepasst werden */
+#turn-indicator-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; /* Lässt Klicks durch */
+}
+.turn-indicator-circle {
+    width: 30px;
+    height: 30px;
+    background-color: rgba(128, 128, 128, 0.7); /* Grau */
+    border-radius: 50%;
+    position: absolute;
+    /* Position wird dynamisch via JS gesetzt */
+}

@@ -209,6 +209,19 @@ Enthält Unit-Tests für die Module in `src/`, geschrieben mit `pytest`.
 *   `server.py`: Startet den Server für den Live-Betrieb. 
 *   `wsclient.py`: Startet einen interaktiven WebSocket-Client lediglich für Testzwecke. 
 
+### 4.5 Web-Frontend
+
+```
+web/ 
+├── js/  # JavaScript-Dateien
+├── img/  # Bilder (Icons, Logos, etc.)
+├── fonts/  # Schriftarten 
+├── media/  # Sonstige statische Dateien (Videos, Audiodateien)
+├── vendor  # Drittanbieter-Assets (Bootstrap, jQuery, etc.)
+├── index.html  Startseite
+│
+```
+
 ## 5. Daten, Konstanten, Typen
 
 ### 5.1 Datenklassen
@@ -565,6 +578,8 @@ Das Format für die Docstrings ist `reStructuredText`.
 
 ### A4.2 Namenskonvention
 
+#### Backend
+
 | Type                                     | Schreibweise   |
 |------------------------------------------|----------------|
 | **Package** (Verzeichnis mit py-Dateien) | `snake_case`   |
@@ -573,6 +588,19 @@ Das Format für die Docstrings ist `reStructuredText`.
 | **Funktion** / **Klassenmethode**        | `snake_case()` |
 | **Variable** / **Parameter**             | `snake_case()` |
 | **Konstante**                            | `UPPER_CASE`   |
+
+#### Web-Frontend
+
+| Type                                                  | Schreibweise  |
+|-------------------------------------------------------|---------------|
+| **Verzeichnis**                                       | `kebab-case`  |
+| **Datei**                                             | `kebab-case`  |
+| **CSS-Klasse**                                        | `kebab-case`  |
+| **URL** / **Query-Parameter**                         | `kebab-case`  |
+| **JS-Typen** / **Aufzählung (Enum)** / **Namensraum** | `PascalCase`  |
+| **JS-Funktion**                                       | `camelCase()` |
+| **Variable** / **Parameter**                          | `camelCase()` |
+| **Konstante**                                         | `UPPER_CASE`  |
 
 Interne Funktionen und Variablen werden mit einem führenden Unterstrich gekennzeichnet.
 

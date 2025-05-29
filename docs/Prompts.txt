@@ -3,7 +3,19 @@ Lese dir die technische Doku durch. Ich würde gern mit dem Ausbau des Servers-B
 Dazu hab ich dir den relevanten Code angehängt. Es steht der Ausbau des Websocket-Handlers an
 
 
+---------------------------------
 
+kommen wir zum WebClient. Er soll mit JS, CSS, und HTML gebaut werden.
+Bei Programmstart ist der Spieler in einer Lobby. Als Hintergrund soll ein Bild mit einem Drachenkopf erscheinen.
+Der Spieler gibt sein Name ein eine Name für einen Tisch ein. Mit Klick auf einem Login-Button meldet er sich an.
+Zu sehen sind dann alle bisher angemeldeten Spieler/Agenten am Tisch. Wenn der Spieler der erst Mensch ist, darf
+er die Reihenfolge der Spieler/Agenten verändern, um so die Teams bilden zu können. Mit Klick auf Start-Button
+wird die Lobby ausgeblendet und der Spieltisch angezeigt. Ich habe ein Screenshot vom Tisch angehängt, wie es
+aussehen soll. Unten sind die Handkarten des Spieler offen einsehbar. Links und Rechts sind die Gegner, gegenüber
+der Partner. Wenn man auf eine Handkarte klickt, rutscht sie etwas nach oben und ist damit ausgewählt. Klickt
+man nochmal drauf, rutsch sie wieder zurück. Klickt man auf den rechten unteren Button werden die selektierten
+Karten gespielt. Sie gleiten auf den Tisch. Ein grauer Kreis zeigt an, wer am Zug ist. Wenn man auf die Bombe
+klickt, wird "Halt" gerufen".
 ---------------------------------
 
 
