@@ -72,13 +72,29 @@ class HeuristicAgent(Agent):
     #       future: Future = loop.run_in_executor(pool, blocking_function)
     #       result: int = await future
 
-    async def announce(self) -> bool:
+    async def announce_grand_tichu(self) -> bool:
         """
-        Fragt den Spieler, ob er ein Tichu (normales oder großes) ansagen möchte.
+        Fragt den Spieler, ob er ein großes Tichu ansagen möchte.
 
         :return: True, wenn angesagt wird, sonst False.
         """
-        grand = self.pub.start_player_index == -1 and len(self.priv.hand_cards) == 8
+        return await self._announce(grand=True)
+
+    async def announce_tichu(self) -> bool:
+        """
+        Fragt den Spieler, ob er ein normales Tichu ansagen möchte.
+
+        :return: True, wenn angesagt wird, sonst False.
+        """
+        return await self._announce(grand=False)
+
+    async def _announce(self, grand: bool) -> bool:
+        """
+        Fragt den Spieler, ob er ein Tichu (normales oder großes) ansagen möchte.
+
+        :param grand: Gibt an, ob ein großes Tichu gefragt ist.
+        :return: True, wenn angesagt wird, sonst False.
+        """
         if sum(self.pub.announcements) > 0:
             announcement = False  # Falls ein Mitspieler ein Tichu angesagt hat, sagen wir nichts an!
         else:
@@ -186,7 +202,7 @@ class HeuristicAgent(Agent):
 
         Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
-        :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0)).
+        :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0)).
         """
         # mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle)
         action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
@@ -344,7 +360,7 @@ class HeuristicAgent(Agent):
 
         Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
 
-        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Wert)) oder None, wenn keine Bombe geworfen wird.
+        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
         """
         # todo Statistik verwenden (hier wird noch durch Zufall entschieden)
         if not self._random.choice([True, False], [1, 2]):  # einmal Ja, zweimal Nein

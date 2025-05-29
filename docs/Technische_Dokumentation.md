@@ -326,7 +326,7 @@ Erhält er sie, liefert der Peer die Daten als Antwort an die Engine aus.
 | "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}` | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden. |
 | "play"                      | `{cards: str}` oder `{cards: ""}` (für passen)                     | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.  |
 | "wish"                      | `{wish_value: int}`                                                | Der Spieler muss sich einen Kartenwert wünschen.                                                           |
-| "give_dragon_away"          | `{player_index: int}`                                              | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
+| "give_dragon_away"          | `{dragon_recipient: int}`                                          | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
 
 Akzeptiert die Engine die Client-Antwort, sendet sie eine entsprechende [Notification-Nachricht](#722-notification-nachrichten) an alle Spieler.
 Andernfalls sendet die Engine eine Fehlermeldung über den Peer an den Client.
@@ -364,33 +364,39 @@ Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigene
 
 ### 7.2.3. Fehlermeldungen
 
-| Error Code                                  | Error Message                                              | Context (ergänzende Informationen)     |
-|---------------------------------------------|------------------------------------------------------------|----------------------------------------|
-| **Allgemeine Fehler (100-199)**             |                                                            |                                        |
-| UNKNOWN_ERROR = 100                         | "Ein unbekannter Fehler ist aufgetreten."                  | `{exception: ExceptionClassName}`      |
-| INVALID_MESSAGE = 101                       | "Ungültiges Nachrichtenformat empfangen."                  | `{message: dict}`                      |
-| UNAUTHORIZED = 102                          | "Aktion nicht autorisiert."                                | `{action: str}`                        |
-| SERVER_BUSY = 103                           | "Server ist momentan überlastet. Bitte später versuchen."  |                                        |
-| SERVER_DOWN = 104                           | "Server wurde heruntergefahren."                           |                                        |
-| MAINTENANCE_MODE = 105                      | "Server befindet sich im Wartungsmodus."                   |                                        |
-| **Verbindungs- & Session-Fehler (200-299)** |                                                            |                                        |
-| SESSION_EXPIRED = 200                       | "Deine Session ist abgelaufen. Bitte neu verbinden."       |                                        |
-| SESSION_NOT_FOUND = 201                     | "Session nicht gefunden."                                  | `{session_id: uuid}`                   |
-| TABLE_NOT_FOUND = 202                       | "Tisch nicht gefunden."                                    | `{table_name: str}`                    |
-| TABLE_FULL = 203                            | "Tisch ist bereits voll."                                  | `{table_name: str}`                    |
-| NAME_TAKEN = 204                            | "Dieser Spielername ist an diesem Tisch bereits vergeben." | `{table_name: str, player_name: str}`  |
-| ALREADY_ON_TABLE = 205                      | "Du bist bereits an diesem Tisch."                         | `{table_name: str, player_index: int}` |
-| **Spiellogik-Fehler (300-399)**             |                                                            |                                        |
-| INVALID_ACTION = 300                        | "Ungültige Aktion."                                        | `{reason: str, request_id: uuid}`      |
-| INVALID_CARDS = 301                         | "Ausgewählte Karten sind ungültig für diese Aktion."       | `{request_id: uuid}`                   |
-| NOT_YOUR_TURN = 302                         | "Du bist nicht am Zug."                                    | `{request_id: uuid}`                   |
-| INTERRUPT_DENIED = 303                      | "Interrupt-Anfrage abgelehnt."                             | `{reason: str, request_id: uuid}`      |
-| INVALID_WISH = 304                          | "Ungültiger Kartenwunsch."                                 | `{request_id: uuid}`                   |
-| INVALID_SCHUPF = 305                        | "Ungültige Karten für den Schupf-Vorgang."                 | `{request_id: uuid}`                   |
-| ACTION_TIMEOUT = 306                        | "Zeit für Aktion abgelaufen."                              | `{timeout: seconds, request_id: uuid}` |
-| **Lobby-Fehler (400-499)**                  |                                                            |                                        |
-| GAME_ALREADY_STARTED = 400                  | "Das Spiel an diesem Tisch hat bereits begonnen."          | `{table_name: str}`                    |
-| NOT_LOBBY_HOST = 401                        | "Nur der Host kann diese Aktion ausführen."                | `{action: str}`                        |
+| Error Code                                  | Error Message                                             | Context (ergänzende Informationen)     |
+|---------------------------------------------|-----------------------------------------------------------|----------------------------------------|
+| **Allgemeine Fehler (100-199)**             |                                                           |                                        |
+| UNKNOWN_ERROR = 100                         | Ein unbekannter Fehler ist aufgetreten.                   | `{exception: ExceptionClassName}`      |
+| INVALID_MESSAGE = 101                       | Ungültiges Nachrichtenformat empfangen.                   | `{message: dict}`                      |
+| UNKNOWN_CARD = 102                          | Mindestens eine Karte ist unbekannt.                      | `{cards: str}`                         |
+| NOT_HAND_CARD = 103                         | Mindestens eine Karte ist keine Handkarte.                | `{cards: str}`                         |
+| UNAUTHORIZED = 104                          | Aktion nicht autorisiert.                                 | `{request_id: uuid}`                   |
+| SERVER_BUSY = 105                           | Server ist momentan überlastet. Bitte später versuchen.   |                                        |
+| SERVER_DOWN = 106                           | Server wurde heruntergefahren.                            |                                        |
+| MAINTENANCE_MODE = 107                      | Server befindet sich im Wartungsmodus.                    |                                        |
+| **Verbindungs- & Session-Fehler (200-299)** |                                                           |                                        |
+| SESSION_EXPIRED = 200                       | Deine Session ist abgelaufen. Bitte neu verbinden.        |                                        |
+| SESSION_NOT_FOUND = 201                     | Session nicht gefunden.                                   | `{session_id: uuid}`                   |
+| TABLE_NOT_FOUND = 202                       | Tisch nicht gefunden.                                     | `{table_name: str}`                    |
+| TABLE_FULL = 203                            | Tisch ist bereits voll.                                   | `{table_name: str}`                    |
+| NAME_TAKEN = 204                            | Dieser Spielername ist an diesem Tisch bereits vergeben.  | `{table_name: str, player_name: str}`  |
+| ALREADY_ON_TABLE = 205                      | Du bist bereits an diesem Tisch.                          | `{table_name: str, player_index: int}` |
+| **Spiellogik-Fehler (300-399)**             |                                                           |                                        |
+| INVALID_ACTION = 300                        | Ungültige Aktion.                                         | `{reason: str, request_id: uuid}`      |
+| INVALID_RESPONSE = 301                      | Keine wartende Anfrage für die Antwort gefunden.          | `{request_id: uuid}`                   |
+| NOT_UNIQUE_CARDS = 302                      | Mindestens zwei Karten sind identisch.                    | `{cards: str}`                         |
+| INVALID_COMBINATION = 303                   | Die Karten bilden keine spielbare Kombination.            | `{cards: str}`                         |
+| NOT_YOUR_TURN = 304                         | Du bist nicht am Zug.                                     | `{request_id: uuid}`                   |
+| INTERRUPT_DENIED = 305                      | Interrupt-Anfrage abgelehnt.                              | `{reason: str, request_id: uuid}`      |
+| INVALID_WISH = 306                          | Ungültiger Kartenwunsch.                                  | `{wish_value: int}`                    |
+| INVALID_ANNOUNCE = 307                      | Tichu-Ansage nicht möglich.                               |                                        |
+| INVALID_DRAGON_RECIPIENT = 308              | Wahl des Spielers, der den Drachen bekommt, ist ungültig. | `{cards: str}`                         |
+| ACTION_TIMEOUT = 309                        | Zeit für Aktion abgelaufen.                               | `{timeout: seconds, request_id: uuid}` |
+| REQUEST_OBSOLETE = 310                      | Anfrage ist veraltet.                                     | `{request_id: uuid}`                   |
+| **Lobby-Fehler (400-499)**                  |                                                           |                                        |
+| GAME_ALREADY_STARTED = 400                  | Das Spiel an diesem Tisch hat bereits begonnen.           | `{table_name: str}`                    |
+| NOT_LOBBY_HOST = 401                        | Nur der Host kann diese Aktion ausführen.                 | `{action: str}`                        |
 
 ### 7.3 Aufgaben der Komponenten im Server-Betrieb
 

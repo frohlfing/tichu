@@ -5,7 +5,7 @@ Dieses Modul definiert das Kartendeck und Eigenschaften der Spielkarten.
 __all__ = "Card", "Cards", \
     "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
     "deck", \
-    "parse_card", "parse_cards", "stringify_card", "stringify_cards", \
+    "validate_card", "validate_cards", "parse_card", "parse_cards", "stringify_card", "stringify_cards", \
     "ranks_to_vector", "cards_to_vector", \
     "is_wish_in", "sum_card_points", "other_cards",
 
@@ -138,6 +138,20 @@ _card_points = (
     25,   # Drache → 25 Punkte
     -25,  # Phönix → 25 Minuspunkte
 )
+
+
+# Validiert die Karte im String
+# s: z.B. "R6"
+# todo UnitTest hinzufügen
+def validate_card(s: str) -> bool:
+   return s in _cardlabels
+
+
+# Validiert die Karten im String
+# s: z.B. "R6 B5 G4"
+# todo UnitTest hinzufügen
+def validate_cards(s: str) -> bool:
+    return all(c in _cardlabels for c in s.split(" ")) if s else True
 
 
 # Parst die Karte aus dem String

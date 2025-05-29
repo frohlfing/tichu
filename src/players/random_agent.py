@@ -27,14 +27,21 @@ class RandomAgent(Agent):
     # Entscheidungen
     # ------------------------------------------------------
 
-    async def announce(self) -> bool:
+    async def announce_grand_tichu(self) -> bool:
         """
-        Fragt den Spieler, ob er ein Tichu (normales oder großes) ansagen möchte.
+        Fragt den Spieler, ob er ein großes Tichu ansagen möchte.
 
         :return: True, wenn angesagt wird, sonst False.
         """
-        grand = self.pub.start_player_index == -1 and len(self.priv.hand_cards) == 8
-        return self._random.choice([True, False], [1, 19] if grand else [1, 9])
+        return self._random.choice([True, False], [1, 19])
+
+    async def announce_tichu(self) -> bool:
+        """
+        Fragt den Spieler, ob er ein normales Tichu ansagen möchte.
+
+        :return: True, wenn angesagt wird, sonst False.
+        """
+        return self._random.choice([True, False], [1, 9])
 
     async def schupf(self) -> Tuple[Card, Card, Card]:
         """
@@ -56,7 +63,7 @@ class RandomAgent(Agent):
 
         Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
-        :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0)).
+        :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0)).
         """
         # mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle)
         action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
@@ -68,7 +75,7 @@ class RandomAgent(Agent):
 
         Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
 
-        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Wert)) oder None, wenn keine Bombe geworfen wird.
+        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
         """
         if not self._random.choice([True, False], [1, 2]):  # einmal Ja, zweimal Nein
             return None

@@ -4,9 +4,6 @@ from uuid import UUID
 # Zu testende Klasse
 from src.players.player import Player
 
-# Benötigte Klassen/Daten für den Test der abstrakten Methoden
-from src.public_state import PublicState
-from src.private_state import PrivateState
 
 def test_player_init_valid_name():
     """Testet die Initialisierung mit gültigem Namen."""
@@ -54,14 +51,14 @@ async def test_player_abstract_methods_raise_not_implemented():
     # Erzeuge eine Instanz der unvollständigen Klasse.
     # Hinweis: Dies dient nur zur Veranschaulichung der abstrakten Natur.
     player = IncompletePlayer(name="Dummy")
-    pub_state = PublicState() # Leere States für den Aufruf
-    priv_state = PrivateState()
 
     # Prüfe jede abstrakte Methode
     with pytest.raises(NotImplementedError):
         await player.schupf()
     with pytest.raises(NotImplementedError):
-        await player.announce()
+        await player.announce_grand_tichu()
+    with pytest.raises(NotImplementedError):
+        await player.announce_tichu()
     with pytest.raises(NotImplementedError):
         await player.play() # play statt combination
     with pytest.raises(NotImplementedError):

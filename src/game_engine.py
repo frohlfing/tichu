@@ -294,14 +294,18 @@ class GameEngine:
                     for i in range(0, 4):
                         player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                         grand = n == 8  # großes Tichu?
-                        announced = not pub.announcements[player_index] and await self._players[player_index].announce()
-                        if announced:
-                            pub.announcements[player_index] = 2 if grand else 1  # Spieler hat Tichu angesagt
-                        if clients_joined:
-                            if grand:
+                        if grand:
+                            announced = await self._players[player_index].announce_grand_tichu()
+                            if announced:
+                                pub.announcements[player_index] = 2  # Spieler hat ein großes Tichu angesagt
+                            if clients_joined:
                                 await self._broadcast("grand_tichu_announced", {"player_index": player_index, "announced": announced})
-                            elif announced:
-                                await self._broadcast("tichu_announced", {"player_index": player_index})
+                        else:
+                            announced = not pub.announcements[player_index] and await self._players[player_index].announce_tichu()
+                            if announced:
+                                pub.announcements[player_index] = 1  # Spieler hat ein einfaches Tichu angesagt
+                                if clients_joined:
+                                    await self._broadcast("tichu_announced", {"player_index": player_index})
 
                 # jetzt müssen die Spieler schupfen
 
@@ -412,7 +416,7 @@ class GameEngine:
                         else:
                             # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein normales Tichu angesagt werden
                             if pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
-                                if await player.announce():
+                                if await player.announce_tichu():
                                     # Spieler hat Tichu angesagt
                                     pub.announcements[pub.current_turn_index] = 1
                                     if clients_joined:

@@ -7,47 +7,38 @@ Dazu hab ich dir den relevanten Code angehängt. Es steht der Ausbau des Websock
 ---------------------------------
 
 
+1) In der Game-Loop der Engine erhalten an definierten Stellen die Spieler die Gelegenheit, ein Tichu anzusagen oder eine Bombe zu werfen.
+Die Agenten entscheiden dies in dem Moment. Der Client agiert aber proaktiv auf diese beiden Aktionen. Daher leitet der Peer die Tichu-
+bzw. Bomben-Anfrage  der Engine nicht an den Client weiter, sondern holt die Tichu-Ansage oder die Bombe aus einem Nachrichtenpuffer
+(sofern der Client dies zuvor gesendet hatte). Für die Engine und dem Loop macht das keinen Unterschied, d.h., diese müssen für hierfür
+nicht ändern, sondern nur den Client. Lass uns das als erstes vornehmen.
 
-Zum Interrupt-Handling halten wir folgendes fest:
-1) In der Game-Loop der Engine erhalten an definierten Stellen die Spieler die Gelegenheit, ein Tichu anzusagen oder eine Bombe zu werfen. Die Agenten entscheiden dies in dem Moment. Der Client agiert aber proaktiv auf diese beiden Aktionen. Daher leitet der Peer die Tichu- bzw. Bomben-Anfrage  der Engine nicht an den Client weiter, sondern holt die Tichu-Ansage oder die Bombe aus einem Nachrichtenpuffer (sofern der Client dies zuvor gesendet hatte). Für die Engine und dem Loop macht das keinen Unterschied, d.h., diese müssen für hierfür nicht ändern, sondern nur den Client. Lass uns das als erstes vornehmen.
-2) Damit die Bombe sofort fällt (bzw. dir Tichu-Ansage sofort gehört wird), muss der aktuelle Entscheidungsprozess des Mitspielers unterbrochen werden. Das betrifft aber nur `play` und `schupf`. Die anderen Entscheidungen dürfen lt. Spielregel nicht unterbrochen werden.
+2) Damit die Bombe sofort fällt (bzw. dir Tichu-Ansage sofort gehört wird), muss der aktuelle Entscheidungsprozess des Mitspielers
+unterbrochen werden. Das betrifft aber nur `play` und `schupf`. Die anderen Entscheidungen dürfen lt. Spielregel nicht unterbrochen werden.
 So funktioniert der Interrupt:
-- Wenn der Client ein Tichu ansagt oder eine Bombe wirft, validiert, der Peer die die Aktion. Wenn ok, wird die Aktion zwischengespeichert (ansonst wird eine Fehlermeldung zurückgesendet). (Das sollte schon in Schritt 1 umgesetzt sein). Wenn ok, setzt der Peer auch ein Interrupt.
- - Das Interrupt löst bei `play` und bei `schupf` ein InterruptError aus. U.U ist eine nochmalige Validierung notwendig, wenn sich der Spielzustand geändert hat. Ein `continue` sollte in Game-Loop reichen, um dann den Interrupter die Aktion als nächstes auführen lassen zu können (hoffe ich jedenfalls.
+- Wenn der Client ein Tichu ansagt oder eine Bombe wirft, validiert, der Peer die Aktion. Wenn ok, wird die Aktion zwischengespeichert
+und das Interrupt-Event gesetzt.
+- Das Interrupt löst bei `play` und bei `schupf` ein InterruptError aus. U.U ist eine nochmalige Validierung notwendig, wenn sich der
+Spielzustand geändert hat. Ein `continue` sollte in Game-Loop reichen, um dann den Interrupter die Aktion als nächstes ausführen lassen
+zu können (hoffe ich jedenfalls).
 
-Sind wir uns in dem Vorgehen einig?
-
-
-wir sind fast auf dem selben Nenner. Nur nicht, wer das Interrupt setzt und wie es danach weiter geht. Ich stell mir es so vor, so sollten wir es machen (Bsp. Bombe):
+---------------------------
+Ich stell mir es so vor, so sollten wir es machen (Bsp. Bombe):
 
 Engine-Loop fragt alle Spieler ob jemand eine Bombe werfen will. Sagen wir, keiner will.
-
 Engine-Loop fragt Spieler A nach seinen Zug. Er überlegt (und die Engine wartet)...
-
 Während dessen schmeißt Client B eine Bombe.
-
 Der Peer B validiert, ob Client B das überhaupt kann, wenn ja, merkt er sich die Bombe und setzt ein Interrupt.
-
 Der Denkprozess von Spieler A wird abgebrochen.  Die Engine fängt das InterruptError ab und wiederholt den letzten Schleifendurchlauf.
-
 Engine-Loop fragt wieder alle Spieler ob jemand eine Bombe werfen will. Diesmal antwortet Peer B mit der Bombe.
 
-Ich habe Player inzwischen so umgebaut, dass dieser eine Referenz auf den Spielstatus hat. Dadurch ist er jederzeit auf den aktuellen Stand. Wenn wir uns einige mit der Umsetzung sind, schick ich dir die aktuelle Version.
-
-
-
 Zur Problematik , dass 2 Spieler eine Bombe werfen:
+- die Spieler werden in einer zufälligen Reihenfolge nacheinander gefragt.
+- der Peer nimmt die Bombe aus dem Puffer, aber spielt sie nur, wenn das Interrupt noch nicht gesetzt ist. Wenn doch, gibt es eine
+Meldung an den Client "zu spät, pech gehabt"
+- nach dem Werfen der Bombe wird das Interrupt zurückgesetzt (eigentlich egal, wer das macht)
 
-die Spieler werden in einer zufälligen Reihenfolge nacheinander gefragt.
-
-der Peer nimmt die Bombe aus dem Puffer, aber spielt sie nur, wenn das Interrupt noch nicht gesetzt ist. Wenn doch, gibt es eine Meldung an den Client "zu spät, pech gehabt"
-
-nach dem Werfen der Bombe wird das Interrupt zurückgesetzt (eigentlich egal, wer das macht)
-soweit ok?
-
-
-
-jetzt hast du dich verlaufen... es ist viel einfacher. ich erkäre es dir mit deinen Worten nochmal:
+-----------
 
 Client A und Client B senden fast gleichzeitig "interrupt_request" (Bombe) an ihre Peers (Peer_A, Peer_B).
 Peer_A und Peer_B:
@@ -68,5 +59,3 @@ self.interrupt_event wird zurückgesetzt
 Engine empfängt Bombe_A.
 Engine sendet notification ("bomb_played" für Bombe_A).
 Spieler A ist jetzt current_turn_index.
-
-Das war es schon.

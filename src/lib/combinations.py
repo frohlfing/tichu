@@ -95,7 +95,7 @@ def stringify_type(t: CombinationType, m: int = None) -> str:
 # trick_value: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist)
 # shift_phoenix: Wenn True, wird der Phönix eingereiht (kostet etwas Zeit)
 # return: (Typ, Länge, Rang);
-def get_figure(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> tuple:
+def get_figure(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> Combination:
     n = len(cards)
     if n == 0:
         return FIGURE_PASS

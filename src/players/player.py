@@ -70,14 +70,21 @@ class Player:
     # Entscheidungen
     # ------------------------------------------------------
 
-    async def announce(self) -> bool:
+    async def announce_grand_tichu(self) -> bool:
         """
-        Fragt den Spieler, ob er ein Tichu (normales oder großes) ansagen möchte.
+        Fragt den Spieler, ob er ein großes Tichu ansagen möchte.
 
         :return: True, wenn angesagt wird, sonst False.
         """
-        #grand = self.pub.start_player_index == -1 and len(self.priv.hand_cards) == 8
-        raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'announce' implementieren.")
+        raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'announce_grand_tichu' implementieren.")
+
+    async def announce_tichu(self) -> bool:
+        """
+        Fragt den Spieler, ob er ein normales Tichu ansagen möchte.
+
+        :return: True, wenn angesagt wird, sonst False.
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'announce_tichu' implementieren.")
 
     async def schupf(self) -> Tuple[Card, Card, Card]:
         """
@@ -96,7 +103,7 @@ class Player:
 
         Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
-        :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Wert)) oder Passen ([], (0,0,0)).
+        :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0)).
         :raises PlayerInterruptError: Wenn die Aktion durch ein Interrupt abgebrochen wurde.
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'play' implementieren.")
@@ -107,7 +114,7 @@ class Player:
 
         Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
 
-        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Wert)) oder None, wenn keine Bombe geworfen wird.
+        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'bomb' implementieren.")
 

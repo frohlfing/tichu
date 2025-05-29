@@ -167,17 +167,17 @@ async def main(args: argparse.Namespace):
 
         # Antworten von Server-Anfragen
         # announce_grand_tichu
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "announced": False}}},
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "announced": True}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"announced": False}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"announced": True}}},
         # schupf
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"to_opponent_right": "B2", "to_partner": "SK", "to_opponent_left": "B3"}}},
         # play
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "cards": []}}},
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "cards": ["Dr", "S9"]}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": []}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": ["Dr", "S9"]}}},
         # wish
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "wish_value": 8}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"wish_value": 8}}},
         # give_dragon_away
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"request_id": "<request_id>", "player_index": 2}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"player_index": 2}}},
     ]
 
     async with ClientSession() as http:
