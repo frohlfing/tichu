@@ -96,7 +96,7 @@ class Peer(Player):
             # Spieler hat schon Karten ausgespielt oder bereits Tichu angesagt
             msg = "Tichu-Ansage abgelehnt."
             logger.warning(f"Peer {self.name}: {msg}")
-            await self.error(msg, ErrorCode.REQUEST_OBSOLETE)
+            await self.error(msg, ErrorCode.INVALID_ANNOUNCE)
             return
 
         self._pending_announce = True
@@ -106,7 +106,7 @@ class Peer(Player):
         """
         Wird aufgerufen, wenn der Client außerhalb seines regulären Zuges eine Bombe geworfen hat.
 
-        :param labels: Die Karten, aus der die Bombe gebildet wurde.
+        :param labels: Die Karten, aus denen die Bombe gebildet wurde.
         """
         # Label der Karten valide?
         if not validate_cards(labels):
