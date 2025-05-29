@@ -29,7 +29,7 @@ class HeuristicAgent(Agent):
 
         :param name: (Optional) Name für den Agenten. Wenn None, wird einer generiert.
         :param session_id: (Optional) Aktuelle Session des Agenten. Wenn None, wird eine Session generiert.
-        :param grand_quality: (Optional) Mindestwert für die Güte bei der Tichu-Ansage (kleines, großes).
+        :param grand_quality: (Optional) Mindestwert für die Güte bei der Tichu-Ansage (einfaches, großes).
         :param seed: (Optional) Seed für den internen Zufallsgenerator (für Tests).
         """
         super().__init__(name, session_id=session_id)
@@ -39,6 +39,9 @@ class HeuristicAgent(Agent):
         self._statistic_key: tuple = ()  # Spieler und Anzahl Handkarten, für die die Statistik berechnet wurde
 
     def reset_round(self):  # pragma: no cover
+        """
+        Setzt spielrundenspezifische Werte zurück.
+        """
         self.__statistic = {}
         self._statistic_key = ()
 
@@ -74,7 +77,10 @@ class HeuristicAgent(Agent):
 
     async def announce_grand_tichu(self) -> bool:
         """
-        Fragt den Spieler, ob er ein großes Tichu ansagen möchte.
+        Die Engine fragt den Spieler, ob er ein großes Tichu ansagen möchte.
+
+        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein großes Tichu ansagen darf.
+        Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: True, wenn angesagt wird, sonst False.
         """
@@ -82,15 +88,20 @@ class HeuristicAgent(Agent):
 
     async def announce_tichu(self) -> bool:
         """
-        Fragt den Spieler, ob er ein normales Tichu ansagen möchte.
+        Die Engine fragt den Spieler, ob er ein einfaches Tichu ansagen möchte.
 
-        :return: True, wenn angesagt wird, sonst False.
+        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein einfaches Tichu ansagen darf.
+        Die Engine verlässt sich darauf, dass die Antwort valide ist.
+
+        :return: True, wenn ein Tichu angesagt wird, sonst False.
         """
         return await self._announce(grand=False)
 
     async def _announce(self, grand: bool) -> bool:
         """
-        Fragt den Spieler, ob er ein Tichu (normales oder großes) ansagen möchte.
+        Die Engine fragt den Spieler, ob er ein Tichu (einfaches oder großes) ansagen möchte.
+
+        Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :param grand: Gibt an, ob ein großes Tichu gefragt ist.
         :return: True, wenn angesagt wird, sonst False.
@@ -119,8 +130,10 @@ class HeuristicAgent(Agent):
 
     async def schupf(self) -> Tuple[Card, Card, Card]:
         """
-        Fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
+        Die Engine fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
+        Die Engine ruft diese Methode nur auf, wenn der Spieler noch Karten abgeben muss.
+        Die Engine verlässt sich darauf, dass die Antwort valide ist.
         Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner.
@@ -198,8 +211,9 @@ class HeuristicAgent(Agent):
 
     async def play(self) -> Tuple[Cards, Combination]:
         """
-        Fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
+        Die Engine fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
+        Die Engine verlässt sich darauf, dass die Antwort valide ist.
         Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0)).
@@ -356,9 +370,10 @@ class HeuristicAgent(Agent):
 
     async def bomb(self) -> Optional[Tuple[Cards, Combination]]:
         """
-        Fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
+        Die Engine fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
 
         Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
+        Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
         """
@@ -373,7 +388,10 @@ class HeuristicAgent(Agent):
     # return: Der gewünschte Kartenwert (2-14).
     async def wish(self) -> int:
         """
-        Fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
+        Die Engine fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
+
+        Die Engine ruft diese Methode nur auf, wenn der Spieler sich einen Kartenwert wünschen muss.
+        Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: Der gewünschte Kartenwert (2-14).
         """
@@ -407,6 +425,9 @@ class HeuristicAgent(Agent):
     async def give_dragon_away(self) -> int:
         """
         Fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
+
+        Die Engine ruft diese Methode nur auf, wenn der Spieler den Drachen verschenken muss.
+        Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: Der Index (0-3) des Gegners, der den Stich erhält.
         """

@@ -79,14 +79,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         msg: WSMessage
         async for msg in ws:
             if msg.type == WSMsgType.TEXT:
-
-                # # Ignoriere Nachrichten, wenn der Client intern bereits als getrennt markiert ist.
-                # if not peer.is_connected:
-                #     logger.warning(f"Websocket-Nachricht von {peer.name} empfangen, obwohl intern als disconnected markiert.")
-                #     break  # Schleife verlassen -> finally wird ausgeführt.
-
                 try:
-                    # Nachricht laden
                     data = json.loads(msg.data)
                     logger.debug(f"Empfangen TEXT von {peer.name}: {data}")
                     if not isinstance(data, dict):
@@ -96,9 +89,8 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     msg_type = data.get("type")  # Nachrichtentyp
                     payload = data.get("payload", {})  # die Nutzdaten
 
-                    # Proaktive Nachricht vom Spieler auswerten
-
                     if msg_type == "leave":  # Der Spieler verlässt den Tisch.
+                        # todo muss der Warte-Task von _ask() nicht unterbrochen werden?
                         break # aus der Message-Loop springen
 
                     elif msg_type == "lobby_action":  # Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel).
@@ -111,10 +103,6 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                             logger.error(f"Unbekannte Aktion '{action}' in der Lobby von {peer.name}")
                             await peer.error("Unbekannte Aktion in der Lobby", ErrorCode.INVALID_MESSAGE, context=msg.data)
 
-                    elif msg_type == "interrupt":  # explizite Interrupt-Anfrage
-                        #await engine.on_interrupt(peer, payload.get("reason"))  # an die Engine weiterleiten
-                        print("Interrupt")  # todo Interrupt handeln
-
                     elif msg_type == "ping":  # Verbindungstest
                         logger.info(f"{peer.name}: ping")
                         ping_message = {"type": "pong", "payload": payload }
@@ -126,12 +114,16 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                             logger.exception(f"Unerwarteter Fehler beim Senden der Pong-Nachricht an {peer.name}: {e}")
                             return ws
 
-                    #  Antwort auf eine vorherige Anfrage (die mittels peer._ask() gestellt wurde)
+                    elif msg_type == "announce":  # der Spieler hat ein einfaches Tichu angesagt
+                        await peer.client_announce()
 
-                    elif msg_type == "response":
-                        await peer.on_websocket_response(payload.get("request_id"), payload.get("data", {}))  # an den Client weiterleiten
+                    elif msg_type == "bomb":  # der Spieler hat eine Bombe geworfen
+                        await peer.client_bomb(payload.get("cards"))
 
-                    else:
+                    elif msg_type == "response":  # Antwort auf eine vorherige Anfrage
+                        await peer.client_response(payload.get("request_id"), payload.get("data", {}))
+
+                    else:  # Nachrichtentyp unbekannt
                         logger.error(f"Message-Type '{msg_type}' nicht erwartet")
                         await peer.error("Message-Type nicht erwartet", ErrorCode.INVALID_MESSAGE, context=msg.data)
 

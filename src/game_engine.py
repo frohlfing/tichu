@@ -194,6 +194,8 @@ class GameEngine:
         peer.pub = None
         peer.priv = None
         peer.interrupt_event = None
+        # todo was machen mit dem Warte-Task von peer._ask() ?
+        # todo was machen mit peer._pending_requests()?
         await self._broadcast("player_left", {"player_index": index, "replaced_by_name": self._players[index].name})
 
     # ------------------------------------------------------
@@ -414,7 +416,7 @@ class GameEngine:
                             cards, combination = bomb
                             bomb = None
                         else:
-                            # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein normales Tichu angesagt werden
+                            # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden
                             if pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
                                 if await player.announce_tichu():
                                     # Spieler hat Tichu angesagt

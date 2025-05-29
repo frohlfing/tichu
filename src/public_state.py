@@ -28,7 +28,7 @@ class PublicState:
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest).
     :ivar count_hand_cards: Anzahl der Handkarten pro Spieler [Spieler 0-3].
     :ivar played_cards: Bereits gespielte Karten in der aktuellen Runde [Card, ...].
-    :ivar announcements: Angekündigtes Tichu pro Spieler [Spieler 0-3] (0 == keine Ansage, 1 == kleines, 2 == großes Tichu)
+    :ivar announcements: Angekündigtes Tichu pro Spieler [Spieler 0-3] (0 == keine Ansage, 1 == einfaches, 2 == großes Tichu)
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt)
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == noch niemand).
     :ivar trick_owner_index: Index des Spielers, der die letzte Kombination gespielt hat, also Besitzer des Stichs ist (-1 == leerer Stich).

@@ -89,14 +89,16 @@ Die detaillierten Spielregeln für Tichu sind hier zu finden:
 
 1.  **Lobby & Spielstart:** Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
 2.  **Kartenausgabe (Initial):** Der Server verteilt je 8 Karten an jeden Spieler.
-3.  **Grand Tichu Ansage:** Jeder Spieler muss sich dann entscheiden, ob er Grand Tichu ansagen möchte oder nicht (passt).
-4.  **Kartenausgabe (Restlich):** Sobald jeder Spieler sich entschieden hat, teilt der Server die restlichen Karten aus (je 6 pro Spieler, insgesamt 14).
-5.  **Kleines Tichu Ansage (vor Schupfen):** Solange noch kein Spieler Karten zum Tausch (Schupfen) abgegeben hat, kann der Spieler ein Tichu ansagen. Dazu muss er vorab ein Interrupt auslösen.
-6.  **Schupfen:** Die Spieler müssen nun 3 Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler).
-7.  **Kartenaufnahme nach Schupfen:** Sobald alle Spieler die Karten zum Tauschen abgegeben haben, sendet der Server an jeden Spieler jeweils die getauschten Karten, die für ihn bestimmt sind.
+3.  **Großes Tichu ansagen:** Jeder Spieler muss sich dann entscheiden, ob er ein großes Tichu ansagen möchte oder nicht.
+4.  **Kartenausgabe (restliche):** Sobald jeder Spieler sich entschieden hat, teilt der Server die restlichen Karten aus (je 6 pro Spieler, insgesamt 14).
+5.  **Einfaches Tichu ansagen:** Solange noch kein Spieler Karten zum Tausch (Schupfen) abgegeben hat, kann der Spieler ein Tichu ansagen.
+6.  **Schupfen:** Die Spieler müssen nun drei Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler).
+7.  **Tauschkarte aufnehmen:** Sobald alle Spieler die Karten zum Tauschen abgegeben haben, werden diese an die adressierten Spieler verteilt.
 8.  **Kombinationen legen:**
-    *   Ab jetzt kann der Spieler jederzeit a) Tichu ansagen (solange er noch 14 Karten auf der Hand hat) oder b) eine Bombe werfen (sofern er eine besitzt und den Stich überstechen kann). Dazu muss er ein Interrupt auslösen.
-    *   Der Spieler mit dem MahJong muss eine Kartenkombination ablegen.
+    *   Ab jetzt kann der Spieler jederzeit 
+        * a) Tichu ansagen (solange er noch 14 Karten auf der Hand hat) oder 
+        * b) eine Bombe werfen (sofern er eine besitzt und den Stich überstechen kann). Wer eine Bombe wirft, erhält sofort das Zugrecht. 
+    *   Der Spieler mit dem MahJong muss als Erstes eine Kartenkombination ablegen.
     *   Der nächste Spieler wird aufgefordert, Karten abzulegen oder zu Passen.
     *   Dies wird wiederholt, bis alle Mitspieler hintereinander gepasst haben, sodass der Spieler, der die letzten Karten gespielt hat, wieder an der Reihe ist.
 9.  **Stich kassieren:** Dieser Spieler darf die Karten kassieren.
@@ -119,7 +121,7 @@ Diese Punkte stammen aus dem offiziellen Regelwerk.
     *   **Phönix im Stich:** Sticht der Phönix eine Einzelkarte, so ist sein Rang im Stich 0.5 höher die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
 
 * Darüber hinaus werden für dieses Projekt folgende Sonderregeln definiert:
-    *   Hat ein Spieler ein großes oder normales Tichu angesagt, kann der Partner kein Tichu mehr ansagen. Das vermeidet Fehlentscheidungen aufgrund Synchronisationsprobleme.
+    *   Hat ein Spieler ein großes oder einfaches Tichu angesagt, kann der Partner kein Tichu mehr ansagen. Das vermeidet Fehlentscheidungen aufgrund Synchronisationsprobleme.
 
 ## 3. Systemarchitektur
 
@@ -296,9 +298,10 @@ Ausnahme: Ein `ping` wird direkt vom WebSocket-Handler mit einem `pong` quittier
 | Type             | Payload                                                                                 | Beschreibung                                                                              | Antwort vom Server (Type) | Antwort vom Server (Payload)                                                         |
 |------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------|
 | `"leave"`        |                                                                                         | Der Spieler möchte den Tisch verlassen.                                                   | keine Antwort             |                                                                                      |
-| `"lobby_action"` | `{action: "assign_team", "data": [player_new_index,...]}` oder `{action: "start_game"}` | Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel). | Keine Antwort             |                                                                                      |
-| `"interrupt"`    | `{reason: "tichu"}` oder `{reason: "bomb", cards: str}`                                 | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen oder eine Bombe werfen. | Keine Antwort             |                                                                                      |
 | `"ping"`         | `{timestamp: "ISO8601_string"}`                                                         | Verbindungstest.                                                                          | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}`                                    |
+| `"lobby_action"` | `{action: "assign_team", "data": [player_new_index,...]}` oder `{action: "start_game"}` | Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel). | Keine Antwort             |                                                                                      |
+| `"announce"`     |                                                                                         | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen.                        | Keine Antwort             |                                                                                      |
+| `"bomb"`         | `{cards: str}`                                                                          | Der Spieler möchte außerhalb seines regulären Zuges eine Bombe werfen.                    | Keine Antwort             |                                                                                      |
 
 **Proaktive Nachrichten vom Server an den Client:**
 
@@ -332,7 +335,7 @@ Akzeptiert die Engine die Client-Antwort, sendet sie eine entsprechende [Notific
 Andernfalls sendet die Engine eine Fehlermeldung über den Peer an den Client.
 
 **Anmerkung:**
-Die Anfragen des Servers, ob der Spieler ein normales Tichu ansagen möchte, oder ob er eine Bombe werfen will, leitet der Peer nicht an den Client weiter, 
+Die Anfragen des Servers, ob der Spieler ein einfaches Tichu ansagen möchte, oder ob er eine Bombe werfen will, leitet der Peer nicht an den Client weiter, 
 denn diese Entscheidungen trifft der Client proaktiv (im Gegensatz zur KI, die immer explizit gefragt wird).
 
 #### 7.2.2 Notification-Nachrichten
@@ -346,7 +349,7 @@ Benachrichtigung an alle Spieler
 | "lobby_update"          | `{action: "assign_team", team: list}` oder `{action: "start_game"}`                                                               | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
 | "hand_cards_dealt"      | `{count: int}` -> `{hand_cards: str}`                                                                                             | Handkarten wurden an die Spieler verteilt.                                                  |
 | "grand_tichu_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.                                   |
-| "tichu_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein normales Tichu angesagt.                                                |
+| "tichu_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                                               |
 | "player_schupfed"       | `{player_index: int}`                                                                                                             | Der Spieler hat drei Karten zum Tausch abgegeben.                                           |
 | "schupf_cards_dealt"    | `None` -> `{received_schupf_cards: str}`                                                                                          | Die Tauschkarten wurden an die Spieler verteilt.                                            |
 | "passed"                | `{player_index: int}`                                                                                                             | Der Spieler hat hat gepasst.                                                                |

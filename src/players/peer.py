@@ -58,6 +58,15 @@ class Peer(Player):
             except Exception as e:
                 logger.exception(f"Fehler beim Schließen der WebSocket-Verbindung für {self._name}: {e}")
 
+    def reset_round(self):  # pragma: no cover
+        """
+        Setzt spielrundenspezifische Werte zurück.
+        """
+        self._pending_requests = {}
+        self._pending_announce = None
+        self._pending_bomb = None
+        # todo: muss der Warte-Task von _ask() nicht auch zurückgesetzt werden?
+
     def set_websocket(self, new_websocket: WebSocketResponse):
         """
         Übernimmt die WebSocket-Verbindung.
@@ -78,6 +87,88 @@ class Peer(Player):
     # ------------------------------------------------------
     # Entscheidungen
     # ------------------------------------------------------
+
+    async def client_announce(self):
+        """
+        Wird aufgerufen, wenn der Client ein einfaches Tichu angesagt hat.
+        """
+        if self.pub.count_hand_cards[self.priv.player_index] != 14 or self.pub.announcements[self.priv.player_index]:
+            # Spieler hat schon Karten ausgespielt oder bereits Tichu angesagt
+            msg = "Tichu-Ansage abgelehnt."
+            logger.warning(f"Peer {self.name}: {msg}")
+            await self.error(msg, ErrorCode.REQUEST_OBSOLETE)
+            return
+
+        self._pending_announce = True
+        self.interrupt_event.set()
+
+    async def client_bomb(self, labels: str):
+        """
+        Wird aufgerufen, wenn der Client außerhalb seines regulären Zuges eine Bombe geworfen hat.
+
+        :param labels: Die Karten, aus der die Bombe gebildet wurde.
+        """
+        # Label der Karten valide?
+        if not validate_cards(labels):
+            msg = "Mindestens eine Karte ist unbekannt"
+            logger.warning(f"Peer {self.name}: {msg}: {labels}")
+            await self.error(msg, ErrorCode.UNKNOWN_CARD, context={"cards": labels})
+            return
+
+        # Labels parsen
+        playing_cards = parse_cards(labels)
+
+        # Sind die Karten unterschiedlich?
+        if len(set(playing_cards)) != len(playing_cards):  # todo testen!
+            msg = "Mindestens zwei Karten sind identisch"
+            logger.warning(f"Peer {self.name}: {msg}: {labels}")
+            await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": labels})
+            return
+
+        # Sind die Karten auf der Hand?
+        if any(card not in self.priv.hand_cards for card in playing_cards):
+            msg = "Mindestens eine Karte ist keine Handkarte"
+            logger.warning(f"Peer {self.name}: {msg}: {labels}")
+            await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": labels})
+            return
+
+        # Kombination der Bombe ermitteln. Ist sie spielbar?
+        combination = None
+        possible_combinations = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
+        for cards, combi in possible_combinations:
+            if combi[0] == CombinationType.BOMB and playing_cards == cards:
+                combination = combi
+                break
+        if combination is None:
+            msg = "Die Karten bilden keine spielbare Bombe"
+            logger.warning(f"Peer {self.name}: {msg}: {labels}")
+            await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": labels})
+            return
+
+        self._pending_bomb = playing_cards
+        self.interrupt_event.set()
+
+    async def client_response(self, request_id: str, response_data: dict):
+        """
+        Wird aufgerufen, wenn der Client eine Anfrage beantwortet hat.
+
+        :param request_id:  Die UUID der Anfrage.
+        :param response_data: Die Daten der Antwort.
+        """
+        future = self._pending_requests.pop(request_id, None)  # hole und entferne die Future aus _pending_requests
+        if not future:  # keine wartende Anfrage für diese Antwort gefunden
+            msg = "Keine wartende Anfrage für diese Antwort gefunden."
+            logger.warning(f"Peer {self._name}: {msg} (Request-ID {request_id})")
+            await self.error(msg, ErrorCode.INVALID_RESPONSE, context={"request_id": request_id})
+            return
+        if future.done():  # _ask() hat inzwischen das Warten auf diese Antwort aufgegeben (wegen Timeout, Interrupt oder Server beenden)
+            msg = "Anfrage ist veraltet."
+            logger.warning(f"Peer {self._name}: {msg} (Request-ID {request_id}).")
+            await self.error(msg, ErrorCode.REQUEST_OBSOLETE, context={"request_id": request_id})
+            return
+        # die Daten mittels Future an _ask() übergeben
+        future.set_result(response_data)
+        logger.debug(f"Peer {self._name}: Antwort an wartende Methode übergeben (Request-ID {request_id}).")
 
     async def _ask(self, action: str, interruptable: bool = False) -> dict | None:
         """
@@ -184,28 +275,6 @@ class Peer(Player):
             # noinspection PyAsyncCall
             self._pending_requests.pop(request_id, None)
 
-    async def on_websocket_response(self, request_id: str, response_data: dict):
-        """
-        Wird aufgerufen, wenn eine Antwort vom realen Spieler empfangen wurde.
-
-        :param request_id:  Die UUID der Anfrage.
-        :param response_data: Die Daten der Antwort.
-        """
-        future = self._pending_requests.pop(request_id, None)  # hole und entferne die Future aus _pending_requests
-        if not future:  # keine wartende Anfrage für diese Antwort gefunden
-            msg = "Keine wartende Anfrage für diese Antwort gefunden."
-            logger.warning(f"Peer {self._name}: {msg} (Request-ID {request_id})")
-            await self.error(msg, ErrorCode.INVALID_RESPONSE, context={"request_id": request_id})
-            return
-        if future.done():  # _ask() hat inzwischen das Warten auf diese Antwort aufgegeben (wegen Timeout, Interrupt oder Server beenden)
-            msg = "Anfrage ist veraltet."
-            logger.warning(f"Peer {self._name}: {msg} (Request-ID {request_id}).")
-            await self.error(msg, ErrorCode.REQUEST_OBSOLETE, context={"request_id": request_id})
-            return
-        # die Daten mittels Future an _ask() übergeben
-        future.set_result(response_data)
-        logger.debug(f"Peer {self._name}: Antwort an wartende Methode übergeben (Request-ID {request_id}).")
-
     async def announce_grand_tichu(self) -> bool:
         """
         Die Engine fragt den Spieler, ob er ein großes Tichu ansagen möchte.
@@ -217,36 +286,32 @@ class Peer(Player):
         """
         announced = None
         while announced is None:
-            response_payload = await self._ask(action="announce_grand_tichu")
+            payload = await self._ask("announce_grand_tichu")
             # Ist der Payload ok?
-            if not response_payload or not isinstance(response_payload.get("announced"), bool):
+            if not payload or not isinstance(payload.get("announced"), bool):
                 msg = "Ungültige Antwort für Anfrage \"announce_grand_tichu\""
-                logger.warning(f"Peer {self.name}: {msg}: {response_payload}")
-                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=response_payload)
+                logger.warning(f"Peer {self.name}: {msg}: {payload}")
+                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
+            # Antwort übernehmen
+            announced = payload["announced"]
 
-            # Ist die Aktion noch gültig?
-            announced = response_payload["announced"]
-            if announced and (self.pub.start_player_index != -1 or self.pub.count_hand_cards[self.priv.player_index] != 8):
-                # es wurde schon geschupft bzw. der Spieler hat schon alle Handarten aufgenommen - dürfte nie vorkommen
-                msg = "Große Tichu-Ansage abgelehnt."
-                logger.warning(f"Peer {self.name}: {msg}")
-                await self.error(msg, ErrorCode.REQUEST_OBSOLETE)
-                announced = False
+        # Darf der Spieler noch ein großes Tichu sagen? (stellt die Engine sicher) todo rausnehmen
+        assert self.pub.start_player_index == -1 and self.pub.count_hand_cards[self.priv.player_index] == 8
 
         return announced
 
     async def announce_tichu(self) -> bool:
         """
-        Die Engine fragt den Spieler, ob er ein normales Tichu ansagen möchte.
+        Die Engine fragt den Spieler, ob er ein einfaches Tichu ansagen möchte.
 
-        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein Tichu ansagen darf.
+        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein einfaches Tichu ansagen darf.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         # Da der Client proaktiv (also ungefragt) ein einfaches Tichu ansagt, wird die Frage nicht an den Client
         # weitergeleitet, sondern es wird im Puffer geschaut, ob eine unbearbeitete Tichu-Ansage vorliegt.
 
-        :return: True, wenn ein Tichu angesagt wurde, sonst False.
+        :return: True, wenn ein Tichu angesagt wird, sonst False.
         """
         # Liegt eine Ansage vor?
         if not self._pending_announce:
@@ -257,13 +322,8 @@ class Peer(Player):
         self._pending_announce = None
         assert announced == True
 
-        # Ist die Aktion noch gültig?
-        if announced and (self.pub.count_hand_cards[self.priv.player_index] != 14 or self.pub.announcements[self.priv.player_index]):
-            # Spieler hat schon Karten ausgespielt oder bereits Tichu angesagt - dürfte nie vorkommen
-            msg = "Tichu-Ansage abgelehnt."
-            logger.warning(f"Peer {self.name}: {msg}")
-            await self.error(msg, ErrorCode.REQUEST_OBSOLETE)
-            announced = False
+        # Darf der Spieler noch Tichu sagen? (stellt die Engine sicher)  todo rausnehmen
+        assert self.pub.count_hand_cards[self.priv.player_index] == 14 and self.pub.announcements[self.priv.player_index] == 0
 
         return announced
 
@@ -273,26 +333,27 @@ class Peer(Player):
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler noch Karten abgeben muss.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
-
         Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :return: Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
+        :raises PlayerInterruptError: Wenn die Anfrage durch ein Interrupt-Event abgebrochen wurde.
         """
-        given_schupf_cards = None
+        given_schupf_cards: Optional[Tuple[Card, Card, Card]] = None
         while given_schupf_cards is None:
-            response_payload = await self._ask(action="schupf")
+            payload = await self._ask("schupf", interruptable=True)
+
             # Ist der Payload ok?
-            if (not response_payload
-                    or not isinstance(response_payload.get("to_opponent_right"), str)
-                    or not isinstance(response_payload.get("to_partner"), str)
-                    or not isinstance(response_payload.get("to_opponent_left"), str)):
+            if (not payload
+                    or not isinstance(payload.get("to_opponent_right"), str)
+                    or not isinstance(payload.get("to_partner"), str)
+                    or not isinstance(payload.get("to_opponent_left"), str)):
                 msg = "Ungültige Antwort für Anfrage \"schupf\""
-                logger.warning(f"Peer {self.name}: {msg}: {response_payload}")
-                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=response_payload)
+                logger.warning(f"Peer {self.name}: {msg}: {payload}")
+                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
 
             # Label der Karten valide?
-            labels = response_payload["to_opponent_right"], response_payload["to_partner"], response_payload["to_opponent_left"]
+            labels = payload["to_opponent_right"], payload["to_partner"], payload["to_opponent_left"]
             if any(not validate_card(label) for label in labels):
                 msg = "Mindestens eine Karte ist unbekannt"
                 logger.warning(f"Peer {self.name}: {msg}: {labels}")
@@ -300,7 +361,7 @@ class Peer(Player):
                 continue
 
             # Labels parsen
-            given_schupf_cards = (parse_card(label) for label in labels)
+            given_schupf_cards = parse_card(labels[0]), parse_card(labels[1]), parse_card(labels[2])
 
             # Sind die Karten unterschiedlich?
             if len(set(given_schupf_cards)) != 3:  # todo testen!
@@ -318,12 +379,8 @@ class Peer(Player):
                 given_schupf_cards = None
                 continue
 
-            # Ist die Aktion noch gültig?
-            if self.priv.given_schupf_cards is not None:  # dürfte nie vorkommen
-                msg = "Tauschkarten bereits abgegeben."
-                logger.warning(f"Peer {self.name}: {msg}: {labels}")
-                await self.error(msg, ErrorCode.REQUEST_OBSOLETE, context={"cards": labels})
-                given_schupf_cards = self.priv.given_schupf_cards
+        # Wurde noch nicht geschupft? (stellt die Engine sicher) todo rausnehmen
+        assert self.priv.given_schupf_cards is None
 
         return given_schupf_cards
 
@@ -333,24 +390,25 @@ class Peer(Player):
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler am Zug ist.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
-
         Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0))
+        :raises PlayerInterruptError: Wenn die Anfrage durch ein Interrupt-Event abgebrochen wurde.
         """
         playing_cards = None
         combination = None
         while combination is None:
-            response_payload = await self._ask(action="play")
+            payload = await self._ask("play", interruptable=True)
+
             # Ist der Payload ok?
-            if not response_payload or not isinstance(response_payload.get("cards"), str):
+            if not payload or not isinstance(payload.get("cards"), str):
                 msg = "Ungültige Antwort für Anfrage \"play\""
-                logger.warning(f"Peer {self.name}: {msg}: {response_payload}")
-                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=response_payload)
+                logger.warning(f"Peer {self.name}: {msg}: {payload}")
+                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
 
             # Label der Karten valide?
-            labels = response_payload["cards"]
+            labels = payload["cards"]
             if not validate_cards(labels):
                 msg = "Mindestens eine Karte ist unbekannt"
                 logger.warning(f"Peer {self.name}: {msg}: {labels}")
@@ -389,13 +447,8 @@ class Peer(Player):
                 playing_cards = None
                 continue
 
-            # Ist die Aktion noch gültig?
-            if self.pub.is_round_over or self.pub.current_turn_index != self.priv.player_index:  # dürfte nie vorkommen
-                msg = "Ausspielen der Karten abgelehnt"
-                logger.warning(f"Peer {self.name}: {msg}: {labels}")
-                await self.error(msg, ErrorCode.REQUEST_OBSOLETE, context={"cards": labels})
-                playing_cards = []
-                combination = (CombinationType.PASS, 0, 0)
+        # Ist der Spiele am Zug? (stellt die Engine sicher) todo rausnehmen
+        assert self.pub.current_turn_index == self.priv.player_index
 
         return playing_cards, combination
 
@@ -431,22 +484,14 @@ class Peer(Player):
         combination = None
         possible_combinations = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
         for cards, combi in possible_combinations:
-            if playing_cards == cards:
+            if combi[0] == CombinationType.BOMB and playing_cards == cards:
                 combination = combi
                 break
         if combination is None:
-            msg = "Die Karten bilden keine spielbare Kombination"
+            msg = "Die Karten bilden keine spielbare Bombe"
             labels = stringify_cards(playing_cards)
             logger.warning(f"Peer {self.name}: {msg}: {labels}")
             await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": labels})
-            return None
-
-        # Ist die Aktion noch gültig?
-        if self.pub.is_round_over:  # dürfte nie vorkommen
-            labels = stringify_cards(playing_cards)
-            msg = "Bombe abgelehnt."
-            logger.warning(f"Peer {self.name}: {msg}: {labels}")
-            await self.error(msg, ErrorCode.REQUEST_OBSOLETE, context={"cards": labels})
             return None
 
         return playing_cards, combination
@@ -455,23 +500,24 @@ class Peer(Player):
         """
         Die Engine fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
 
-        Die Engine ruft diese Methode nur auf, wenn der einen Wunsch offen hat.
+        Die Engine ruft diese Methode nur auf, wenn der Spieler sich einen Kartenwert wünschen muss.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: Der gewünschte Kartenwert (2-14).
         """
         wish_value = None
         while wish_value is None:
-            response_payload = await self._ask(action="wish")
+            payload = await self._ask("wish")
+
             # Ist der Payload ok?
-            if not response_payload or not isinstance(response_payload.get("wish_value"), int):
+            if not payload or not isinstance(payload.get("wish_value"), int):
                 msg = "Ungültige Antwort für Anfrage \"wish\""
-                logger.warning(f"Peer {self.name}: {msg}: {response_payload}")
-                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=response_payload)
+                logger.warning(f"Peer {self.name}: {msg}: {payload}")
+                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
 
             # Ist der Wunsch ein Kartenwert?
-            wish_value = response_payload["wish_value"]
+            wish_value = payload["wish_value"]
             if wish_value < 2 or wish_value > 14:
                 msg = "Wunsch ist kein Kartenwert"
                 logger.warning(f"Peer {self.name}: {msg}: {wish_value}")
@@ -479,12 +525,8 @@ class Peer(Player):
                 wish_value = None
                 continue
 
-            # Ist die Aktion noch gültig?
-            if self.pub.wish_value != 0:  # dürfte nie vorkommen
-                msg = "Wunsch abgelehnt."
-                logger.warning(f"Peer {self.name}: {msg}")
-                await self.error(msg, ErrorCode.REQUEST_OBSOLETE)
-                wish_value = self.pub.wish_value
+        # Wurde noch kein Wunsch geäußert? (stellt die Engine sicher)  todo rausnehmen
+        assert self.pub.wish_value == 0
 
         return wish_value
 
@@ -499,16 +541,17 @@ class Peer(Player):
         """
         dragon_recipient = None
         while dragon_recipient is None:
-            response_payload = await self._ask(action="give_dragon_away")
+            payload = await self._ask("give_dragon_away")
+
             # Ist der Payload ok?
-            if not response_payload or not isinstance(response_payload.get("dragon_recipient"), int):
+            if not payload or not isinstance(payload.get("dragon_recipient"), int):
                 msg = "Ungültige Antwort für Anfrage \"give_dragon_away\""
-                logger.warning(f"Peer {self.name}: {msg}: {response_payload}")
-                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=response_payload)
+                logger.warning(f"Peer {self.name}: {msg}: {payload}")
+                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
 
             # Wurde der Drache an den Gegner verschenkt?
-            dragon_recipient = response_payload["dragon_recipient"]
+            dragon_recipient = payload["dragon_recipient"]
             if dragon_recipient not in [self.priv.opponent_right_index, self.priv.opponent_left_index]:
                 msg = "Der gewählte Spieler ist kein Gegner"
                 logger.warning(f"Peer {self.name}: {msg}: {dragon_recipient}")
@@ -516,12 +559,8 @@ class Peer(Player):
                 dragon_recipient = None
                 continue
 
-            # Ist die Aktion noch gültig?
-            if self.pub.dragon_recipient != -1:  # dürfte nie vorkommen
-                msg = "Wahl abgelehnt."
-                logger.warning(f"Peer {self.name}: {msg}")
-                await self.error(msg, ErrorCode.REQUEST_OBSOLETE)
-                dragon_recipient = self.pub.dragon_recipient
+        # Ist der Drache noch zu verschenken? (stellt die Engine sicher)  todo rausnehmen
+        assert self.pub.dragon_recipient == -1
 
         return dragon_recipient
 
