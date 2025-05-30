@@ -305,7 +305,7 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 
 **Proaktive (d.h. unaufgeforderte) Nachrichten vom Client an den Server:**
 
-Der WebSocket-Handler empfängt diese Nachrichten und leitet sie an die Game-Engine weiter. 
+Der WebSocket-Handler empfängt diese Nachrichten und leitet sie an deb Peer weiter. 
 Ausnahme: Ein `ping` wird direkt vom WebSocket-Handler mit einem `pong` quittiert.
 
 | Type             | Payload                                                                                 | Beschreibung                                                                              | Antwort vom Server (Type) | Antwort vom Server (Payload)                                                         |
@@ -359,7 +359,8 @@ Benachrichtigung an alle Spieler
 |-------------------------|-----------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | "player_joined"         | `{player_index: int, player_name: str}` (->) `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Spieler spielt jetzt mit.                                                               |
 | "player_left"           | `{player_index: int, replaced_by_name: str}`                                                                                      | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                             |
-| "lobby_update"          | `{action: "assign_team", team: list}` oder `{action: "start_game"}`                                                               | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
+| "lobby_update"          | `{action: "assign_team", team: list}`                                                                                             | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
+| "game_started"          |                                                                                                                                   | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
 | "hand_cards_dealt"      | `{count: int}` -> `{hand_cards: str}`                                                                                             | Handkarten wurden an die Spieler verteilt.                                                  |
 | "grand_tichu_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.                                   |
 | "tichu_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                                               |
@@ -375,7 +376,7 @@ Benachrichtigung an alle Spieler
 | "round_over"            | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Karten werden neu gemischt.                                    |
 | "game_over"             | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Partie ist entschieden.                                        |
 
-"->" bedeutet, dass der Peer den vom Server gesendeten Kontext mit privaten Informationen des Spielers anreichert, bevor er es an den Spieler weiterleitet.
+"->" bedeutet, dass der Peer den vom Server gesendeten Kontext mit privaten Statusinformationen des Spielers anreichert, bevor er es an den Spieler weiterleitet.
 Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigenen Spieler handelt.
 
 ### 7.2.3. Fehlermeldungen

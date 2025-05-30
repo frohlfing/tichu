@@ -53,6 +53,10 @@ class PrivateState:
         self.given_schupf_cards = None
         self.received_schupf_cards = None
 
+    def reset_game(self):
+        """Status für eine neue Partie zurücksetzen."""
+        self.reset_round()
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Konvertiert den Zustand in ein Dictionary für JSON-Serialisierung.

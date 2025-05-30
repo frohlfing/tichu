@@ -5,7 +5,7 @@ Definiert die Datenstruktur für den öffentlichen Spielzustand.
 from dataclasses import dataclass, field
 from src.lib.cards import Card, Cards, stringify_cards, other_cards
 from src.lib.combinations import Combination, CombinationType
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any
 
 # Type-Alias für einen Spielzug
 Turn = Tuple[int, Cards, Combination]

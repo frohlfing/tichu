@@ -249,8 +249,7 @@ class GameEngine:
         assert pub.table_name == self.table_name
         assert pub.player_names == [p.name for p in self._players]
         assert len(privs) == 4
-        for i, priv in enumerate(privs):
-            assert priv.player_index == i
+        assert all(priv.player_index == i for i, priv in enumerate(privs))
 
         # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
         clients_joined = any(isinstance(player, Peer) for player in self._players)
@@ -260,12 +259,19 @@ class GameEngine:
 
         logger.info(f"[{self.table_name}] Starte neue Partie...")
         try:
+            # Spielzustand vollständig zurücksetzen
+            pub.reset_game()
+            for priv in privs:
+                priv.reset_game()
+            if clients_joined:
+                await self._broadcast("game_started")
+
             # Partie spielen
             while not pub.is_game_over:
                 # Neue Runde...
                 #logger.debug(f"Runde {pub.round_counter}")
 
-                # Spielzustand zurücksetzen
+                # Spielzustand für eine neue Runde zurücksetzen
                 pub.reset_round()
                 for priv in privs:
                     priv.reset_round()
@@ -276,6 +282,9 @@ class GameEngine:
 
                 # Spielphase aktualisieren
                 pub.current_phase = "playing"  # todo Spielphasen müssen noch definiert werden
+
+                if clients_joined:
+                    await self._broadcast("round_started")
 
                 # Karten mischen
                 self._random.shuffle(mixed_deck)
@@ -625,16 +634,16 @@ class GameEngine:
     # Hilfsfunktionen
     # ------------------------------------------------------
 
-    async def _broadcast(self, message_type: str, payload: Optional[dict] = None):
+    async def _broadcast(self, event: str, payload: Optional[dict] = None):
         """
         Sendet eine Nachricht an alle Spieler.
 
-        :param message_type: Der Typ der Nachricht.
+        :param event: Das Spielereignis, über das berichtet wird.
         :param payload: (Optional) Die Nutzdaten der Nachricht.
         """
         for player in self._players:
             if isinstance(player, Peer):
-                await player.notify(message_type, payload)
+                await player.notify(event, payload)
 
     async def _broadcast_error(self, message: str, code: ErrorCode, context: Optional[Dict] = None):
         """

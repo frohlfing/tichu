@@ -75,9 +75,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
                 msg_type = data.get("type")
                 payload = data.get("payload", {})
 
-                # Proaktive Nachrichten vom Server
-
-                if msg_type == "request":
+                if msg_type == "request":  # Server fordert eine Entscheidung
                     last_request_id = payload.get("request_id", "")
                     action_to_perform = payload.get("action")
                     _public_state = payload.get("public_state", {})
@@ -87,7 +85,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
                     print(f"  Request ID: {last_request_id}")
                     print(f"  Tipp: Antworte mit: {{\"type\": \"response\", \"payload\": {{\"request_id\": \"{last_request_id}\", \"response_data\": {{...deine Daten...}}}}}}")
 
-                elif msg_type == "notification":  # Benachrichtigung an alle Spieler
+                elif msg_type == "notification":  # Server informiert über ein Spielereignis
                     event = payload.get("event")
                     context = payload.get("context", {})
                     print(f"--- SERVER BENACHRICHTIGUNG ---")
@@ -104,7 +102,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
                         # neue Session-ID speichern
                         save_session_id(session_id)
 
-                elif msg_type == "error":
+                elif msg_type == "error":  # Fehlermeldung vom Server
                     error_message = payload.get("message")
                     error_code = payload.get("code")
                     error_context = payload.get("context", {})
@@ -117,9 +115,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
                         save_session_id(None)
                         print(f"Session gelöscht")
 
-                # Reaktionen des Servers auf Client-Aktionen
-
-                elif msg_type == "pong":  # Antwort vom Server auf die ping-Nachricht
+                elif msg_type == "pong":  # Antwort vom Server auf eine ping-Nachricht
                     timestamp = payload.get("timestamp")
                     print(f"--- PONG ---")
                     print(f"  Timestamp: {timestamp}")
@@ -159,11 +155,12 @@ async def main(args: argparse.Namespace):
     example_messages = [
         # Proaktive Nachrichten vom Spieler
         {"type": "leave"},
+        {"type": "ping", "payload": {"timestamp": "<timestamp>"}},
         {"type": "lobby_action", "payload": {"action": "assign_team", "data": [3,0,2,1]}},
         {"type": "lobby_action", "payload": {"action": "start_game"}},
-        {"type": "interrupt", "payload": {"reason": "tichu"}},
-        {"type": "interrupt", "payload": {"reason": "bomb", "cards": []}},
-        {"type": "ping", "payload": {"timestamp": "<timestamp>"}},
+        {"type": "announce"},
+        {"type": "bomb", "payload": {"cards": "R2,B3,R4,S5,R6"}},
+
 
         # Antworten von Server-Anfragen
         # announce_grand_tichu
@@ -172,8 +169,8 @@ async def main(args: argparse.Namespace):
         # schupf
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"to_opponent_right": "B2", "to_partner": "SK", "to_opponent_left": "B3"}}},
         # play
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": []}}},
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": ["Dr", "S9"]}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": "R2,B3,R4,S5,R6"}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": "Dr S9"}}},
         # wish
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"wish_value": 8}}},
         # give_dragon_away

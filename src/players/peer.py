@@ -90,7 +90,7 @@ class Peer(Player):
 
     async def client_announce(self):
         """
-        Wird aufgerufen, wenn der Client ein einfaches Tichu angesagt hat.
+        Der WebSocket-Handler ruft diese Funktion auf, wenn der Client ein einfaches Tichu angesagt hat.
         """
         if self.pub.count_hand_cards[self.priv.player_index] != 14 or self.pub.announcements[self.priv.player_index]:
             # Spieler hat schon Karten ausgespielt oder bereits Tichu angesagt
@@ -104,7 +104,7 @@ class Peer(Player):
 
     async def client_bomb(self, labels: str):
         """
-        Wird aufgerufen, wenn der Client außerhalb seines regulären Zuges eine Bombe geworfen hat.
+        Der WebSocket-Handler ruft diese Funktion auf, wenn der Client außerhalb seines regulären Zuges eine Bombe geworfen hat.
 
         :param labels: Die Karten, aus denen die Bombe gebildet wurde.
         """
@@ -150,7 +150,7 @@ class Peer(Player):
 
     async def client_response(self, request_id: str, response_data: dict):
         """
-        Wird aufgerufen, wenn der Client eine Anfrage beantwortet hat.
+        Der WebSocket-Handler ruft diese Funktion auf, wenn der Client eine Anfrage beantwortet hat.
 
         :param request_id:  Die UUID der Anfrage.
         :param response_data: Die Daten der Antwort.
@@ -570,11 +570,12 @@ class Peer(Player):
 
     async def notify(self, event: str, context: Optional[dict] = None):
         """
-        Der Server ruft diese Funktion auf, um ein Spielereignis zu melden.
+        Die Engine ruft diese Funktion auf, um ein Spielereignis zu melden.
 
-        Die Nachricht wird über die WebSocket-Verbindung an den realen Spieler weitergeleitet.
+        Die Nachricht wird eventuell noch mit privaten Statusinformationen angereichert, bevor sie
+        über die WebSocket-Verbindung an den Client weitergeleitet wird.
 
-        :param event: Das Spielereignis.
+        :param event: Das Spielereignis, über das berichtet wird.
         :param context: (Optional) Zusätzliche Informationen zum Ereignis.
         """
         if self._websocket.closed:
@@ -614,9 +615,9 @@ class Peer(Player):
 
     async def error(self, message: str, code: ErrorCode, context: Optional[Dict] = None):
         """
-        Der Server ruft diese Funktion auf, um einen Fehler zu melden.
+        Die Engine ruft diese Funktion auf, um einen Fehler zu melden.
 
-        Die Fehlermeldung wird über die WebSocket-Verbindung an den realen Spieler weitergeleitet.
+        Die Fehlermeldung wird über die WebSocket-Verbindung an den Client weitergeleitet.
 
         :param message: Die Fehlermeldung.
         :param code: Der Fehlercode.
