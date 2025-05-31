@@ -63,8 +63,6 @@ class PrivateState:
 
         :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
         """
-        schupf_cards = self.given_schupf_cards
-        schupf_cards = list(schupf_cards)
         return {
             "player_index": self.player_index,
             "hand_cards": stringify_cards(self.hand_cards),

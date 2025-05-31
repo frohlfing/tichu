@@ -23,6 +23,7 @@ class PublicState:
 
     :ivar table_name: Der Name des Tisches.
     :ivar player_names: Die eindeutigen Namen der 4 Spieler (Spieler mit gleichen Namen werden durchnummeriert) [Spieler 0-3].
+    :ivar host_index: Index des Clients, der Host des Tisches ist (-1 == kein Client am Tisch)
     :ivar current_phase: # Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
     :ivar current_turn_index: Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest).
@@ -48,6 +49,7 @@ class PublicState:
     # --- Tisch- und Spielerinformationen ---
     table_name: str = ""
     player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    host_index: int = -1
 
     # --- Information über die aktuelle Runde ---
     current_phase: str = "setup"

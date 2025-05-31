@@ -20,13 +20,13 @@ Basierend auf deiner Beschreibung und dem Screenshot, lass uns einen Plan für d
 3.  **`lobby-view.js`:**
     *   Rendert die Lobby-Ansicht (Name/Tisch-Eingabe, Spielerliste, Start-Button).
     *   Behandelt Interaktionen in der Lobby.
-4.  **`table-View.js`:**
+4.  **`table-view.js`:**
     *   Rendert den Spieltisch (Handkarten, Gegner, Tischmitte, Buttons).
     *   Behandelt Interaktionen am Spieltisch.
 5.  **`game-state.js`:**
     *   Hält den clientseitigen Spielzustand (eine Kopie/Interpretation von `public_state` und den `private_state` des aktuellen Spielers).
     *   Wird durch Nachrichten vom Server aktualisiert.
-6.  **`cardRenderer.js` (oder Teil von `table-View.js`):**
+6.  **`cardRenderer.js` (oder Teil von `table-view.js`):**
     *   Funktionen zum Darstellen einzelner Karten und der Hand.
     *   Logik für das Auswählen/Abwählen von Karten.
 7.  **`authService.js` (oder Teil von `lobby-view.js`):**
@@ -89,7 +89,7 @@ Basierend auf deiner Beschreibung und dem Screenshot, lass uns einen Plan für d
     *   Layout des Spieltischs (Positionierung der Spielerbereiche, Handkarten etc.).
     *   Styling für Karten (Größe, Aussehen).
     *   Styling für Buttons.
-3.  **JavaScript (`table-View.js`, `cardRenderer.js`):**
+3.  **JavaScript (`table-view.js`, `cardRenderer.js`):**
     *   **`tableView.show()` / `lobbyView.hide()`:** Umschalten der Ansichten.
     *   **Kartenrendern:**
         *   Funktion `renderHand(cardsArray)`: Erzeugt HTML-Elemente für jede Karte in der Hand des Spielers und zeigt sie an. Jede Karte bekommt eine eindeutige ID oder Datenattribute, um sie zu identifizieren.
@@ -102,7 +102,7 @@ Basierend auf deiner Beschreibung und dem Screenshot, lass uns einen Plan für d
 
 **Phase 3: Spielinteraktion und WebSocket-Nachrichten für den Spieltisch**
 
-1.  **JavaScript (`web-socket-service.js`, `table-View.js`, `game-state.js`):**
+1.  **JavaScript (`web-socket-service.js`, `table-view.js`, `game-state.js`):**
     *   **Nachrichtenbehandlung für Spielstart:**
         *   Bei Empfang einer `notification` (z.B. `event: "game_started"`) oder wenn die erste `deal_cards` kommt: Rufe `tableView.show()` auf.
     *   **`"deal_cards"`-Nachricht vom Server:**
@@ -174,7 +174,8 @@ Das ist ein umfangreicher Plan, aber er deckt die meisten deiner Anforderungen a
 
 Das als nächstes posten:
 
-notifikation events game_started und round_started hab ich hinzugefügt. in handleNotification hab ich switch case für alle definierten Events vorbereitet:
+Die Notifikation-Events "game_started" und "round_started" hab ich hinzugefügt. 
+In handleNotification hab ich die switch case für alle definierten Events vorbereitet:
 
 ```
 function handleNotification(event, context) {

@@ -13,12 +13,24 @@ const LobbyView = (() => {
     const startGameButton = document.getElementById('start-game-button');
 
     function init(onJoinCallback, onStartGameCallback) {
+        const savedPlayerName = GameState.getPlayerName();
+        if (savedPlayerName) {
+            playerNameInput.value = savedPlayerName;
+        }
+
+        const savedTableName = GameState.getTableName();
+        if (savedTableName) {
+            tableNameInput.value = savedTableName;
+        }
+
         joinButton.addEventListener('click', () => {
             const playerName = playerNameInput.value.trim();
             const tableName = tableNameInput.value.trim();
             if (playerName && tableName) {
                 lobbyMessageP.textContent = '';
-                onJoinCallback(playerName, tableName);
+                GameState.setPlayerName(playerName);
+                GameState.setTableName(tableName);
+                onJoinCallback();
             } else {
                 lobbyMessageP.textContent = 'Bitte Name und Tischname eingeben.';
             }

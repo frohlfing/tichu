@@ -1,52 +1,39 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Module initialisieren
-    UiManager.init(LobbyView, null); // TableView kommt später dazu
+    // URL-Parameter auslesen
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramPlayerName = urlParams.get('player_name');
+    const paramTableName = urlParams.get('table_name');
+    if (paramPlayerName) {
+        GameState.setPlayerName(paramPlayerName);
+    }
+    if (paramTableName) {
+        GameState.setTableName(paramTableName);
+    }
 
-    // Initial Lobby-Ansicht anzeigen
-    LobbyView.showJoinForm();
-    // UiManager.showLobby(); // Ist dasselbe wie oben, da nur Lobby initialisiert
-
-    // WebSocket-Nachrichten-Callback setzen
+    // WebSocket-Service initialisieren
     WebSocketService.setOnMessageCallback(handleServerMessage);
 
-    // LobbyView Callbacks initialisieren
+    // UI-Manager initialisieren
+    UiManager.init(LobbyView, TableView);
+
+    // Views initialisieren
     LobbyView.init(handleJoinAttempt, handleStartGameAttempt);
+    TableView.init(handleTablePlayCards, handleTablePass, handleTableTichu, handleTableBomb);
 
-
-    // --- Event Handler und Logik ---
-    async function handleJoinAttempt(playerName, tableName) {
-        LobbyView.displayMessage("Verbinde mit Server...");
-        try {
-            // Versuche zuerst mit gespeicherter SessionId, falls vorhanden
-            const existingSessionId = GameState.getSessionId();
-            if (existingSessionId) {
-                 console.log("Versuche Reconnect mit Session ID:", existingSessionId);
-                 await WebSocketService.connect(null, null, existingSessionId);
-            } else {
-                 await WebSocketService.connect(playerName, tableName);
-            }
-            // Wenn connect() erfolgreich ist (Promise resolved), kommt 'joined_confirmation'
-            // ansonsten wird der Promise rejecten und hier ein Fehler geworfen.
-            LobbyView.displayMessage("Warte auf Server-Bestätigung...");
-
-        } catch (error) {
-            console.error("Fehler beim Verbindungsaufbau:", error);
-            LobbyView.displayMessage(`Fehler: ${error.message || 'Verbindung fehlgeschlagen'}`, true);
-            // Ggf. gespeicherte SessionId löschen, wenn Reconnect fehlschlägt
-            // if (GameState.getSessionId()) {
-            //     localStorage.removeItem('tichuSessionId');
-            //     GameState.setSessionId(null);
-            // }
-        }
+    // Versuche automatischen Login, wenn Session-ID vorhanden ist
+    const autoLoginSessionId = GameState.getSessionId();
+    if (autoLoginSessionId) {
+        console.log("Gefundene Session-ID, versuche automatischen Reconnect:", autoLoginSessionId);
+        handleJoinAttempt();
+    }
+    else {
+        UiManager.showLobby(); // UiManager delegiert an LobbyView.show()
+        LobbyView.showJoinForm(); // Oder LobbyView entscheidet selbst, was es beim .show() anzeigt
     }
 
-    function handleStartGameAttempt() {
-        if (WebSocketService.isConnected()) {
-            WebSocketService.sendMessage("lobby_action", { action: "start_game" });
-        } else {
-            LobbyView.displayMessage("Nicht mit Server verbunden.", true);
-        }
-    }
+    // -------------------------------------------
+    // WebSocket-Callbacks
+    // -------------------------------------------
 
     function handleServerMessage(message) {
         const type = message.type;
@@ -66,8 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             case "error": // Fehlermeldung vom Server
                 LobbyView.displayMessage(`Server Fehler: ${payload.message} (Code: ${payload.code})`, true);
-                // Wenn Session ungültig, evtl. Session löschen und neu joinen lassen
-                if (payload.code === 200 || payload.code === 201) { // SESSION_EXPIRED oder SESSION_NOT_FOUND
+                if (payload.code === ErrorCodes.SESSION_EXPIRED || payload.code === ErrorCodes.SESSION_NOT_FOUND) {
                     localStorage.removeItem('tichuSessionId'); // Gespeicherte ID entfernen
                     GameState.setSessionId(null);
                     UiManager.showLobby();
@@ -239,5 +225,68 @@ document.addEventListener('DOMContentLoaded', () => {
             case "game_over":
                 break
         }
+    }
+
+    // -------------------------------------------
+    // LobbyView-Callbacks
+    // -------------------------------------------
+
+    async function handleJoinAttempt() {
+        LobbyView.displayMessage("Verbinde mit Server...");
+        try {
+            // Versuche zuerst mit gespeicherter SessionId, falls vorhanden
+            const existingSessionId = GameState.getSessionId();
+            if (existingSessionId) {
+                console.log("Versuche Reconnect mit Session ID:", existingSessionId);
+                await WebSocketService.connect(null, null, existingSessionId);
+            }
+            else {
+                const playerName = GameState.getPlayerName();
+                const tableName = GameState.getTableName();
+                await WebSocketService.connect(playerName, tableName);
+            }
+            LobbyView.displayMessage("Warte auf Server-Bestätigung...");
+        }
+        catch (error) {
+            console.error("Fehler beim Verbindungsaufbau:", error);
+            LobbyView.displayMessage(`Fehler: ${error.message || 'Verbindung fehlgeschlagen'}`, true);
+            if (GameState.getSessionId()) {
+                GameState.setSessionId(null);
+                UiManager.showLobby();
+                LobbyView.showJoinForm(); // Zeige wieder das Formular
+            }
+        }
+    }
+
+    function handleStartGameAttempt() {
+        if (WebSocketService.isConnected()) {
+            WebSocketService.sendMessage("lobby_action", { action: "start_game" });
+        } else {
+            LobbyView.displayMessage("Nicht mit Server verbunden.", true);
+        }
+    }
+
+    // -------------------------------------------
+    // TableView-Callbacks
+    // -------------------------------------------
+
+    async function handleTablePlayCards()
+    {
+        // todo
+    }
+
+    async function handleTablePass()
+    {
+        // todo
+    }
+
+    async function handleTableTichu()
+    {
+        // todo
+    }
+
+    async function handleTableBomb()
+    {
+        // todo
     }
 });

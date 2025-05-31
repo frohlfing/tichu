@@ -48,6 +48,8 @@
         4.  [Peer](#734-peer)
         
 8. [Frontend (zweite Ausbaustufe)](#8-frontend-zweite-ausbaustufe)
+   1.  [Allgemeine Funktionsweise](#81-allgemeine-funktionsweise)
+   2.  [Verantwortlichkeiten der JavaScript-Module](#82-verantwortlichkeiten-der-javascript-module)
 
 **ANHANG**
 
@@ -458,8 +460,6 @@ Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigene
 
 ## 8. Frontend (zweite Ausbaustufe)
 
-(Geplant)
-
 ### 8.1 Allgemeine Funktionsweise
 1) Das Frontend für den Server-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
 2) Es kommuniziert über WebSockets mit dem Python-Backend. 
@@ -469,6 +469,75 @@ Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigene
 6) Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
 7) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
 8) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
+
+### 8.2 Verantwortlichkeiten der JavaScript-Module
+
+Zuständigkeiten der Module (Diskussionsgrundlage):
+1) main.js (Applikations-Starter / Orchestrator)
+*   Hauptverantwortung: 
+    *   Initialisierung der Anwendung, grundlegendes Setup, Verknüpfung der Hauptmodule.
+*   Aufgaben:
+    *   Wartet auf DOMContentLoaded.
+    *   Initialisiert Kern-Services/Module (z.B. GameState, WebSocketService, UiManager).
+    *   Liest initiale Konfiguration (z.B. URL-Parameter) und gibt sie an zuständige Module weiter (z.B. GameState).
+    *   Setzt den globalen Nachrichten-Callback für WebSocketService.
+    *   Startet die initiale UI-Anzeige (z.B. UiManager.showInitialView()).
+    *   Behandelt globale Anwendungs-Events oder leitet sie an den UiManager oder spezifische Handler weiter (z.B. die erste player_joined-Notification, die den Übergang von "Beitreten" zu "In Lobby" signalisiert).
+*   Sollte nicht: 
+    *   Direkt DOM-Elemente manipulieren oder detaillierte UI-Logik für spezifische Ansichten enthalten. Es delegiert dies an den UiManager und die View-Module.
+    
+2) UiManager.js (View-Koordinator / Router)
+*   Hauptverantwortung: 
+    *   Verwalten, welche Hauptansicht (Lobby, Spieltisch) gerade aktiv ist. Umschalten zwischen diesen Ansichten.
+*   Aufgaben:
+    *   Kennt die verschiedenen Haupt-View-Module (LobbyView, TableView).
+    *   Methoden wie showLobbyView(), showTableView().
+    *   Stellt sicher, dass immer nur eine Hauptansicht sichtbar ist.
+    *   Könnte auch globale UI-Elemente verwalten, die über allen Ansichten liegen (z.B. ein globales Benachrichtigungsfeld für Verbindungsfehler, obwohl das auch im WebSocketService oder main.js getriggert werden könnte).
+*   Sollte nicht: 
+    *   Die interne Logik oder das Rendering-Detail einer spezifischen View kennen.
+    
+3. LobbyView.js / TableView.js (Spezifische View-Module)
+*   Hauptverantwortung: 
+    *   Rendern und Verwalten ihrer spezifischen Ansicht und der zugehörigen UI-Interaktionen.
+*   Aufgaben:
+    *   Referenzen auf ihre relevanten DOM-Elemente halten.
+    *   Methoden zum Anzeigen (show()) und Verstecken (hide()) ihrer eigenen View-Container.
+    *   Eigenständiger Zugriff auf GameState: Ja, absolut! Jede View sollte direkt auf GameState.getPublicState(), GameState.getPrivateState(), GameState.getPlayerName() etc. zugreifen können, um die benötigten Daten für ihre Darstellung zu holen. Das ist ein Kernprinzip einer guten Frontend-Architektur – die Views sind datengesteuert.
+    *   Event-Listener für UI-Elemente innerhalb ihrer View (z.B. Klick auf "Join"-Button, Kartenklick).
+    *   Callbacks an main.js oder einen Controller (falls vorhanden) für Aktionen, die über die reine UI hinausgehen (z.B. "Versuche, dem Spiel beizutreten").
+    *   Aktualisieren ihrer Darstellung basierend auf Änderungen im GameState oder direkten Anweisungen (z.B. "zeige Fehler X an").
+    *   LobbyView:
+        *   showJoinForm(): Zeigt das Formular an.
+        *   showTableInfo(players, isHost): Zeigt die Spielerliste und Host-Controls an.
+        *   Füllt beim init (oder show) die Input-Felder aus GameState.
+*   Sollte nicht: 
+    *   Andere Views direkt manipulieren. Die Kommunikation zwischen Views oder das Umschalten von Views geht über den UiManager oder Callbacks zu main.js.
+
+4. WebSocketService.js
+*   Hauptverantwortung: 
+    *   Kapselung der gesamten WebSocket-Kommunikation.
+*   Aufgaben:
+    *   connect(), sendMessage(), closeConnection(), isConnected().
+    *   Empfangen von Nachrichten und Weiterleitung an einen einzigen globalen Handler (Callback), der in main.js gesetzt wird. Dieser Handler in main.js entscheidet dann, welche View oder welches Modul die Nachricht weiterverarbeiten soll.
+*   Sollte nicht: 
+    *   Direkten Zugriff auf DOM-Elemente haben oder UI-Logik enthalten.
+
+5. GameState.js
+*   Hauptverantwortung: 
+    *   Verwaltung des clientseitigen Zustands der Anwendung (Spielerinfos, Tischinfos, session_id, Kopie von public_state, private_state). Inklusive Persistenz via localStorage.
+*   Aufgaben:
+    *   Getter und Setter für die Zustandsdaten.
+    *   Laden/Speichern von/nach localStorage.
+*   Sollte nicht: 
+    *   UI-Logik oder WebSocket-Logik enthalten.
+
+6. cardRenderer.js (oder Teil von TableView)
+*   Hauptverantwortung: 
+    *   Logik zum visuellen Darstellen von Karten.
+*   Aufgaben:
+    *   Funktionen, die Kartenobjekte (aus GameState) in HTML/CSS umwandeln.
+    *   Ggf. Logik für Kartenanimationen (obwohl das auch reines CSS sein kann).
 
 # Anhang 
 

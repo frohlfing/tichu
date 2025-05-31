@@ -1,32 +1,54 @@
 const GameState = (() => {
+    let sessionId = localStorage.getItem('tichuSessionId');
+    let playerName = localStorage.getItem('tichuPlayerName');
+    let tableName = localStorage.getItem('tichuTableName');
     let publicState = null;
     let privateState = null;
-    let sessionId = null;
-    let自分のPlayerIndex = -1; // Wichtig für die UI-Ausrichtung
+
+    function setSessionId(id) {
+        sessionId = id;
+        if (id) {
+            localStorage.setItem('tichuSessionId', id);
+        }
+        else {
+            localStorage.removeItem('tichuSessionId');
+        }
+    }
+
+    function getSessionId() {
+        return sessionId;
+    }
+
+    function setPlayerName(name) {
+        playerName = name;
+        if (name) {
+            localStorage.setItem('tichuPlayerName', name);
+        } else {
+            localStorage.removeItem('tichuPlayerName');
+        }
+    }
+
+    function getPlayerName() {
+        return playerName;
+    }
+
+    function setTableName(name) {
+        tableName = name;
+        if (name) {
+            localStorage.setItem('tichuTableName', name);
+        } else {
+            localStorage.removeItem('tichuTableName');
+        }
+    }
+
+    function getTableName() {
+        return tableName;
+    }
 
     function updateStates(newPublicState, newPrivateState) {
         publicState = newPublicState;
         privateState = newPrivateState;
-        if (privateState && privateState.player_index !== undefined) { // Oder playerIndex je nach Konvention
-            自分のPlayerIndex = privateState.player_index;
-        }
         console.log("GameState aktualisiert:", { publicState, privateState });
-    }
-
-    function setSessionId(id) {
-        sessionId = id;
-        // Optional: sessionId im localStorage speichern für Reconnects
-        // localStorage.setItem('tichuSessionId', id);
-    }
-
-    function getSessionId() {
-        // Optional: Aus localStorage laden, wenn nicht gesetzt
-        // if (!sessionId) sessionId = localStorage.getItem('tichuSessionId');
-        return sessionId;
-    }
-
-    function getPlayerIndex() {
-        return自分のPlayerIndex;
     }
 
     function getPublicState() {
@@ -37,13 +59,20 @@ const GameState = (() => {
         return privateState;
     }
 
+    function getPlayerIndex() {
+        return privateState ? privateState.player_index : -1;
+    }
 
     return {
-        updateStates,
         setSessionId,
         getSessionId,
-        getPlayerIndex,
+        setPlayerName,
+        getPlayerName,
+        setTableName,
+        getTableName,
+        updateStates,
         getPublicState,
-        getPrivateState
+        getPrivateState,
+        getPlayerIndex,
     };
 })();
