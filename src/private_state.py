@@ -3,7 +3,7 @@ Definiert die Datenstruktur für den privaten Spielzustand eines Spielers.
 """
 
 from dataclasses import dataclass, field
-from src.lib.cards import Card, Cards, stringify_cards
+from src.lib.cards import Card, Cards
 from src.lib.combinations import build_combinations, Combination, CombinationType
 from src.lib.partitions import build_partitions, Partition
 from typing import List, Dict, Any, Tuple, Optional
@@ -61,13 +61,13 @@ class PrivateState:
         """
         Konvertiert den Zustand in ein Dictionary für JSON-Serialisierung.
 
-        :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
+        :return: Eine Dictionary-Repräsentation des Zustands.
         """
         return {
             "player_index": self.player_index,
-            "hand_cards": stringify_cards(self.hand_cards),
-            "given_schupf_cards": stringify_cards(self.given_schupf_cards) if self.given_schupf_cards else "",
-            "received_schupf_cards": stringify_cards(self.received_schupf_cards) if self.received_schupf_cards else "",
+            "hand_cards": self.hand_cards,
+            "given_schupf_cards": self.given_schupf_cards,
+            "received_schupf_cards": self.received_schupf_cards,
         }
 
     @property

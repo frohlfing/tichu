@@ -31,25 +31,18 @@
 6.  [Arena-Betrieb (erste Ausbaustufe)](#6-arena-betrieb-erste-ausbaustufe)
     1.  [Zweck](#61-zweck)
     2.  [Agenten (KI-gesteuerter Spieler)](#62-agenten-ki-gesteuerter-spieler)
-        1.  [Basisklassen](#621-basisklassen)
-        2.  [Agenten-Typen](#622-agenten-typen) 
     3.  [Implementierung](#63-implementierung)
 
 7.  [Server-Betrieb (zweite Ausbaustufe)](#7-server-betrieb-zweite-ausbaustufe)
     1.  [Query-Parameer der Websocket-URL](#71-query-parameer-der-websocket-url)
     2.  [WebSocket-Nachrichten](#72websocket-nachrichten)
-        1.  [Request-/Response-Nachrichten](#721-request-response-nachrichten)
-        2.  [Notification-Nachrichten](#722-notification-nachrichten)
-        3.  [Fehlermeldungen](#723-fehlermeldungen)
     3.  [Verantwortlichkeiten der Komponenten im Live-Betrieb](#73-aufgaben-der-komponenten-im-server-betrieb)
-        1.  [WebSocket-Handler](#731-websocket-handler)
-        2.  [Game-Factory](#732-game-factory)
-        3.  [Game-Engine](#733-game-engine)
-        4.  [Peer](#734-peer)
         
 8. [Frontend (zweite Ausbaustufe)](#8-frontend-zweite-ausbaustufe)
    1.  [Allgemeine Funktionsweise](#81-allgemeine-funktionsweise)
-   2.  [Verantwortlichkeiten der JavaScript-Module](#82-verantwortlichkeiten-der-javascript-module)
+   2.  [Verzeichnisstruktur](#82-verzeichnisstruktur)
+   2.  [Verwendete Ressourcen für das Frontend](#83-verwendete-ressourcen-für-das-frontend)
+   2.  [Verantwortlichkeiten der JavaScript-Module](#84-verantwortlichkeiten-der-javascript-module)
 
 **ANHANG**
 
@@ -211,19 +204,6 @@ Enthält Unit-Tests für die Module in `src/`, geschrieben mit `pytest`.
 *   `server.py`: Startet den Server für den Live-Betrieb. 
 *   `wsclient.py`: Startet einen interaktiven WebSocket-Client lediglich für Testzwecke. 
 
-### 4.5 Web-Frontend
-
-```
-web/ 
-├── js/  # JavaScript-Dateien
-├── img/  # Bilder (Icons, Logos, etc.)
-├── fonts/  # Schriftarten 
-├── media/  # Sonstige statische Dateien (Videos, Audiodateien)
-├── vendor  # Drittanbieter-Assets (Bootstrap, jQuery, etc.)
-├── index.html  Startseite
-│
-```
-
 ## 5. Daten, Konstanten, Typen
 
 ### 5.1 Datenklassen
@@ -316,7 +296,7 @@ Ausnahme: Ein `ping` wird direkt vom WebSocket-Handler mit einem `pong` quittier
 | `"ping"`         | `{timestamp: "ISO8601_string"}`                                                         | Verbindungstest.                                                                          | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}`                                    |
 | `"lobby_action"` | `{action: "assign_team", "data": [player_new_index,...]}` oder `{action: "start_game"}` | Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel). | Keine Antwort             |                                                                                      |
 | `"announce"`     |                                                                                         | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen.                        | Keine Antwort             |                                                                                      |
-| `"bomb"`         | `{cards: str}`                                                                          | Der Spieler möchte außerhalb seines regulären Zuges eine Bombe werfen.                    | Keine Antwort             |                                                                                      |
+| `"bomb"`         | `{cards: Cards}`                                                                        | Der Spieler möchte außerhalb seines regulären Zuges eine Bombe werfen.                    | Keine Antwort             |                                                                                      |
 
 **Proaktive Nachrichten vom Server an den Client:**
 
@@ -338,13 +318,13 @@ Erhält er sie, liefert der Peer die Daten als Antwort an die Engine aus.
   
 #### 7.2.1 Request-/Response-Nachrichten
 
-| Request Action (vom Server) | Response Data (vom Client)                                         | Beschreibung                                                                                               |
-|-----------------------------|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| "announce_grand_tichu"      | `{announced: bool}`                                                | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                             |
-| "schupf"                    | `{to_opponent_right: str, to_partner: str, to_opponent_left: str}` | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden. |
-| "play"                      | `{cards: str}` oder `{cards: ""}` (für passen)                     | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.  |
-| "wish"                      | `{wish_value: int}`                                                | Der Spieler muss sich einen Kartenwert wünschen.                                                           |
-| "give_dragon_away"          | `{dragon_recipient: int}`                                          | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
+| Request Action (vom Server) | Response Data (vom Client)                                            | Beschreibung                                                                                               |
+|-----------------------------|-----------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| "announce_grand_tichu"      | `{announced: bool}`                                                   | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                             |
+| "schupf"                    | `{to_opponent_right: Card, to_partner: Card, to_opponent_left: Card}` | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden. |
+| "play"                      | `{cards: Cards}` (`{cards: []}` für passen)                           | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.  |
+| "wish"                      | `{wish_value: int}`                                                   | Der Spieler muss sich einen Kartenwert wünschen.                                                           |
+| "give_dragon_away"          | `{dragon_recipient: int}`                                             | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
 
 Akzeptiert die Engine die Client-Antwort, sendet sie eine entsprechende [Notification-Nachricht](#722-notification-nachrichten) an alle Spieler.
 Andernfalls sendet die Engine eine Fehlermeldung über den Peer an den Client.
@@ -363,14 +343,14 @@ Benachrichtigung an alle Spieler
 | "player_left"           | `{player_index: int, replaced_by_name: str}`                                                                                      | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                             |
 | "lobby_update"          | `{action: "assign_team", team: list}`                                                                                             | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
 | "game_started"          |                                                                                                                                   | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
-| "hand_cards_dealt"      | `{count: int}` -> `{hand_cards: str}`                                                                                             | Handkarten wurden an die Spieler verteilt.                                                  |
+| "hand_cards_dealt"      | `{count: int}` -> `{hand_cards: Cards}`                                                                                           | Handkarten wurden an die Spieler verteilt.                                                  |
 | "grand_tichu_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.                                   |
 | "tichu_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                                               |
 | "player_schupfed"       | `{player_index: int}`                                                                                                             | Der Spieler hat drei Karten zum Tausch abgegeben.                                           |
-| "schupf_cards_dealt"    | `None` -> `{received_schupf_cards: str}`                                                                                          | Die Tauschkarten wurden an die Spieler verteilt.                                            |
+| "schupf_cards_dealt"    | `None` -> `{received_schupf_cards: Cards}`                                                                                        | Die Tauschkarten wurden an die Spieler verteilt.                                            |
 | "passed"                | `{player_index: int}`                                                                                                             | Der Spieler hat hat gepasst.                                                                |
-| "played"                | `{player_index: int, cards: str}`                                                                                                 | Der Spieler hat Karten ausgespielt.                                                         |
-| "bombed"                | `{player_index: int, cards: str}`                                                                                                 | Der Spieler hat eine Bombe geworfen.                                                        |
+| "played"                | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat Karten ausgespielt.                                                         |
+| "bombed"                | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat eine Bombe geworfen.                                                        |
 | "wish_made"             | `{wish_value: int}`                                                                                                               | Ein Kartenwert wurde sich gewünscht.                                                        |
 | "wish_fulfilled"        |                                                                                                                                   | Der Wunsch wurde erfüllt.                                                                   |
 | "trick_taken"           | `{player_index: int}`                                                                                                             | Der Spieler hat den Stich kassiert.                                                         |
@@ -388,8 +368,8 @@ Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigene
 | **Allgemeine Fehler (100-199)**             |                                                           |                                        |
 | UNKNOWN_ERROR = 100                         | Ein unbekannter Fehler ist aufgetreten.                   | `{exception: ExceptionClassName}`      |
 | INVALID_MESSAGE = 101                       | Ungültiges Nachrichtenformat empfangen.                   | `{message: dict}`                      |
-| UNKNOWN_CARD = 102                          | Mindestens eine Karte ist unbekannt.                      | `{cards: str}`                         |
-| NOT_HAND_CARD = 103                         | Mindestens eine Karte ist keine Handkarte.                | `{cards: str}`                         |
+| UNKNOWN_CARD = 102                          | Mindestens eine Karte ist unbekannt.                      | `{cards: Cards}`                       |
+| NOT_HAND_CARD = 103                         | Mindestens eine Karte ist keine Handkarte.                | `{cards: Cards}`                       |
 | UNAUTHORIZED = 104                          | Aktion nicht autorisiert.                                 | `{request_id: uuid}`                   |
 | SERVER_BUSY = 105                           | Server ist momentan überlastet. Bitte später versuchen.   |                                        |
 | SERVER_DOWN = 106                           | Server wurde heruntergefahren.                            |                                        |
@@ -404,13 +384,13 @@ Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigene
 | **Spiellogik-Fehler (300-399)**             |                                                           |                                        |
 | INVALID_ACTION = 300                        | Ungültige Aktion.                                         | `{reason: str, request_id: uuid}`      |
 | INVALID_RESPONSE = 301                      | Keine wartende Anfrage für die Antwort gefunden.          | `{request_id: uuid}`                   |
-| NOT_UNIQUE_CARDS = 302                      | Mindestens zwei Karten sind identisch.                    | `{cards: str}`                         |
-| INVALID_COMBINATION = 303                   | Die Karten bilden keine spielbare Kombination.            | `{cards: str}`                         |
+| NOT_UNIQUE_CARDS = 302                      | Mindestens zwei Karten sind identisch.                    | `{cards: Cards}`                       |
+| INVALID_COMBINATION = 303                   | Die Karten bilden keine spielbare Kombination.            | `{cards: Cards}`                       |
 | NOT_YOUR_TURN = 304                         | Du bist nicht am Zug.                                     | `{request_id: uuid}`                   |
 | INTERRUPT_DENIED = 305                      | Interrupt-Anfrage abgelehnt.                              | `{reason: str, request_id: uuid}`      |
 | INVALID_WISH = 306                          | Ungültiger Kartenwunsch.                                  | `{wish_value: int}`                    |
 | INVALID_ANNOUNCE = 307                      | Tichu-Ansage nicht möglich.                               |                                        |
-| INVALID_DRAGON_RECIPIENT = 308              | Wahl des Spielers, der den Drachen bekommt, ist ungültig. | `{cards: str}`                         |
+| INVALID_DRAGON_RECIPIENT = 308              | Wahl des Spielers, der den Drachen bekommt, ist ungültig. | `{cards: Cards}`                       |
 | ACTION_TIMEOUT = 309                        | Zeit für Aktion abgelaufen.                               | `{timeout: seconds, request_id: uuid}` |
 | REQUEST_OBSOLETE = 310                      | Anfrage ist veraltet.                                     | `{request_id: uuid}`                   |
 | **Lobby-Fehler (400-499)**                  |                                                           |                                        |
@@ -470,74 +450,126 @@ Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigene
 7) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
 8) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
 
-### 8.2 Verantwortlichkeiten der JavaScript-Module
+### 8.2 Verzeichnisstruktur
 
-Zuständigkeiten der Module (Diskussionsgrundlage):
-1) main.js (Applikations-Starter / Orchestrator)
-*   Hauptverantwortung: 
-    *   Initialisierung der Anwendung, grundlegendes Setup, Verknüpfung der Hauptmodule.
-*   Aufgaben:
-    *   Wartet auf DOMContentLoaded.
-    *   Initialisiert Kern-Services/Module (z.B. GameState, WebSocketService, UiManager).
-    *   Liest initiale Konfiguration (z.B. URL-Parameter) und gibt sie an zuständige Module weiter (z.B. GameState).
-    *   Setzt den globalen Nachrichten-Callback für WebSocketService.
-    *   Startet die initiale UI-Anzeige (z.B. UiManager.showInitialView()).
-    *   Behandelt globale Anwendungs-Events oder leitet sie an den UiManager oder spezifische Handler weiter (z.B. die erste player_joined-Notification, die den Übergang von "Beitreten" zu "In Lobby" signalisiert).
-*   Sollte nicht: 
-    *   Direkt DOM-Elemente manipulieren oder detaillierte UI-Logik für spezifische Ansichten enthalten. Es delegiert dies an den UiManager und die View-Module.
-    
-2) UiManager.js (View-Koordinator / Router)
-*   Hauptverantwortung: 
-    *   Verwalten, welche Hauptansicht (Lobby, Spieltisch) gerade aktiv ist. Umschalten zwischen diesen Ansichten.
-*   Aufgaben:
-    *   Kennt die verschiedenen Haupt-View-Module (LobbyView, TableView).
-    *   Methoden wie showLobbyView(), showTableView().
-    *   Stellt sicher, dass immer nur eine Hauptansicht sichtbar ist.
-    *   Könnte auch globale UI-Elemente verwalten, die über allen Ansichten liegen (z.B. ein globales Benachrichtigungsfeld für Verbindungsfehler, obwohl das auch im WebSocketService oder main.js getriggert werden könnte).
-*   Sollte nicht: 
-    *   Die interne Logik oder das Rendering-Detail einer spezifischen View kennen.
-    
-3. LobbyView.js / TableView.js (Spezifische View-Module)
-*   Hauptverantwortung: 
-    *   Rendern und Verwalten ihrer spezifischen Ansicht und der zugehörigen UI-Interaktionen.
-*   Aufgaben:
-    *   Referenzen auf ihre relevanten DOM-Elemente halten.
-    *   Methoden zum Anzeigen (show()) und Verstecken (hide()) ihrer eigenen View-Container.
-    *   Eigenständiger Zugriff auf GameState: Ja, absolut! Jede View sollte direkt auf GameState.getPublicState(), GameState.getPrivateState(), GameState.getPlayerName() etc. zugreifen können, um die benötigten Daten für ihre Darstellung zu holen. Das ist ein Kernprinzip einer guten Frontend-Architektur – die Views sind datengesteuert.
-    *   Event-Listener für UI-Elemente innerhalb ihrer View (z.B. Klick auf "Join"-Button, Kartenklick).
-    *   Callbacks an main.js oder einen Controller (falls vorhanden) für Aktionen, die über die reine UI hinausgehen (z.B. "Versuche, dem Spiel beizutreten").
-    *   Aktualisieren ihrer Darstellung basierend auf Änderungen im GameState oder direkten Anweisungen (z.B. "zeige Fehler X an").
-    *   LobbyView:
-        *   showJoinForm(): Zeigt das Formular an.
-        *   showTableInfo(players, isHost): Zeigt die Spielerliste und Host-Controls an.
-        *   Füllt beim init (oder show) die Input-Felder aus GameState.
-*   Sollte nicht: 
-    *   Andere Views direkt manipulieren. Die Kommunikation zwischen Views oder das Umschalten von Views geht über den UiManager oder Callbacks zu main.js.
+```
+web/ 
+├── fonts/  # Schriftarten 
+│   └── architect-s-daughter/
+├── images/  # Bilder
+│   └── cards/
+├── js/  # JavaScript-Dateien
+│   └── views/ 
+├── sounds/  # Audiodateien
+├── vendor  # Drittanbieter-Assets
+├── index.html  Startseite
+├── styles.css  Stylesheets
+│
+```
 
-4. WebSocketService.js
-*   Hauptverantwortung: 
-    *   Kapselung der gesamten WebSocket-Kommunikation.
-*   Aufgaben:
-    *   connect(), sendMessage(), closeConnection(), isConnected().
-    *   Empfangen von Nachrichten und Weiterleitung an einen einzigen globalen Handler (Callback), der in main.js gesetzt wird. Dieser Handler in main.js entscheidet dann, welche View oder welches Modul die Nachricht weiterverarbeiten soll.
-*   Sollte nicht: 
-    *   Direkten Zugriff auf DOM-Elemente haben oder UI-Logik enthalten.
+### 8.3 Verwendete Ressourcen für das Frontend
 
-5. GameState.js
-*   Hauptverantwortung: 
-    *   Verwaltung des clientseitigen Zustands der Anwendung (Spielerinfos, Tischinfos, session_id, Kopie von public_state, private_state). Inklusive Persistenz via localStorage.
-*   Aufgaben:
-    *   Getter und Setter für die Zustandsdaten.
-    *   Laden/Speichern von/nach localStorage.
-*   Sollte nicht: 
-    *   UI-Logik oder WebSocket-Logik enthalten.
+#### Images
 
-6. cardRenderer.js (oder Teil von TableView)
-*   Hauptverantwortung: 
-    *   Logik zum visuellen Darstellen von Karten.
-*   Aufgaben:
-    *   Funktionen, die Kartenobjekte (aus GameState) in HTML/CSS umwandeln.
-    *   Ggf. Logik für Kartenanimationen (obwohl das auch reines CSS sein kann).
+*  web/images/bomb.png
+	https://pixabay.com/de/vectors/bombe-karikatur-ikonisch-2025548/
+	Kostenlos, Zusammenfassung der Inhaltslizenz: https://pixabay.com/de/service/license-summary/
+
+*  web/images/cards
+	https://github.com/Tichuana-Tichu/tichuana-tichu/tree/develop/src/ch/tichuana/tichu/client/resources/images/cards
+	https://github.com/pgaref/Tichu/blob/master/Tichu_CardGame/src/tichu/images/back.jpg
+	Keinen Lizenz-Hinweis!
+
+*  web/images/tichu.png, web/images/icon.png, web/images/bootscreen.png (web/images/dragon)
+	https://pixabay.com/de/vectors/drachen-eidechse-monster-chinesisch-149393/
+	Kostenlos, Zusammenfassung der Inhaltslizenz: https://pixabay.com/de/service/license-summary/
+
+*  web/images/background.png
+	Vorlage:
+	https://github.com/BananaHolograma/Veneno/blob/main/assets/background/poker_table_green.jpg
+	LICENSE is MIT so you can use the code from this project for whatever you want, even commercially
+
+*  web/images/wish.png
+	Vorlage:
+	https://github.com/Tichuana-Tichu/tichuana-tichu/tree/develop/src/ch/tichuana/tichu/client/resources/images/cards/mahjong.png
+	Keine Lizenz-Hinweis!
+
+*  web/images/spinner.png
+	Vorlage: 
+	https://godotengine.org/asset-library/asset/3350
+	Kann frei verwendet werden
+	
+*  web/images/button
+	Selbst gemalt
+	
+*  web/images/marker.png
+	Selbst gemalt
+
+#### Sounds
+
+*  web/sounds
+	https://www.kenney.nl/assets/category:Audio
+	License Creative Commons Zero, CC0: http://creativecommons.org/publicdomain/zero/1.0/
+	You may use these assets in personal and commercial projects.
+	Credit (Kenney or www.kenney.nl) would be nice but is not mandatory (Donate: http://support.kenney.nl)
+
+| Dateiname   | Original                                        | Verwendung                         |
+|-------------|-------------------------------------------------|------------------------------------|
+| schuffle    | casino-audio/card-schuffle                      | Karten mischen                     |
+| dealout     | casino-audio/card-fan-1                         | Karten austeilen                   |
+| schupf0     | casino-audio/card-place-1,2,3,4                 | Karten schupfen (Spieler 0 bis 3)  |
+| play0       | casino-audio/card-slide-1,2,3,4                 | Karte ausspielen (Spieler 0 bis 4) |
+| take0       | casino-audio/card-shove1,2,3,4                  | Karten nehmen (Spieler 0 bis 3)    |
+| bomb0       | digital-audio/laser1,2,3,4                      | Bombe werfen (Spieler 0 bis 4)     |
+| pass0       | impact-sounds/impactSoft_medium_001,002,003,004 | Passen (Spieler 0 bis 4)           |
+| announce    | music-jingles/jingles_STEEL00,04,08,16          | Tichu ansagen (Spieler 0 bis 4)    |
+
+#### Schriftarten
+
+web/fonts/architect-s-daughter
+	https://godotengine.org/asset-library/asset/316
+	Die OFL erlaubt die freie Verwendung, Untersuchung, Änderung und Weiterverbreitung der lizenzierten Schriften, solange sie nicht selbst verkauft werden. 
+	Die Schriftarten können mit jeder Software gebündelt, eingebettet, weiterverteilt und/oder verkauft werden.
+
+### 8.4 Verantwortlichkeiten der JavaScript-Module
+
+#### Initialisierungsfluss:
+*   main.js (DOMContentLoaded) ruft AppController.init() auf.
+*   AppController.init() initialisiert alle anderen relevanten Module (State, SoundManager, ViewManager, Dialogs, CardHandler).
+*   AppController setzt die Callbacks für das Network-Modul.
+*   AppController prüft auf eine vorhandene Session oder URL-Parameter und versucht entweder einen Reconnect oder zeigt den LoginView.
+
+#### Nachrichtenfluss:
+*   UI-Aktion -> AppController -> Network.send().
+*   Network empfängt -> AppController._handleNetworkMessage -> parst Typ ->
+    *   _handleServerRequest: State aktualisieren, _activeServerRequest setzen, UI-Modul (z.B. Dialogs oder GameTableView) informieren, die Aktion zu behandeln.
+    *   _handleServerNotification: State aktualisieren, ViewManager/Dialogs/GameTableView informieren, UI zu aktualisieren.
+    *   _handleServerError: UI informieren.
+
+#### State Management: 
+*   Der AppController ist dafür verantwortlich, das State-Modul nach Nachrichten zu aktualisieren und dann die Views zu benachrichtigen (über ViewManager.updateViewsBasedOnState() oder direktere Aufrufe an View-Module).
+
+#### ViewManager: 
+
+Kennt die DOM-Elemente der Haupt-Views und die zugehörigen JS-Module. showView blendet um und ruft render des Ziel-Views auf.
+
+#### LoginView: 
+
+Hat eigene DOM-Referenzen, einen Submit-Handler und eine render-Methode (die hier noch nicht viel tut, aber wichtig wird, um z.B. Fehlermeldungen im View anzuzeigen oder Felder vorzubelegen).
+
+#### Dialogs: 
+
+Zentralisiert die Logik für alle Pop-up-Dialoge. Jeder Dialog hat eigene Handler. handleNotification ist wichtig, um z.B. round_end Dialoge automatisch zu zeigen.
+
+#### CardHandler: 
+
+Kümmert sich um die Logik der Kartenauswahl. Der Schupf-Modus ist hier schon etwas detaillierter angedacht. GameTableView wird CardHandler.handleCardClick aufrufen, wenn eine Karte geklickt wird.
+
+#### Abhängigkeiten:
+*   AppController kennt die meisten anderen Kern- und UI-Module.
+*   Network, State, Helpers, SoundManager sind eher eigenständig und werden vom AppController verwendet.
+*   View-Module (LoginView etc., die vom ViewManager verwaltet werden) rufen Methoden des AppController auf, um Aktionen auszulösen.
+*   Alle Module können auf Helpers und State (für Getter) zugreifen.
 
 # Anhang 
 
@@ -674,6 +706,8 @@ Das Format für die Docstrings ist `reStructuredText`.
 
 Interne Funktionen und Variablen werden mit einem führenden Unterstrich gekennzeichnet.
 
+Aufzählungen (Enum) sind singular (`ErrorCode`, nicht `ErrorCodes`) 
+
 ### A4.3 Type-Hints
 
 Es werden ausgiebig Type-Hints verwendet, insbesondere bei der Funktion-Signatur und bei Klassenvariablen.
@@ -688,7 +722,7 @@ Es werden ausgiebig Type-Hints verwendet, insbesondere bei der Funktion-Signatur
 *   **Öffentlicher Spielzustand/Beobachtungsraum (public state)**: Alle Informationen über die Partie, die für alle Spieler sichtbar sind.
 *   **Privater Spielzustand (private state)**: Die verborgenen Informationen über die Partie, die nur der jeweilige Spieler kennt.
 *   **Beobachtungsraum (Observation Space)**: (Public + Private State), die Sitzplatznummern sind relativ zum Spieler angegeben (0 == dieser Spieler, 1 == rechter Gegner, 2 == Partner, 3 == linker Gegner). Wird primär für KI-Agenten verwendet.
-*   **Index in kanonischer Form (Canonical Index)**: Nummerierung der Spieler (0-3) so, wie der Server/die GameEngine die Spielerliste intern pflegt.
+*   **Index in kanonischer Form (Canonical Index)**: Nummerierung der Spieler (0-3) so, wie der Server/die GameEngine die Spielerliste intern pflegt. Wenn nichts weiter erwähnt ist, ist stets der kanonische Index gemeint.
 *   **Relativer Index**: Nummerierung der Spieler (0-3) aus der Perspektive eines bestimmten Spielers.
 *   **Karte (Card)**: Kombination aus Kartenwert (`value`) und Farbe (`suit`).
 *   **Kombination (Combination)**: Die Merkmale Typ (`CombinationType`), Länge und Rang einer Kartenzusammenstellung.

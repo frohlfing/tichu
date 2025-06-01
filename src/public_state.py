@@ -3,7 +3,7 @@ Definiert die Datenstruktur für den öffentlichen Spielzustand.
 """
 
 from dataclasses import dataclass, field
-from src.lib.cards import Card, Cards, stringify_cards, other_cards
+from src.lib.cards import Card, Cards, other_cards
 from src.lib.combinations import Combination, CombinationType
 from typing import List, Tuple, Dict, Any
 
@@ -118,7 +118,7 @@ class PublicState:
         """
         Konvertiert den Zustand in ein Dictionary für JSON-Serialisierung.
 
-        :return: Eine Dictionary-Repräsentation des Zustands mit Karten als Strings.
+        :return: Eine Dictionary-Repräsentation des Zustands.
         """
         return {
             "table_name": self.table_name,
@@ -127,15 +127,15 @@ class PublicState:
             "current_turn_index": self.current_turn_index,
             "start_player_index": self.start_player_index,
             "count_hand_cards": self.count_hand_cards,
-            "played_cards": stringify_cards(self.played_cards),
+            "played_cards": self.played_cards,
             "announcements": self.announcements,
             "wish_value": self.wish_value,
             "dragon_recipient": self.dragon_recipient,
             "trick_owner_index": self.trick_owner_index,
-            "trick_cards": stringify_cards(self.trick_cards),
-            "trick_combination": (self.trick_combination[0].name, self.trick_combination[1], self.trick_combination[2]),
+            "trick_cards": self.trick_cards,
+            "trick_combination": self.trick_combination,
             "trick_points": self.trick_points,
-            "tricks": [[(idx, stringify_cards(cards), (combi[0].name, combi[1], combi[2])) for idx, cards, combi in trick] for trick in self.tricks],
+            "tricks": self.tricks,
             "points": self.points,
             "winner_Index": self.winner_index,
             "loser_index": self.loser_index,

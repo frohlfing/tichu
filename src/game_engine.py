@@ -3,9 +3,7 @@ Definiert die Spiellogik.
 """
 
 import asyncio
-
 from aiohttp.web_ws import WebSocketResponse
-
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH, Cards

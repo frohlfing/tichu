@@ -62,14 +62,14 @@ def test_private_state_hand_cards_setter_clears_cache(initial_priv_state):
 def test_private_state_to_dict(initial_priv_state):
     """Testet die Umwandlung in ein Dictionary."""
     priv = initial_priv_state
-    priv.hand_cards = parse_cards("SA RA GA")
+    priv.hand_cards = (14,1), (14,4), (14,3)  # "SA RA GA"
     priv.given_schupf_cards = (2,1), (3,2), (4,3)  # S2 B3 G4
     priv.received_schupf_cards = (5,4), (6,1), (7,2)  # R5 S6 B7
     priv_dict = priv.to_dict()
     assert priv_dict["player_index"] == 1
-    assert priv_dict["hand_cards"] == "SA RA GA"
-    assert priv_dict["given_schupf_cards"] == "S2 B3 G4"
-    assert priv_dict["received_schupf_cards"] == "R5 S6 B7"
+    assert priv_dict["hand_cards"] == ((14,1), (14,4), (14,3))
+    assert priv_dict["given_schupf_cards"] == ((2,1), (3,2), (4,3))
+    assert priv_dict["received_schupf_cards"] == ((5,4), (6,1), (7,2))
 
 # --- Tests für Properties ---
 

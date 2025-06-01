@@ -9,7 +9,7 @@ from aiohttp import WSCloseCode
 from aiohttp.web import WebSocketResponse
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import Card, Cards, stringify_cards, parse_cards, parse_card, validate_card, validate_cards
+from src.lib.cards import Card, Cards, stringify_cards, deck
 from src.lib.combinations import Combination, build_action_space, CombinationType
 # noinspection PyUnresolvedReferences
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError, ErrorCode
@@ -102,50 +102,54 @@ class Peer(Player):
         self._pending_announce = True
         self.interrupt_event.set()
 
-    async def client_bomb(self, labels: str):
+    async def client_bomb(self, cards: Cards):
         """
         Der WebSocket-Handler ruft diese Funktion auf, wenn der Client außerhalb seines regulären Zuges eine Bombe geworfen hat.
 
-        :param labels: Die Karten, aus denen die Bombe gebildet wurde.
+        :param cards: Die Karten, aus denen die Bombe gebildet wurde.
         """
-        # Label der Karten valide?
-        if not validate_cards(labels):
-            msg = "Mindestens eine Karte ist unbekannt"
-            logger.warning(f"Peer {self.name}: {msg}: {labels}")
-            await self.error(msg, ErrorCode.UNKNOWN_CARD, context={"cards": labels})
+        # Parameter ok?
+        if not isinstance(cards, Cards):
+            msg = "Ungültige Parameter für \"bomb\""
+            logger.warning(f"Peer {self.name}: {msg}: {cards}")
+            await self.error(msg, ErrorCode.INVALID_MESSAGE, context={"cards": cards})
             return
 
-        # Labels parsen
-        playing_cards = parse_cards(labels)
+        # Karten valide?
+        if any(card not in deck for card in cards):
+            msg = "Mindestens eine Karte ist unbekannt"
+            logger.warning(f"Peer {self.name}: {msg}: {cards}")
+            await self.error(msg, ErrorCode.UNKNOWN_CARD, context={"cards": cards})
+            return
 
         # Sind die Karten unterschiedlich?
-        if len(set(playing_cards)) != len(playing_cards):  # todo testen!
+        if len(set(cards)) != len(cards):  # todo testen!
             msg = "Mindestens zwei Karten sind identisch"
-            logger.warning(f"Peer {self.name}: {msg}: {labels}")
-            await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": labels})
+            logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+            await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": cards})
             return
 
         # Sind die Karten auf der Hand?
-        if any(card not in self.priv.hand_cards for card in playing_cards):
+        if any(card not in self.priv.hand_cards for card in cards):
             msg = "Mindestens eine Karte ist keine Handkarte"
-            logger.warning(f"Peer {self.name}: {msg}: {labels}")
-            await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": labels})
+            logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+            await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": cards})
             return
 
         # Kombination der Bombe ermitteln. Ist sie spielbar?
         combination = None
         possible_combinations = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-        for cards, combi in possible_combinations:
-            if combi[0] == CombinationType.BOMB and playing_cards == cards:
+        for cards_, combi in possible_combinations:
+            if combi[0] == CombinationType.BOMB and cards == cards_:
                 combination = combi
                 break
         if combination is None:
             msg = "Die Karten bilden keine spielbare Bombe"
-            logger.warning(f"Peer {self.name}: {msg}: {labels}")
-            await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": labels})
+            logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+            await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": cards})
             return
 
-        self._pending_bomb = playing_cards
+        self._pending_bomb = cards
         self.interrupt_event.set()
 
     async def client_response(self, request_id: str, response_data: dict):
@@ -338,51 +342,48 @@ class Peer(Player):
         :return: Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
         :raises PlayerInterruptError: Wenn die Anfrage durch ein Interrupt-Event abgebrochen wurde.
         """
-        given_schupf_cards: Optional[Tuple[Card, Card, Card]] = None
-        while given_schupf_cards is None:
+        cards: Optional[Tuple[Card, Card, Card]] = None
+        while cards is None:
             payload = await self._ask("schupf", interruptable=True)
 
             # Ist der Payload ok?
             if (not payload
-                    or not isinstance(payload.get("to_opponent_right"), str)
-                    or not isinstance(payload.get("to_partner"), str)
-                    or not isinstance(payload.get("to_opponent_left"), str)):
+                    or not isinstance(payload.get("to_opponent_right"), Card)
+                    or not isinstance(payload.get("to_partner"), Card)
+                    or not isinstance(payload.get("to_opponent_left"), Card)):
                 msg = "Ungültige Antwort für Anfrage \"schupf\""
                 logger.warning(f"Peer {self.name}: {msg}: {payload}")
                 await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
 
             # Label der Karten valide?
-            labels = payload["to_opponent_right"], payload["to_partner"], payload["to_opponent_left"]
-            if any(not validate_card(label) for label in labels):
+            cards = payload["to_opponent_right"], payload["to_partner"], payload["to_opponent_left"]
+            if any(card not in deck for card in cards):
                 msg = "Mindestens eine Karte ist unbekannt"
-                logger.warning(f"Peer {self.name}: {msg}: {labels}")
-                await self.error(msg, ErrorCode.UNKNOWN_CARD, context={"cards": labels})
+                logger.warning(f"Peer {self.name}: {msg}: {cards}")
+                await self.error(msg, ErrorCode.UNKNOWN_CARD, context={"cards": cards})
                 continue
 
-            # Labels parsen
-            given_schupf_cards = parse_card(labels[0]), parse_card(labels[1]), parse_card(labels[2])
-
             # Sind die Karten unterschiedlich?
-            if len(set(given_schupf_cards)) != 3:  # todo testen!
+            if len(set(cards)) != 3:  # todo testen!
                 msg = "Mindestens zwei Karten sind identisch"
-                logger.warning(f"Peer {self.name}: {msg}: {labels}")
-                await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": labels})
-                given_schupf_cards = None
+                logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+                await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": cards})
+                cards = None
                 continue
 
             # Sind die Karten auf der Hand?
-            if any(card not in self.priv.hand_cards for card in given_schupf_cards):
+            if any(card not in self.priv.hand_cards for card in cards):
                 msg = "Mindestens eine Karte ist keine Handkarte"
-                logger.warning(f"Peer {self.name}: {msg}: {labels}")
-                await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": labels})
-                given_schupf_cards = None
+                logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+                await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": cards})
+                cards = None
                 continue
 
         # Wurde noch nicht geschupft? (stellt die Engine sicher) todo rausnehmen
         assert self.priv.given_schupf_cards is None
 
-        return given_schupf_cards
+        return cards
 
     async def play(self) -> Tuple[Cards, Combination]:
         """
@@ -395,62 +396,59 @@ class Peer(Player):
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0))
         :raises PlayerInterruptError: Wenn die Anfrage durch ein Interrupt-Event abgebrochen wurde.
         """
-        playing_cards = None
+        cards = None
         combination = None
         while combination is None:
             payload = await self._ask("play", interruptable=True)
 
             # Ist der Payload ok?
-            if not payload or not isinstance(payload.get("cards"), str):
+            if not payload or not isinstance(payload.get("cards"), Cards):
                 msg = "Ungültige Antwort für Anfrage \"play\""
                 logger.warning(f"Peer {self.name}: {msg}: {payload}")
                 await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
 
-            # Label der Karten valide?
-            labels = payload["cards"]
-            if not validate_cards(labels):
+            # Karten valide?
+            cards = payload["cards"]
+            if any(card not in deck for card in cards):
                 msg = "Mindestens eine Karte ist unbekannt"
-                logger.warning(f"Peer {self.name}: {msg}: {labels}")
-                await self.error(msg, ErrorCode.UNKNOWN_CARD, context={"cards": labels})
+                logger.warning(f"Peer {self.name}: {msg}: {cards}")
+                await self.error(msg, ErrorCode.UNKNOWN_CARD, context={"cards": cards})
                 continue
 
-            # Labels parsen
-            playing_cards = parse_cards(labels)
-
             # Sind die Karten unterschiedlich?
-            if len(set(playing_cards)) != len(playing_cards):  # todo testen!
+            if len(set(cards)) != len(cards):  # todo testen!
                 msg = "Mindestens zwei Karten sind identisch"
-                logger.warning(f"Peer {self.name}: {msg}: {labels}")
-                await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": labels})
-                playing_cards = None
+                logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+                await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": cards})
+                cards = None
                 continue
 
             # Sind die Karten auf der Hand?
-            if any(card not in self.priv.hand_cards for card in playing_cards):
+            if any(card not in self.priv.hand_cards for card in cards):
                 msg = "Mindestens eine Karte ist keine Handkarte"
-                logger.warning(f"Peer {self.name}: {msg}: {labels}")
-                await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": labels})
-                playing_cards = None
+                logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+                await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": cards})
+                cards = None
                 continue
 
             # Kombination ermitteln. Ist sie spielbar?
             possible_combinations = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-            for cards, combi in possible_combinations:
-                if playing_cards == cards:
+            for cards_, combi in possible_combinations:
+                if cards == cards_:
                     combination = combi
                     break
             if combination is None:
                 msg = "Die Karten bilden keine spielbare Kombination"
-                logger.warning(f"Peer {self.name}: {msg}: {labels}")
-                await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": labels})
-                playing_cards = None
+                logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+                await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": cards})
+                cards = None
                 continue
 
         # Ist der Spiele am Zug? (stellt die Engine sicher) todo rausnehmen
         assert self.pub.current_turn_index == self.priv.player_index
 
-        return playing_cards, combination
+        return cards, combination
 
     async def bomb(self) -> Optional[Tuple[Cards, Combination]]:
         """
@@ -469,32 +467,30 @@ class Peer(Player):
             return None
 
         # Bombe aus dem Puffer nehmen
-        playing_cards = self._pending_bomb
+        cards = self._pending_bomb
         self._pending_bomb = None
 
         # Sind die Karten noch auf der Hand?
-        if any(card not in self.priv.hand_cards for card in playing_cards):
+        if any(card not in self.priv.hand_cards for card in cards):
             msg = "Mindestens eine Karte ist keine Handkarte"
-            labels = stringify_cards(playing_cards)
-            logger.warning(f"Peer {self.name}: {msg}: {labels}")
-            await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": labels})
+            logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+            await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": cards})
             return None
 
         # Ist die Kombination noch spielbar?
         combination = None
         possible_combinations = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-        for cards, combi in possible_combinations:
-            if combi[0] == CombinationType.BOMB and playing_cards == cards:
+        for cards_, combi in possible_combinations:
+            if combi[0] == CombinationType.BOMB and cards == cards_:
                 combination = combi
                 break
         if combination is None:
             msg = "Die Karten bilden keine spielbare Bombe"
-            labels = stringify_cards(playing_cards)
-            logger.warning(f"Peer {self.name}: {msg}: {labels}")
-            await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": labels})
+            logger.warning(f"Peer {self.name}: {msg}: {stringify_cards(cards)}")
+            await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": cards})
             return None
 
-        return playing_cards, combination
+        return cards, combination
 
     async def wish(self) -> int:
         """
@@ -592,10 +588,10 @@ class Peer(Player):
 
         elif event == "hand_cards_dealt":
             assert context.get("count") == len(self.priv.hand_cards)
-            context = {"hand_cards": stringify_cards(self.priv.hand_cards)}
+            context = {"hand_cards": self.priv.hand_cards}
 
         elif event == "schupf_cards_dealt":
-            context = {"received_schupf_cards": stringify_cards(self.priv.received_schupf_cards)}
+            context = {"received_schupf_cards": self.priv.received_schupf_cards}
 
         notification_message = {
             "type": "notification",

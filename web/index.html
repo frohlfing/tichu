@@ -2,115 +2,133 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Tichu Online</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="images/icon.png" type="image/png">
+    <!-- Ggf. Font-Einbindung via @font-face in style.css -->
 </head>
 <body>
-    <div id="app-container">
 
-        <!-- Lobby Ansicht -->
-        <div id="lobby-view">
-            <div class="lobby-background"></div> <!-- Für den Drachenkopf-Hintergrund -->
-            <div class="lobby-content">
-                <h1>Tichu</h1>
-                <div id="join-form">
-                    <input type="text" id="player-name" placeholder="Dein Name" required>
-                    <input type="text" id="table-name" placeholder="Tischname" required>
-                    <button id="join-button">Tisch beitreten / Erstellen</button>
-                    <p id="lobby-message" class="message"></p>
-                </div>
+    <!-- Ladebildschirm -->
+    <div id="loading-screen" class="view">
+        <img src="images/bootscreen.png" alt="Tichu" class="bootscreen-logo">
+        <p>Verbinde...</p>
+        <img src="images/spinner.png" alt="Laden..." class="spinner">
+    </div>
 
-                <div id="table-info" style="display:none;">
-                    <h2>Tisch: <span id="current-table-name"></span></h2>
-                    <h3>Spieler am Tisch:</h3>
-                    <ul id="player-list">
-                        <!-- Spieler werden hier dynamisch eingefügt -->
-                    </ul>
-                    <!-- Host-Controls (initial versteckt) -->
-                    <div id="host-controls" style="display:none;">
-                        <p>Du bist der Host. Du kannst die Spieler umsortieren (TODO) und das Spiel starten.</p>
-                        <button id="start-game-button">Spiel starten</button>
-                    </div>
-                </div>
+    <!-- Login-Bildschirm -->
+    <div id="login-screen" class="view">
+        <div class="login-background"></div>
+        <h1>Tichu</h1>
+        <form id="login-form">
+            <input type="text" id="player-name" placeholder="Dein Name" required>
+            <input type="text" id="table-name" placeholder="Tischname" required>
+            <button type="submit">Betreten</button>
+        </form>
+    </div>
+
+    <!-- Lobby-Bildschirm -->
+    <div id="lobby-screen" class="view">
+        <h2>Lobby: <span id="lobby-table-name"></span></h2>
+        <div id="player-list-container">
+            <p>Spieler am Tisch:</p>
+            <ul id="lobby-player-list"></ul>
+        </div>
+        <div id="team-assignment-container" class="hidden">
+            <p>Teams bilden (Host-Funktion)</p>
+            <button id="start-game-button">Spiel starten</button>
+        </div>
+        <button id="leave-lobby-button">Tisch verlassen</button>
+    </div>
+
+    <!-- Spieltisch-Bildschirm -->
+    <div id="game-table-screen" class="view">
+        <div class="top-bar">
+            <button id="end-game-button" class="game-button">Beenden</button>
+            <div id="score-display">Team Wir: 0000 | Team Die: 0000</div>
+            <button id="options-button" class="game-button">Optionen</button>
+        </div>
+        <div class="table-area">
+            <div class="player-area player-top" id="player-area-2">
+                <div class="player-info"><span class="player-name">Partner</span><span class="card-count">0</span><img src="images/dragon.png" class="tichu-indicator hidden" alt="T"><img src="images/marker.png" class="turn-indicator hidden" alt="*"></div>
+                <div class="hand opponent-hand" id="player-2-hand"></div>
+            </div>
+            <div class="player-area player-left" id="player-area-3">
+                 <div class="player-info"><span class="player-name">Gegner L.</span><span class="card-count">0</span><img src="images/dragon.png" class="tichu-indicator hidden" alt="T"><img src="images/marker.png" class="turn-indicator hidden" alt="*"></div>
+                <div class="hand opponent-hand" id="player-3-hand"></div>
+            </div>
+            <div class="player-area player-right" id="player-area-1">
+                <div class="player-info"><span class="player-name">Gegner R.</span><span class="card-count">0</span><img src="images/dragon.png" class="tichu-indicator hidden" alt="T"><img src="images/marker.png" class="turn-indicator hidden" alt="*"></div>
+                <div class="hand opponent-hand" id="player-1-hand"></div>
+            </div>
+            <div class="center-table">
+                <div id="played-cards-pile-player-0" class="played-cards-pile"></div>
+                <div id="played-cards-pile-player-1" class="played-cards-pile"></div>
+                <div id="played-cards-pile-player-2" class="played-cards-pile"></div>
+                <div id="played-cards-pile-player-3" class="played-cards-pile"></div>
+                <img src="images/wish.png" id="wish-indicator" class="hidden" alt="Wunsch">
+            </div>
+            <div class="schupf-zones hidden">
+                <div class="schupf-zone" id="schupf-zone-opponent-right" data-target-player-relative="1">R</div>
+                <div class="schupf-zone" id="schupf-zone-partner" data-target-player-relative="2">P</div>
+                <div class="schupf-zone" id="schupf-zone-opponent-left" data-target-player-relative="3">L</div>
+            </div>
+            <div class="player-area player-bottom" id="player-area-0">
+                <div class="player-info"><span class="player-name">Ich</span><span class="card-count">0</span><img src="images/dragon.png" class="tichu-indicator hidden" alt="T"><img src="images/marker.png" class="turn-indicator hidden" alt="*"><img src="images/bomb.png" id="bomb-icon" class="hidden" alt="B"></div>
+                <div class="hand own-hand" id="player-0-hand"></div>
             </div>
         </div>
-
-        <!-- Spieltisch Ansicht (initial versteckt) -->
-        <div id="table-view" style="display:none;">
-            <!-- Header-Bereich -->
-            <div class="table-header">
-                <button id="leave-game-button">Beenden</button>
-                <div id="game-score">Team 1: 0 / Team 2: 0</div> <!-- Beispiel -->
-                <button id="options-button">Optionen</button>
-            </div>
-
-            <!-- Gegner Oben -->
-            <div class="player-area player-top">
-                <div class="player-name" id="player-name-top">Gegner Oben</div>
-                <div class="player-cards-opponent" id="player-cards-top">
-                    <!-- Kartenrücken oder Anzahl -->
-                </div>
-                <div class="player-announcements" id="announcement-top"></div>
-            </div>
-
-            <div class="middle-area">
-                <!-- Gegner Links -->
-                <div class="player-area player-left">
-                    <div class="player-name" id="player-name-left">Gegner Links</div>
-                    <div class="player-cards-opponent" id="player-cards-left"></div>
-                    <div class="player-announcements" id="announcement-left"></div>
-                </div>
-
-                <!-- Tischmitte / Stich -->
-                <div id="trick-area">
-                    <div id="current-trick-cards">
-                        <!-- Gespielte Karten des aktuellen Stichs -->
-                    </div>
-                    <div id="trick-info">
-                        Punkte im Stich: <span id="trick-points">0</span>
-                    </div>
-                    <div id="game-notifications">
-                        <!-- Für Server-Notifications wie "Spieler X hat gepasst" -->
-                    </div>
-                </div>
-
-                <!-- Gegner Rechts -->
-                <div class="player-area player-right">
-                    <div class="player-name" id="player-name-right">Gegner Rechts</div>
-                    <div class="player-cards-opponent" id="player-cards-right"></div>
-                    <div class="player-announcements" id="announcement-right"></div>
-                </div>
-            </div>
-
-            <!-- Eigener Spielerbereich (Unten) -->
-            <div class="player-area player-bottom">
-                <div id="player-hand-area">
-                    <!-- Eigene Handkarten -->
-                </div>
-                <div class="player-actions">
-                    <button id="pass-button" disabled>Passen</button>
-                    <button id="tichu-button">Tichu</button> <!-- Für proaktives Tichu -->
-                    <button id="play-cards-button" disabled>Spielen</button>
-                </div>
-                <div class="player-name" id="player-name-bottom">Dein Name</div>
-                <div class="player-announcements" id="announcement-bottom"></div>
-                 <img src="img/bomb_icon.png" id="bomb-button" alt="Bombe werfen" title="Bombe werfen">
-            </div>
-             <div id="turn-indicator-overlay" style="display:none;">
-                <div class="turn-indicator-circle"></div>
-            </div>
+        <div class="bottom-controls">
+            <button id="pass-button" class="game-button" disabled>Passen</button>
+            <button id="tichu-button" class="game-button" disabled>Tichu</button>
+            <button id="play-cards-button" class="game-button" disabled>Spielen</button>
         </div>
     </div>
 
-    <!-- Laden der Module (Reihenfolge ist wichtig!) -->
-    <script src="js/error-codes.js"></script>
-    <script src="js/game-state.js"></script>
-    <script src="js/web-socket-service.js"></script>
-    <script src="js/lobby-view.js"></script>
-    <script src="js/table-view.js"></script>
-    <script src="js/card-renderer.js"></script>
-    <script src="js/ui-manager.js"></script>
+    <!-- Dialoge -->
+    <div id="wish-dialog" class="dialog hidden">
+        <h3>Wähle einen Kartenwert</h3>
+        <div id="wish-options"></div>
+        <button id="confirm-wish-button">Wünschen</button>
+    </div>
+    <div id="dragon-dialog" class="dialog hidden">
+        <h3>Wem den Drachenstich geben?</h3>
+        <button id="dragon-to-left-button">Gegner Links</button>
+        <button id="dragon-to-right-button">Gegner Rechts</button>
+    </div>
+    <div id="round-end-dialog" class="dialog hidden">
+        <h3>Runde beendet</h3>
+        <p id="round-result-text">Ergebnis: 000 : 000</p>
+        <button id="ok-round-end-button">Ok</button>
+    </div>
+    <div id="game-end-dialog" class="dialog hidden">
+        <h3>Partie beendet</h3>
+        <p id="game-result-text">Ergebnis: 0000 : 0000</p>
+        <button id="ok-game-end-button">Zur Lobby</button>
+    </div>
+    <div id="leave-confirm-dialog" class="dialog hidden">
+        <h3>Tisch wirklich verlassen?</h3>
+        <button id="confirm-leave-button">Ja</button>
+        <button id="cancel-leave-button">Nein</button>
+    </div>
+    <div id="error-toast" class="toast hidden">
+        <p id="error-toast-message"></p>
+    </div>
+
+    <!-- Module laden (Reihenfolge ist wichtig!) -->
+    <script src="js/constants.js"></script>  <!-- dynamisch generiert -->
+    <script src="js/helpers.js"></script>
+    <script src="js/sound-manager.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/network.js"></script>
+    <script src="js/card-handler.js"></script>
+    <script src="js/dialogs.js"></script>
+    <script src="js/views/login-view.js"></script>
+    <script src="js/views/lobby-view.js"></script>
+    <script src="js/views/game-table-view.js"></script>
+    <script src="js/view-manager.js"></script>
+    <script src="js/app-controller.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

@@ -45,31 +45,30 @@ def test_public_state_to_dict(initial_pub_state):
     # Setze einige Werte für einen besseren Test
     pub.current_turn_index = 1
     pub.count_hand_cards = [10, 11, 12, 13]
-    pub.played_cards = parse_cards("S5 G5")
+    pub.played_cards = [(5,1), (5,3)]  # S5 G5"
     pub.trick_combination = (CombinationType.PAIR, 2, 5)
     pub.trick_points = 10
     pub.trick_owner_index = 0
     # Füge einen Beispiel-Trick zur History hinzu
-    trick1_play1 = (0, parse_cards("S5 G5"), (CombinationType.PAIR, 2, 5))
+    trick1_play1 = (0, [(5,1), (5,3)], (CombinationType.PAIR, 2, 5))
     trick1_play2 = (1, [], (CombinationType.PASS, 0, 0))
     pub.tricks.append([trick1_play1, trick1_play2])
 
     pub_dict = pub.to_dict()
-
     assert pub_dict["table_name"] == "TestTable"
     assert pub_dict["player_names"] == ["Alice", "Bob", "Charlie", "David"]
     assert pub_dict["current_turn_index"] == 1
     assert pub_dict["count_hand_cards"] == [10, 11, 12, 13]
-    assert pub_dict["played_cards"] == "S5 G5"
-    assert pub_dict["trick_combination"] == ("PAIR", 2, 5) # Enum Name
+    assert pub_dict["played_cards"] == [(5,1), (5,3)]
+    assert pub_dict["trick_combination"] == (CombinationType.PAIR, 2, 5) # Enum Name
     assert pub_dict["trick_points"] == 10
     assert pub_dict["trick_owner_index"] == 0
     assert len(pub_dict["tricks"]) == 1
     assert len(pub_dict["tricks"][0]) == 2
     # Prüfe den ersten Spielzug im ersten Trick
-    assert pub_dict["tricks"][0][0] == (0, "S5 G5", ("PAIR", 2, 5))
+    assert pub_dict["tricks"][0][0] == (0, [(5,1), (5,3)], (CombinationType.PAIR, 2, 5))
     # Prüfe den zweiten Spielzug (Passen)
-    assert pub_dict["tricks"][0][1] == (1, "", ("PASS", 0, 0))
+    assert pub_dict["tricks"][0][1] == (1, [], (CombinationType.PASS, 0, 0))
 
 def test_public_state_count_active_players(initial_pub_state):
     """Testet die Zählung aktiver Spieler."""

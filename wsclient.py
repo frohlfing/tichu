@@ -159,7 +159,7 @@ async def main(args: argparse.Namespace):
         {"type": "lobby_action", "payload": {"action": "assign_team", "data": [3,0,2,1]}},
         {"type": "lobby_action", "payload": {"action": "start_game"}},
         {"type": "announce"},
-        {"type": "bomb", "payload": {"cards": "R2,B3,R4,S5,R6"}},
+        {"type": "bomb", "payload": {"cards": [(2,1), (2,2), (2,3), (2,4)]}},
 
 
         # Antworten von Server-Anfragen
@@ -167,10 +167,9 @@ async def main(args: argparse.Namespace):
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"announced": False}}},
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"announced": True}}},
         # schupf
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"to_opponent_right": "B2", "to_partner": "SK", "to_opponent_left": "B3"}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"to_opponent_right": (2,1), "to_partner": (2,2), "to_opponent_left": (2,3)}}},
         # play
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": "R2,B3,R4,S5,R6"}}},
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": "Dr S9"}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": [(2,1),(9,3)]}}},
         # wish
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"wish_value": 8}}},
         # give_dragon_away
