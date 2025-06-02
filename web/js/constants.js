@@ -32,7 +32,7 @@ const ErrorCode = { // Singular
  */
 const Config = {
     DEFAULT_REQUEST_TIMEOUT: 20,
-    WEBSOCKET_URL: 'ws://localhost:8080/ws' // Kann hier dynamisch vom Server gesetzt werden
+    WEBSOCKET_URL: 'ws://localhost:8765/ws' // Kann hier dynamisch vom Server gesetzt werden
     // MAX_PLAYERS: 4 // etc.
 };
 
@@ -40,7 +40,7 @@ const Config = {
 /** @const {Array<string>} CardValueLabels - Labels für Kartenwerte 2-Ass. */
 const CardValueLabels = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 /** @const {object} SpecialCardValues - Numerische Werte für Sonderkarten. */
-const SpecialCardValues = { 'MAH':1, 'DOG':0, 'DRA':15, 'PHO':16};
+const SpecialCardValues = {'MAH': 1, 'DOG': 0, 'DRA': 15, 'PHO': 16};
 
 // Konstanten für Kartenfarben (numerisch, wie vom Server)
 /** @const {object} CardSuits - Numerische Werte für Kartenfarben. */

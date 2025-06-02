@@ -5,33 +5,46 @@
  * Verwaltet das Laden und Abspielen von Soundeffekten.
  */
 const SoundManager = (() => {
-    /** @const {object} sounds - Speichert die Audio-Objekte. */
-    const sounds = {};
-    /** @let {number} masterVolume - Die globale Lautstärke für alle Sounds. */
-    let masterVolume = 0.5; // Standardlautstärke (0.0 bis 1.0)
-    /** @let {boolean} soundsEnabled - Gibt an, ob Sounds aktiviert sind. */
-    let soundsEnabled = true;
+    const sounds = {}; // Speichert die Audio-Objekte.
+    let masterVolume = 0.5; // Die globale Lautstärke für alle Sounds.
+    let soundsEnabled = true; // Gibt an, ob Sounds aktiviert sind.
 
     /**
      * @const {object} soundFiles
      * @description Mapping von Sound-Namen zu Dateipfaden. Endungen sind .ogg.
      */
     const soundFiles = {
-        schuffle: 'sounds/schuffle.ogg', dealout: 'sounds/dealout.ogg',
-        schupf0: 'sounds/schupf0.ogg', schupf1: 'sounds/schupf1.ogg', schupf2: 'sounds/schupf2.ogg', schupf3: 'sounds/schupf3.ogg',
-        play0: 'sounds/play0.ogg', play1: 'sounds/play1.ogg', play2: 'sounds/play2.ogg', play3: 'sounds/play3.ogg',
-        take0: 'sounds/take0.ogg', take1: 'sounds/take1.ogg', take2: 'sounds/take2.ogg', take3: 'sounds/take3.ogg',
-        bomb0: 'sounds/bomb0.ogg', bomb1: 'sounds/bomb1.ogg', bomb2: 'sounds/bomb2.ogg', bomb3: 'sounds/bomb3.ogg',
-        pass0: 'sounds/pass0.ogg', pass1: 'sounds/pass1.ogg', pass2: 'sounds/pass2.ogg', pass3: 'sounds/pass3.ogg',
-        announce: 'sounds/announce.ogg', // Für Tichu-Ansagen
-        // Beispiel UI-Sounds, falls benötigt und vorhanden:
+        // todo Sound-Files hinzufügen
+
+        // --- Notification Events ---
+        // player_joined0
+        // player_left0
+        // players_swapped
+        //game_started
+        round_started: 'sounds/shuffle.ogg',
+        //hand_cards_dealt
+        player_grand_announced_0: 'sounds/announce0.ogg', player_grand_announced_1: 'sounds/announce1.ogg', player_grand_announced_2: 'sounds/announce2.ogg', player_grand_announced_3: 'sounds/announce3.ogg',
+        player_announced_0: 'sounds/announce0.ogg', player_announced_1: 'sounds/announce1.ogg', player_announced_2: 'sounds/announce2.ogg', player_announced_3: 'sounds/announce3.ogg',
+        player_schupfed_0: 'sounds/schupf0.ogg', player_schupfed_1: 'sounds/schupf1.ogg', player_schupfed_2: 'sounds/schupf2.ogg', player_schupfed_3: 'sounds/schupf3.ogg',
+        schupf_cards_dealt: 'sounds/dealout.ogg',
+        player_passed_0: 'sounds/pass0.ogg', player_passed_1: 'sounds/pass1.ogg', player_passed_2: 'sounds/pass2.ogg', player_passed_3: 'sounds/pass3.ogg',
+        player_played_0: 'sounds/play0.ogg', player_played_1: 'sounds/play1.ogg', player_played_2: 'sounds/play2.ogg', player_played_3: 'sounds/play3.ogg',
+        player_bombed_0: 'sounds/bomb0.ogg', player_bombed_1: 'sounds/bomb1.ogg', player_bombed_2: 'sounds/bomb2.ogg', player_bombed_3: 'sounds/bomb3.ogg',
+        // wish_made: 'sounds/wish_made.ogg',
+        // wish_fulfilled: 'sounds/wish_fulfilled.ogg',
+        trick_taken_0: 'sounds/take0.ogg', trick_taken_1: 'sounds/take1.ogg', trick_taken_2: 'sounds/take2.ogg', trick_taken_3: 'sounds/take3.ogg',
+        // player_turn_changed
+        // round_over: 'sounds/round_over.ogg',
+        // game_over: 'sounds/game_over.ogg',
+
+        // --- UI Events ---
+        // buttonClick: 'sounds/ui_click.ogg',
         // cardSelect: 'sounds/ui_tap.ogg',
-        // buttonClick: 'sounds/ui_click.ogg'
+        // dialogOpen: 'sounds/dialog_open.ogg' // Beispiel
     };
 
     /**
      * Initialisiert den SoundManager und lädt alle definierten Sound-Dateien vor.
-     * Lädt auch gespeicherte Sound-Einstellungen aus dem LocalStorage.
      */
     function init() {
         for (const key in soundFiles) {
@@ -52,14 +65,40 @@ const SoundManager = (() => {
 
     /**
      * Spielt einen Soundeffekt ab, falls Sounds aktiviert sind.
-     * @param {string} soundName - Der Name des Sounds (Schlüssel in `soundFiles`).
+     * @param {string} soundKey - Der Schlüssel des Sounds aus `soundFiles`.
      */
-    function playSound(soundName) {
-        if (soundsEnabled && sounds[soundName]) {
-            sounds[soundName].currentTime = 0;
-            sounds[soundName].play().catch(error => {
-                // console.warn(`Sound ${soundName} konnte nicht abgespielt werden:`, error.message);
+    function playSound(soundKey) {
+        if (soundsEnabled && sounds[soundKey]) {
+            sounds[soundKey].currentTime = 0;
+            sounds[soundKey].play().catch(error => {
+                // console.warn(`Sound ${soundKey} konnte nicht abgespielt werden:`, error.message);
             });
+        }
+        else if (soundsEnabled && !sounds[soundKey]) {
+            // console.warn(`SoundManager: Sound-Schlüssel '${soundKey}' nicht in soundFiles gefunden.`);
+        }
+    }
+
+    /**
+     * Spielt einen Sound für eine Server-Notification ab.
+     * Versucht zuerst einen spielerspezifischen Sound (eventuellName_relativeIndex),
+     * dann einen generischen Sound (eventName).
+     * @param {string} eventName - Das Event (z.B. "player_played").
+     * @param {int} eventBelongsToPlayerIndex - Der Index des Spielers, auf den sich das Event bezieht (-1 == das Event bezieht sich auf niemandem).
+     */
+    function playNotificationSound(eventName, eventBelongsToPlayerIndex = -1) {
+        if (!soundsEnabled) {
+            return;
+        }
+        if (soundFiles.hasOwnProperty(eventName)) {
+            SoundManager.playSound(eventName);
+        }
+        else if (eventBelongsToPlayerIndex !== -1) {
+            const relativeIdx = Helpers.getRelativePlayerIndex(eventBelongsToPlayerIndex);
+            let soundKey = eventName + "_" + relativeIdx
+            if (soundFiles.hasOwnProperty(soundKey)) {
+                SoundManager.playSound(soundKey);
+            }
         }
     }
 
@@ -94,7 +133,7 @@ const SoundManager = (() => {
         localStorage.setItem('tichuMasterVolume', masterVolume.toString());
     }
 
-     /**
+    /**
      * Gibt die aktuelle Master-Lautstärke zurück.
      * @returns {number} Die aktuelle Lautstärke (0.0 - 1.0).
      */
@@ -105,6 +144,7 @@ const SoundManager = (() => {
     return {
         init,
         playSound,
+        playNotificationSound,
         setSoundsEnabled,
         areSoundsEnabled,
         setVolume,

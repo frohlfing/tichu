@@ -6,13 +6,11 @@
     <title>Tichu Online</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="images/icon.png" type="image/png">
-    <!-- Ggf. Font-Einbindung via @font-face in style.css -->
 </head>
 <body>
-
     <!-- Ladebildschirm -->
     <div id="loading-screen" class="view">
-        <img src="images/bootscreen.png" alt="Tichu" class="bootscreen-logo">
+        <img src="images/logo.png" alt="Logo" class="logo">
         <p>Verbinde...</p>
         <img src="images/spinner.png" alt="Laden..." class="spinner">
     </div>
@@ -22,8 +20,8 @@
         <div class="login-background"></div>
         <h1>Tichu</h1>
         <form id="login-form">
-            <input type="text" id="player-name" placeholder="Dein Name" required>
-            <input type="text" id="table-name" placeholder="Tischname" required>
+            <input type="text" id="player-name" title="" placeholder="Dein Name" required/>
+            <input type="text" id="table-name" title="" placeholder="Tischname" required/>
             <button type="submit">Betreten</button>
         </form>
     </div>
@@ -36,10 +34,10 @@
             <ul id="lobby-player-list"></ul>
         </div>
         <div id="team-assignment-container" class="hidden">
-            <p>Teams bilden (Host-Funktion)</p>
+            <p>Spieler anordnen (Host):</p>
             <button id="start-game-button">Spiel starten</button>
         </div>
-        <button id="leave-lobby-button">Tisch verlassen</button>
+        <button id="leave-lobby-button">Beenden</button>
     </div>
 
     <!-- Spieltisch-Bildschirm -->
@@ -51,15 +49,15 @@
         </div>
         <div class="table-area">
             <div class="player-area player-top" id="player-area-2">
-                <div class="player-info"><span class="player-name">Partner</span><span class="card-count">0</span><img src="images/dragon.png" class="tichu-indicator hidden" alt="T"><img src="images/marker.png" class="turn-indicator hidden" alt="*"></div>
+                <div class="player-info"><span class="player-name">Partner</span><span class="card-count">0</span><img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T"><img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*"></div>
                 <div class="hand opponent-hand" id="player-2-hand"></div>
             </div>
             <div class="player-area player-left" id="player-area-3">
-                 <div class="player-info"><span class="player-name">Gegner L.</span><span class="card-count">0</span><img src="images/dragon.png" class="tichu-indicator hidden" alt="T"><img src="images/marker.png" class="turn-indicator hidden" alt="*"></div>
+                 <div class="player-info"><span class="player-name">Gegner L.</span><span class="card-count">0</span><img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T"><img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*"></div>
                 <div class="hand opponent-hand" id="player-3-hand"></div>
             </div>
             <div class="player-area player-right" id="player-area-1">
-                <div class="player-info"><span class="player-name">Gegner R.</span><span class="card-count">0</span><img src="images/dragon.png" class="tichu-indicator hidden" alt="T"><img src="images/marker.png" class="turn-indicator hidden" alt="*"></div>
+                <div class="player-info"><span class="player-name">Gegner R.</span><span class="card-count">0</span><img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T"><img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*"></div>
                 <div class="hand opponent-hand" id="player-1-hand"></div>
             </div>
             <div class="center-table">
@@ -67,7 +65,7 @@
                 <div id="played-cards-pile-player-1" class="played-cards-pile"></div>
                 <div id="played-cards-pile-player-2" class="played-cards-pile"></div>
                 <div id="played-cards-pile-player-3" class="played-cards-pile"></div>
-                <img src="images/wish.png" id="wish-indicator" class="hidden" alt="Wunsch">
+                <img src="images/wish-indicator.png" id="wish-indicator" class="hidden" alt="Wunsch">
             </div>
             <div class="schupf-zones hidden">
                 <div class="schupf-zone" id="schupf-zone-opponent-right" data-target-player-relative="1">R</div>
@@ -75,7 +73,7 @@
                 <div class="schupf-zone" id="schupf-zone-opponent-left" data-target-player-relative="3">L</div>
             </div>
             <div class="player-area player-bottom" id="player-area-0">
-                <div class="player-info"><span class="player-name">Ich</span><span class="card-count">0</span><img src="images/dragon.png" class="tichu-indicator hidden" alt="T"><img src="images/marker.png" class="turn-indicator hidden" alt="*"><img src="images/bomb.png" id="bomb-icon" class="hidden" alt="B"></div>
+                <div class="player-info"><span class="player-name">Ich</span><span class="card-count">0</span><img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T"><img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*"><img src="images/bomb.png" id="bomb-icon" class="hidden" alt="B"></div>
                 <div class="hand own-hand" id="player-0-hand"></div>
             </div>
         </div>
@@ -108,7 +106,7 @@
         <button id="ok-game-end-button">Zur Lobby</button>
     </div>
     <div id="leave-confirm-dialog" class="dialog hidden">
-        <h3>Tisch wirklich verlassen?</h3>
+        <h3>Wirklich beenden?</h3>
         <button id="confirm-leave-button">Ja</button>
         <button id="cancel-leave-button">Nein</button>
     </div>

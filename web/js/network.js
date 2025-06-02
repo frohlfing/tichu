@@ -31,15 +31,19 @@ const Network = (() => {
         // Nimm die URL aus der globalen Config (server-generiert in constants.js)
         let wsUrl = (typeof Config !== 'undefined' && Config.WEBSOCKET_URL)
             ? Config.WEBSOCKET_URL
-            : 'ws://localhost:8080/ws'; // Fallback
+            : 'ws://localhost:8765/ws'; // Fallback
 
         if (sessionId) {
             wsUrl += `?session_id=${sessionId}`;
-        } else if (playerName && tableName) {
+        }
+        else if (playerName && tableName) {
             wsUrl += `?player_name=${encodeURIComponent(playerName)}&table_name=${encodeURIComponent(tableName)}`;
-        } else {
+        }
+        else {
             console.error('Ungültige Parameter für WebSocket-Verbindung.');
-            if (_onError) _onError({ name: "ClientSetupError", message: "Ungültige Verbindungsparameter." });
+            if (_onError) {
+                _onError({name: "ClientSetupError", message: "Ungültige Verbindungsparameter."});
+            }
             return;
         }
 
@@ -48,38 +52,49 @@ const Network = (() => {
             websocket = new WebSocket(wsUrl);
         } catch (e) {
             console.error("CLIENT: Fehler beim Erstellen des WebSocket-Objekts:", e);
-            if (_onError) _onError({ name: "WebSocketCreationError", message: e.message, originalError: e });
+            if (_onError) {
+                _onError({name: "WebSocketCreationError", message: e.message, originalError: e});
+            }
             return;
         }
 
-
         websocket.onopen = (event) => {
             console.log('CLIENT: WebSocket-Verbindung geöffnet.');
-            if (_onOpen) _onOpen(event);
+            if (_onOpen) {
+                _onOpen(event);
+            }
         };
 
         websocket.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                // console.log('CLIENT: Nachricht vom Server:', message); // Für Debugging
-                if (_onMessage) _onMessage(message);
+                console.log('CLIENT: Nachricht vom Server:', message); // Für Debugging
+                if (_onMessage) {
+                    _onMessage(message);
+                }
             } catch (e) {
                 console.error('CLIENT: Fehler beim Parsen der Server-Nachricht:', e, event.data);
-                 if (_onError) _onError({ name: "MessageParseError", message: "Ungültige Server-Nachricht empfangen.", data: event.data });
+                if (_onError) {
+                    _onError({name: "MessageParseError", message: "Ungültige Server-Nachricht empfangen.", data: event.data});
+                }
             }
         };
 
         websocket.onerror = (event) => {
             // WebSocket onerror liefert oft nur ein generisches Event, keine detaillierte Fehlermeldung
             console.error('CLIENT: WebSocket-Fehler.', event);
-            if (_onError) _onError({name: "WebSocketError", message: "WebSocket-Fehler aufgetreten."});
+            if (_onError) {
+                _onError({name: "WebSocketError", message: "WebSocket-Fehler aufgetreten."});
+            }
         };
 
         websocket.onclose = (event) => {
             console.log(`CLIENT: WebSocket-Verbindung geschlossen: Code ${event.code}, Grund: '${event.reason}', Clean: ${event.wasClean}`);
             const wasConnected = !!websocket; // War vorher eine Instanz da?
             websocket = null;
-            if (_onClose) _onClose(event, wasConnected);
+            if (_onClose) {
+                _onClose(event, wasConnected);
+            }
         };
     }
 
@@ -90,17 +105,22 @@ const Network = (() => {
      */
     function send(type, payload) {
         if (websocket && websocket.readyState === WebSocket.OPEN) {
-            const message = { type, payload: payload || {} };
+            const message = {type, payload: payload || {}};
             // console.log('CLIENT: Sende Nachricht:', message); // Für Debugging
             try {
                 websocket.send(JSON.stringify(message));
             } catch (e) {
                 console.error("CLIENT: Fehler beim Senden der WebSocket-Nachricht:", e);
-                if(_onError) _onError({name: "SendError", message: "Fehler beim Senden.", originalError: e});
+                if (_onError) {
+                    _onError({name: "SendError", message: "Fehler beim Senden.", originalError: e});
+                }
             }
-        } else {
+        }
+        else {
             console.error('CLIENT: WebSocket nicht verbunden oder nicht bereit zum Senden.');
-            if (_onError) _onError({name: "NotConnectedError", message: "Keine Verbindung zum Senden der Nachricht."});
+            if (_onError) {
+                _onError({name: "NotConnectedError", message: "Keine Verbindung zum Senden der Nachricht."});
+            }
         }
     }
 
@@ -124,14 +144,24 @@ const Network = (() => {
 
     // Setter für die Callbacks
     /** @param {function} cb - Funktion, die bei geöffneter Verbindung aufgerufen wird. */
-    function setOnOpen(cb) { _onOpen = cb; }
-    /** @param {function} cb - Funktion, die bei Nachrichtenempfang aufgerufen wird. */
-    function setOnMessage(cb) { _onMessage = cb; }
-    /** @param {function} cb - Funktion, die bei Fehlern aufgerufen wird. */
-    function setOnError(cb) { _onError = cb; }
-    /** @param {function} cb - Funktion, die bei geschlossener Verbindung aufgerufen wird. */
-    function setOnClose(cb) { _onClose = cb; }
+    function setOnOpen(cb) {
+        _onOpen = cb;
+    }
 
+    /** @param {function} cb - Funktion, die bei Nachrichtenempfang aufgerufen wird. */
+    function setOnMessage(cb) {
+        _onMessage = cb;
+    }
+
+    /** @param {function} cb - Funktion, die bei Fehlern aufgerufen wird. */
+    function setOnError(cb) {
+        _onError = cb;
+    }
+
+    /** @param {function} cb - Funktion, die bei geschlossener Verbindung aufgerufen wird. */
+    function setOnClose(cb) {
+        _onClose = cb;
+    }
 
     return {
         connect,

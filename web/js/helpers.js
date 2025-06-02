@@ -33,7 +33,6 @@ const Helpers = (() => {
         _labelToValueSuitMap.set(cardDef[2], [cardDef[0], cardDef[1]]);
     });
 
-
     /**
      * Parst ein Array von Karten-Tupeln `[value, suit]` vom Server
      * in ein Array von clientseitigen Kartenobjekten.
@@ -42,7 +41,9 @@ const Helpers = (() => {
      * @returns {Array<object>} Ein Array von Kartenobjekten für das Frontend.
      */
     function parseCards(serverCardsArray) {
-        if (!serverCardsArray || !Array.isArray(serverCardsArray)) return [];
+        if (!serverCardsArray || !Array.isArray(serverCardsArray)) {
+            return [];
+        }
         return serverCardsArray.map(cardTuple => {
             if (!Array.isArray(cardTuple) || cardTuple.length !== 2) {
                 console.warn('Ungültiges Kartenformat vom Server:', cardTuple);
@@ -52,9 +53,9 @@ const Helpers = (() => {
             const suit = cardTuple[1];
             const label = _valueSuitToLabelMap.get(`${value}-${suit}`) || 'UNBEKANNT';
             if (label === 'UNBEKANNT') {
-                 console.warn(`Kein Label gefunden für Karte: [${value}, ${suit}]`);
+                console.warn(`Kein Label gefunden für Karte: [${value}, ${suit}]`);
             }
-            return { value, suit, label };
+            return {value, suit, label};
         }).filter(card => card !== null); // Ungültige Karten herausfiltern
     }
 
@@ -65,7 +66,9 @@ const Helpers = (() => {
      * @returns {Array<Array<number>>} Array von Karten-Tupeln für den Server.
      */
     function formatCardsForServer(clientCardObjects) {
-        if (!clientCardObjects || !Array.isArray(clientCardObjects)) return [];
+        if (!clientCardObjects || !Array.isArray(clientCardObjects)) {
+            return [];
+        }
         return clientCardObjects.map(cardObj => [cardObj.value, cardObj.suit]);
     }
 
@@ -76,7 +79,9 @@ const Helpers = (() => {
      * @returns {string} Ein String mit Kartenlabels, getrennt durch Leerzeichen.
      */
     function stringifyCardObjectsToLabels(clientCardObjects) {
-        if (!clientCardObjects || clientCardObjects.length === 0) return "";
+        if (!clientCardObjects || clientCardObjects.length === 0) {
+            return "";
+        }
         return clientCardObjects.map(card => card.label).join(' ');
     }
 

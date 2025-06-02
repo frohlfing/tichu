@@ -13,7 +13,6 @@ const GameTableView = (() => {
     /** @const {HTMLButtonElement} _optionsButton - Button für Spieloptionen. */
     const _optionsButton = document.getElementById('options-button');
 
-
     // Platzhalter für DOM-Elemente, die später relevant werden
     const _scoreDisplay = document.getElementById('score-display');
     const _ownHandContainer = document.getElementById('player-0-hand');
@@ -23,7 +22,6 @@ const GameTableView = (() => {
     const _bombIcon = document.getElementById('bomb-icon');
     const _wishIndicator = document.getElementById('wish-indicator');
     const _schupfZonesContainer = document.querySelector('.schupf-zones');
-
 
     /**
      * Initialisiert das GameTableView-Modul.
@@ -87,7 +85,8 @@ const GameTableView = (() => {
             const team13Score = publicState.game__score[1].reduce((a, b) => a + b, 0);
             const myTeamIs02 = myPIdx === 0 || myPIdx === 2;
             _scoreDisplay.textContent = `Wir: ${String(myTeamIs02 ? team02Score : team13Score).padStart(4, '0')} | Die: ${String(myTeamIs02 ? team13Score : team02Score).padStart(4, '0')}`;
-        } else {
+        }
+        else {
             _scoreDisplay.textContent = 'Punkte: 0:0';
         }
 
@@ -138,7 +137,8 @@ const GameTableView = (() => {
         if (enable && requestId) {
             _passButton.dataset.requestId = requestId;
             _playCardsButton.dataset.requestId = requestId;
-        } else {
+        }
+        else {
             delete _passButton.dataset.requestId;
             delete _playCardsButton.dataset.requestId;
         }
@@ -158,17 +158,19 @@ const GameTableView = (() => {
         switch (eventName) {
             case 'hand_cards_dealt':
             case 'player_turn_changed':
-            case 'played':
-            case 'passed':
+            case 'player_played':
+            case 'player_passed':
             case 'trick_taken':
                 render(); // Einfaches Neu-Rendern bei vielen Events
                 break;
-            case 'tichu_announced':
+            case 'player_announced':
                 // Spezifisches Update für Tichu-Indikator
                 if (context && typeof context.player_index === 'number') {
                     const displayIdx = Helpers.getRelativePlayerIndex(context.player_index);
                     const tichuIndicator = document.querySelector(`#player-area-${displayIdx} .tichu-indicator`);
-                    if (tichuIndicator) tichuIndicator.classList.toggle('hidden', !context.announced);
+                    if (tichuIndicator) {
+                        tichuIndicator.classList.toggle('hidden', !context.announced);
+                    }
                 }
                 break;
             // Weitere Events...
@@ -182,20 +184,23 @@ const GameTableView = (() => {
         // Der "Spielen"-Button könnte zu einem "Schupfen Bestätigen"-Button werden
         _playCardsButton.textContent = isSchupfing ? "Schupfen Bestätigen" : "Spielen";
         if (isSchupfing) {
-            _playCardsButton.onclick = () => { CardHandler.confirmSchupf(); SoundManager.playSound('buttonClick'); };
-        } else {
+            _playCardsButton.onclick = () => {
+                CardHandler.confirmSchupf();
+                SoundManager.playSound('buttonClick');
+            };
+        }
+        else {
             _playCardsButton.onclick = _handlePlayCards; // Standard-Handler wiederherstellen
         }
         _playCardsButton.disabled = false; // Immer aktivierbar im Schupf-Modus (wenn Karten gewählt)
     }
-
 
     // --- Private Handler für Action-Buttons (werden später implementiert) ---
     function _handlePass() {
         const requestId = _passButton.dataset.requestId;
         if (requestId) {
             SoundManager.playSound('pass' + State.getPlayerIndex());
-            AppController.sendResponse(requestId, { cards: [] }); // Leeres Array für Passen (Server erwartet [[v,s]])
+            AppController.sendResponse(requestId, {cards: []}); // Leeres Array für Passen (Server erwartet [[v,s]])
             CardHandler.clearSelectedCards();
             enablePlayControls(false);
         }
@@ -207,10 +212,11 @@ const GameTableView = (() => {
         const pubState = State.getPublicState();
         if (privState && pubState && privState.hand_cards && privState.hand_cards.length === 14 &&
             pubState.announcements && pubState.announcements[State.getPlayerIndex()] === 0) {
-            SoundManager.playSound('announce');
+            SoundManager.playSound('announce' + State.getPlayerIndex());
             AppController.sendProactiveMessage('announce'); // Proaktive Ansage
             _tichuButton.disabled = true; // Deaktivieren nach Ansage
-        } else {
+        }
+        else {
             Dialogs.showErrorToast("Tichu kann jetzt nicht angesagt werden.");
         }
     }
@@ -220,24 +226,27 @@ const GameTableView = (() => {
         const selectedCards = CardHandler.getSelectedCards(); // Client-Objekte {value, suit, label}
         if (requestId && selectedCards.length > 0) {
             SoundManager.playSound('play' + State.getPlayerIndex());
-            AppController.sendResponse(requestId, { cards: Helpers.formatCardsForServer(selectedCards) });
+            AppController.sendResponse(requestId, {cards: Helpers.formatCardsForServer(selectedCards)});
             // Hand-Update erfolgt durch Server-Notification
             CardHandler.clearSelectedCards();
             enablePlayControls(false);
-        } else if (selectedCards.length === 0) {
+        }
+        else if (selectedCards.length === 0) {
             Dialogs.showErrorToast("Keine Karten zum Spielen ausgewählt.");
         }
     }
+
     function _handleBomb() {
         const selectedCards = CardHandler.getSelectedCards();
         // TODO: Clientseitige Prüfung, ob ausgewählte Karten eine Bombe sind (optional, Server prüft final)
         if (selectedCards.length >= 4) { // Minimale Voraussetzung für eine Bombe
-             SoundManager.playSound('bomb' + State.getPlayerIndex());
-            AppController.sendProactiveMessage('bomb', { cards: Helpers.formatCardsForServer(selectedCards) });
+            SoundManager.playSound('bomb' + State.getPlayerIndex());
+            AppController.sendProactiveMessage('bomb', {cards: Helpers.formatCardsForServer(selectedCards)});
             // UI-Feedback für Bombe (z.B. Animation oder Text)
             // Hand-Update durch Server-Notification
             CardHandler.clearSelectedCards();
-        } else {
+        }
+        else {
             Dialogs.showErrorToast("Ungültige Auswahl für eine Bombe.");
         }
     }

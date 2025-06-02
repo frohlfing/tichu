@@ -35,11 +35,16 @@ const LoginView = (() => {
         if (playerName && tableName) {
             SoundManager.playSound('buttonClick'); // Beispiel für UI-Sound
             AppController.attemptLogin(playerName, tableName);
-        } else {
+        }
+        else {
             // Einfache Validierungs-UI, z.B. Fokus auf leeres Feld oder Toast
             Dialogs.showErrorToast("Bitte Spielername und Tischname eingeben.");
-            if (!playerName) _playerNameInput.focus();
-            else if (!tableName) _tableNameInput.focus();
+            if (!playerName) {
+                _playerNameInput.focus();
+            }
+            else if (!tableName) {
+                _tableNameInput.focus();
+            }
         }
     }
 

@@ -47,13 +47,16 @@ const CardHandler = (() => {
      * @param {object} cardData - Das Kartenobjekt ({value, suit, label}).
      */
     function handleCardClick(cardElement, cardData) {
-        if (!_ownHandContainer || _ownHandContainer.classList.contains('disabled-hand')) return;
+        if (!_ownHandContainer || _ownHandContainer.classList.contains('disabled-hand')) {
+            return;
+        }
 
         SoundManager.playSound('cardSelect'); // Beispielhafter Sound für Kartenauswahl
 
         if (_isSchupfModeActive) {
             _handleSchupfCardSelection(cardElement, cardData);
-        } else {
+        }
+        else {
             // Normaler Spielmodus: Karte auswählen/abwählen
             cardElement.classList.toggle('selected');
             _updateSelectedCardsArray();
@@ -115,7 +118,9 @@ const CardHandler = (() => {
 
         // Schupf-Zonen anzeigen
         const schupfZonesContainer = document.querySelector('.schupf-zones');
-        if (schupfZonesContainer) schupfZonesContainer.classList.remove('hidden');
+        if (schupfZonesContainer) {
+            schupfZonesContainer.classList.remove('hidden');
+        }
 
         // UI anpassen: z.B. Hinweis anzeigen, andere Buttons deaktivieren
         GameTableView.setPlayControlsForSchupfen(true); // z.B. nur "Schupfen Bestätigen"-Button
@@ -126,17 +131,21 @@ const CardHandler = (() => {
      * Deaktiviert den Schupf-Modus.
      */
     function disableSchupfMode() {
-        if (!_isSchupfModeActive) return;
+        if (!_isSchupfModeActive) {
+            return;
+        }
         console.log("CARDHANDLER: Deaktiviere Schupf-Modus.");
         _isSchupfModeActive = false;
         _schupfRequestId = null;
         _schupfCards = [null, null, null];
 
         const schupfZonesContainer = document.querySelector('.schupf-zones');
-        if (schupfZonesContainer) schupfZonesContainer.classList.add('hidden');
+        if (schupfZonesContainer) {
+            schupfZonesContainer.classList.add('hidden');
+        }
 
         // Ausgewählte Karten in der Hand (falls welche für Schupfen markiert waren) deselektieren
-        if(_ownHandContainer) {
+        if (_ownHandContainer) {
             _ownHandContainer.querySelectorAll('.schupf-candidate').forEach(c => c.classList.remove('schupf-candidate', 'in-schupf-zone'));
         }
         _renderSchupfZones(); // Leert die Zonen visuell
@@ -163,12 +172,15 @@ const CardHandler = (() => {
         if (freeZoneIndex !== -1) {
             // Prüfen, ob diese Karte bereits als Kandidat für eine andere Zone markiert ist
             // (sollte nicht passieren, wenn Logik sauber ist, aber sicher ist sicher)
-            if (cardElement.classList.contains('in-schupf-zone')) return;
+            if (cardElement.classList.contains('in-schupf-zone')) {
+                return;
+            }
 
             _schupfCards[freeZoneIndex] = cardData;
             cardElement.classList.add('in-schupf-zone'); // Markiere Karte in der Hand
             _renderSchupfZones();
-        } else {
+        }
+        else {
             Dialogs.showErrorToast("Alle 3 Schupf-Plätze sind bereits belegt.");
         }
     }
@@ -179,7 +191,9 @@ const CardHandler = (() => {
      * @param {number} zoneIndex - Der Index der geklickten Schupf-Zone (0, 1, oder 2).
      */
     function _handleSchupfZoneClick(zoneIndex) {
-        if (!_isSchupfModeActive || !_schupfCards[zoneIndex]) return;
+        if (!_isSchupfModeActive || !_schupfCards[zoneIndex]) {
+            return;
+        }
 
         const cardToRemove = _schupfCards[zoneIndex];
         _schupfCards[zoneIndex] = null;
@@ -194,17 +208,24 @@ const CardHandler = (() => {
         _renderSchupfZones();
     }
 
-
     /** Aktualisiert das Aussehen der Schupf-Zonen basierend auf `_schupfCards`. */
     function _renderSchupfZones() {
         _schupfZones.forEach((zoneElement, index) => {
-            if (!zoneElement) return;
+            if (!zoneElement) {
+                return;
+            }
             zoneElement.innerHTML = ''; // Alte Karte entfernen
             const targetPlayerRelative = zoneElement.dataset.targetPlayerRelative;
             let targetName = "";
-            if (targetPlayerRelative === "1") targetName = "Rechts";
-            else if (targetPlayerRelative === "2") targetName = "Partner";
-            else if (targetPlayerRelative === "3") targetName = "Links";
+            if (targetPlayerRelative === "1") {
+                targetName = "Rechts";
+            }
+            else if (targetPlayerRelative === "2") {
+                targetName = "Partner";
+            }
+            else if (targetPlayerRelative === "3") {
+                targetName = "Links";
+            }
             zoneElement.textContent = targetName; // Label wiederherstellen
 
             if (_schupfCards[index]) {
@@ -240,7 +261,6 @@ const CardHandler = (() => {
         SoundManager.playSound('schupf' + State.getPlayerIndex()); // Schupf-Sound des eigenen Spielers
         disableSchupfMode(); // Schupf-Modus beenden nach Senden
     }
-
 
     return {
         init,

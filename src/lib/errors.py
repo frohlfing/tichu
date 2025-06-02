@@ -60,6 +60,22 @@ class PlayerResponseError(PlayerInteractionError):
     def __init__(self, message="Ungültige oder unerwartete Spielerantwort", *args):
         super().__init__(message, *args)
 
+# todo die ErrorCodes sollten sich nicht mit den WSCloseCode von aiohttp überlappen:
+# class WSCloseCode(IntEnum):
+#     OK = 1000                   # Kein Fehler
+#     GOING_AWAY = 1001           # Server Shutdown oder ein Client hat die Seite verlassen
+#     PROTOCOL_ERROR = 1002       # Protokollfehler
+#     UNSUPPORTED_DATA = 1003     # Typ der Daten in einer Nachricht nicht akzeptiert (z.B. binär statt Text)
+#     ABNORMAL_CLOSURE = 1006     # Verbindung nicht ordnungsgemäß geschlossen
+#     INVALID_TEXT = 1007         # Daten in einer Nachricht nicht konsistent mit dem Typ der Nachricht (z.B. nicht-UTF-8 RFC 3629-Daten in einer Textnachricht)
+#     POLICY_VIOLATION = 1008     # generell gegen eine Richtlinie verstoßen (kein anderer Statuscode passt).
+#     MESSAGE_TOO_BIG = 1009      # Nachricht zu groß
+#     MANDATORY_EXTENSION = 1010  # Client hat Verbindung geschlossen wegen Handshake-Fehler (der Server verwendet diesen Code nicht)
+#     INTERNAL_ERROR = 1011       # Server hat einen internen Fehler
+#     SERVICE_RESTART = 1012      # Server wird neu gestartet
+#     TRY_AGAIN_LATER = 1013      # Server ist überlastet
+#     BAD_GATEWAY = 1014          # Server empfing eine ungültige Antwort vom Upstream-Server (wie HTTP-Statuscode 502)
+
 # Enum für Errorcodes (Auskommentierte Codes werden noch nicht benutzt!)
 class ErrorCode(enum.IntEnum):
     # Allgemeine Fehler (100-199)
@@ -94,5 +110,5 @@ class ErrorCode(enum.IntEnum):
     REQUEST_OBSOLETE = 310  # Anfrage ist veraltet.
 
     # Lobby-Fehler (400-499)
-    #GAME_ALREADY_STARTED = 400  # Das Spiel an diesem Tisch hat bereits begonnen.
+    GAME_ALREADY_STARTED = 400  # Das Spiel an diesem Tisch hat bereits begonnen.
     #NOT_LOBBY_HOST = 401  # Nur der Host kann diese Aktion ausführen.

@@ -144,6 +144,9 @@ class GameEngine:
 
         self._players[available_index] = peer
         self._public_state.player_names[available_index] = peer.name
+        if self._public_state.host_index == -1:
+            self._public_state.host_index = available_index
+
         peer.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
         peer.priv = self._private_states[available_index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
         peer.interrupt_event = self.interrupt_event   # # todo unittest für dies Zuweisung
@@ -194,27 +197,48 @@ class GameEngine:
         peer.interrupt_event = None
         # todo was machen mit dem Warte-Task von peer._ask() ?
         # todo was machen mit peer._pending_requests()?
-        await self._broadcast("player_left", {"player_index": index, "replaced_by_name": self._players[index].name})
+
+        if self._public_state.host_index == index:
+            self._public_state.host_index = -1
+            for p in self._players:
+                if isinstance(p, Peer):
+                    self._public_state.host_index = p.priv.player_index
+                    break
+        await self._broadcast("player_left", {"player_index": index, "replaced_by_name": self._players[index].name, "host_index": self._public_state.host_index})
 
     # ------------------------------------------------------
     # Lobby-Aktionen
     # ------------------------------------------------------
 
     # noinspection PyMethodMayBeStatic
-    def assign_team(self, player_new_indexes: List[int]) -> bool:
+    async def swap_players(self, index1: int, index2: int) -> bool:
         """
         Stellt das Team zusammen.
-        :param player_new_indexes: Liste mit den neuen Indizes der Spieler.
+        :param index1: Index des ersten Spielers
+        :param index2: Index des zweiten Spielers
         :return: True, wenn die Zuordnung erfolgte, sonst False.
         """
-        if len(player_new_indexes) != 4:
+        # Parameter ok?
+        if not isinstance(index1, int) or not isinstance(index2, int) or index1 < 0 or index1 > 3 or index2 < 0 or index2 > 3:
+            msg = "Ungültige Parameter für \"swap_players\""
+            logger.warning(f"Engine {self.table_name}: {msg}: (\"player_index_1\": {index1}, \"player_index_2\": {index2})")
             return False
 
-        # todo
-        #  self._players und self._default_agents umsortieren
-        #  self._players[i].priv = self._private_states[i] setzen, ebenso für default_agents.
-        #  UnitTest schreiben (mit pytest)
+        if self._public_state.host_index in [index1, index2]:
+            msg = "Der Host darf nicht verschoben werden"
+            logger.warning(f"Engine {self.table_name}: {msg}: (\"player_index_1\": {index1}, \"player_index_2\": {index2})")
+            return False
 
+        if self._public_state.is_running:
+            msg = "Die Partie läuft bereits"
+            logger.warning(f"Engine {self.table_name}: {msg}: (\"player_index_1\": {index1}, \"player_index_2\": {index2})")
+            return False
+
+        # todo UnitTest schreiben (mit pytest)
+        self._players[index1], self._players[index2] = self._players[index2], self._players[index1]
+        self._players[index1].priv = self._private_states[index1]
+        self._players[index2].priv = self._private_states[index2]
+        await self._broadcast("players_swapped", {"player_index_1": index1, "player_index_2": index2})
         return True
 
     async def start_game(self):
@@ -248,6 +272,8 @@ class GameEngine:
         assert pub.player_names == [p.name for p in self._players]
         assert len(privs) == 4
         assert all(priv.player_index == i for i, priv in enumerate(privs))
+        assert not pub.is_running
+        pub.is_running = True
 
         # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
         clients_joined = any(isinstance(player, Peer) for player in self._players)
@@ -308,13 +334,13 @@ class GameEngine:
                             if announced:
                                 pub.announcements[player_index] = 2  # Spieler hat ein großes Tichu angesagt
                             if clients_joined:
-                                await self._broadcast("grand_tichu_announced", {"player_index": player_index, "announced": announced})
+                                await self._broadcast("player_grand_announced", {"player_index": player_index, "announced": announced})
                         else:
                             announced = not pub.announcements[player_index] and await self._players[player_index].announce_tichu()
                             if announced:
                                 pub.announcements[player_index] = 1  # Spieler hat ein einfaches Tichu angesagt
                                 if clients_joined:
-                                    await self._broadcast("tichu_announced", {"player_index": player_index})
+                                    await self._broadcast("player_announced", {"player_index": player_index})
 
                 # jetzt müssen die Spieler schupfen
 
@@ -421,7 +447,6 @@ class GameEngine:
                         if bomb:
                             # der Spieler hat bereits die Bombe geworfen, wir müssen nicht nochmal nach einer Kombination fragen
                             cards, combination = bomb
-                            bomb = None
                         else:
                             # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden
                             if pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
@@ -429,7 +454,7 @@ class GameEngine:
                                     # Spieler hat Tichu angesagt
                                     pub.announcements[pub.current_turn_index] = 1
                                     if clients_joined:
-                                        await self._broadcast("tichu_announced", {"player_index": pub.current_turn_index})
+                                        await self._broadcast("player_announced", {"player_index": pub.current_turn_index})
                             cards, combination = await player.play()
 
                         assert combination[1] <= pub.count_hand_cards[pub.current_turn_index] <= 14
@@ -470,8 +495,13 @@ class GameEngine:
                             # Gespielte Karten merken
                             assert not set(cards).intersection(pub.played_cards)  # darf keine Schnittmenge bilden
                             pub.played_cards += cards
-                            if clients_joined:
-                                await self._broadcast("played", {"player_index": player.priv.player_index, "cards": cards})
+                            if bomb:
+                                if clients_joined:
+                                    await self._broadcast("player_bombed", {"player_index": player.priv.player_index, "cards": cards})
+                                bomb = None
+                            else:
+                                if clients_joined:
+                                    await self._broadcast("player_played", {"player_index": player.priv.player_index, "cards": cards})
 
                             # Wunsch erfüllt?
                             assert pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
@@ -575,7 +605,7 @@ class GameEngine:
 
                         else:  # Spieler hat gepasst
                             if clients_joined:
-                                await self._broadcast("passed", {"player_index": player.priv.player_index})
+                                await self._broadcast("player_passed", {"player_index": player.priv.player_index})
 
                     # nächster Spieler ist an der Reihe
                     assert not pub.is_round_over
@@ -598,6 +628,7 @@ class GameEngine:
             logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {score20}, Team 31: {score31}")
             if clients_joined:
                 await self._broadcast("game_over", {"game_score": pub.game_score, "is_double_victory": pub.is_double_victory})
+            pub.is_running = False
             return pub
 
         except asyncio.CancelledError:

@@ -34,7 +34,6 @@ const Dialogs = (() => {
     /** @let {Timeout|null} _toastTimeoutId - ID für den Timeout des Error-Toasts. */
     let _toastTimeoutId = null;
 
-
     /**
      * Initialisiert das Dialogs-Modul.
      * Setzt Event-Listener für die Buttons in den Dialogen.
@@ -50,17 +49,18 @@ const Dialogs = (() => {
             const btn = document.createElement('button');
             btn.textContent = label;
             btn.dataset.value = numVal;
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function () {
                 // Vorherige Auswahl entfernen
                 const currentSelected = _wishOptionsContainer.querySelector('.selected-wish');
-                if (currentSelected) currentSelected.classList.remove('selected-wish');
+                if (currentSelected) {
+                    currentSelected.classList.remove('selected-wish');
+                }
                 // Neue Auswahl markieren
                 this.classList.add('selected-wish');
                 SoundManager.playSound('buttonClick');
             });
             _wishOptionsContainer.appendChild(btn);
         });
-
 
         // Dragon Dialog
         _dragonToLeftButton.addEventListener('click', () => _handleDragonChoice('left'));
@@ -138,13 +138,16 @@ const Dialogs = (() => {
     function closeDialogByRequestId(requestId) {
         if (_activeDialogRequestId === requestId) {
             // Finde heraus, welcher Dialog offen ist (oder iteriere über alle)
-            if (!_wishDialog.classList.contains('hidden') && _wishDialog.dataset.requestId === requestId) _hideDialog(_wishDialog);
-            if (!_dragonDialog.classList.contains('hidden') && _dragonDialog.dataset.requestId === requestId) _hideDialog(_dragonDialog);
+            if (!_wishDialog.classList.contains('hidden') && _wishDialog.dataset.requestId === requestId) {
+                _hideDialog(_wishDialog);
+            }
+            if (!_dragonDialog.classList.contains('hidden') && _dragonDialog.dataset.requestId === requestId) {
+                _hideDialog(_dragonDialog);
+            }
             // ... für andere Dialoge, die auf Requests reagieren
             _activeDialogRequestId = null;
         }
     }
-
 
     // --- Spezifische Dialog-Handler ---
 
@@ -153,13 +156,15 @@ const Dialogs = (() => {
         // Fürs Erste: Standard confirm()
         SoundManager.playSound('prompt'); // Sound für eine Frage
         const announced = confirm("Großes Tichu ansagen?");
-        AppController.sendResponse(requestId, { announced: announced });
+        AppController.sendResponse(requestId, {announced: announced});
     }
 
     function showWishDialog(requestId) {
         // Reset previous selection
         const currentSelected = _wishOptionsContainer.querySelector('.selected-wish');
-        if (currentSelected) currentSelected.classList.remove('selected-wish');
+        if (currentSelected) {
+            currentSelected.classList.remove('selected-wish');
+        }
         _showDialog(_wishDialog, requestId);
     }
 
@@ -169,12 +174,14 @@ const Dialogs = (() => {
         const requestId = _wishDialog.dataset.requestId || _activeDialogRequestId;
         if (selectedButton && requestId) {
             const wishValue = parseInt(selectedButton.dataset.value);
-            AppController.sendResponse(requestId, { wish_value: wishValue });
+            AppController.sendResponse(requestId, {wish_value: wishValue});
             _hideDialog(_wishDialog);
-        } else if (!selectedButton) {
+        }
+        else if (!selectedButton) {
             showErrorToast("Bitte einen Kartenwert auswählen.");
-        } else {
-             console.warn("DIALOGS: Konnte Wunsch nicht senden, RequestID fehlt oder Dialog nicht korrekt initialisiert.");
+        }
+        else {
+            console.warn("DIALOGS: Konnte Wunsch nicht senden, RequestID fehlt oder Dialog nicht korrekt initialisiert.");
         }
     }
 
@@ -200,9 +207,10 @@ const Dialogs = (() => {
             const recipientCanonicalIndex = (direction === 'left')
                 ? Helpers.getCanonicalPlayerIndex(3) // Relativ 3 = links
                 : Helpers.getCanonicalPlayerIndex(1); // Relativ 1 = rechts
-            AppController.sendResponse(requestId, { dragon_recipient: recipientCanonicalIndex });
+            AppController.sendResponse(requestId, {dragon_recipient: recipientCanonicalIndex});
             _hideDialog(_dragonDialog);
-        } else {
+        }
+        else {
             console.warn("DIALOGS: Konnte Drachenwahl nicht senden, RequestID fehlt.");
         }
     }
@@ -218,21 +226,23 @@ const Dialogs = (() => {
      */
     function handleNotification(eventName, context) {
         const pubState = State.getPublicState(); // Hole aktuellen State
-        if (!pubState) return;
+        if (!pubState) {
+            return;
+        }
 
         switch (eventName) {
             case 'round_over':
                 _closeAllDialogs(); // Schließe ggf. offene Aktionsdialoge
                 _roundResultText.textContent = `Runde: Team ${pubState.player_names[0] || '0'}/${pubState.player_names[2] || '2'}: ${pubState.game_score[0].slice(-1)[0] || 0} | ` +
-                                            `Team ${pubState.player_names[1] || '1'}/${pubState.player_names[3] || '3'}: ${pubState.game_score[1].slice(-1)[0] || 0}`;
+                    `Team ${pubState.player_names[1] || '1'}/${pubState.player_names[3] || '3'}: ${pubState.game_score[1].slice(-1)[0] || 0}`;
                 _showDialog(_roundEndDialog);
                 break;
             case 'game_over':
-                 _closeAllDialogs();
+                _closeAllDialogs();
                 const totalScoreTeam02 = pubState.game_score[0].reduce((a, b) => a + b, 0);
                 const totalScoreTeam13 = pubState.game_score[1].reduce((a, b) => a + b, 0);
                 _gameResultText.textContent = `Partie Ende: Team ${pubState.player_names[0] || '0'}/${pubState.player_names[2] || '2'}: ${totalScoreTeam02} | ` +
-                                           `Team ${pubState.player_names[1] || '1'}/${pubState.player_names[3] || '3'}: ${totalScoreTeam13}`;
+                    `Team ${pubState.player_names[1] || '1'}/${pubState.player_names[3] || '3'}: ${totalScoreTeam13}`;
                 _showDialog(_gameEndDialog);
                 break;
         }

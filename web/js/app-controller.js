@@ -7,8 +7,8 @@
  * zwischen Backend und UI sowie die Steuerung der Views.
  */
 const AppController = (() => {
-    /** @let {object|null} _activeServerRequest - Speichert die aktuelle Server-Anfrage, auf die eine Antwort erwartet wird. */
-    let _activeServerRequest = null; // { id: string, action: string, originalPayload: object }
+    let _activeServerRequest = null; // Die aktuelle Server-Anfrage, auf die eine Antwort erwartet wird.
+    let _isAttemptingReconnect = false; // True, wenn ein automatischer Reconnect-Versuch läuft.
 
     /**
      * Initialisiert die Anwendung und alle Kernmodule.
@@ -18,9 +18,9 @@ const AppController = (() => {
         console.log("APP: Initialisiere AppController...");
         State.init();
         SoundManager.init();
-        ViewManager.init(); // Initialisiert auch die einzelnen View-Module
-        Dialogs.init(); // Initialisiert die Dialog-Handler
-        CardHandler.init(); // Initialisiert Karten-Interaktionslogik
+        ViewManager.init();
+        Dialogs.init();
+        CardHandler.init();
 
         // Netzwerk-Callbacks setzen
         Network.setOnOpen(_handleNetworkOpen);
@@ -35,18 +35,22 @@ const AppController = (() => {
         const paramTableName = urlParams.get('table_name');
 
         if (sessionId && (!paramPlayerName || !paramTableName)) {
-            console.log('APP: Versuche Reconnect mit Session ID:', sessionId);
+            console.log('APP: Versuche automatischen Reconnect mit Session ID:', sessionId);
+            _isAttemptingReconnect = true;
             ViewManager.showView('loading');
             Network.connect(null, null, sessionId);
-        } else if (paramPlayerName && paramTableName) {
+        }
+        else if (paramPlayerName && paramTableName) {
             console.log('APP: Login mit URL-Parametern:', paramPlayerName, paramTableName);
-            // Alte Session löschen, da expliziter Login über URL erfolgt
-            State.setSessionId(null);
-            State.setPlayerName(paramPlayerName);
-            State.setTableName(paramTableName);
+            State.setSessionId(null); // Alte Session für expliziten URL-Login löschen
+            State.setLocalPlayerName(paramPlayerName); // Lokalen Namen setzen
+            State.setLocalTableName(paramTableName);   // Lokalen Tischnamen setzen
+            _isAttemptingReconnect = false;
             ViewManager.showView('loading');
             Network.connect(paramPlayerName, paramTableName, null);
-        } else {
+        }
+        else {
+            _isAttemptingReconnect = false;
             ViewManager.showView('login');
         }
     }
@@ -57,9 +61,7 @@ const AppController = (() => {
      */
     function _handleNetworkOpen(event) {
         console.log("APP: Netzwerkverbindung geöffnet.");
-        // Normalerweise passiert hier nichts direkt, da der Server nach dem Joinen
-        // eine 'player_joined' Notification sendet, die dann den View-Wechsel auslöst.
-        // Der Ladebildschirm bleibt aktiv, bis diese erste maßgebliche Nachricht kommt.
+        _isAttemptingReconnect = false; // Erfolgreich verbunden (ob Reconnect oder neu)
     }
 
     /**
@@ -94,16 +96,14 @@ const AppController = (() => {
         console.log("APP: Server Request empfangen:", payload.action, payload.request_id);
         State.setGameStates(payload.public_state, payload.private_state);
         _activeServerRequest = { id: payload.request_id, action: payload.action, originalPayload: payload };
-
-        ViewManager.updateViewsBasedOnState(); // Generelles Update für alle sichtbaren Elemente
+        ViewManager.updateViewsBasedOnState(); // Rendert aktuellen View mit neuem State
 
         switch (payload.action) {
             case 'announce_grand_tichu':
                 Dialogs.showGrandTichuPrompt(payload.request_id);
                 break;
             case 'schupf':
-                ViewManager.showView('gameTable'); // Sicherstellen, dass der Tisch sichtbar ist
-                // Logik zum Aktivieren der Schupf-UI in GameTableView oder CardHandler
+                ViewManager.showView('gameTable');
                 CardHandler.enableSchupfMode(payload.request_id, State.getPrivateState().hand_cards);
                 break;
             case 'play':
@@ -128,200 +128,123 @@ const AppController = (() => {
      */
     function _handleServerNotification(payload) {
         console.log(`APP: Server Notification: '${payload.event}'`, payload.context || {});
-
         const eventName = payload.event;
-        const context = payload.context || {}; // Sicherstellen, dass context immer ein Objekt ist
+        const context = payload.context || {};
 
-        const oldPublicState = State.getPublicState() ? JSON.parse(JSON.stringify(State.getPublicState())) : null; // Tiefe Kopie für Vergleich
-
-        // 1. State aktualisieren
         if (context.public_state) State.updatePublicState(context.public_state);
         if (context.private_state) State.updatePrivateState(context.private_state);
 
-        if (eventName === 'player_joined') {
-            // SessionID speichern, wenn es der eigene Join ist und eine SessionID gesendet wurde
-            if (context.session_id && State.getPlayerIndex() === context.player_index) {
-                State.setSessionId(context.session_id);
-            }
-            // Player Name im State aktualisieren (könnte durch Server korrigiert/ergänzt worden sein)
-            if (State.getPlayerIndex() === context.player_index && State.getPublicState() && State.getPublicState().player_names) {
-                 State.setPlayerName(State.getPublicState().player_names[context.player_index]);
-            }
-        } else if (eventName === 'hand_cards_dealt' && context.hand_cards && State.getPrivateState()) {
-            const parsedCards = Helpers.parseCards(context.hand_cards); // Erwartet Array von Arrays: [[v,s],...]
-            State.getPrivateState().hand_cards = parsedCards;
-            // Aktualisiere auch die Kartenanzahl im Public State für den eigenen Spieler, falls nicht schon im context.public_state geschehen
-            if (State.getPublicState() && State.getPublicState().count_hand_cards) {
-                State.getPublicState().count_hand_cards[State.getPlayerIndex()] = parsedCards.length;
-            }
-        } else if (eventName === 'schupf_cards_dealt' && context.received_schupf_cards && State.getPrivateState()) {
-            const parsedSchupf = Helpers.parseCards(context.received_schupf_cards);
-            State.getPrivateState().received_schupf_cards = parsedSchupf;
-            // Die Handkarten des Spielers sollten danach ebenfalls aktualisiert werden (wahrscheinlich durch ein folgendes 'hand_cards_dealt')
+        const ownPlayerIndex = State.getPlayerIndex();
+        let eventBelongsToCanonicalPlayerIndex = -1; // Kanonischer Index des Spielers des Events
+
+        if (eventName === 'player_joined' && context.private_state && typeof context.private_state.player_index === 'number') {
+            eventBelongsToCanonicalPlayerIndex = context.private_state.player_index;
+        } else if (typeof context.player_index === 'number') { // Für andere Events (player_played etc.)
+            eventBelongsToCanonicalPlayerIndex = context.player_index;
         }
 
-        // 2. View-Management und UI-Updates
-        const currentPublicState = State.getPublicState();
-        const currentView = ViewManager.getCurrentViewName();
+        if (eventName === 'player_joined' && eventBelongsToCanonicalPlayerIndex === ownPlayerIndex && ownPlayerIndex !== -1) {
+            if (context.session_id) State.setSessionId(context.session_id);
+            const currentPublicState = State.getPublicState(); // Hole den gerade aktualisierten State
+            if (currentPublicState && currentPublicState.player_names && currentPublicState.player_names[ownPlayerIndex]) {
+                 State.setLocalPlayerName(currentPublicState.player_names[ownPlayerIndex]); // Aktualisiere lokalen Namen
+            }
+             if (currentPublicState && currentPublicState.table_name) {
+                 State.setLocalTableName(currentPublicState.table_name); // Aktualisiere lokalen Tischnamen
+            }
 
-        // Entscheidungen für View-Wechsel
-        if (eventName === 'player_joined' && context.player_index === State.getPlayerIndex()) {
-            // Eigener Spieler ist beigetreten -> Ladebildschirm verlassen
+            console.log("APP (player_joined - EIGENER): Vor View-Wechsel.");
             if (currentPublicState && (currentPublicState.current_phase === "setup" || currentPublicState.current_phase === "init" || !currentPublicState.current_phase)) {
                 ViewManager.showView('lobby');
-            } else if (currentPublicState) { // Spiel läuft bereits
+            } else if (currentPublicState) {
                 ViewManager.showView('gameTable');
             } else {
-                // Sollte nicht passieren, wenn Server korrekte Daten sendet
-                console.warn("APP: 'player_joined' ohne gültigen publicState.current_phase empfangen.");
-                ViewManager.showView('lobby'); // Fallback zur Lobby
-            }
-        } else if (eventName === 'lobby_update') {
-            if (currentView !== 'lobby' && currentView !== 'loading') { // Wenn nicht schon in Lobby oder beim initialen Laden
                 ViewManager.showView('lobby');
-            } else {
-                ViewManager.updateViewsBasedOnState(); // Nur aktuellen View (Lobby) rendern
             }
-        } else if (eventName === 'game_started') {
-            _activeServerRequest = null; // Alte Requests beim Spielstart löschen
-            Dialogs.closeAllDialogs(); // Alle Dialoge schließen
-            CardHandler.clearSelectedCards(); // Ausgewählte Karten zurücksetzen
-            CardHandler.disableSchupfMode(); // Schupf-Modus beenden
-            ViewManager.showView('gameTable');
-        } else if (eventName === 'game_over') {
-            _activeServerRequest = null;
-            Dialogs.handleNotification(eventName, context); // Zeigt Game-Over-Dialog
-            // ViewManager.showView('lobby'); // Dialog hat Button "Zur Lobby"
-        } else {
-            // Für andere Notifications: Nur den aktuellen View neu rendern, falls er aktiv ist
-            // und falls sich relevante Daten geändert haben könnten.
-            // ViewManager.updateViewsBasedOnState() kümmert sich darum.
+        } else if (eventName === 'player_left') {
+            // Host-Index könnte sich geändert haben, wenn der Host gegangen ist.
+            // Server-Doku sagt: context hat jetzt auch `host_index`.
+            if (State.getPublicState() && typeof context.host_index === 'number') {
+                State.getPublicState().host_index = context.host_index;
+                 // LobbyView.render() wird durch updateViewsBasedOnState den neuen Host-Status berücksichtigen
+            }
+             if (ViewManager.getCurrentViewName() === 'lobby') {
+                ViewManager.updateViewsBasedOnState(); // Lobby neu rendern
+            }
         }
-        ViewManager.updateViewsBasedOnState();
+        else if (eventName === 'players_swapped') {
+            if (typeof context.player_index_1 === 'number' && typeof context.player_index_2 === 'number') {
+                let name1 = State.getPublicState().player_names[context.player_index_1]
+                State.getPublicState().player_names[context.player_index_1] = State.getPublicState().player_names[context.player_index_2]
+                State.getPublicState().player_names[context.player_index_2] = name1
+                if (State.getPlayerIndex() === context.player_index_1) {
+                    State.setPlayerIndex(context.player_index_2)
+                }
+                else if (State.getPlayerIndex() === context.player_index_2) {
+                    State.setPlayerIndex(context.player_index_1)
+                }
+            }
+            if (ViewManager.getCurrentViewName() !== 'lobby' && ViewManager.getCurrentViewName() !== 'loading') {
+                ViewManager.showView('lobby');
+            }
+        }
+        else if (eventName === 'game_started' || eventName === 'round_started') { // Auch bei round_started
+            _activeServerRequest = null;
+            Dialogs.closeAllDialogs();
+            CardHandler.clearSelectedCards();
+            CardHandler.disableSchupfMode();
+            ViewManager.showView('gameTable'); // Bei round_started sind wir schon am Tisch
+        }
 
-        // 3. Spezifische Handler für Dialoge und Spieltisch (falls aktiv)
+        ViewManager.updateViewsBasedOnState();
         Dialogs.handleNotification(eventName, context);
-        if (currentView === 'gameTable' && typeof GameTableView.handleNotification === 'function') {
+        if (ViewManager.getCurrentViewName() === 'gameTable' && typeof GameTableView.handleNotification === 'function') {
             GameTableView.handleNotification(eventName, context);
         }
-        // LobbyView könnte auch einen spezifischen Handler bekommen, wenn nötig:
-        // else if (currentView === 'lobby' && typeof LobbyView.handleNotification === 'function') {
-        //     LobbyView.handleNotification(eventName, context);
-        // }
 
-        // 4. Soundeffekte abspielen
-        let soundToPlay = null;
-        const eventPlayerIndex = (typeof context.player_index === 'number') ? context.player_index : -1;
-        const ownPlayerIndex = State.getPlayerIndex();
+        SoundManager.playNotificationSound(eventName, eventBelongsToCanonicalPlayerIndex);
 
-        // Standard-Event-Name als Sound-Name
-        if (eventName === 'announce' || eventName === 'dealout' || eventName === 'schuffle' ||
-            eventName === 'round_over' || eventName === 'game_over' || eventName === 'wish_made' ||
-            eventName === 'wish_fulfilled' || eventName === 'trick_taken') {
-            soundToPlay = eventName; // Generische Sounds
-        } else if (['played', 'bombed', 'passed', 'schupf0', 'schupf1', 'schupf2', 'schupf3'].includes(eventName)) {
-            // Dies sind Sounds, die bereits spielerspezifisch im Event-Namen sein könnten (aus Doku)
-            // oder wir leiten sie hier ab.
-            soundToPlay = eventName;
-        } else if (['schupfed', 'take0', 'take1', 'take2', 'take3'].includes(eventName)) {
-             soundToPlay = eventName;
-        }
-        // Spezifische Sounds für Spieleraktionen (wenn nicht der eigene Spieler)
-        // Die Server-Doku listet play0, bomb0 etc. auf. Wir müssen hier ggf. mappen oder
-        // der Server sendet schon den richtigen Event-Namen für den Sound.
-        // Annahme: Wenn `context.player_index` da ist, ist es eine Spieleraktion.
-        if (eventPlayerIndex !== -1 && ownPlayerIndex !== -1) {
-            const relativeIdx = Helpers.getRelativePlayerIndex(eventPlayerIndex);
-            if (eventName === 'played') soundToPlay = 'play' + relativeIdx;
-            else if (eventName === 'bombed') soundToPlay = 'bomb' + relativeIdx;
-            else if (eventName === 'passed') soundToPlay = 'pass' + relativeIdx;
-            else if (eventName === 'player_schupfed') soundToPlay = 'schupf' + relativeIdx; // Annahme, dass 'player_schupfed' für einzelne Spieler kommt
-            else if (eventName === 'trick_taken') soundToPlay = 'take' + relativeIdx; // Wenn 'trick_taken' spielerspezifisch ist
-            else if (eventName === 'tichu_announced' || eventName === 'grand_tichu_announced') {
-                 // Sound für Tichu-Ansage (generisch oder spielerspezifisch, wenn `announce0-3` existieren)
-                 soundToPlay = 'announce'; // Oder 'announce' + relativeIdx, falls verfügbar
-            }
-        }
-
-        if (soundToPlay) {
-            SoundManager.playSound(soundToPlay);
-        }
-
-        // 5. Interrupt-Logik für aktive Server-Requests
-        // Ein Request wird unterbrochen, wenn ein anderer Spieler eine Aktion ausführt,
-        // die den Spielzug übernimmt (Tichu, Bombe) oder wenn der Spieler, dessen
-        // Aktion erwartet wird, das Spiel verlässt.
         if (_activeServerRequest) {
             const activeRequestForPlayer = _activeServerRequest.originalPayload && _activeServerRequest.originalPayload.private_state
-                                         ? _activeServerRequest.originalPayload.private_state.player_index
-                                         : -1;
-
+                ? _activeServerRequest.originalPayload.private_state.player_index
+                : -1;
             let interrupt = false;
-            if (eventName === 'tichu_announced' || eventName === 'bombed') {
-                // Interrupt, wenn ein *anderer* Spieler Tichu/Bombe spielt
-                if (eventPlayerIndex !== -1 && activeRequestForPlayer !== -1 && eventPlayerIndex !== activeRequestForPlayer) {
+            if (['player_announced', 'player_grand_announced', 'player_bombed'].includes(eventName)) {
+                if (eventBelongsToCanonicalPlayerIndex !== -1 && activeRequestForPlayer !== -1 && eventBelongsToCanonicalPlayerIndex !== activeRequestForPlayer) {
                     interrupt = true;
                 }
             } else if (eventName === 'player_left') {
-                // Interrupt, wenn der Spieler, dessen Aktion erwartet wird, geht
-                if (eventPlayerIndex !== -1 && eventPlayerIndex === activeRequestForPlayer) {
+                if (eventBelongsToCanonicalPlayerIndex !== -1 && eventBelongsToCanonicalPlayerIndex === activeRequestForPlayer) {
                     interrupt = true;
                 }
-            } else if (eventName === 'round_over' || eventName === 'game_over' || eventName === 'game_started') {
-                // Interrupt, wenn die Runde/Spiel/Partie endet/startet, während ein Request offen ist
+            } else if (['round_over', 'game_over', 'game_started', 'round_started'].includes(eventName)) {
                 interrupt = true;
             }
 
             if (interrupt) {
                 console.log(`APP: Aktiver Request '${_activeServerRequest.action}' (ID: ${_activeServerRequest.id}) durch Event '${eventName}' unterbrochen.`);
-                // UI informieren, dass die aktuelle Aktion abgebrochen wurde
                 if (_activeServerRequest.action === 'play') {
-                    GameTableView.enablePlayControls(false); // Spiel-Buttons deaktivieren
-                } else if (_activeServerRequest.action === 'schupf') {
-                    CardHandler.disableSchupfMode(); // Schupf-Modus UI zurücksetzen
+                    GameTableView.enablePlayControls(false);
                 }
-                // Alle relevanten Dialoge schließen, die mit diesem Request verbunden sein könnten
+                if (_activeServerRequest.action === 'schupf') {
+                    CardHandler.disableSchupfMode();
+                }
                 Dialogs.closeDialogByRequestId(_activeServerRequest.id);
-                _activeServerRequest = null; // Aktiven Request zurücksetzen
+                _activeServerRequest = null;
             }
         }
     }
 
-    /**
-     * Verarbeitet eine 'error'-Nachricht vom Server.
-     * Zeigt dem Benutzer eine Fehlermeldung an.
-     * @param {object} payload - Der Payload der 'error'-Nachricht.
-     */
-    function _handleServerError(payload) {
-        console.error(`APP: Server Fehler ${payload.code}: ${payload.message}`, payload.context);
-        Dialogs.showErrorToast(`Fehler ${payload.code}: ${payload.message}`);
-
-        if (payload.code === ErrorCode.SESSION_EXPIRED || payload.code === ErrorCode.SESSION_NOT_FOUND) {
-            State.setSessionId(null); // Session ist ungültig
-            ViewManager.showView('login'); // Zurück zum Login
-        }
-
-        // Wenn der Fehler sich auf einen aktiven Request bezieht, diesen ggf. zurücksetzen
-        const requestIdOnError = payload.context ? payload.context.request_id : null;
-        if (_activeServerRequest && _activeServerRequest.id === requestIdOnError) {
-            console.log("APP: Aktiver Request aufgrund eines Fehlers fehlgeschlagen:", _activeServerRequest.id);
-            // UI für die Aktion ggf. wieder aktivieren, damit der User es erneut versuchen kann
-            // (oder eine andere Fehlerbehandlung)
-             if (_activeServerRequest.action === 'play') GameTableView.enablePlayControls(true, _activeServerRequest.id); // Erneut versuchen lassen
-             if (_activeServerRequest.action === 'schupf') CardHandler.enableSchupfMode(_activeServerRequest.id, State.getPrivateState().hand_cards);
-
-            // _activeServerRequest = null; // Nicht unbedingt nullen, User soll es ggf. korrigieren
-        }
-    }
-
-    /**
-     * Wird bei einem WebSocket-Fehler aufgerufen.
-     * @param {Event|object} errorEvent - Das Fehlerobjekt.
-     */
     function _handleNetworkError(errorEvent) {
-        console.error("APP: Netzwerkfehler.", errorEvent);
-        Dialogs.showErrorToast(errorEvent.message || "Verbindungsfehler zum Server.");
-        //  ViewManager.showView('login'); // Nicht immer zum Login, Server könnte noch da sein
+        console.error("APP: Netzwerkfehler.", errorEvent.name, errorEvent.message);
+        if (!_isAttemptingReconnect) {
+            Dialogs.showErrorToast(errorEvent.message || "Verbindungsfehler zum Server.");
+        } else {
+            console.log("APP: Automatischer Reconnect fehlgeschlagen (Netzwerkfehler).");
+        }
+        _isAttemptingReconnect = false;
+        State.setSessionId(null);
+        ViewManager.showView('login');
     }
 
     /**
@@ -330,13 +253,29 @@ const AppController = (() => {
      * @param {boolean} wasConnected - True, wenn vor dem Schließen eine Verbindung bestand.
      */
     function _handleNetworkClose(event, wasConnected) {
-        console.log("APP: Netzwerkverbindung geschlossen.");
-        _activeServerRequest = null; // Keine offenen Anfragen mehr möglich
+        console.log(`APP: Netzwerkverbindung geschlossen. Code: ${event.code}, Reconnect-Versuch: ${_isAttemptingReconnect}, Grund: ${event.reason}`);
+        const wasReconnectAttempt = _isAttemptingReconnect;
+        _isAttemptingReconnect = false;
+        _activeServerRequest = null;
 
-        if (wasConnected && event.code !== 1000) { // 1000 = Normal Closure
+        if (event.code === 1008) { // Policy Violation
+            console.log("APP: Verbindung wegen Policy Violation geschlossen (Code 1008).");
+            State.setSessionId(null);
+            Dialogs.showErrorToast("Sitzung ungültig oder abgelaufen. Bitte neu anmelden.");
+        } else if (wasConnected && event.code !== 1000 && !wasReconnectAttempt) {
             Dialogs.showErrorToast("Verbindung zum Server verloren.");
+        } else if (wasReconnectAttempt && event.code !== 1000 && event.code !== 1008) {
+            console.log("APP: Automatischer Reconnect fehlgeschlagen (Verbindung geschlossen).");
+            State.setSessionId(null);
         }
-        ViewManager.showView('login'); // Zurück zum Login, User muss neu verbinden
+
+        if (event.code !== 1000) { // Wenn nicht normal vom Client beendet
+             ViewManager.showView('login');
+        } else if (!wasConnected && event.code === 1000) { // Wenn initial abgelehnt
+            ViewManager.showView('login');
+        }
+        // Wenn Code 1000 und wasConnected, dann hat der Client `leaveGame` aufgerufen,
+        // was den View schon auf Login setzt.
     }
 
     // --- Öffentliche Methoden für UI-Interaktionen ---
@@ -347,10 +286,11 @@ const AppController = (() => {
      * @param {string} tableName - Der eingegebene Tischname.
      */
     function attemptLogin(playerName, tableName) {
-        console.log("APP: Login-Versuch:", playerName, tableName);
-        State.setPlayerName(playerName);
-        State.setTableName(tableName);
-        State.setSessionId(null); // Alte Session bei manuellem Login löschen
+        console.log("APP: Login-Versuch GESTARTET für:", playerName, tableName);
+        State.setLocalPlayerName(playerName); // Lokale Namen setzen
+        State.setLocalTableName(tableName);
+        State.setSessionId(null);
+        _isAttemptingReconnect = false;
         ViewManager.showView('loading');
         Network.connect(playerName, tableName, null);
     }
@@ -362,9 +302,10 @@ const AppController = (() => {
      */
     function sendResponse(requestId, responseData) {
         if (_activeServerRequest && _activeServerRequest.id === requestId) {
-            Network.send('response', { request_id: requestId, response_data: responseData });
+            Network.send('response', {request_id: requestId, response_data: responseData});
             _activeServerRequest = null; // Anfrage gilt als beantwortet
-        } else {
+        }
+        else {
             console.warn("APP: Versuch, auf eine nicht (mehr) aktive Anfrage zu antworten:", requestId);
             // Ggf. Fehlermeldung an UI, dass die Aktion veraltet ist.
             Dialogs.showErrorToast("Aktion ist veraltet oder wurde bereits beantwortet.");
@@ -385,8 +326,9 @@ const AppController = (() => {
      */
     function leaveGame() {
         console.log("APP: Verlasse Spiel/Tisch.");
-        sendProactiveMessage('leave');
-        Network.disconnect(); // Clientseitig Verbindung trennen
+        AppController.sendProactiveMessage('leave');
+        Network.disconnect(); // Führt zu _handleNetworkClose mit Code 1000
+        ViewManager.showView('login'); // Explizit zum Login, da User Aktion
     }
 
     return {
@@ -395,6 +337,5 @@ const AppController = (() => {
         sendResponse,
         sendProactiveMessage,
         leaveGame
-        // Ggf. weitere Methoden, die von Views direkt aufgerufen werden
     };
 })();

@@ -35,15 +35,42 @@ const LobbyView = (() => {
         SoundManager.playSound('buttonClick');
         // Sendet eine 'lobby_action' Nachricht an den Server.
         // Der Server validiert, ob der Spieler der Host ist.
-        AppController.sendProactiveMessage('lobby_action', { action: 'start_game' });
+        AppController.sendProactiveMessage('lobby_action', {action: 'start_game'});
     }
 
     /**
-     * Event-Handler für den "Tisch verlassen"-Button.
+     * Event-Handler für den "Beenden"-Button.
      */
     function _handleLeaveLobby() {
         SoundManager.playSound('buttonClick');
-        AppController.leaveGame(); // Ruft die zentrale leaveGame Funktion im AppController auf
+        AppController.leaveGame();
+    }
+
+    /**
+     * Sendet eine Aktion zum Verschieben eines Spielers an den Server.
+     * @param {number} playerIndex - Der Index des zu verschiebenden Spielers.
+     * @param {number} direction - +1 für runter, -1 für hoch.
+     */
+    function _handleMovePlayer(playerIndex, direction) {
+        SoundManager.playSound('buttonClick');
+        const publicState = State.getPublicState();
+        if (!publicState || !publicState.player_names) return;
+
+        let playerIndex2 = playerIndex + direction
+
+        // Gültigkeitsprüfungen (z.B. nicht aus der Liste schieben, erster Spieler fix)
+        // Der erste Spieler kann nicht verschoben werden.
+        // Und Spieler können nicht an Position 0 geschoben werden.
+        if (playerIndex2 < 1 || playerIndex2 > 3) {
+            console.log("LOBBYVIEW: Verschieben nicht möglich an diese Position.");
+            return;
+        }
+
+        console.log("LOBBYVIEW: Sende neue Indezies zum Vertauschen", [playerIndex, playerIndex2]);
+        AppController.sendProactiveMessage('swap_players', {
+            player_index_1: playerIndex,
+            player_index_2: playerIndex2
+        });
     }
 
     /**
@@ -53,7 +80,7 @@ const LobbyView = (() => {
     function render() {
         // console.log("LOBBYVIEW: Rendere LobbyView.");
         const publicState = State.getPublicState();
-        const localPlayerIndex = State.getPlayerIndex();
+        const localPlayerCanonicalIndex = State.getPlayerIndex(); // Kanonischer Index des eigenen Spielers
 
         if (!publicState) {
             _lobbyTableNameElement.textContent = '...?';
@@ -63,32 +90,56 @@ const LobbyView = (() => {
         }
 
         _lobbyTableNameElement.textContent = State.getTableName() || publicState.table_name || 'Unbekannter Tisch';
-        _playerListElement.innerHTML = ''; // Alte Liste leeren
+        _playerListElement.innerHTML = '';
 
-        if (publicState.player_names && publicState.player_names.length > 0) {
-            publicState.player_names.forEach((name, index) => {
+        const isHost = State.getIsHost();
+        _teamAssignmentContainer.classList.toggle('hidden', !isHost); // Team Assignment nur für Host
+
+        // Zeige Spieler in der aktuellen Reihenfolge an
+        if (publicState.player_names && publicState.player_names.length === 4) {
+            for (let relativeIndex=0; relativeIndex <= 3; relativeIndex++) {
+                let canonicalIndex = Helpers.getCanonicalPlayerIndex(relativeIndex);
+                let name = publicState.player_names[canonicalIndex];
+
                 const li = document.createElement('li');
-                let displayName = name || `Spieler ${index + 1}`;
-                if (index === localPlayerIndex) {
+
+                let displayName = name || `Spieler ${canonicalIndex + 1}`;
+                if (canonicalIndex === localPlayerCanonicalIndex) {
                     displayName += ' (Du)';
                 }
-                if (index === publicState.host_index) {
+                else if (canonicalIndex === publicState.host_index) {
                     displayName += ' (Host)';
                 }
-                li.textContent = displayName;
-                _playerListElement.appendChild(li);
-            });
-        } else {
-            _playerListElement.innerHTML = '<li>Noch keine Spieler am Tisch.</li>';
-        }
+                // Player Name Span
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = displayName;
+                li.appendChild(nameSpan);
 
-        // Host-spezifische UI anzeigen/verstecken
-        if (State.getIsHost()) {
-            _teamAssignmentContainer.classList.remove('hidden');
-            // TODO: Hier könnte UI für Team-Zuweisung (Drag & Drop o.ä.) implementiert werden.
-            // Fürs Erste ist nur der Start-Button relevant.
-        } else {
-            _teamAssignmentContainer.classList.add('hidden');
+                // Controls zum Verschieben (nur für Host, nicht für eigenen Namen oder ersten Spieler, wenn fix)
+                if (isHost && canonicalIndex !== 0) { // Host kann andere Spieler verschieben (außer Spieler 0)
+                    const controlsDiv = document.createElement('div');
+                    controlsDiv.className = 'player-order-controls';
+
+                    const upButton = document.createElement('button');
+                    upButton.innerHTML = '▲'; // Pfeil hoch
+                    upButton.title = 'Nach oben verschieben';
+                    upButton.disabled = canonicalIndex === 1; // Kann nicht vor den ersten Nicht-Host geschoben werden
+                    upButton.onclick = () => _handleMovePlayer(canonicalIndex, -1);
+                    controlsDiv.appendChild(upButton);
+
+                    const downButton = document.createElement('button');
+                    downButton.innerHTML = '▼'; // Pfeil runter
+                    downButton.title = 'Nach unten verschieben';
+                    downButton.disabled = canonicalIndex === publicState.player_names.length - 1;
+                    downButton.onclick = () => _handleMovePlayer(canonicalIndex, 1);
+                    controlsDiv.appendChild(downButton);
+                    li.appendChild(controlsDiv);
+                }
+                _playerListElement.appendChild(li);
+            }
+        }
+        else {
+            _playerListElement.innerHTML = '<li>Noch keine Spieler am Tisch.</li>';
         }
     }
 

@@ -34,7 +34,7 @@
     3.  [Implementierung](#63-implementierung)
 
 7.  [Server-Betrieb (zweite Ausbaustufe)](#7-server-betrieb-zweite-ausbaustufe)
-    1.  [Query-Parameer der Websocket-URL](#71-query-parameer-der-websocket-url)
+    1.  [Query-Parameter der Websocket-URL](#71-query-parameter-der-websocket-url)
     2.  [WebSocket-Nachrichten](#72websocket-nachrichten)
     3.  [Verantwortlichkeiten der Komponenten im Live-Betrieb](#73-aufgaben-der-komponenten-im-server-betrieb)
         
@@ -82,7 +82,7 @@ Die detaillierten Spielregeln für Tichu sind hier zu finden:
 
 ### 2.2 Ablauf einer Partie
 
-1.  **Lobby & Spielstart:** Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
+1.  **Lobby & Spielstart:** Der erste Client am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
 2.  **Kartenausgabe (Initial):** Der Server verteilt je 8 Karten an jeden Spieler.
 3.  **Großes Tichu ansagen:** Jeder Spieler muss sich dann entscheiden, ob er ein großes Tichu ansagen möchte oder nicht.
 4.  **Kartenausgabe (restliche):** Sobald jeder Spieler sich entschieden hat, teilt der Server die restlichen Karten aus (je 6 pro Spieler, insgesamt 14).
@@ -271,7 +271,7 @@ Die `Arena`-Klasse:
 
 (in Entwicklung)
 
-### 7.1 Query-Parameer der Websocket-URL
+### 7.1 Query-Parameter der Websocket-URL
 
 Ein zentraler Server stellt eine WebSocket bereit. Beim initialen Verbindungsaufbau gibt der Spieler den gewünschten Tisch und seinen Namen über die Query-Parameter an:
 
@@ -290,13 +290,14 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 Der WebSocket-Handler empfängt diese Nachrichten und leitet sie an deb Peer weiter. 
 Ausnahme: Ein `ping` wird direkt vom WebSocket-Handler mit einem `pong` quittiert.
 
-| Type             | Payload                                                                                 | Beschreibung                                                                              | Antwort vom Server (Type) | Antwort vom Server (Payload)                                                         |
-|------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------|
-| `"leave"`        |                                                                                         | Der Spieler möchte den Tisch verlassen.                                                   | keine Antwort             |                                                                                      |
-| `"ping"`         | `{timestamp: "ISO8601_string"}`                                                         | Verbindungstest.                                                                          | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}`                                    |
-| `"lobby_action"` | `{action: "assign_team", "data": [player_new_index,...]}` oder `{action: "start_game"}` | Der Spieler führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel). | Keine Antwort             |                                                                                      |
-| `"announce"`     |                                                                                         | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen.                        | Keine Antwort             |                                                                                      |
-| `"bomb"`         | `{cards: Cards}`                                                                        | Der Spieler möchte außerhalb seines regulären Zuges eine Bombe werfen.                    | Keine Antwort             |                                                                                      |
+| Type             | Payload                                      | Beschreibung                                                                                                                   | Antwort vom Server (Type) | Antwort vom Server (Payload)                      |
+|------------------|----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|---------------------------|---------------------------------------------------|
+| `"ping"`         | `{timestamp: "ISO8601_string"}`              | Verbindungstest.                                                                                                               | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}` |
+| `"leave"`        |                                              | Der Spieler möchte den Tisch verlassen.                                                                                        | keine Antwort             |                                                   |
+| `"swap_players"` | `{player_index_1: int, player_index_2: int}` | Der Host möchte die Position zweier Spieler vertauschen (der Host darf nicht verschoben werden; nur vor Spielstart möglich).   | keine Antwort             |                                                   |
+| `"start_game"`   |                                              | Der Host möchte das Spiel starten.                                                                                             | keine Antwort             |                                                   |
+| `"announce"`     |                                              | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen.                                                             | keine Antwort             |                                                   |
+| `"bomb"`         | `{cards: Cards}`                             | Der Spieler möchte außerhalb seines regulären Zuges eine Bombe werfen.                                                         | keine Antwort             |                                                   |
 
 **Proaktive Nachrichten vom Server an den Client:**
 
@@ -337,31 +338,38 @@ denn diese Entscheidungen trifft der Client proaktiv (im Gegensatz zur KI, die i
 
 Benachrichtigung an alle Spieler
 
-| Notification Event      | Notification Context                                                                                                              | Beschreibung                                                                                |
-|-------------------------|-----------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| "player_joined"         | `{player_index: int, player_name: str}` (->) `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Spieler spielt jetzt mit.                                                               |
-| "player_left"           | `{player_index: int, replaced_by_name: str}`                                                                                      | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                             |
-| "lobby_update"          | `{action: "assign_team", team: list}`                                                                                             | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
-| "game_started"          |                                                                                                                                   | Der Host (der erste reale Spieler am Tisch) hat das Team gebildet oder das Spiel gestartet. |
-| "hand_cards_dealt"      | `{count: int}` -> `{hand_cards: Cards}`                                                                                           | Handkarten wurden an die Spieler verteilt.                                                  |
-| "grand_tichu_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.                                   |
-| "tichu_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                                               |
-| "player_schupfed"       | `{player_index: int}`                                                                                                             | Der Spieler hat drei Karten zum Tausch abgegeben.                                           |
-| "schupf_cards_dealt"    | `None` -> `{received_schupf_cards: Cards}`                                                                                        | Die Tauschkarten wurden an die Spieler verteilt.                                            |
-| "passed"                | `{player_index: int}`                                                                                                             | Der Spieler hat hat gepasst.                                                                |
-| "played"                | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat Karten ausgespielt.                                                         |
-| "bombed"                | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat eine Bombe geworfen.                                                        |
-| "wish_made"             | `{wish_value: int}`                                                                                                               | Ein Kartenwert wurde sich gewünscht.                                                        |
-| "wish_fulfilled"        |                                                                                                                                   | Der Wunsch wurde erfüllt.                                                                   |
-| "trick_taken"           | `{player_index: int}`                                                                                                             | Der Spieler hat den Stich kassiert.                                                         |
-| "player_turn_changed"   | `{current_turn_index: int}`                                                                                                       | Der Spieler ist jetzt am Zug.                                                               |
-| "round_over"            | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Karten werden neu gemischt.                                    |
-| "game_over"             | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Partie ist entschieden.                                        |
+| Notification Event       | Notification Context                                                                                                              | Beschreibung                                                    |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| "player_joined"          | `{player_index: int, player_name: str}` (->) `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Spieler spielt jetzt mit.                                   |
+| "player_left"            | `{player_index: int, replaced_by_name: str, host_index: int}`                                                                     | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen. |
+| "players_swapped"        | `{player_index_1: int, player_index_2: int}`                                                                                      | Der Index zweier Spieler wurde getauscht.                       |
+| "game_started"           |                                                                                                                                   | Das Spiel wurde gestartet.                                      |
+| "round_started"          |                                                                                                                                   | Eine neue Runde beginnt. Die Karten werden gemischt.            |
+| "hand_cards_dealt"       | `{count: int}` -> `{hand_cards: Cards}`                                                                                           | Handkarten wurden an die Spieler verteilt.                      |
+| "player_grand_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.       |
+| "player_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                   |
+| "player_schupfed"        | `{player_index: int}`                                                                                                             | Der Spieler hat drei Karten zum Tausch abgegeben.               |
+| "schupf_cards_dealt"     | `None` -> `{received_schupf_cards: Cards}`                                                                                        | Die Tauschkarten wurden an die Spieler verteilt.                |
+| "player_passed"          | `{player_index: int}`                                                                                                             | Der Spieler hat hat gepasst.                                    |
+| "player_played"          | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat Karten ausgespielt.                             |
+| "player_bombed"          | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat eine Bombe geworfen.                            |
+| "wish_made"              | `{wish_value: int}`                                                                                                               | Ein Kartenwert wurde sich gewünscht.                            |
+| "wish_fulfilled"         |                                                                                                                                   | Der Wunsch wurde erfüllt.                                       |
+| "trick_taken"            | `{player_index: int}`                                                                                                             | Der Spieler hat den Stich kassiert.                             |
+| "player_turn_changed"    | `{current_turn_index: int}`                                                                                                       | Der Spieler ist jetzt am Zug.                                   |
+| "round_over"             | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Karten werden neu gemischt.        |
+| "game_over"              | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Partie ist entschieden.            |
 
 "->" bedeutet, dass der Peer den vom Server gesendeten Kontext mit privaten Statusinformationen des Spielers anreichert, bevor er es an den Spieler weiterleitet.
 Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigenen Spieler handelt.
 
 ### 7.2.3. Fehlermeldungen
+
+#### aiohttp-Fehler
+
+Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION) bei ungültiger Session.
+
+#### Inhaltliche Fehler
 
 | Error Code                                  | Error Message                                             | Context (ergänzende Informationen)     |
 |---------------------------------------------|-----------------------------------------------------------|----------------------------------------|
@@ -402,12 +410,12 @@ Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigene
 #### 7.3.1 WebSocket-Handler
 
 *   Nimmt neue WebSocket-Verbindungen an:
-    *   Der reale Spieler verbindet sich über eine WebSocket und gibt seinen Namen und den Namen eines Tisches an.
+    *   Der Client verbindet sich über eine WebSocket und gibt seinen Namen und den Namen eines Tisches an.
     *   Gibt es den Tisch noch nicht, wird dieser Tisch eröffnet (über die `Game-Factory`). 
-    *   Ist der Tisch voll besetzt (max. 4 reale Spieler), kann der Spieler sich nicht an den Tisch setzen. 
+    *   Ist der Tisch voll besetzt (max. 4 Clients), kann der Spieler sich nicht an den Tisch setzen. 
     *   Ist noch mind. ein Platz frei (d.h. der Platz ist belegt von einer KI), kann der Spieler sich an den Platz setzen (ersetzt die KI) und erhält den aktuellen Spielzustand.
 *   Reagiert darauf, wenn der Spieler das Spiel verlassen will: 
-    *   Wenn der reale Spieler geht, übernimmt automatisch die KI wieder den Platz, damit die übrigen Spieler weiterspielen können. 
+    *   Wenn der Client geht, übernimmt automatisch die KI wieder den Platz, damit die übrigen Spieler weiterspielen können. 
     *   Hat der letzte Client den Tisch verlassen, wird der Tisch geschlossen (über die `Game-Factory`).
 *   Händelt Verbindungsabbrüche:  
     *   Bei einem Verbindungsabbruch wartet der Server 20 Sekunden, bevor die KI den Platz einnimmt. 
@@ -421,7 +429,7 @@ Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigene
 
 *   Verwaltet eine Sammlung aktiver Spieltische (`GameEngine`-Instanzen).
 *   Erstellt eine neue `GameEngine` für einen neuen Tisch.
-*   Schließt Tische, wenn keine realen Spieler mehr verbunden sind (nach Timeout).
+*   Schließt Tische, wenn kein Client mehr verbunden ist (nach Timeout).
 
 #### 7.3.3 Game-Engine
 
@@ -433,20 +441,20 @@ Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigene
 
 *   Serverseitiger WebSocket-Endpunkt des Clients (ein realer Spieler, der z.B. über einen Browser interagiert, könnte aber auch ein Bot sein); erbt von `Player`.
 *   Empfängt Aufforderungen von der `GameEngine` (z.B. `play()`, `announce()`).
-*   Formatiert diese Aufforderungen als `request`-Nachricht und sendet sie über den WebSocket an den realen Spieler.
-*   Wartet auf eine `response`-Nachricht vom realen Spieler.
+*   Formatiert diese Aufforderungen als `request`-Nachricht und sendet sie über den WebSocket an den Client.
+*   Wartet auf eine `response`-Nachricht vom Client.
 *   Validiert die Antwort und gibt die extrahierte Aktion an die `GameEngine` zurück.
-*   Empfängt Benachrichtigungen (`notification`) von der `GameEngine` und leitet diese an den realen Spieler weiter.
+*   Empfängt Benachrichtigungen (`notification`) von der `GameEngine` und leitet diese an den Client weiter.
 
 ## 8. Frontend (zweite Ausbaustufe)
 
 ### 8.1 Allgemeine Funktionsweise
 1) Das Frontend für den Server-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
 2) Es kommuniziert über WebSockets mit dem Python-Backend. 
-3) Mit Verbindungsaufbau über die WebSocket sendet der reale Spieler als Query-Parameter in der URL den Tisch-Namen und seinen Namen mit. 
+3) Mit Verbindungsaufbau über die WebSocket sendet der Client als Query-Parameter in der URL den Tisch-Namen und seinen Namen mit. 
 4) Beim Wiederaufbau nach Verbindungsabbruch sendet der Spieler stattdessen die letzte Session-Id.
-5) Wenn der reale Spieler das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis er durch eine KI ersetzt wird.
-6) Der erste reale Spieler am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
+5) Wenn der Client das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis er durch eine KI ersetzt wird.
+6) Der erste Client am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
 7) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
 8) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
 
@@ -513,16 +521,16 @@ web/
 	You may use these assets in personal and commercial projects.
 	Credit (Kenney or www.kenney.nl) would be nice but is not mandatory (Donate: http://support.kenney.nl)
 
-| Dateiname   | Original                                        | Verwendung                         |
-|-------------|-------------------------------------------------|------------------------------------|
-| schuffle    | casino-audio/card-schuffle                      | Karten mischen                     |
-| dealout     | casino-audio/card-fan-1                         | Karten austeilen                   |
-| schupf0     | casino-audio/card-place-1,2,3,4                 | Karten schupfen (Spieler 0 bis 3)  |
-| play0       | casino-audio/card-slide-1,2,3,4                 | Karte ausspielen (Spieler 0 bis 4) |
-| take0       | casino-audio/card-shove1,2,3,4                  | Karten nehmen (Spieler 0 bis 3)    |
-| bomb0       | digital-audio/laser1,2,3,4                      | Bombe werfen (Spieler 0 bis 4)     |
-| pass0       | impact-sounds/impactSoft_medium_001,002,003,004 | Passen (Spieler 0 bis 4)           |
-| announce    | music-jingles/jingles_STEEL00,04,08,16          | Tichu ansagen (Spieler 0 bis 4)    |
+| Dateiname | Original                                        | Verwendung                         |
+|-----------|-------------------------------------------------|------------------------------------|
+| shuffle   | casino-audio/card-shuffle                       | Karten mischen                     |
+| dealout   | casino-audio/card-fan-1                         | Karten austeilen                   |
+| schupf0   | casino-audio/card-place-1,2,3,4                 | Karten schupfen (Spieler 0 bis 3)  |
+| play0     | casino-audio/card-slide-1,2,3,4                 | Karte ausspielen (Spieler 0 bis 4) |
+| take0     | casino-audio/card-shove-1,2,3,4                 | Karten nehmen (Spieler 0 bis 3)    |
+| bomb0     | digital-audio/laser1,2,3,4                      | Bombe werfen (Spieler 0 bis 4)     |
+| pass0     | impact-sounds/impactSoft_medium_001,002,003,004 | Passen (Spieler 0 bis 4)           |
+| announce0 | music-jingles/jingles_STEEL00,04,08,16          | Tichu ansagen (Spieler 0 bis 4)    |
 
 #### Schriftarten
 

@@ -68,9 +68,9 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
         if not await engine.join_client(peer):
-            error_message = f"Kein freier Platz am Tisch '{engine.table_name}'."
-            logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
-            await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
+            message = f"Kein freier Platz am Tisch '{engine.table_name}'."
+            logger.warning(f"Verbindung von {remote_addr} abgelehnt. {message}")
+            await ws.close(code=WSCloseCode.OK, message=message.encode('utf-8'))
             return ws
         logger.info(f"Client {peer.name} (Session {peer.session_id}) erfolgreich am Tisch '{engine.table_name}' mit Sitzplatz {peer.priv.player_index} zugeordnet.")
 
@@ -89,21 +89,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     msg_type = data.get("type")  # Nachrichtentyp
                     payload = data.get("payload", {})  # die Nutzdaten
 
-                    if msg_type == "leave":  # der Client verlässt den Tisch.
-                        # todo muss der Warte-Task von _ask() nicht unterbrochen werden?
-                        break # aus der Message-Loop springen
-
-                    elif msg_type == "lobby_action":  # der Client führt eine Aktion in der Lobby aus (bildet die Teams oder startet das Spiel).
-                        action = payload.get("action")
-                        if action == "assign_team":
-                            engine.assign_team(payload.get("data"))
-                        elif action == "start_game":
-                            await engine.start_game()
-                        else:
-                            logger.error(f"Unbekannte Aktion '{action}' in der Lobby von {peer.name}")
-                            await peer.error("Unbekannte Aktion in der Lobby", ErrorCode.INVALID_MESSAGE, context=msg.data)
-
-                    elif msg_type == "ping":  # Verbindungstest
+                    if msg_type == "ping":  # Verbindungstest
                         logger.info(f"{peer.name}: ping")
                         ping_message = {"type": "pong", "payload": payload }
                         try:
@@ -113,6 +99,16 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                         except Exception as e:
                             logger.exception(f"Unerwarteter Fehler beim Senden der Pong-Nachricht an {peer.name}: {e}")
                             return ws
+
+                    elif msg_type == "leave":  # der Client verlässt den Tisch.
+                        break # aus der Message-Loop springen
+
+                    elif msg_type == "swap_players":  # der Client möchte die Plätze zweier Spieler vertauschen).
+                        if not await engine.swap_players(payload.get("player_index_1"), payload.get("player_index_2")):
+                            await peer.error("Die Spieler konnten nicht vertauscht werden", ErrorCode.INVALID_MESSAGE, context=payload)
+
+                    elif msg_type == "start_game":
+                        await engine.start_game()
 
                     elif msg_type == "announce":  # proaktive Tichu-Ansage vom Client
                         await peer.client_announce()
