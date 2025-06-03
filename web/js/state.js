@@ -1,203 +1,227 @@
-// js/state.js
+/**
+ * Type-Alias für eine Karte mit Wert und Farbe.
+ *
+ * @typedef {[number, number]} Card
+ */
 
 /**
- * @module State
+ * Type-Alias für eine Liste von Karten.
+ *
+ * @typedef {Card[]} Cards
+ */
+
+/**
+ * Enum für Kombinationstypen.
+ */
+const CombinationType = {
+    // Passen (0)
+    PASS: 0,
+    // Einzelkarte (1)
+    SINGLE: 1,
+    // Paar (2)
+    PAIR: 2,
+    // Drilling (3)
+    TRIPLE: 3,
+    // Treppe (4)
+    STAIR: 4,
+    // Fullhouse (5)
+    FULLHOUSE: 5,
+    // Straße (6)
+    STREET: 6,
+    // Vierer-Bombe oder Farbbombe (7)
+    BOMB: 7
+};
+
+/**
+ * Type-Alias für eine Kombination.
+ *
+ * @typedef {[CombinationType, number, number]} Combination
+ * @property {CombinationType} 0 - Typ der Kombination.
+ * @property {number} 1 - Länge der Kombination.
+ * @property {number} 2 - Rang der Kombination.
+ */
+
+/**
+ * Type-Alias für einen Spielzug.
+ *
+ * @typedef {[number, Cards, Combination]} Turn
+ * @property {number} 0 - Index des Spielers.
+ * @property {Cards} 1 - Gespielte Karten.
+ * @property {Combination} 2 - Kombination.
+ */
+
+/**
+ * Type-Alias für einen Stich (Liste von Spielzügen).
+ *
+ * @typedef {Turn[]} Trick
+ */
+
+/**
+ * Type-Alias für die Punktetabelle
+ *
+ * @typedef {[number[], number[]]} GameScore
+ */
+
+/**
+ * Der öffentliche Spielzustand vom Server.
+ *
+ * @typedef {Object} PublicState
+ * @property {string} table_name - Der Name des Tisches.
+ * @property {string[]} player_names - Die eindeutigen Namen der 4 Spieler [Spieler 0-3].
+ * @property {number} host_index - Index des Clients, der Host ist (-1 == kein Client).
+ * @property {boolean} is_running - True, wenn eine Partie gerade läuft.
+ * @property {string} current_phase - Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
+ * @property {number} current_turn_index - Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
+ * @property {number} start_player_index - Index des Spielers mit Mahjong (-1 == steht noch nicht fest).
+ * @property {number[]} count_hand_cards - Anzahl der Handkarten pro Spieler [Spieler 0-3].
+ * @property {Cards} played_cards - Bereits gespielte Karten in der Runde.
+ * @property {number[]} announcements - Angekündigtes Tichu pro Spieler [Spieler 0-3] (0 = keine Ansage, 1 = einfaches, 2 = großes).
+ * @property {number} wish_value - Gewünschter Kartenwert (2–14, 0 = kein Wunsch, negativ = erfüllt).
+ * @property {number} dragon_recipient - Index des Spielers mit Drachen (-1 = noch niemand).
+ * @property {number} trick_owner_index - Index des Spielers mit dem Stich (-1 = leerer Stich).
+ * @property {Cards} trick_cards - Karten der letzten Kombination im Stich.
+ * @property {number[]} trick_combination - Typ, Länge und Wert des aktuellen Stichs ([0,0,0] = leerer Stich).
+ * @property {number} trick_points - Punkte des aktuellen Stichs.
+ * @property {Trick[]} tricks - Liste der Stiche der aktuellen Runde.
+ * @property {number[]} points - Bisher kassierte Punkte in der aktuellen Runde [Spieler 0-3].
+ * @property {number} winner_index - Index des ersten Spielers, der fertig wurde (-1 = Runde läuft).
+ * @property {number} loser_index - Index des letzten Spielers (-1 = Runde läuft oder Doppelsieg).
+ * @property {boolean} isRound_over - Gibt an, ob die Runde beendet ist.
+ * @property {boolean} isDouble_victory - Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
+ * @property {GameScore} game_score - Punktetabelle der Partie [Team 20, Team 31].
+ * @property {number} round_counter - Anzahl der abgeschlossenen Runden der Partie.
+ * @property {number} trick_counter - Anzahl der abgeräumten Stiche insgesamt über alle Runden.
+ */
+
+/**
+ * Der private Spielzustand vom Server.
+ *
+ * @typedef {Object} PrivateState
+ * @property {number} player_index - Der Index des Benutzers am Tisch (zwischen 0 und 3).
+ * @property {Card[]} hand_cards - Die aktuellen Handkarten des Benutzers.
+ * @property {[Card, Card, Card] | null} given_schupf_cards - Die drei Karten, die der Benutzer weitergegeben hat.
+ * @property {[Card, Card, Card] | null} received_schupf_cards - Die drei Karten, die der Benutzer erhalten hat.
+ */
+
+/**
  * Verwaltet den clientseitigen Spielzustand. Dient als reiner Datencontainer.
- * Werte wie Spielername, Tischname, Spielerindex und Host-Status werden
- * direkt aus publicState und privateState abgeleitet oder dort gespeichert.
  */
 const State = (() => {
-    let publicState = null;     // Der öffentliche Spielzustand vom Server.
-    let privateState = null;    // Der private Spielzustand vom Server.
-    let localPlayerName = '';   // Der Name des lokalen Spielers, wie im LocalStorage oder bei Login angegeben.
-                                // Wird mit publicState.player_names[playerIndex] synchronisiert.
-    let currentTableName = '';  // Der Name des aktuellen Tisches, wie im LocalStorage oder bei Login angegeben.
-                                // Wird mit publicState.table_name synchronisiert.
-    let sessionId = null;       // Die aktuelle Session-ID des Spielers.
 
+    /** Der öffentliche Spielzustand vom Server.
+     *
+     * @type {PublicState}
+     */
+    let _publicState = {
+        table_name: "",
+        player_names: ["", "", "", ""],
+        host_index: -1,
+        is_running: false,
+        current_phase: "init",
+        current_turn_index: -1,
+        start_player_index: -1,
+        count_hand_cards: [0, 0, 0, 0],
+        played_cards: [],
+        announcements: [0, 0, 0, 0],
+        wish_value: 0,
+        dragon_recipient: -1,
+        trick_owner_index: -1,
+        trick_cards: [],
+        trick_combination: [0, 0, 0],
+        trick_points: 0,
+        tricks: [],
+        points: [0, 0, 0, 0],
+        winner_index: -1,
+        loser_index: -1,
+        isRound_over: false,
+        isDouble_victory: false,
+        game_score: [[], []],
+        round_counter: 0,
+        trick_counter: 0
+    };
+
+    /**
+     * Der private Spielzustand vom Server.
+     *
+     * @type {PrivateState}
+     */
+    let _privateState = {
+        player_index: -1,
+        hand_cards: [],
+        given_schupf_cards: null,
+        received_schupf_cards: null
+    };
 
     /**
      * Initialisiert den Zustand, lädt Werte aus dem LocalStorage.
-     * `publicState` und `privateState` werden vom Server initialisiert.
      */
     function init() {
-        localPlayerName = localStorage.getItem('tichuPlayerName') || '';
-        currentTableName = localStorage.getItem('tichuTableName') || '';
-        sessionId = localStorage.getItem('tichuSessionId') || null;
     }
 
-    // --- Getter ---
-    /** @returns {object|null} Den aktuellen öffentlichen Spielzustand. */
+    /**
+     * Setzt den öffentlichen Spielzustand.
+     *
+     * @param {PublicState} publicState - Der öffentliche Spielzustand.
+     */
+    function setPublicState(publicState) {
+        _publicState = publicState;
+    }
+
+    /** @returns {PublicState} Den aktuellen öffentlichen Spielzustand. */
     function getPublicState() {
-        return publicState;
+        return _publicState;
     }
 
-    /** @returns {object|null} Den aktuellen privaten Spielzustand. */
+    /**
+     * Setzt den privaten Spielzustand.
+     *
+     * @param {PrivateState} privateState - Der private Spielzustand.
+     */
+    function setPrivateState(privateState) {
+        _privateState = privateState;
+    }
+
+    /** @returns {PrivateState} Den aktuellen privaten Spielzustand. */
     function getPrivateState() {
-        return privateState;
+        return _privateState;
     }
 
-    /** @returns {string|null} Die aktuelle Session-ID. */
-    function getSessionId() {
-        return sessionId;
+    /**
+     * Setzt den Index des Benutzers.
+     *
+     * @param {number} playerIndex - Der neue Index des Benutzers.
+     */
+    function setPlayerIndex(playerIndex) {
+        _privateState.player_index = playerIndex;
     }
 
-    /** @returns {string} Den Namen des lokalen Spielers. */
+    /** @returns {number} Den Index des Benutzers. */
+    function getPlayerIndex() {
+        return _privateState.player_index;
+    }
+
+    /** @returns {string} Den Namen des Benutzers. */
     function getPlayerName() {
-        const pIdx = getPlayerIndex();
-        if (publicState && publicState.player_names && pIdx !== -1 && publicState.player_names[pIdx]) {
-            return publicState.player_names[pIdx];
-        }
-        return localPlayerName; // Fallback auf den Namen, den der User eingegeben/gespeichert hat
+        return _privateState.player_index !== -1 ? _publicState.player_names[_privateState.player_index] : "";
     }
 
     /** @returns {string} Den Namen des aktuellen Tisches. */
     function getTableName() {
-        if (publicState && publicState.table_name) {
-            return publicState.table_name;
-        }
-        return currentTableName; // Fallback
+        return _publicState.table_name;
     }
 
-    /**
-     * Setzt den Index des Spielers.
-     * @param {string} index - Der neue Index des Spielers.
-     */
-    function setPlayerIndex(index) {
-        privateState.player_index = index;
+    /** @returns {boolean} True, wenn der Benutzer der Host des Tisches ist, sonst false. */
+    function isHost() {
+        return _privateState.player_index !== -1 && _publicState.host_index === _privateState.player_index;
     }
-
-    /** @returns {number} Den kanonischen Index des lokalen Spielers. */
-    function getPlayerIndex() {
-        if (privateState && typeof privateState.player_index === 'number') {
-            return privateState.player_index;
-        }
-        // Fallback, falls privateState (noch) nicht player_index hat, aber wir es aus publicState ableiten könnten
-        // (z.B. wenn Server bei player_joined nur public_state und session_id sendet, und player_index in public_state.players wäre)
-        // Für Tichu ist player_index aber im private_state des player_joined context.
-        return -1;
-    }
-
-    /** @returns {boolean} True, wenn der lokale Spieler Host ist, sonst false. */
-    function getIsHost() {
-        const pIdx = getPlayerIndex();
-        if (publicState && typeof publicState.host_index === 'number' && pIdx !== -1) {
-            return publicState.host_index === pIdx;
-        }
-        return false;
-    }
-
-
-    // --- Setter für Kernzustände (primär vom AppController aufgerufen) ---
-    /**
-     * Setzt den öffentlichen und privaten Spielzustand.
-     * @param {object|null} newPublicState - Das neue publicState Objekt vom Server.
-     * @param {object|null} newPrivateState - Das neue privateState Objekt vom Server.
-     */
-    function setGameStates(newPublicState, newPrivateState) {
-        publicState = newPublicState;
-        privateState = newPrivateState;
-        // Synchronisiere lokale Namen, falls Server sie bereitstellt
-        if (newPublicState && newPublicState.table_name) {
-            currentTableName = newPublicState.table_name;
-        }
-        const pIdx = getPlayerIndex(); // Nutzt den gerade gesetzten privateState
-        if (newPublicState && newPublicState.player_names && pIdx !== -1 && newPublicState.player_names[pIdx]) {
-            localPlayerName = newPublicState.player_names[pIdx];
-        }
-    }
-
-    /**
-     * Aktualisiert den öffentlichen Spielzustand.
-     * @param {object} updatedPublicState - Das (möglicherweise partielle) publicState Objekt.
-     */
-    function updatePublicState(updatedPublicState) {
-        if (updatedPublicState) {
-            publicState = updatedPublicState;
-            if (publicState.table_name) { // Tischname aus publicState übernehmen
-                currentTableName = publicState.table_name;
-            }
-            const pIdx = getPlayerIndex();
-            if (publicState.player_names && pIdx !== -1 && publicState.player_names[pIdx]) {
-                localPlayerName = publicState.player_names[pIdx];
-            }
-        }
-    }
-
-    /**
-     * Aktualisiert den privaten Spielzustand.
-     * @param {object} updatedPrivateState - Das (möglicherweise partielle) privateState Objekt.
-     */
-    function updatePrivateState(updatedPrivateState) {
-        if (updatedPrivateState) {
-            privateState = updatedPrivateState;
-            // PlayerIndex wird durch getPlayerIndex() direkt aus privateState gelesen
-        }
-    }
-
-    // --- Setter für lokale Konfigurationsdaten (vom User oder Initialisierung) ---
-    /**
-     * Setzt den Namen des lokalen Spielers (z.B. bei Login-Eingabe) und speichert ihn.
-     * @param {string} name - Der neue Spielername.
-     */
-    function setLocalPlayerName(name) {
-        localPlayerName = name.trim();
-        localStorage.setItem('tichuPlayerName', localPlayerName);
-    }
-     /** @returns {string} Den lokal gespeicherten/eingegebenen Spielernamen. */
-    function getLocalPlayerName() {
-        return localPlayerName;
-    }
-
-
-    /**
-     * Setzt den Namen des Tisches (z.B. bei Login-Eingabe) und speichert ihn.
-     * @param {string} name - Der neue Tischname.
-     */
-    function setLocalTableName(name) {
-        currentTableName = name.trim();
-        localStorage.setItem('tichuTableName', currentTableName);
-    }
-    /** @returns {string} Den lokal gespeicherten/eingegebenen Tischnamen. */
-    function getLocalTableName() {
-        return currentTableName;
-    }
-
-
-    /**
-     * Setzt die Session-ID und speichert sie im LocalStorage (oder entfernt sie, falls null).
-     * @param {string|null} id - Die neue Session-ID.
-     */
-    function setSessionId(id) {
-        sessionId = id;
-        if (sessionId) {
-            localStorage.setItem('tichuSessionId', sessionId);
-        }
-        else {
-            localStorage.removeItem('tichuSessionId');
-        }
-    }
-
-    // isHost wird intern durch setGameStates oder updatePublicState aktualisiert.
-    // Ein direkter Setter ist nicht vorgesehen, da es vom Server-Zustand abhängt.
 
     return {
         init,
-        getPublicState,
-        getPrivateState,
-        getSessionId,
-        getPlayerName,    // Abgeleitet
-        getTableName,     // Abgeleitet
-        setPlayerIndex,
-        getPlayerIndex,   // Abgeleitet
-        getIsHost,        // Abgeleitet
-        setGameStates,
-        updatePublicState,
-        updatePrivateState,
-        setLocalPlayerName, // Für Login-Formular
-        getLocalPlayerName, // Für Login-Formular Pre-Fill
-        setLocalTableName,  // Für Login-Formular
-        getLocalTableName,  // Für Login-Formular Pre-Fill
-        setSessionId
+        setPublicState, getPublicState,
+        setPrivateState, getPrivateState,
+        setPlayerIndex, getPlayerIndex,
+        getPlayerName,
+        getTableName,
+        isHost: isHost,
     };
 })();

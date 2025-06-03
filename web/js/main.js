@@ -1,7 +1,6 @@
-// js/main.js
-
 /**
- * @file Haupt-Einstiegspunkt der Tichu-Anwendung.
+ * Haupt-Einstiegspunkt der Tichu-Anwendung.
+ *
  * Initialisiert den AppController, sobald das DOM geladen ist.
  */
 

@@ -1,7 +1,4 @@
-// js/network.js
-
 /**
- * @module Network
  * Verantwortlich für die WebSocket-Verbindung und Kommunikation mit dem Server.
  */
 const Network = (() => {

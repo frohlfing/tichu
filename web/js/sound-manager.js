@@ -1,7 +1,4 @@
-// js/sound-manager.js
-
 /**
- * @module SoundManager
  * Verwaltet das Laden und Abspielen von Soundeffekten.
  */
 const SoundManager = (() => {

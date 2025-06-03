@@ -1,31 +1,102 @@
-// js/views/game-table-view.js
-
 /**
- * @module GameTableView
- * Verwaltet die Anzeige und Interaktion des Spieltisches.
- * (Aktuell nur mit minimaler Funktionalität für den Beenden-Button).
+ * Anzeige und Interaktion des Spieltisches.
+ *
+ * @type {View}
  */
 const GameTableView = (() => {
-    /** @const {HTMLElement} _viewElement - Das DOM-Element des Spieltisch-Views. */
-    const _viewElement = document.getElementById('game-table-screen');
-    /** @const {HTMLButtonElement} _endGameButton - Button zum Beenden des Spiels/Verlassen des Tisches. */
+    /**
+     * Der Container des Spieltisch-Bildschirms.
+     *
+     * @type {HTMLDivElement}
+     */
+    const _viewContainer = document.getElementById('game-table-screen');
+
+    /**
+     * Button zum Beenden des Spiels/Verlassen des Tisches.
+     *
+     * @type {HTMLButtonElement}
+     */
     const _endGameButton = document.getElementById('end-game-button');
-    /** @const {HTMLButtonElement} _optionsButton - Button für Spieloptionen. */
+
+    /**
+     * Button für Spieloptionen.
+     *
+     * @type {HTMLButtonElement}
+     */
     const _optionsButton = document.getElementById('options-button');
 
-    // Platzhalter für DOM-Elemente, die später relevant werden
-    const _scoreDisplay = document.getElementById('score-display');
-    const _ownHandContainer = document.getElementById('player-0-hand');
+    /**
+     * Button zum Passen.
+     *
+     * @type {HTMLButtonElement}
+     */
     const _passButton = document.getElementById('pass-button');
+
+    /**
+     * Button zum Tich ansagen.
+     *
+     * @type {HTMLButtonElement}
+     */
     const _tichuButton = document.getElementById('tichu-button');
+
+    /**
+     * Button zum Karten ausspielen.
+     *
+     * @type {HTMLButtonElement}
+     */
     const _playCardsButton = document.getElementById('play-cards-button');
-    const _bombIcon = document.getElementById('bomb-icon');
-    const _wishIndicator = document.getElementById('wish-indicator');
+
+    /**
+     * Die Anzeige des Punktestandes.
+     *
+     * @type {HTMLDivElement}
+     */
+    const _scoreDisplay = document.getElementById('score-display');
+
+    /**
+     * Der Container für die Handkarten des Benutzers.
+     *
+     * @type {HTMLDivElement}
+     */
+    const _ownHandContainer = document.getElementById('player-0-hand');
+
+    /**
+     * Der Container für die Ablage-Zonen der Tauschkarten.
+     *
+     * @type {HTMLDivElement}
+     */
     const _schupfZonesContainer = document.querySelector('.schupf-zones');
 
     /**
-     * Initialisiert das GameTableView-Modul.
-     * Setzt Event-Listener für die initialen Buttons.
+     * Das Bomben-Icon.
+     *
+     * @type {HTMLImageElement}
+     */
+    const _bombIcon = document.getElementById('bomb-icon');
+
+   /**
+     * Das Icon zur Anzeige einer Tichu-Ansage.
+     *
+     * @type {HTMLImageElement}
+     */
+    const _tichuIndicator = document.getElementById('tichu-indicator');
+
+    /**
+     * Das Icon zur Anzeige eines offenen Wunsches.
+     *
+     * @type {HTMLImageElement}
+     */
+    const _wishIndicator = document.getElementById('wish-indicator');
+
+    /**
+     * Das Icon zur Anzeige des Spielers, der am Zug ist.
+     *
+     * @type {HTMLImageElement}
+     */
+    const _turnIndicator = document.getElementById('turn-indicator');
+
+    /**
+     * Initialisiert den Spieltisch-Bildschirm.
      */
     function init() {
         console.log("GAMETABLEVIEW: Initialisiere GameTableView (minimal)...");
@@ -63,8 +134,7 @@ const GameTableView = (() => {
     }
 
     /**
-     * Rendert den Spieltisch-View.
-     * (Aktuell minimal, wird später erweitert, um den gesamten Spielzustand darzustellen).
+     * Rendert den Spieltisch-Bildschirm.
      */
     function render() {
         // console.log("GAMETABLEVIEW: Rendere GameTableView (minimal).");
@@ -102,21 +172,31 @@ const GameTableView = (() => {
     }
 
     /**
-     * Wird aufgerufen, wenn der View angezeigt wird.
+     * Rendert den Spieltisch-Bildschirm und zeigt ihn anschließend an.
      */
     function show() {
-        // console.log("GAMETABLEVIEW: GameTableView wird angezeigt.");
-        render(); // Beim Anzeigen immer den aktuellen Zustand rendern
+        render();
+        _viewContainer.classList.add('active');
     }
 
     /**
-     * Wird aufgerufen, wenn der View ausgeblendet wird.
+     * Blendet den Spieltisch-Bildschirm aus.
      */
     function hide() {
         // console.log("GAMETABLEVIEW: GameTableView wird ausgeblendet.");
         // Ggf. laufende Animationen stoppen oder Zustände zurücksetzen
         enablePlayControls(false); // Steuerelemente deaktivieren, wenn der Tisch verlassen wird
         CardHandler.disableSchupfMode();
+        _viewContainer.classList.remove('active');
+    }
+
+    /**
+     * Ermittelt, ob der Spieltisch-Bildschirm gerade angezeigt wird.
+     *
+     * @returns {boolean}
+     */
+    function isVisible() {
+        return _viewContainer.classList.contains('active')
     }
 
     /**
@@ -256,6 +336,7 @@ const GameTableView = (() => {
         render,
         show,
         hide,
+        isVisible,
         enablePlayControls, // Damit AppController dies steuern kann
         handleNotification,  // Damit AppController dies aufrufen kann
         setPlayControlsForSchupfen // Für CardHandler/AppController

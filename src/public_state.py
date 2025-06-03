@@ -13,6 +13,8 @@ Turn = Tuple[int, Cards, Combination]
 # Type-Alias für einen Stich (Liste von Spielzügen)
 Trick = List[Turn]
 
+# Type-Alias für die Punktetabelle
+GameScore = Tuple[List[int], List[int]]
 
 @dataclass
 class PublicState:
@@ -43,7 +45,7 @@ class PublicState:
     :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == Runde läuft noch oder wurde mit Doppelsieg beendet).
     :ivar is_round_over: Gibt an, ob die aktuelle Runde beendet ist.
     :ivar is_double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
-    :ivar game_score: Punktetabelle der Partie [Team 20, Team 31] (pro Team eine Liste von Punkten).
+    :ivar game_score: Punktetabelle der Partie (Team 20, Team 31) (pro Team eine Liste von Punkten).
     :ivar round_counter: Anzahl der abgeschlossenen Runden der Partie (nur für statistische Zwecke).
     :ivar trick_counter: Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie (nur für statistische Zwecke).
     """
@@ -58,12 +60,12 @@ class PublicState:
     current_turn_index: int = -1
     start_player_index: int = -1
     count_hand_cards: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
-    played_cards: List[Card] = field(default_factory=list)
+    played_cards: Cards = field(default_factory=list)
     announcements: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
     wish_value: int = 0
     dragon_recipient: int = -1
     trick_owner_index: int = -1
-    trick_cards: List[Card] = field(default_factory=lambda: [])
+    trick_cards: Cards = field(default_factory=lambda: [])
     trick_combination: Combination = field(default_factory=lambda: (CombinationType.PASS, 0, 0))
     trick_points: int = 0
     tricks: List[Trick] = field(default_factory=list)
@@ -74,7 +76,7 @@ class PublicState:
     is_double_victory: bool = False
 
     # --- Information über die Partie ---
-    game_score: List[List[int]] = field(default_factory=lambda: [[], []])
+    game_score: GameScore = field(default_factory=lambda: ([], []))
     round_counter: int = 0  # nur für die Statistik
     trick_counter: int = 0  # nur für die Statistik
 
@@ -112,7 +114,7 @@ class PublicState:
     def reset_game(self):
         """Status für eine neue Partie zurücksetzen."""
         self.reset_round()
-        self.game_score = [[], []]
+        self.game_score = [], []
         self.round_counter = 0
         self.trick_counter = 0
 

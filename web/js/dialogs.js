@@ -1,8 +1,5 @@
-// js/dialogs.js
-
 /**
- * @module Dialogs
- * Verwaltet die Anzeige, Logik und Interaktion aller Modaldialoge der Anwendung.
+ * Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
  */
 const Dialogs = (() => {
     // Referenzen zu den Dialog-DOM-Elementen
@@ -79,7 +76,7 @@ const Dialogs = (() => {
             SoundManager.playSound('buttonClick');
             // AppController entscheidet, ob zur Lobby oder zum Login gewechselt wird
             // (basierend auf Server-Nachricht oder einfach Standardverhalten)
-            ViewManager.showView('lobby'); // Vorerst zur Lobby
+            ViewManager.toggleView('lobby'); // Vorerst zur Lobby
         });
 
         // Leave Confirm Dialog

@@ -1,33 +1,52 @@
-// js/views/login-view.js
-
 /**
- * @module LoginView
- * Verwaltet die Anzeige und Interaktion des Login-Bildschirms.
+ * Anzeige und Interaktion des Login-Bildschirms.
+ *
+ * @type {View}
  */
 const LoginView = (() => {
-    /** @const {HTMLElement} _viewElement - Das DOM-Element des Login-Views. */
-    const _viewElement = document.getElementById('login-screen');
-    /** @const {HTMLFormElement} _loginForm - Das Login-Formular. */
+    /**
+     * Der Container des Login-Bildschirms.
+     *
+     * @type {HTMLElement}
+     */
+    const _viewContainer = document.getElementById('login-screen');
+
+    /**
+     * Das Login-Formular
+     *
+     * @type {HTMLFormElement}
+     */
     const _loginForm = document.getElementById('login-form');
-    /** @const {HTMLInputElement} _playerNameInput - Das Eingabefeld für den Spielernamen. */
+
+    /**
+     * Das Eingabefeld für den Spielernamen.
+     *
+     * @type {HTMLInputElement}
+     */
     const _playerNameInput = document.getElementById('player-name');
-    /** @const {HTMLInputElement} _tableNameInput - Das Eingabefeld für den Tischnamen. */
+
+    /**
+     * Das Eingabefeld für den Tischnamen.
+     *
+     * @type {HTMLInputElement}
+     */
     const _tableNameInput = document.getElementById('table-name');
 
     /**
-     * Initialisiert das LoginView-Modul.
+     * Initialisiert den Bildschirm.
+     *
      * Setzt den Event-Listener für das Absenden des Login-Formulars.
      */
     function init() {
-        console.log("LOGINVIEW: Initialisiere LoginView...");
-        _loginForm.addEventListener('submit', _handleLoginSubmit);
+        _loginForm.addEventListener('submit', _loginForm_submit);
     }
 
     /**
-     * Event-Handler für das Absenden des Login-Formulars.
+     * Dieser Event-Handler wird aufgerufen, wenn das Login-Formular abgeschickt werden soll.
+     *
      * @param {Event} event - Das Submit-Event.
      */
-    function _handleLoginSubmit(event) {
+    function _loginForm_submit(event) {
         event.preventDefault(); // Standard-Formularabsendung verhindern
         const playerName = _playerNameInput.value.trim();
         const tableName = _tableNameInput.value.trim();
@@ -37,7 +56,6 @@ const LoginView = (() => {
             AppController.attemptLogin(playerName, tableName);
         }
         else {
-            // Einfache Validierungs-UI, z.B. Fokus auf leeres Feld oder Toast
             Dialogs.showErrorToast("Bitte Spielername und Tischname eingeben.");
             if (!playerName) {
                 _playerNameInput.focus();
@@ -49,39 +67,44 @@ const LoginView = (() => {
     }
 
     /**
-     * Rendert den Login-View.
-     * Füllt die Eingabefelder mit Werten aus dem State (falls vorhanden, z.B. nach Logout).
+     * Rendert den Login-Bildschirm (füllt die Eingabewerte).
      */
     function render() {
-        // console.log("LOGINVIEW: Rendere LoginView.");
-        // Werte aus dem State holen, um Felder vorzubelegen (nützlich nach Logout oder Fehler)
-        _playerNameInput.value = State.getPlayerName() || '';
-        _tableNameInput.value = State.getTableName() || '';
-        // Sicherstellen, dass der Fokus nicht auf einem invaliden Feld von vorher ist
+        _playerNameInput.value = User.getPlayerName();
+        _tableNameInput.value = User.getTableName();
         _playerNameInput.blur();
         _tableNameInput.blur();
     }
 
     /**
-     * Wird aufgerufen, wenn der View angezeigt wird. (Momentan nicht viel spezielle Logik hier)
+     * Rendert den Login-Bildschirm und zeigt ihn anschließend an.
      */
     function show() {
-        // console.log("LOGINVIEW: LoginView wird angezeigt.");
-        // Ggf. Fokus auf erstes Feld setzen
-        // _playerNameInput.focus(); // Kann nervig sein, wenn es automatisch passiert
+        render();
+        _viewContainer.classList.add('active');
     }
 
     /**
-     * Wird aufgerufen, wenn der View ausgeblendet wird. (Momentan keine spezielle Logik)
+     * Blendet den Login-Bildschirm aus.
      */
     function hide() {
-        // console.log("LOGINVIEW: LoginView wird ausgeblendet.");
+        _viewContainer.classList.remove('active');
+    }
+
+    /**
+     * Ermittelt, ob der Login-Bildschirm gerade angezeigt wird.
+     *
+     * @returns {boolean}
+     */
+    function isVisible() {
+        return _viewContainer.classList.contains('active')
     }
 
     return {
         init,
         render,
         show,
-        hide
+        hide,
+        isVisible
     };
 })();

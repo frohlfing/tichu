@@ -1,7 +1,6 @@
 // js/app-controller.js
 
 /**
- * @module AppController
  * Orchestriert die gesamte Tichu-Frontend-Anwendung.
  * Verantwortlich für die Initialisierung von Modulen, den Nachrichtenfluss
  * zwischen Backend und UI sowie die Steuerung der Views.
@@ -37,29 +36,29 @@ const AppController = (() => {
         if (sessionId && (!paramPlayerName || !paramTableName)) {
             console.log('APP: Versuche automatischen Reconnect mit Session ID:', sessionId);
             _isAttemptingReconnect = true;
-            ViewManager.showView('loading');
+            ViewManager.toggleView('loading');
             Network.connect(null, null, sessionId);
         }
         else if (paramPlayerName && paramTableName) {
             console.log('APP: Login mit URL-Parametern:', paramPlayerName, paramTableName);
             State.setSessionId(null); // Alte Session für expliziten URL-Login löschen
-            State.setLocalPlayerName(paramPlayerName); // Lokalen Namen setzen
-            State.setLocalTableName(paramTableName);   // Lokalen Tischnamen setzen
+            State.setLocalLoginPlayerName(paramPlayerName); // Lokalen Namen setzen
+            State.setLocalLoginTableName(paramTableName);   // Lokalen Tischnamen setzen
             _isAttemptingReconnect = false;
-            ViewManager.showView('loading');
+            ViewManager.toggleView('loading');
             Network.connect(paramPlayerName, paramTableName, null);
         }
         else {
             _isAttemptingReconnect = false;
-            ViewManager.showView('login');
+            ViewManager.toggleView('login');
         }
     }
 
     /**
      * Wird aufgerufen, wenn die WebSocket-Verbindung erfolgreich geöffnet wurde.
-     * @param {Event} event - Das onopen-Event des WebSockets.
+     * @param {Event} _event - Das onopen-Event des WebSockets.
      */
-    function _handleNetworkOpen(event) {
+    function _handleNetworkOpen(_event) {
         console.log("APP: Netzwerkverbindung geöffnet.");
         _isAttemptingReconnect = false; // Erfolgreich verbunden (ob Reconnect oder neu)
     }
@@ -90,24 +89,26 @@ const AppController = (() => {
     /**
      * Verarbeitet eine 'request'-Nachricht vom Server.
      * Aktualisiert den State und informiert die UI, eine Aktion vom Spieler anzufordern.
-     * @param {object} payload - Der Payload der 'request'-Nachricht.
+     *
+     * @param {{request_id: string, action: string, public_state: object, private_state: object}} payload - Der Payload der 'request'-Nachricht.
      */
     function _handleServerRequest(payload) {
         console.log("APP: Server Request empfangen:", payload.action, payload.request_id);
-        State.setGameStates(payload.public_state, payload.private_state);
+        State.setPublicState(payload.public_state)
+        State.setPrivateState(payload.private_state)
         _activeServerRequest = { id: payload.request_id, action: payload.action, originalPayload: payload };
-        ViewManager.updateViewsBasedOnState(); // Rendert aktuellen View mit neuem State
+        ViewManager.renderCurrentView(); // Rendert aktuellen View mit neuem State
 
         switch (payload.action) {
             case 'announce_grand_tichu':
                 Dialogs.showGrandTichuPrompt(payload.request_id);
                 break;
             case 'schupf':
-                ViewManager.showView('gameTable');
+                ViewManager.toggleView('gameTable');
                 CardHandler.enableSchupfMode(payload.request_id, State.getPrivateState().hand_cards);
                 break;
             case 'play':
-                ViewManager.showView('gameTable');
+                ViewManager.toggleView('gameTable');
                 GameTableView.enablePlayControls(true, payload.request_id);
                 break;
             case 'wish':
@@ -131,11 +132,11 @@ const AppController = (() => {
         const eventName = payload.event;
         const context = payload.context || {};
 
-        if (context.public_state) State.updatePublicState(context.public_state);
-        if (context.private_state) State.updatePrivateState(context.private_state);
+        if (context.public_state) State.setPublicState(context.public_state);
+        if (context.private_state) State.setPrivateState(context.private_state);
 
         const ownPlayerIndex = State.getPlayerIndex();
-        let eventBelongsToCanonicalPlayerIndex = -1; // Kanonischer Index des Spielers des Events
+        let eventBelongsToCanonicalPlayerIndex = -1; // Index des Spielers des Events
 
         if (eventName === 'player_joined' && context.private_state && typeof context.private_state.player_index === 'number') {
             eventBelongsToCanonicalPlayerIndex = context.private_state.player_index;
@@ -147,29 +148,25 @@ const AppController = (() => {
             if (context.session_id) State.setSessionId(context.session_id);
             const currentPublicState = State.getPublicState(); // Hole den gerade aktualisierten State
             if (currentPublicState && currentPublicState.player_names && currentPublicState.player_names[ownPlayerIndex]) {
-                 State.setLocalPlayerName(currentPublicState.player_names[ownPlayerIndex]); // Aktualisiere lokalen Namen
+                 State.setLocalLoginPlayerName(currentPublicState.player_names[ownPlayerIndex]);
             }
-             if (currentPublicState && currentPublicState.table_name) {
-                 State.setLocalTableName(currentPublicState.table_name); // Aktualisiere lokalen Tischnamen
+            if (currentPublicState && currentPublicState.table_name) {
+                 State.setLocalLoginTableName(currentPublicState.table_name);
             }
 
-            console.log("APP (player_joined - EIGENER): Vor View-Wechsel.");
-            if (currentPublicState && (currentPublicState.current_phase === "setup" || currentPublicState.current_phase === "init" || !currentPublicState.current_phase)) {
-                ViewManager.showView('lobby');
-            } else if (currentPublicState) {
-                ViewManager.showView('gameTable');
+            if (currentPublicState.is_running) {
+                ViewManager.toggleView('gameTable');
             } else {
-                ViewManager.showView('lobby');
+                ViewManager.toggleView('lobby');
             }
         } else if (eventName === 'player_left') {
             // Host-Index könnte sich geändert haben, wenn der Host gegangen ist.
             // Server-Doku sagt: context hat jetzt auch `host_index`.
             if (State.getPublicState() && typeof context.host_index === 'number') {
                 State.getPublicState().host_index = context.host_index;
-                 // LobbyView.render() wird durch updateViewsBasedOnState den neuen Host-Status berücksichtigen
             }
-             if (ViewManager.getCurrentViewName() === 'lobby') {
-                ViewManager.updateViewsBasedOnState(); // Lobby neu rendern
+            if (ViewManager.getCurrentViewName() === 'lobby') {
+                ViewManager.renderCurrentView(); // Lobby neu rendern
             }
         }
         else if (eventName === 'players_swapped') {
@@ -184,19 +181,16 @@ const AppController = (() => {
                     State.setPlayerIndex(context.player_index_1)
                 }
             }
-            if (ViewManager.getCurrentViewName() !== 'lobby' && ViewManager.getCurrentViewName() !== 'loading') {
-                ViewManager.showView('lobby');
-            }
         }
         else if (eventName === 'game_started' || eventName === 'round_started') { // Auch bei round_started
             _activeServerRequest = null;
             Dialogs.closeAllDialogs();
             CardHandler.clearSelectedCards();
             CardHandler.disableSchupfMode();
-            ViewManager.showView('gameTable'); // Bei round_started sind wir schon am Tisch
+            ViewManager.toggleView('gameTable'); // Bei round_started sind wir schon am Tisch
         }
 
-        ViewManager.updateViewsBasedOnState();
+        ViewManager.renderCurrentView();
         Dialogs.handleNotification(eventName, context);
         if (ViewManager.getCurrentViewName() === 'gameTable' && typeof GameTableView.handleNotification === 'function') {
             GameTableView.handleNotification(eventName, context);
@@ -204,6 +198,7 @@ const AppController = (() => {
 
         SoundManager.playNotificationSound(eventName, eventBelongsToCanonicalPlayerIndex);
 
+        // Interrupt-Logik (Basis-Event-Namen verwenden, die dann im SoundManager mit Index versehen werden)
         if (_activeServerRequest) {
             const activeRequestForPlayer = _activeServerRequest.originalPayload && _activeServerRequest.originalPayload.private_state
                 ? _activeServerRequest.originalPayload.private_state.player_index
@@ -244,7 +239,7 @@ const AppController = (() => {
         }
         _isAttemptingReconnect = false;
         State.setSessionId(null);
-        ViewManager.showView('login');
+        ViewManager.toggleView('login');
     }
 
     /**
@@ -270,9 +265,9 @@ const AppController = (() => {
         }
 
         if (event.code !== 1000) { // Wenn nicht normal vom Client beendet
-             ViewManager.showView('login');
+             ViewManager.toggleView('login');
         } else if (!wasConnected && event.code === 1000) { // Wenn initial abgelehnt
-            ViewManager.showView('login');
+            ViewManager.toggleView('login');
         }
         // Wenn Code 1000 und wasConnected, dann hat der Client `leaveGame` aufgerufen,
         // was den View schon auf Login setzt.
@@ -287,11 +282,11 @@ const AppController = (() => {
      */
     function attemptLogin(playerName, tableName) {
         console.log("APP: Login-Versuch GESTARTET für:", playerName, tableName);
-        State.setLocalPlayerName(playerName); // Lokale Namen setzen
-        State.setLocalTableName(tableName);
+        State.setLocalLoginPlayerName(playerName); // Lokale Namen setzen
+        State.setLocalLoginTableName(tableName);
         State.setSessionId(null);
         _isAttemptingReconnect = false;
-        ViewManager.showView('loading');
+        ViewManager.toggleView('loading');
         Network.connect(playerName, tableName, null);
     }
 
@@ -328,7 +323,7 @@ const AppController = (() => {
         console.log("APP: Verlasse Spiel/Tisch.");
         AppController.sendProactiveMessage('leave');
         Network.disconnect(); // Führt zu _handleNetworkClose mit Code 1000
-        ViewManager.showView('login'); // Explizit zum Login, da User Aktion
+        ViewManager.toggleView('login'); // Explizit zum Login, da User Aktion
     }
 
     return {

@@ -1,6 +1,5 @@
 import pytest
 from src.public_state import PublicState
-from src.lib.cards import parse_cards
 from src.lib.combinations import CombinationType
 
 # Fixture für einen initialisierten PublicState
@@ -34,7 +33,7 @@ def test_public_state_initialization(initial_pub_state):
     # Diese Felder könnten Properties sein:
     # assert pub.is_round_over is False
     # assert pub.is_double_victory is False
-    assert pub.game_score == [[], []]
+    assert pub.game_score == [], []
     assert pub.round_counter == 0
     assert pub.trick_counter == 0
     assert pub.current_phase == "setup" # Oder was auch immer der Default ist
@@ -84,7 +83,7 @@ def test_public_state_count_active_players(initial_pub_state):
 def test_public_state_total_score(initial_pub_state):
     """Testet die Berechnung des Gesamtspielstands."""
     pub = initial_pub_state
-    pub.game_score = [[100, -10], [90, 110]] # Punkte pro Partei für Team 20, Team 31
+    pub.game_score = [100, -10], [90, 110]  # Punkte pro Partei für Team 20, Team 31
     # Team 20 = 100 - 10 = 90
     # Team 31 = 90 + 110 = 200
     assert pub.total_score == (90, 200)
@@ -93,11 +92,11 @@ def test_public_state_is_game_over(initial_pub_state):
     """Testet die Erkennung des Spielendes."""
     pub = initial_pub_state
     assert pub.is_game_over is False
-    pub.game_score = [[500], [400]]
+    pub.game_score = [500], [400]
     assert pub.is_game_over is False
-    pub.game_score = [[500, 500], [400, 450]] # Team 20 = 1000
+    pub.game_score = [500, 500], [400, 450]  # Team 20 = 1000
     assert pub.is_game_over is True
-    pub.game_score = [[400], [1000]] # Team 31 = 1000
+    pub.game_score = [400], [1000]  # Team 31 = 1000
     assert pub.is_game_over is True
 
 def test_reset_round(initial_pub_state):
@@ -127,7 +126,7 @@ def test_reset_round(initial_pub_state):
     pub.is_round_over = True
     pub.is_double_victory = True
 
-    pub.game_score = [[60, 10], [40, 90]]
+    pub.game_score = [60, 10], [40, 90]
     pub.round_counter  = 2
     pub.trick_counter = 3
 
@@ -155,7 +154,7 @@ def test_reset_round(initial_pub_state):
     assert pub.loser_index == -1
     assert pub.is_round_over == False
     assert pub.is_double_victory == False
-    assert pub.game_score == [[60, 10], [40, 90]]  # darf nicht zurückgesetzt werden
+    assert pub.game_score == [60, 10], [40, 90]  # darf nicht zurückgesetzt werden
     assert pub.round_counter == 2  # darf nicht zurückgesetzt werden
     assert pub.trick_counter == 3  # darf nicht zurückgesetzt werden
 
@@ -166,7 +165,7 @@ def test_reset_game(initial_pub_state):
     # Zustand "verschmutzen"
     pub.table_name = "Tisch1"
     pub.player_names = ["Anton", "Bea", "Charlie", "Doris"]
-    pub.game_score = [[60, 10], [40, 90]]
+    pub.game_score = [60, 10], [40, 90]
     pub.round_counter  = 2
     pub.trick_counter = 3
 
@@ -176,7 +175,7 @@ def test_reset_game(initial_pub_state):
     # Prüfen, ob die Werte korrekt zurückgesetzt wurden
     pub.table_name = "Tisch1"  # darf nicht zurückgesetzt werden
     pub.player_names = ["Anton", "Bea", "Charlie", "Doris"]  # darf nicht zurückgesetzt werden
-    assert pub.game_score == [[], []]
+    assert pub.game_score == [], []
     assert pub.round_counter == 0
     assert pub.trick_counter == 0
 

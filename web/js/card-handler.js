@@ -1,7 +1,6 @@
 // js/card-handler.js
 
 /**
- * @module CardHandler
  * Verantwortlich für die Interaktionslogik mit den Karten des Spielers,
  * wie Kartenauswahl für das Spielen und das Schupfen.
  */

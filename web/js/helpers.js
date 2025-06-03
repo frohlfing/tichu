@@ -1,7 +1,4 @@
-// js/helpers.js
-
 /**
- * @module Helpers
  * Enthält allgemeine Hilfsfunktionen für die Tichu-Anwendung.
  */
 const Helpers = (() => {

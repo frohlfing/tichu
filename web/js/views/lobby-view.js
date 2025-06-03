@@ -1,60 +1,87 @@
-// js/views/lobby-view.js
-
 /**
- * @module LobbyView
- * Verwaltet die Anzeige und Interaktion des Lobby-Bildschirms.
+ * Anzeige und Interaktion des Lobby-Bildschirms.
+ *
+ * @type {View}
  */
 const LobbyView = (() => {
-    /** @const {HTMLElement} _viewElement - Das DOM-Element des Lobby-Views. */
-    const _viewElement = document.getElementById('lobby-screen');
-    /** @const {HTMLElement} _lobbyTableNameElement - Zeigt den Namen des Tisches an. */
+    /**
+     * Der Container des Lobby-Bildschirms.
+     *
+     * @type {HTMLElement}
+     */
+    const _viewContainer = document.getElementById('lobby-screen');
+
+    /**
+     * Zeigt den Namen des Tisches an.
+     *
+     * @type {HTMLElement}
+     */
     const _lobbyTableNameElement = document.getElementById('lobby-table-name');
-    /** @const {HTMLUListElement} _playerListElement - Die Liste der Spieler am Tisch. */
+
+    /**
+     * Die Liste der Spieler am Tisch.
+     *
+     * @type {HTMLUListElement}
+     */
     const _playerListElement = document.getElementById('lobby-player-list');
-    /** @const {HTMLElement} _teamAssignmentContainer - Container für Host-Aktionen. */
+
+    /**
+     * Container für Host-Aktionen.
+     *
+     * @type {HTMLElement}
+     */
     const _teamAssignmentContainer = document.getElementById('team-assignment-container');
-    /** @const {HTMLButtonElement} _startGameButton - Button zum Starten des Spiels (nur für Host). */
+
+    /**
+     * Button zum Starten des Spiels (nur für Host).
+     *
+     * @type {HTMLButtonElement}
+     */
     const _startGameButton = document.getElementById('start-game-button');
-    /** @const {HTMLButtonElement} _leaveLobbyButton - Button zum Verlassen der Lobby. */
+
+    /**
+     * Button zum Verlassen der Lobby.
+     *
+     * @type {HTMLButtonElement}
+     */
     const _leaveLobbyButton = document.getElementById('leave-lobby-button');
 
     /**
-     * Initialisiert das LobbyView-Modul.
-     * Setzt Event-Listener für die Buttons.
+     * Initialisiert den Lobby-Bildschirm.
      */
     function init() {
-        console.log("LOBBYVIEW: Initialisiere LobbyView...");
-        _startGameButton.addEventListener('click', _handleStartGame);
-        _leaveLobbyButton.addEventListener('click', _handleLeaveLobby);
+        _startGameButton.addEventListener('click', _startGameButton_click);
+        _leaveLobbyButton.addEventListener('click', _leaveLobbyButton_click);
     }
 
     /**
      * Event-Handler für den "Spiel starten"-Button.
      */
-    function _handleStartGame() {
+    function _startGameButton_click() {
         SoundManager.playSound('buttonClick');
-        // Sendet eine 'lobby_action' Nachricht an den Server.
-        // Der Server validiert, ob der Spieler der Host ist.
-        AppController.sendProactiveMessage('lobby_action', {action: 'start_game'});
+        AppController.sendProactiveMessage('start_game');
     }
 
     /**
      * Event-Handler für den "Beenden"-Button.
      */
-    function _handleLeaveLobby() {
+    function _leaveLobbyButton_click() {
         SoundManager.playSound('buttonClick');
         AppController.leaveGame();
     }
 
     /**
-     * Sendet eine Aktion zum Verschieben eines Spielers an den Server.
-     * @param {number} playerIndex - Der Index des zu verschiebenden Spielers.
-     * @param {number} direction - +1 für runter, -1 für hoch.
+     * Sendet eine Aktion zum Vertauschen zweier Spieler an den Server.
+     *
+     * @param {number} playerIndex - Der Index des zu tauschenden Spielers.
+     * @param {number} direction - +1 um mit dem nächsten zu tauschen, -1 um mit dem vorherigen.
      */
-    function _handleMovePlayer(playerIndex, direction) {
+    function _upOrDownButton_click(playerIndex, direction) {
         SoundManager.playSound('buttonClick');
         const publicState = State.getPublicState();
-        if (!publicState || !publicState.player_names) return;
+        if (!publicState || !publicState.player_names || publicState.player_names.length !== 4) {
+            return;
+        }
 
         let playerIndex2 = playerIndex + direction
 
@@ -75,28 +102,30 @@ const LobbyView = (() => {
 
     /**
      * Rendert den Lobby-View basierend auf dem aktuellen Spielzustand.
-     * Zeigt den Tischnamen, die Spielerliste und Host-spezifische Steuerelemente an.
      */
     function render() {
         // console.log("LOBBYVIEW: Rendere LobbyView.");
         const publicState = State.getPublicState();
-        const localPlayerCanonicalIndex = State.getPlayerIndex(); // Kanonischer Index des eigenen Spielers
+        const localPlayerCanonicalIndex = State.getPlayerIndex();
 
         if (!publicState) {
             _lobbyTableNameElement.textContent = '...?';
             _playerListElement.innerHTML = '<li>Lade Spieler...</li>';
             _teamAssignmentContainer.classList.add('hidden');
+            _startGameButton.classList.add('hidden'); // Sicherstellen, dass Buttons versteckt sind
             return;
         }
 
-        _lobbyTableNameElement.textContent = State.getTableName() || publicState.table_name || 'Unbekannter Tisch';
+        _lobbyTableNameElement.textContent = State.getTableName(); // Nimmt Wert aus State
         _playerListElement.innerHTML = '';
 
-        const isHost = State.getIsHost();
-        _teamAssignmentContainer.classList.toggle('hidden', !isHost); // Team Assignment nur für Host
+        const isHost = State.isHost();
+        _teamAssignmentContainer.classList.toggle('hidden', !isHost);
+        _startGameButton.classList.toggle('hidden', !isHost);
 
         // Zeige Spieler in der aktuellen Reihenfolge an
         if (publicState.player_names && publicState.player_names.length === 4) {
+            // Schleife über die relativen Sitzplätze (0=Du, 1=Rechts, 2=Partner, 3=Links)
             for (let relativeIndex=0; relativeIndex <= 3; relativeIndex++) {
                 let canonicalIndex = Helpers.getCanonicalPlayerIndex(relativeIndex);
                 let name = publicState.player_names[canonicalIndex];
@@ -110,7 +139,7 @@ const LobbyView = (() => {
                 else if (canonicalIndex === publicState.host_index) {
                     displayName += ' (Host)';
                 }
-                // Player Name Span
+
                 const nameSpan = document.createElement('span');
                 nameSpan.textContent = displayName;
                 li.appendChild(nameSpan);
@@ -124,14 +153,14 @@ const LobbyView = (() => {
                     upButton.innerHTML = '▲'; // Pfeil hoch
                     upButton.title = 'Nach oben verschieben';
                     upButton.disabled = canonicalIndex === 1; // Kann nicht vor den ersten Nicht-Host geschoben werden
-                    upButton.onclick = () => _handleMovePlayer(canonicalIndex, -1);
+                    upButton.onclick = () => _upOrDownButton_click(canonicalIndex, -1);
                     controlsDiv.appendChild(upButton);
 
                     const downButton = document.createElement('button');
                     downButton.innerHTML = '▼'; // Pfeil runter
                     downButton.title = 'Nach unten verschieben';
                     downButton.disabled = canonicalIndex === publicState.player_names.length - 1;
-                    downButton.onclick = () => _handleMovePlayer(canonicalIndex, 1);
+                    downButton.onclick = () => _upOrDownButton_click(canonicalIndex, 1);
                     controlsDiv.appendChild(downButton);
                     li.appendChild(controlsDiv);
                 }
@@ -139,30 +168,39 @@ const LobbyView = (() => {
             }
         }
         else {
-            _playerListElement.innerHTML = '<li>Noch keine Spieler am Tisch.</li>';
+            _playerListElement.innerHTML = '<li>Warte auf Spieler...</li>';
         }
     }
 
     /**
-     * Wird aufgerufen, wenn der View angezeigt wird.
+     * Rendert die Lobby und zeigt sie anschließend an.
      */
     function show() {
-        // console.log("LOBBYVIEW: LobbyView wird angezeigt.");
-        // Beim Anzeigen immer neu rendern, um aktuelle Daten zu haben
         render();
+        _viewContainer.classList.add('active');
     }
 
     /**
-     * Wird aufgerufen, wenn der View ausgeblendet wird.
+     * Blendet die Lobby aus.
      */
     function hide() {
-        // console.log("LOBBYVIEW: LobbyView wird ausgeblendet.");
+        _viewContainer.classList.remove('active');
+    }
+
+    /**
+     * Ermittelt, ob die Lobby gerade angezeigt wird.
+     *
+     * @returns {boolean}
+     */
+    function isVisible() {
+        return _viewContainer.classList.contains('active')
     }
 
     return {
         init,
         render,
         show,
-        hide
+        hide,
+        isVisible
     };
 })();
