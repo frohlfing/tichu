@@ -1,9 +1,7 @@
 // js/app-controller.js
 
 /**
- * Orchestriert die gesamte Tichu-Frontend-Anwendung.
- * Verantwortlich für die Initialisierung von Modulen, den Nachrichtenfluss
- * zwischen Backend und UI sowie die Steuerung der Views.
+ * Orchestriert die Anwendung.
  */
 const AppController = (() => {
     let _activeServerRequest = null; // Die aktuelle Server-Anfrage, auf die eine Antwort erwartet wird.
@@ -88,9 +86,10 @@ const AppController = (() => {
 
     /**
      * Verarbeitet eine 'request'-Nachricht vom Server.
+     *
      * Aktualisiert den State und informiert die UI, eine Aktion vom Spieler anzufordern.
      *
-     * @param {{request_id: string, action: string, public_state: object, private_state: object}} payload - Der Payload der 'request'-Nachricht.
+     * @param {{request_id: string, action: string, public_state: PublicState, private_state: PrivateState}} payload - Der Payload der 'request'-Nachricht.
      */
     function _handleServerRequest(payload) {
         console.log("APP: Server Request empfangen:", payload.action, payload.request_id);
@@ -124,7 +123,9 @@ const AppController = (() => {
 
     /**
      * Verarbeitet eine 'notification'-Nachricht vom Server.
+     *
      * Aktualisiert den State und die UI entsprechend dem Ereignis.
+     *
      * @param {object} payload - Der Payload der 'notification'-Nachricht. Enthält `event` und `context`.
      */
     function _handleServerNotification(payload) {
@@ -226,6 +227,47 @@ const AppController = (() => {
                 }
                 Dialogs.closeDialogByRequestId(_activeServerRequest.id);
                 _activeServerRequest = null;
+            }
+        }
+    }
+
+    /**
+     * Verarbeitet eine 'error'-Nachricht vom Server.
+     *
+     * Zeigt dem Benutzer eine Fehlermeldung an und behandelt spezifische Fehlercodes.
+     *
+     * @param {object} payload - Der Payload der 'error'-Nachricht (enthält message, code, context).
+     */
+    function _handleServerError(payload) {
+        console.error(`APP: Server Fehler ${payload.code}: ${payload.message}`, payload.context || {});
+        Dialogs.showErrorToast(`Fehler ${payload.code}: ${payload.message}`);
+
+        // Spezifische Fehlerbehandlung für Session-Probleme
+        if (payload.code === ErrorCode.SESSION_EXPIRED || payload.code === ErrorCode.SESSION_NOT_FOUND) {
+            State.setSessionId(null); // Session ist ungültig oder nicht gefunden
+            Network.disconnect(); // Aktive Verbindung trennen, falls noch vorhanden
+            ViewManager.toggleView('login'); // Zurück zum Login
+        }
+
+        // Wenn der Fehler sich auf einen aktiven Request bezieht, diesen ggf. behandeln
+        const requestIdOnError = payload.context ? payload.context.request_id : null;
+        if (_activeServerRequest && _activeServerRequest.id === requestIdOnError) {
+            console.log("APP: Aktiver Request ist aufgrund eines Server-Fehlers fehlgeschlagen:", _activeServerRequest.id, payload.code);
+            // Hier könnte man entscheiden, ob der User die Aktion wiederholen darf.
+            // Für kritische Fehler oder wenn der Request veraltet ist, sollte er zurückgesetzt werden.
+            if (payload.code === ErrorCode.REQUEST_OBSOLETE || payload.code === ErrorCode.INVALID_ACTION) {
+                if (_activeServerRequest.action === 'play') GameTableView.enablePlayControls(false); // Aktion nicht mehr gültig
+                if (_activeServerRequest.action === 'schupf') CardHandler.disableSchupfMode();
+                Dialogs.closeDialogByRequestId(_activeServerRequest.id);
+                _activeServerRequest = null;
+            } else {
+                // Bei anderen Fehlern könnte man dem User erlauben, es erneut zu versuchen,
+                // indem _activeServerRequest nicht genullt wird und die UI-Controls aktiv bleiben.
+                // Das hängt von der gewünschten User Experience ab.
+                // Fürs Erste: Bei den meisten Fehlern, die einen Request betreffen, die UI nicht blockieren.
+                 if (_activeServerRequest.action === 'play') GameTableView.enablePlayControls(true, _activeServerRequest.id);
+                 if (_activeServerRequest.action === 'schupf') CardHandler.enableSchupfMode(_activeServerRequest.id, State.getPrivateState().hand_cards);
+
             }
         }
     }

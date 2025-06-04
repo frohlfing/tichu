@@ -41,8 +41,8 @@
 8. [Frontend (zweite Ausbaustufe)](#8-frontend-zweite-ausbaustufe)
    1.  [Allgemeine Funktionsweise](#81-allgemeine-funktionsweise)
    2.  [Verzeichnisstruktur](#82-verzeichnisstruktur)
-   2.  [Verwendete Ressourcen für das Frontend](#83-verwendete-ressourcen-für-das-frontend)
-   2.  [Verantwortlichkeiten der JavaScript-Module](#84-verantwortlichkeiten-der-javascript-module)
+   3.  [Ressourcen](#83-ressourcen)
+   4.  [Verantwortlichkeiten der JavaScript-Module](#84-verantwortlichkeiten-der-javascript-module)
 
 **ANHANG**
 
@@ -57,7 +57,7 @@ A3. [Versionsnummer](#a3-versionsnummer)
     1. [Release auf Github erstellen](#a31-release-auf-github-erstellen)
     
 A4. [Styleguide](#a4-styleguide)
-    1. [Docstrings](#a41-docstrings)
+    1. [Code-Dokumentation](#a41-code-dokumentation)
     2. [Namenskonvention](#a42-namenskonvention)
     3. [Type-Hints](#a43-type-hints)
     
@@ -125,8 +125,8 @@ Diese Punkte stammen aus dem offiziellen Regelwerk.
 *   **Programmiersprache:** Python (Version 3.11 oder höher)
 *   **Kernbibliotheken (Python Standard Library):** `asyncio`, `dataclasses`, `multiprocessing`.
 *   **Testing:** `pytest`, `coverage`.
-*   **Server: (im Aufbau)** `aiohttp`.
-*   **Frontend (geplant):** HTML, CSS, JavaScript.
+*   **Server:** `aiohttp`.
+*   **Frontend:** HTML, CSS, Vanilla-JavaScript.
 
 ### 3.2 Klassenhierarchie
 
@@ -458,6 +458,33 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
 7) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
 8) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
 
+### 8.2 Architektur
+
+*   Als Architektur für das Web-Frontend wurde die **Event-Driven Architecture** (EDA) gewählt.
+*   Es wird nur Vanilla-JS verwendet (kein ECMAScript/ES6-Modul, kein TypoScript, keine Frameworks).
+*   Die Module werden durch **Immediately Invoked Function Expression** (IIFE, selbstaufrufende anonyme Funktionen) erzeugt. 
+
+#### Architekturkomponenten
+
+*   `ErrorCode`: Fehlercodes (definiert in `constants.js`).
+*   `Config`: Konfigurationsvariablen (definiert in `constants.js`).
+*   `Helpers`: Enthält allgemeine Hilfsfunktionen.
+*   `EventBus`: Zentrale Nachrichtenvermittlung zwischen den Komponenten.
+*   `SoundManager`: Verwaltet das Laden und Abspielen von Soundeffekten.
+*   `State`: Datencontainer für den Spielzustand.
+*   `User`: Datencontainer für die Benutzerdaten.
+*   `Network`: Verantwortlich für die WebSocket-Verbindung und Kommunikation mit dem Server.
+*   `CardHandler`: Verantwortlich für die Interaktionslogik mit den Karten.
+*   `Dialogs`: Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
+*   `LoadingView`: Anzeige und Interaktion der Ladeanzeige. 
+*   `LoginView`: Anzeige und Interaktion des Login-Bildschirms. 
+*   `LobbyView`: Anzeige und Interaktion der Lobby. 
+*   `GameTableView`: Anzeige und Interaktion des Spieltisch-Bildschirms. 
+*   `ViewManager`: Schaltet zwischen den Views der Anwendung um.
+*   `AppController`: Orchestriert die Anwendung.
+
+`main.js` ist der Haupt-Einstiegspunkt der Tichu-Anwendung.
+
 ### 8.2 Verzeichnisstruktur
 
 ```
@@ -475,7 +502,7 @@ web/
 │
 ```
 
-### 8.3 Verwendete Ressourcen für das Frontend
+### 8.3 Ressourcen
 
 #### Images
 
@@ -486,32 +513,34 @@ web/
 *  web/images/cards
 	https://github.com/Tichuana-Tichu/tichuana-tichu/tree/develop/src/ch/tichuana/tichu/client/resources/images/cards
 	https://github.com/pgaref/Tichu/blob/master/Tichu_CardGame/src/tichu/images/back.jpg
-	Keinen Lizenz-Hinweis!
+	Auf Anfrage für nicht kommerziellen Gebrauch von [Fata Morgana Spiele, Bern](www.fatamorgana.ch) genehmigt.
 
-*  web/images/tichu.png, web/images/icon.png, web/images/bootscreen.png (web/images/dragon)
+*  web/images/background.png, web/images/log.png, web/images/icon.png (web/images/dragon)
 	https://pixabay.com/de/vectors/drachen-eidechse-monster-chinesisch-149393/
 	Kostenlos, Zusammenfassung der Inhaltslizenz: https://pixabay.com/de/service/license-summary/
 
-*  web/images/background.png
+*  web/images/table.png
 	Vorlage:
 	https://github.com/BananaHolograma/Veneno/blob/main/assets/background/poker_table_green.jpg
 	LICENSE is MIT so you can use the code from this project for whatever you want, even commercially
 
-*  web/images/wish.png
+*  web/images/tichu-indicator.png 
+	Vorlage: 
+	https://pixabay.com/de/vectors/drachen-eidechse-monster-chinesisch-149393/
+	Kostenlos, Zusammenfassung der Inhaltslizenz: https://pixabay.com/de/service/license-summary/
+* 
+*  web/images/wish-indicator.png
 	Vorlage:
 	https://github.com/Tichuana-Tichu/tichuana-tichu/tree/develop/src/ch/tichuana/tichu/client/resources/images/cards/mahjong.png
 	Keine Lizenz-Hinweis!
+
+*  web/images/turn-indicator.png
+	Selbst gemalt
 
 *  web/images/spinner.png
 	Vorlage: 
 	https://godotengine.org/asset-library/asset/3350
 	Kann frei verwendet werden
-	
-*  web/images/button
-	Selbst gemalt
-	
-*  web/images/marker.png
-	Selbst gemalt
 
 #### Sounds
 
@@ -541,43 +570,7 @@ web/fonts/architect-s-daughter
 
 ### 8.4 Verantwortlichkeiten der JavaScript-Module
 
-#### Initialisierungsfluss:
-*   main.js (DOMContentLoaded) ruft AppController.init() auf.
-*   AppController.init() initialisiert alle anderen relevanten Module (State, SoundManager, ViewManager, Dialogs, CardHandler).
-*   AppController setzt die Callbacks für das Network-Modul.
-*   AppController prüft auf eine vorhandene Session oder URL-Parameter und versucht entweder einen Reconnect oder zeigt den LoginView.
-
-#### Nachrichtenfluss:
-*   UI-Aktion -> AppController -> Network.send().
-*   Network empfängt -> AppController._handleNetworkMessage -> parst Typ ->
-    *   _handleServerRequest: State aktualisieren, _activeServerRequest setzen, UI-Modul (z.B. Dialogs oder GameTableView) informieren, die Aktion zu behandeln.
-    *   _handleServerNotification: State aktualisieren, ViewManager/Dialogs/GameTableView informieren, UI zu aktualisieren.
-    *   _handleServerError: UI informieren.
-
-#### State Management: 
-*   Der AppController ist dafür verantwortlich, das State-Modul nach Nachrichten zu aktualisieren und dann die Views zu benachrichtigen (über ViewManager.updateViewsBasedOnState() oder direktere Aufrufe an View-Module).
-
-#### ViewManager: 
-
-Kennt die DOM-Elemente der Haupt-Views und die zugehörigen JS-Module. showView blendet um und ruft render des Ziel-Views auf.
-
-#### LoginView: 
-
-Hat eigene DOM-Referenzen, einen Submit-Handler und eine render-Methode (die hier noch nicht viel tut, aber wichtig wird, um z.B. Fehlermeldungen im View anzuzeigen oder Felder vorzubelegen).
-
-#### Dialogs: 
-
-Zentralisiert die Logik für alle Pop-up-Dialoge. Jeder Dialog hat eigene Handler. handleNotification ist wichtig, um z.B. round_end Dialoge automatisch zu zeigen.
-
-#### CardHandler: 
-
-Kümmert sich um die Logik der Kartenauswahl. Der Schupf-Modus ist hier schon etwas detaillierter angedacht. GameTableView wird CardHandler.handleCardClick aufrufen, wenn eine Karte geklickt wird.
-
-#### Abhängigkeiten:
-*   AppController kennt die meisten anderen Kern- und UI-Module.
-*   Network, State, Helpers, SoundManager sind eher eigenständig und werden vom AppController verwendet.
-*   View-Module (LoginView etc., die vom ViewManager verwaltet werden) rufen Methoden des AppController auf, um Aktionen auszulösen.
-*   Alle Module können auf Helpers und State (für Getter) zugreifen.
+todo
 
 # Anhang 
 
@@ -670,14 +663,21 @@ git push --tags
 
 ## A4. Styleguide
 
-Der Code folgt den offiziellen Python-Styleguide-Essay [PEP 8](https://peps.python.org/pep-0008/) und Docstring-Konventionen [PEP 257](https://peps.python.org/pep-0257/).
+Der Code im Backend folgt den offiziellen Python-Styleguide-Essay [PEP 8](https://peps.python.org/pep-0008/).
 
-### A4.1 Docstrings
+Der Code im Web-Frontend folgt den [JS Standard Style Guide](https://www.w3schools.com/js/js_conventions.asp), mit folgenden Ausnahmen:
+*   Immer geschweifte Klammern für `if`-, `for`- und `while`-Statements
+*   Zeilenumbruch bei `else`
+*   Max. eine Leerzeile
 
-Das Format für die Docstrings ist `reStructuredText`.
+### A4.1 Code-Dokumentation
+
+#### Backend
+
+Das Format für die [Docstrings](https://peps.python.org/pep-0257/) ist `reStructuredText`.
 
 *   Jedes Modul (py-Datei) hat eine kurze Datei-Header-Beschreibung (ein oder zwei Sätze, die beschreiben, was das Modul definiert).
-    *   Öffentliche Variablen und Konstanten des Moduls werden mit `:??? <name>: <Beschreibung>` beschrieben.  TODO: Wie ist das Schlüsselwort hierfür? Wird für `config.py` benötigt!
+    *   Öffentliche Variablen und Konstanten des Moduls werden beschrieben.
 *   Jede Klasse hat eine kurze Beschreibung (ein oder zwei Sätze, was die Klasse repräsentiert bzw. tut). 
     *   Öffentliche Instanzvariablen werden mit `:ivar <name>: <Beschreibung>` aufgelistet.
     *   Öffentliche Klassenkonstanten werden mit `:cvar <name>: <Beschreibung>` aufgelistet.
@@ -685,6 +685,15 @@ Das Format für die Docstrings ist `reStructuredText`.
     * Die Parameter werden mit `:param <name>: <Beschreibung>` aufgelistet. Optionale Parameter werden mit `:param <name>: (Optional) <Beschreibung>` gekennzeichnet.  
     * Der Rückgabewert wird mit `:result: <Beschreibung>` dokumentiert. Rückgabe `None` wird nicht erwähnt.
     * Mögliche Exceptions werden mit `:raises <ErrorClass> <Beschreibung>` aufgelistet.
+
+#### Web-Frontend
+
+Zur Dokumentation von JavaScript wird [JSDoc](https://jsdoc.app/) angewendet.
+
+*   Jedes Modul (js-Datei) hat eine kurze Datei-Header-Beschreibung (ein oder zwei Sätze, die beschreiben, was das Modul definiert).
+*   Jedes öffentliche Objekt (inkl. Variable, Konstante und Namensraum) wird beschrieben und mit `@type` der Typ angegeben.
+*   Jede Funktion wird beschrieben, dessen Parameter mit `@param` und Rückgabewert mit `@returns` angegeben
+*   Für ein Type-Alias wird `@typedef` und `@property` verwendet. 
 
 ### A4.2 Namenskonvention
 
@@ -718,7 +727,7 @@ Aufzählungen (Enum) sind singular (`ErrorCode`, nicht `ErrorCodes`)
 
 ### A4.3 Type-Hints
 
-Es werden ausgiebig Type-Hints verwendet, insbesondere bei der Funktion-Signatur und bei Klassenvariablen.
+Es werden sowohl im Backend als auch im Web-Frontend ausgiebig Type-Hints verwendet, insbesondere bei der Funktion-Signatur und bei Klassenvariablen.
 
 ## A5. Glossar
 

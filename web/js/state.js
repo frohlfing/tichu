@@ -104,7 +104,7 @@ const CombinationType = {
  */
 
 /**
- * Verwaltet den clientseitigen Spielzustand. Dient als reiner Datencontainer.
+ * Datencontainer für den Spielzustand.
  */
 const State = (() => {
 

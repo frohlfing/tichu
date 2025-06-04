@@ -12,8 +12,7 @@
  */
 
 /**
- * Verantwortlich für das Verwalten und Umschalten der Haupt-Views der Anwendung (Login, Lobby, Spieltisch).
- * Ruft die Render-Methoden der jeweiligen Views auf und reagiert auf Zustandsänderungen.
+ * Schaltet zwischen den Views der Anwendung um.
  */
 const ViewManager = (() => {
     /**

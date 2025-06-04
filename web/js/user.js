@@ -1,5 +1,5 @@
 /**
- * Verwaltet die Benutzerdaten. Dient als reiner Datencontainer.
+ * Datencontainer für die Benutzerdaten.
  */
 const User = (() => {
     /**

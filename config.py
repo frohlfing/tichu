@@ -61,48 +61,86 @@ def str_to_loglevel(env_value: str) -> int:
     return log_levels.get(env_value.upper(), logging.NOTSET)
 
 
-#Versionsnummer
-# 1. Ziffer: Major Release - vollständige Neuentwicklung; nicht abwärtskompatibel
-# 2. Ziffer: Minor Release - wird erhöht, wenn der Funktionsempfang geändert wurde
-# 3. Ziffer: Patch Level - wird erhöht bei Fehlerbereinigung
 VERSION = '0.0.0'
+"""
+Versionsnummer:
+ 1. Ziffer: Major Release - vollständige Neuentwicklung; nicht abwärtskompatibel.
+ 2. Ziffer: Minor Release - wird erhöht, wenn der Funktionsempfang geändert wurde.
+ 3. Ziffer: Patch Level - wird erhöht bei Fehlerbereinigung.
+"""
 
-# asyncio im Debug-Mode starten
 DEBUG = _to_bool(getenv("DEBUG"))
+"""
+asyncio im Debug-Mode starten.
+"""
 
-# Log Level und maximale Anzahl Log-Dateien (pro Tag wird eine neue Datei angelegt; ältere Dateien werden automatisch gelöscht)
 LOG_LEVEL = str_to_loglevel(getenv("LOG_LEVEL", "WARNING"))
+"""
+Log Level .
+"""
+
 LOG_COUNT = int(getenv("LOG_COUNT", 5))
+"""
+Maximale Anzahl Log-Dateien (pro Tag wird eine neue Datei angelegt; ältere Dateien werden automatisch gelöscht).
+"""
 
-# Ordner
 BASE_PATH = getenv("BASE_PATH", dirname(__file__))
+"""
+Projektverzeichnis.
+"""
+
 DATA_PATH = getenv("DATA_PATH", f'{BASE_PATH}/data')
+"""
+Datenverzeichnis.
+"""
 
-# WebSocket-Host und Port
 HOST = getenv("HOST", "localhost")
+"""
+WebSocket-Host.
+"""
+
 PORT = int(getenv("PORT", 8765))
+"""
+WebSocket-Port.
+"""
 
-# Wer das nicht kennt, darf nicht mitspielen
 SECRET_KEY = getenv("SECRET_KEY", "secret")
+"""
+Wer das nicht kennt, darf nicht mitspielen.
+"""
 
-# Wartezeit nach einem Verbindungsabbruch bis zum Rauswurf in Sekunden
 KICK_OUT_TIME = int(getenv("KICK_OUT_TIME", 15))
+"""
+Wartezeit nach einem Verbindungsabbruch bis zum Rauswurf in Sekunden.
+"""
 
-# Maximale Wartezeit für Anfragen an den Client in Sekunden (0 == unbegrenzt)
 DEFAULT_REQUEST_TIMEOUT = 0
+"""
+Maximale Wartezeit für Anfragen an den Client in Sekunden (0 == unbegrenzt).
+"""
 
-# Anzahl Prozesse für die Arena
 ARENA_WORKER = int(getenv("ARENA_WORKER", 1))
+"""
+Anzahl Prozesse für die Arena.
+"""
 
-# gewünschte Gewinnquote WIN / (WIN + LOST)
-# wenn erreicht, bricht die Arena den Wettkampf ab (sofern early_stopping gesetzt ist)
 ARENA_WIN_RATE = 0.6
+"""
+Gewünschte Gewinnquote WIN / (WIN + LOST).
+Wenn erreicht, bricht die Arena den Wettkampf ab (sofern early_stopping gesetzt ist).
+"""
 
-# Denkzeit des Agenten (von/bis) in Sekunden
 AGENT_THINKING_TIME = _to_array(getenv("AGENT_THINKING_TIME", [0.5, 3.0]), lambda item: float(item))
+"""
+Denkzeit des Agenten (von/bis) in Sekunden.
+"""
 
-# Maximale Anzahl mögliche Partitionen, die pro Hand berechnet werden
 PARTITIONS_MAXLEN = 2000
+"""
+Maximale Anzahl mögliche Partitionen, die pro Hand berechnet werden.
+"""
 
-# Mindestwert für die Güte bei der Tichu-Ansage (kleines, großes)
 HEURISTIC_TICHU_QUALITY = [0.6, 0.7]
+"""
+Mindestwert für die Güte bei der Tichu-Ansage (kleines, großes).
+"""

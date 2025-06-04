@@ -50,39 +50,6 @@ Zu sehen sind dann alle bisher angemeldeten Spieler/Agenten am Tisch. Wenn der S
 die Reihenfolge der Spieler/Agenten verändern, um so die Teams bilden zu können. Mit Klick auf Start-Button
 wird die Lobby ausgeblendet und der Spieltisch angezeigt. Die Partie beginnt.
 
-Verwende docstrings, um alle Module, Funktionen, Variablen und Konstanten zu dokumentieren.
-
-Organisiere den Code modular. Z.B. für jede View ein Modul (kümmert sich um das Rendern und Verwalten zugehöriger UI-Interaktionen).
-Und ein Datenmodul zur Verwaltung des Spielzustandes.
-Schlage mir erst verschiedene Konzepte/Architekturen vor, bevor du sie im Detail umsetzt.
-
---------------------------
-
-Hier sind einige Konzepte/Architekturen, die wir für die Modularisierung unseres Tichu-Frontends in Betracht ziehen könnten.
-Wir halten uns dabei an "Vanilla JS ohne ES6-Module", was bedeutet, dass wir oft auf
-IIFEs (Immediately Invoked Function Expressions) und Namespacing setzen werden, um Kapselung und Organisation zu erreichen.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ### 8.2 Verantwortlichkeiten der JavaScript-Module
 
