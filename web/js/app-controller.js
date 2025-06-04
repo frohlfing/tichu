@@ -25,8 +25,12 @@ const AppController = (() => {
         Network.setOnError(_handleNetworkError);
         Network.setOnClose(_handleNetworkClose);
 
+        // für TESTPHASE direkt zum Spieltisch springen!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ViewManager.toggleView("gameTable");
+        return
+
         // Logik für initialen Login oder Reconnect
-        const sessionId = State.getSessionId();
+        const sessionId = User.getSessionId();
         const urlParams = new URLSearchParams(window.location.search);
         const paramPlayerName = urlParams.get('player_name');
         const paramTableName = urlParams.get('table_name');
@@ -39,9 +43,9 @@ const AppController = (() => {
         }
         else if (paramPlayerName && paramTableName) {
             console.log('APP: Login mit URL-Parametern:', paramPlayerName, paramTableName);
-            State.setSessionId(null); // Alte Session für expliziten URL-Login löschen
-            State.setLocalLoginPlayerName(paramPlayerName); // Lokalen Namen setzen
-            State.setLocalLoginTableName(paramTableName);   // Lokalen Tischnamen setzen
+            User.setSessionId(null); // Alte Session für expliziten URL-Login löschen
+            User.setPlayerName(paramPlayerName); // Lokalen Namen setzen
+            User.setTableName(paramTableName);   // Lokalen Tischnamen setzen
             _isAttemptingReconnect = false;
             ViewManager.toggleView('loading');
             Network.connect(paramPlayerName, paramTableName, null);
@@ -146,13 +150,13 @@ const AppController = (() => {
         }
 
         if (eventName === 'player_joined' && eventBelongsToCanonicalPlayerIndex === ownPlayerIndex && ownPlayerIndex !== -1) {
-            if (context.session_id) State.setSessionId(context.session_id);
+            if (context.session_id) User.setSessionId(context.session_id);
             const currentPublicState = State.getPublicState(); // Hole den gerade aktualisierten State
             if (currentPublicState && currentPublicState.player_names && currentPublicState.player_names[ownPlayerIndex]) {
-                 State.setLocalLoginPlayerName(currentPublicState.player_names[ownPlayerIndex]);
+                 //State.setPlayerName(currentPublicState.player_names[ownPlayerIndex]);
             }
             if (currentPublicState && currentPublicState.table_name) {
-                 State.setLocalLoginTableName(currentPublicState.table_name);
+                 //State.setTableName(currentPublicState.table_name);
             }
 
             if (currentPublicState.is_running) {
@@ -244,7 +248,7 @@ const AppController = (() => {
 
         // Spezifische Fehlerbehandlung für Session-Probleme
         if (payload.code === ErrorCode.SESSION_EXPIRED || payload.code === ErrorCode.SESSION_NOT_FOUND) {
-            State.setSessionId(null); // Session ist ungültig oder nicht gefunden
+            User.setSessionId(null); // Session ist ungültig oder nicht gefunden
             Network.disconnect(); // Aktive Verbindung trennen, falls noch vorhanden
             ViewManager.toggleView('login'); // Zurück zum Login
         }
@@ -280,7 +284,7 @@ const AppController = (() => {
             console.log("APP: Automatischer Reconnect fehlgeschlagen (Netzwerkfehler).");
         }
         _isAttemptingReconnect = false;
-        State.setSessionId(null);
+        User.setSessionId(null);
         ViewManager.toggleView('login');
     }
 
@@ -297,13 +301,13 @@ const AppController = (() => {
 
         if (event.code === 1008) { // Policy Violation
             console.log("APP: Verbindung wegen Policy Violation geschlossen (Code 1008).");
-            State.setSessionId(null);
+            User.setSessionId(null);
             Dialogs.showErrorToast("Sitzung ungültig oder abgelaufen. Bitte neu anmelden.");
         } else if (wasConnected && event.code !== 1000 && !wasReconnectAttempt) {
             Dialogs.showErrorToast("Verbindung zum Server verloren.");
         } else if (wasReconnectAttempt && event.code !== 1000 && event.code !== 1008) {
             console.log("APP: Automatischer Reconnect fehlgeschlagen (Verbindung geschlossen).");
-            State.setSessionId(null);
+            User.setSessionId(null);
         }
 
         if (event.code !== 1000) { // Wenn nicht normal vom Client beendet
@@ -324,9 +328,9 @@ const AppController = (() => {
      */
     function attemptLogin(playerName, tableName) {
         console.log("APP: Login-Versuch GESTARTET für:", playerName, tableName);
-        State.setLocalLoginPlayerName(playerName); // Lokale Namen setzen
-        State.setLocalLoginTableName(tableName);
-        State.setSessionId(null);
+        User.setPlayerName(playerName); // Lokale Namen setzen
+        User.setTableName(tableName);
+        User.setSessionId(null);
         _isAttemptingReconnect = false;
         ViewManager.toggleView('loading');
         Network.connect(playerName, tableName, null);

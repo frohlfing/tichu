@@ -74,7 +74,7 @@ const GameTableView = (() => {
      */
     const _bombIcon = document.getElementById('bomb-icon');
 
-   /**
+    /**
      * Das Icon zur Anzeige einer Tichu-Ansage.
      *
      * @type {HTMLImageElement}
@@ -163,16 +163,20 @@ const GameTableView = (() => {
     function _createCardElement(cardData, isOwnCard = false) {
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card';
-        cardDiv.style.backgroundImage = `url('images/cards/${cardData.label}.png')`;
-        cardDiv.dataset.label = cardData.label;
+        // Stelle sicher, dass cardData.label existiert (sollte durch Helpers.parseCards der Fall sein)
+        cardDiv.style.backgroundImage = `url('images/cards/${cardData.label || 'back'}.png')`;
+        cardDiv.dataset.label = cardData.label || 'unbekannt';
         cardDiv.dataset.value = cardData.value;
         cardDiv.dataset.suit = cardData.suit;
         if (isOwnCard) {
             cardDiv.onclick = function() {
-                if (_schupfZonesContainer && !_schupfZonesContainer.classList.contains('hidden')) {
-                    CardHandler.handleCardClick(this, cardData); // Nutze CardHandler für Schupf-Logik
+                // Die Logik, die entscheidet, ob CardHandler oder normale Selektion,
+                // sollte hier oder im CardHandler selbst liegen.
+                // Fürs Erste: CardHandler immer nutzen, wenn Schupf-Modus aktiv ist.
+                if (CardHandler.isSchupfModeActive && typeof CardHandler.isSchupfModeActive === 'function' && CardHandler.isSchupfModeActive()) {
+                    CardHandler.handleCardClick(this, cardData);
                 } else {
-                    this.classList.toggle('selected'); // Normale Selektion
+                    this.classList.toggle('selected');
                     SoundManager.playSound('cardSelect');
                 }
             };
@@ -227,51 +231,87 @@ const GameTableView = (() => {
     function _testDealOwnCards() {
         _ownHandContainer.innerHTML = '';
         _testOwnCards = [];
-        const sampleLabels = ['S2', 'B3', 'G4', 'R5', 'SK', 'SA', 'Ma', 'Hu', 'Dr', 'Ph', 'S7', 'B8', 'G9', 'RZ'];
-        sampleLabels.forEach(label => {
-            const cardData = Helpers.parseCards([label])[0]; // Parse um value/suit zu bekommen
-            if(cardData){
+        // Testkarten als [value, suit] Tupel/Arrays definieren
+        const sampleCardTuples = [
+            [2, CardSuits.SWORD], [3, CardSuits.PAGODA], [4, CardSuits.JADE], [5, CardSuits.STAR],
+            [13, CardSuits.SWORD], [14, CardSuits.SWORD], // SK, SA
+            [SpecialCardValues.MAH, CardSuits.SPECIAL],  // Ma
+            [SpecialCardValues.DOG, CardSuits.SPECIAL],  // Hu
+            [SpecialCardValues.DRA, CardSuits.SPECIAL],  // Dr
+            [SpecialCardValues.PHO, CardSuits.SPECIAL],  // Ph
+            [7, CardSuits.SWORD], [8, CardSuits.PAGODA], [9, CardSuits.JADE], [10, CardSuits.STAR] // SZ bei Star = RZ
+        ];
+
+        const parsedTestCards = Helpers.parseCards(sampleCardTuples);
+
+        parsedTestCards.forEach(cardData => {
+            if (cardData && cardData.label) { // Stelle sicher, dass die Karte valide geparst wurde
                 const cardEl = _createCardElement(cardData, true);
                 _ownHandContainer.appendChild(cardEl);
-                _testOwnCards.push({...cardData, element: cardEl });
+                _testOwnCards.push({ ...cardData, element: cardEl }); // Füge DOM-Element Referenz hinzu
             }
         });
         document.querySelector('#player-area-0 .card-count').textContent = _testOwnCards.length;
     }
 
     function _testSelectSomeCards() {
-        _testOwnCards.forEach((card, index) => {
-            if (index < 3 && card.element) card.element.classList.add('selected');
+        _testOwnCards.forEach((cardData, index) => {
+            // Stelle sicher, dass cardData.element existiert und eine DOM-Node ist
+            if (index < 3 && cardData.element && typeof cardData.element.classList !== 'undefined') {
+                cardData.element.classList.add('selected');
+            }
         });
     }
 
+    /**
+     * Spielt die aktuell im DOM als '.selected' markierten Karten visuell aus.
+     */
     function _testPlaySelectedCards() {
-        const pile = _getTestPlayerPile(0); // Eigene Karten auf eigenen Stapel
+        const pile = _getTestPlayerPile(0);
         if (!pile) return;
-        const tempPlayed = [];
-        _ownHandContainer.querySelectorAll('.card.selected').forEach(cardEl => {
+
+        const cardsToPlayElements = _ownHandContainer.querySelectorAll('.card.selected');
+        const playedCardLabels = [];
+
+        cardsToPlayElements.forEach(cardEl => {
             cardEl.classList.remove('selected');
-            cardEl.classList.add('playing'); // Für Animation
-            pile.appendChild(cardEl); // Verschiebe Element
-            tempPlayed.push(cardEl.dataset.label);
-            // Entferne aus _testOwnCards
-            _testOwnCards = _testOwnCards.filter(c => c.label !== cardEl.dataset.label);
+            cardEl.classList.add('playing');
+            pile.appendChild(cardEl); // Verschiebt das DOM-Element
+            playedCardLabels.push(cardEl.dataset.label);
+
+            // Entferne die Karte aus dem _testOwnCards Array
+            const cardIndex = _testOwnCards.findIndex(c => c.label === cardEl.dataset.label);
+            if (cardIndex > -1) {
+                _testOwnCards.splice(cardIndex, 1);
+            }
         });
+
         document.querySelector('#player-area-0 .card-count').textContent = _testOwnCards.length;
-        console.log("Gespielt (visuell):", tempPlayed.join(" "));
+        console.log("Gespielt (visuell):", playedCardLabels.join(" "));
         setTimeout(() => pile.querySelectorAll('.playing').forEach(c => c.classList.remove('playing')), 500);
     }
 
+    /**
+     * Simuliert, dass ein Mitspieler Karten ablegt.
+     * @param {number} relativeIdx - Der relative Index des Mitspielers (1=R, 2=P, 3=L).
+     */
     function _testOpponentPlaysCards(relativeIdx) {
         const pile = _getTestPlayerPile(relativeIdx);
         if (!pile) return;
-        pile.innerHTML = ''; // Alten Stich des Spielers leeren
-        const cardData = Helpers.parseCards(['R K', 'R D', 'R B']); // Beispielkarten
-        cardData.forEach(cd => pile.appendChild(_createCardElement(cd)));
-        // Kartenanzahl des Gegners reduzieren (visuell)
+        pile.innerHTML = '';
+        // Beispielkarten als [value, suit]
+        const sampleOpponentCardTuples = [[13, CardSuits.STAR], [12, CardSuits.STAR], [11, CardSuits.STAR]]; // RK, RD, RB
+        const parsedOpponentCards = Helpers.parseCards(sampleOpponentCardTuples);
+
+        parsedOpponentCards.forEach(cd => {
+            if (cd && cd.label) pile.appendChild(_createCardElement(cd));
+        });
+
         const countEl = document.querySelector(`#player-area-${relativeIdx} .card-count`);
-        let currentCount = parseInt(countEl.textContent);
-        countEl.textContent = Math.max(0, currentCount - cardData.length);
+        if (countEl) {
+            let currentCount = parseInt(countEl.textContent) || 0;
+            countEl.textContent = Math.max(0, currentCount - parsedOpponentCards.length).toString();
+        }
     }
 
     function _testHighlightTrick(relativeIdx) {
@@ -324,37 +364,44 @@ const GameTableView = (() => {
     function _testShowSchupfZones() {
         _schupfZonesContainer.classList.toggle('hidden');
         if (!_schupfZonesContainer.classList.contains('hidden')) {
-            CardHandler.enableSchupfMode('test-schupf-req', _testOwnCards);
+            // Übergebe die clientseitigen Kartenobjekte
+            CardHandler.enableSchupfMode('test-schupf-req', _testOwnCards.map(c => ({value: c.value, suit: c.suit, label: c.label})));
         } else {
             CardHandler.disableSchupfMode();
         }
     }
-    function _testGiveOwnSchupfCard(){
-        // Simuliere Klick auf die erste Handkarte, wenn Schupf-Modus aktiv
+
+    function _testGiveOwnSchupfCard() {
         if (_testOwnCards.length > 0 && _testOwnCards[0].element &&
-            _schupfZonesContainer && !_schupfZonesContainer.classList.contains('hidden')) {
-            CardHandler.handleCardClick(_testOwnCards[0].element, _testOwnCards[0]);
+            _schupfZonesContainer && !_schupfZonesContainer.classList.contains('hidden') &&
+            CardHandler.isSchupfModeActive && CardHandler.isSchupfModeActive()) {
+            // Übergebe das volle Kartenobjekt an CardHandler
+            CardHandler.handleCardClick(_testOwnCards[0].element, {
+                value: _testOwnCards[0].value,
+                suit: _testOwnCards[0].suit,
+                label: _testOwnCards[0].label
+            });
         } else {
             console.log("Keine Karten zum Schupfen oder Schupf-Modus nicht aktiv.");
         }
     }
 
+    function _testOpponentSchupfCards() { /* ... (bleibt strukturell gleich, verwendet jetzt korrekte Labels) ... */
+        const schupfZoneRight = document.getElementById('schupf-zone-opponent-right');
+        const schupfZonePartner = document.getElementById('schupf-zone-partner');
+        const schupfZoneLeft = document.getElementById('schupf-zone-opponent-left');
+        const cardDataS5 = Helpers.parseCards([[5, CardSuits.SWORD]])[0];
+        const cardDataB6 = Helpers.parseCards([[6, CardSuits.PAGODA]])[0];
+        const cardDataG7 = Helpers.parseCards([[7, CardSuits.JADE]])[0];
 
-    function _testOpponentSchupfCards() {
-        // Zeige Karten in den Schupfzonen der Gegner (simuliert)
-        // Dies ist nur visuell, die echten Karten der Gegner sind unsichtbar
-        const schupfZoneRight = document.getElementById('schupf-zone-opponent-right'); // Ziel für Karten von Links (relativ 3)
-        const schupfZonePartner = document.getElementById('schupf-zone-partner');   // Ziel für Karten von Rechts (relativ 1)
-        const schupfZoneLeft = document.getElementById('schupf-zone-opponent-left'); // Ziel für Karten von Partner (relativ 2)
+        if(schupfZoneRight.querySelector('.card')) schupfZoneRight.innerHTML = 'R';
+        else { schupfZoneRight.innerHTML = ''; schupfZoneRight.appendChild(_createCardElement(cardDataS5));}
 
-        if(schupfZoneRight.children.length === 1) schupfZoneRight.innerHTML = 'R';
-        else schupfZoneRight.innerHTML = `<div class="card" style="background-image: url('images/cards/S5.png');"></div>`;
+        if(schupfZonePartner.querySelector('.card')) schupfZonePartner.innerHTML = 'P';
+        else { schupfZonePartner.innerHTML = ''; schupfZonePartner.appendChild(_createCardElement(cardDataB6));}
 
-        if(schupfZonePartner.children.length === 1) schupfZonePartner.innerHTML = 'P';
-        else schupfZonePartner.innerHTML = `<div class="card" style="background-image: url('images/cards/B6.png');"></div>`;
-
-         if(schupfZoneLeft.children.length === 1) schupfZoneLeft.innerHTML = 'L';
-        else schupfZoneLeft.innerHTML = `<div class="card" style="background-image: url('images/cards/G7.png');"></div>`;
+        if(schupfZoneLeft.querySelector('.card')) schupfZoneLeft.innerHTML = 'L';
+        else { schupfZoneLeft.innerHTML = ''; schupfZoneLeft.appendChild(_createCardElement(cardDataG7));}
     }
 
     function _testAnimateSchupfExchange() {
@@ -385,11 +432,24 @@ const GameTableView = (() => {
     }
 
     function _testShowWishIndicator(value) {
-        const cardLabel = (value === 14 ? 'A' : value === 13 ? 'K' : value === 12 ? 'D' : value === 11 ? 'B' : value === 10 ? 'Z' : String(value));
-        _wishIndicator.style.backgroundImage = `url('images/cards/Ma${cardLabel}.png')`; // Annahme: Bilder wie Ma7.png, MaA.png
-        // Fallback:
-        // _wishIndicator.style.backgroundImage = `url('images/wish-indicator.png')`;
-        // _wishIndicator.textContent = cardLabel; // Wenn Text überlagert wird
+        // Finde das Label für den Wert
+        let cardLabelForWish = String(value);
+        if (value === 14) cardLabelForWish = "A";
+        else if (value === 13) cardLabelForWish = "K";
+        else if (value === 12) cardLabelForWish = "D";
+        else if (value === 11) cardLabelForWish = "B";
+        else if (value === 10) cardLabelForWish = "Z"; // Für Zehn
+        // Annahme: Es gibt kein spezifisches Bild für "Mahjong mit Wert X",
+        // daher verwenden wir das generische Wunsch-Icon und zeigen den Wert als Text (oder eine andere visuelle Kennung)
+        _wishIndicator.style.backgroundImage = `url('images/wish-indicator.png')`; // Generisches Bild
+        // Erstelle ein temporäres Element für den Text, um es über das Bild zu legen
+        let existingText = _wishIndicator.querySelector('.wish-value-text');
+        if (!existingText) {
+            existingText = document.createElement('span');
+            existingText.className = 'wish-value-text'; // Style für diesen Text in CSS hinzufügen
+            _wishIndicator.appendChild(existingText);
+        }
+        existingText.textContent = cardLabelForWish;
         _wishIndicator.classList.remove('hidden');
     }
 
@@ -421,20 +481,21 @@ const GameTableView = (() => {
 
         handContainer.classList.toggle('revealed');
         if (handContainer.classList.contains('revealed')) {
-            // Simuliere das Aufdecken
-            handContainer.innerHTML = ''; // Alte card-backs entfernen
-            const sampleCards = ['S K', 'B D', 'G B', 'R Z']; // Beispielkarten
-            if(!_testOpponentHands[relativeIdx] || _testOpponentHands[relativeIdx].length === 0){
-                _testOpponentHands[relativeIdx] = Helpers.parseCards(sampleCards);
-            }
-            _testOpponentHands[relativeIdx].forEach(cardData => {
-                const cardFace = _createCardElement(cardData);
-                cardFace.classList.add('card-face'); // Für separates Styling falls nötig
-                handContainer.appendChild(cardFace);
+            handContainer.innerHTML = '';
+            // Beispielhafte Karten als [value, suit] Tupel
+            const sampleOpponentCardTuples = [[13, CardSuits.SWORD], [12, CardSuits.PAGODA], [11, CardSuits.JADE], [10, CardSuits.STAR]];
+            const parsedOpponentCards = Helpers.parseCards(sampleOpponentCardTuples);
+            _testOpponentHands[relativeIdx] = parsedOpponentCards; // Speichere für späteres Zudecken
+
+            parsedOpponentCards.forEach(cardData => {
+                if(cardData && cardData.label){
+                    const cardFace = _createCardElement(cardData);
+                    cardFace.classList.add('card-face');
+                    handContainer.appendChild(cardFace);
+                }
             });
         } else {
-            // Simuliere das Zudecken (Anzahl muss bekannt sein)
-            const cardCount = _testOpponentHands[relativeIdx] ? _testOpponentHands[relativeIdx].length : 5; // Fallback
+            const cardCount = _testOpponentHands[relativeIdx] ? _testOpponentHands[relativeIdx].length : (parseInt(document.querySelector(`#player-area-${relativeIdx} .card-count`).textContent) || 5) ;
             handContainer.innerHTML = '';
             for (let i = 0; i < cardCount; i++) {
                 const cardBack = document.createElement('div');
@@ -450,46 +511,89 @@ const GameTableView = (() => {
      * Rendert den Spieltisch-Bildschirm.
      */
     function render() {
-        // console.log("GAMETABLEVIEW: Rendere GameTableView (minimal).");
-        // const publicState = State.getPublicState();
-        // const privateState = State.getPrivateState();
-        //
-        // if (!publicState || !privateState) {
-        //     // Fallback, falls Daten noch nicht geladen sind
-        //     _scoreDisplay.textContent = 'Lade Spiel...';
-        //     // Ggf. andere Elemente auf einen Ladezustand setzen
-        //     return;
-        // }
-        //
-        // // Score anzeigen
-        // const myPIdx = State.getPlayerIndex();
-        // if (myPIdx !== -1 && publicState.game_score && publicState.game_score.length === 2) {
-        //     const team02Score = publicState.game_score[0].reduce((a, b) => a + b, 0);
-        //     const team13Score = publicState.game__score[1].reduce((a, b) => a + b, 0);
-        //     const myTeamIs02 = myPIdx === 0 || myPIdx === 2;
-        //     _scoreDisplay.textContent = `Wir: ${String(myTeamIs02 ? team02Score : team13Score).padStart(4, '0')} | Die: ${String(myTeamIs02 ? team13Score : team02Score).padStart(4, '0')}`;
-        // }
-        // else {
-        //     _scoreDisplay.textContent = 'Punkte: 0:0';
-        // }
-
-        if (_ownHandContainer.children.length === 0) {
-            _testDealOwnCards(); // Beim ersten Rendern Testkarten austeilen
+        if (State.getPublicState() === null) { // Sicherstellen, dass Daten da sind
+             console.log("GAMETABLEVIEW: Warte auf State für Render...");
+            _scoreDisplay.textContent = 'Lade...';
+            return;
         }
-         // Relative Indizes: 0=unten (ich), 1=rechts, 2=oben (Partner), 3=links
-        for(let i=1; i<=3; i++) {
+        console.log("GAMETABLEVIEW: Rendere Spieltisch...");
+
+        // Score (Beispiel, wie es mit neuem State aussehen könnte)
+        const pubState = State.getPublicState();
+        const ownPIdx = State.getPlayerIndex();
+        if (ownPIdx !== -1 && pubState && pubState.game_score && pubState.game_score.length === 2) {
+            const team02Score = pubState.game_score[0].reduce((a, b) => a + b, 0);
+            const team13Score = pubState.game_score[1].reduce((a, b) => a + b, 0);
+            const myTeamIs02 = ownPIdx === 0 || ownPIdx === 2;
+            _scoreDisplay.textContent = `Wir: ${String(myTeamIs02 ? team02Score : team13Score).padStart(4, '0')} | Die: ${String(myTeamIs02 ? team13Score : team02Score).padStart(4, '0')}`;
+        } else {
+            _scoreDisplay.textContent = 'Team Wir: 0000 | Team Die: 0000';
+        }
+
+        // Spieler-Infos aktualisieren
+        for (let relIdx = 0; relIdx < 4; relIdx++) {
+            const canonicalIdx = Helpers.getCanonicalPlayerIndex(relIdx);
+            const playerArea = document.getElementById(`player-area-${relIdx}`);
+            const nameEl = playerArea.querySelector('.player-name');
+            const countEl = playerArea.querySelector('.card-count');
+            const tichuEl = playerArea.querySelector('.tichu-indicator');
+            const turnEl = playerArea.querySelector('.turn-indicator');
+
+            nameEl.textContent = (pubState.player_names && pubState.player_names[canonicalIdx])
+                               ? pubState.player_names[canonicalIdx] + (canonicalIdx === ownPIdx ? " (Du)" : "")
+                               : `Spieler ${relIdx}`;
+            countEl.textContent = (pubState.count_hand_cards && pubState.count_hand_cards[canonicalIdx] !== undefined)
+                                ? pubState.count_hand_cards[canonicalIdx]
+                                : (relIdx === 0 ? _testOwnCards.length : 14); // Fallback für Test
+
+            if (tichuEl) tichuEl.classList.toggle('hidden', !(pubState.announcements && pubState.announcements[canonicalIdx] > 0));
+            if (turnEl) turnEl.classList.toggle('hidden', pubState.current_turn_index !== canonicalIdx);
+        }
+        if (pubState.current_turn_index === -1 && ownPIdx !== -1) { // Wenn Spiel beginnt, ist eigener Spieler oft Startspieler
+             const ownTurnEl = document.querySelector(`#player-area-0 .turn-indicator`);
+             if(ownTurnEl && _currentTurnRelativeIndex === 0) ownTurnEl.classList.remove('hidden');
+        }
+
+
+        // Eigene Hand nur einmal initial mit Testkarten füllen, wenn leer
+        if (_ownHandContainer.children.length === 0 && _testOwnCards.length === 0) {
+            _testDealOwnCards(); // Diese Funktion sollte _testOwnCards füllen
+        } else if (_ownHandContainer.children.length === 0 && _testOwnCards.length > 0) {
+            // Hand neu aufbauen, falls sie geleert wurde aber _testOwnCards noch existieren
+            _testOwnCards.forEach(cardData => {
+                if (cardData && cardData.label) {
+                    const cardEl = _createCardElement(cardData, true);
+                    _ownHandContainer.appendChild(cardEl);
+                    cardData.element = cardEl; // DOM-Referenz aktualisieren
+                }
+            });
+        }
+
+        // Gegnerhände mit Kartenrücken füllen (nur initial oder wenn leer)
+        for (let i = 1; i <= 3; i++) { // relative Indizes für Gegner
             const handContainer = document.getElementById(`player-${i}-hand`);
-            if (handContainer.children.length === 0) { // Nur wenn leer
-                const cardCount = 14; // Standardanzahl
+            if (handContainer.children.length === 0 && !handContainer.classList.contains('revealed')) {
+                const canonicalIdx = Helpers.getCanonicalPlayerIndex(i);
+                const cardCount = (pubState.count_hand_cards && pubState.count_hand_cards[canonicalIdx] !== undefined)
+                                  ? pubState.count_hand_cards[canonicalIdx] : 14;
                 document.querySelector(`#player-area-${i} .card-count`).textContent = cardCount;
-                for(let k=0; k<cardCount; k++) {
+                for (let k = 0; k < cardCount; k++) {
                     const cardBack = document.createElement('div');
                     cardBack.className = 'card-back';
                     handContainer.appendChild(cardBack);
                 }
             }
         }
-        document.querySelector(`#player-area-${_currentTurnRelativeIndex} .turn-indicator`).classList.remove('hidden');
+        // Bomben-Icon Sichtbarkeit
+         _bombIcon.classList.toggle('hidden', !(State.getPrivateState()));
+
+
+        // Wunsch-Indikator
+        if (pubState.wish_value > 0) {
+            _testShowWishIndicator(pubState.wish_value); // Wiederverwende Test-Funktion
+        } else {
+            _wishIndicator.classList.add('hidden');
+        }
     }
 
     /**

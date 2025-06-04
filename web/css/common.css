@@ -1,0 +1,94 @@
+/* css/common.css */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* @font-face für 'Architect s Daughter' hier einfügen, falls lokal gehostet */
+/* Beispiel:
+@font-face {
+    font-family: 'Architect s Daughter';
+    src: url('../fonts/architect-s-daughter/ArchitectsDaughter-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+*/
+
+body {
+    font-family: 'Architect s Daughter', sans-serif; /* Fallback, falls Font nicht lädt */
+    background-color: #111; /* Dunkler Hintergrund für Letterboxing */
+    color: #fff;
+    overflow: hidden; /* Verhindert Scrollbalken auf der Hauptseite */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#game-wrapper {
+    /* Ziel-Seitenverhältnis 1080:1920 (oder 9:16) */
+    /*--aspect-ratio: calc(1080 / 1920);*/
+
+    width: 100vw; /* Füllt die Breite des Browser-Viewports */
+    height: calc(100vw * (1920 / 1080)); /* Berechnet Höhe für 9:16 */
+    position: relative; /* Für absolute Kinder */
+
+    max-height: 100vh; /* Stellt sicher, dass es nicht höher als der Viewport wird (Pillarboxing) */
+    max-width: calc(100vh * (1080 / 1920)); /* Stellt sicher, dass es nicht breiter als der Viewport wird (Letterboxing) */
+
+    margin: auto; /* Zentriert den Wrapper, wenn max-width/max-height greifen */
+    overflow: hidden;
+    background-color: #282c34; /* Standard-Hintergrund des Spiels, falls Views transparent sind */
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+
+    /* Definiere eine relative Einheit. Wenn 1080px Breite = 100 Einheiten sind: */
+    /* --unit: calc(1% * (1080 / (aktuelle Breite des Wrappers in px))); */
+    /* Einfacher: Arbeite mit Prozent der Wrapper-Breite oder -Höhe direkt. */
+    /* Oder wir definieren eine Basisschriftgröße für den Wrapper, auf die sich em bezieht */
+    font-size: calc(1vw * (1080 / 1920) * 0.7); /* Experimentell, um eine Basis-Schriftgröße zu bekommen, die mit skaliert */
+    /* Alternative für font-size: clamp(8px, calc(100vw / 100), 16px); -> 1% der Breite des Wrappers als Basis */
+}
+
+
+.view {
+    display: none;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Verhindert Scrollen innerhalb eines Views */
+}
+.view.active {
+    display: flex;
+}
+
+/* Allgemeine Button-Styles (Beispiel, falls benötigt) */
+.button-primary {
+    padding: 10px 20px;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.2s;
+}
+.button-primary:hover { background-color: #2ecc71; }
+
+.button-secondary {
+    padding: 10px 20px;
+    background-color: #e67e22;
+    /* ... */
+}
+
+/* Hilfsklassen */
+.hidden {
+    display: none !important;
+}

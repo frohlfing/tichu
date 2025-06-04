@@ -49,8 +49,15 @@ const ViewManager = (() => {
         _views.gameTable = GameTableView;
         _views.gameTable.init();
 
-        // Initial den Ladebildschirm anzeigen, AppController entscheidet dann weiter
-        _views.loading.show();
+        // Aktuelle View rendern
+        for (const name in _views) {
+            if (_views.hasOwnProperty(name) && _views[name].isVisible()) {
+                _views[name].render();
+                _currentViewName = name;
+                console.debug(`VIEWMGR: Aktuelle View ist '${name}'.`);
+                break;
+            }
+        }
     }
 
     /**
@@ -71,16 +78,16 @@ const ViewManager = (() => {
         }
 
         // Alle Views ausblenden
-        for (const key in _views) {
-            if (_views.hasOwnProperty(key)) {
-                _views[key].hide();
+        for (const name in _views) {
+            if (_views.hasOwnProperty(name)) {
+                _views[name].hide();
             }
         }
 
         // Gewünschten View anzeigen
-        _views[viewName].render();
-        _views[viewName].show()
+        _views[viewName].show();
         _currentViewName = viewName;
+        console.debug(`VIEWMGR: Zeige view '${viewName}'.`);
     }
 
     /**

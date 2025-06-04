@@ -1,0 +1,385 @@
+/* css/game-table-view.css */
+
+#game-table-screen {
+    background-image: url('../images/table.png');
+    background-size: cover;
+    background-position: center;
+    color: #fff; /* Standardtextfarbe auf dem Tisch */
+    /* Die Dimensionen werden vom #game-wrapper geerbt (width/height 100%) */
+    /* Basisschriftgröße für den Spieltisch, relativ zum Wrapper */
+    font-size: var(--wrapper-font-base, clamp(8px, 1.5vmin, 14px));
+}
+
+/* --- Top Bar --- */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 7%; /* Ca. 7% der Wrapper-Höhe */
+    padding: 0 3%;
+    background-color: rgba(0,0,0,0.65);
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+}
+.top-bar #score-display {
+    font-weight: bold;
+    font-size: 1.8em; /* Relativ zur Basisschrift von .top-bar (oder direkt #game-table-screen) */
+    line-height: 1;
+    text-align: center;
+    flex-grow: 1; /* Nimmt verfügbaren Platz ein */
+}
+.top-bar .game-button {
+    padding: 0.5em 1em;
+    font-size: 1.5em; /* Buttons etwas größer */
+    border-radius: 0.4em;
+    flex-shrink: 0; /* Verhindert Schrumpfen der Buttons */
+}
+
+/* --- Table Area Grid --- */
+.table-area {
+    flex-grow: 1; /* Füllt den Platz zwischen Top-Bar und Bottom-Controls */
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    padding-top: 7%;    /* Platz für Top-Bar */
+    padding-bottom: 10%; /* Platz für Bottom-Controls */
+    padding-left: 2%;
+    padding-right: 2%;
+    grid-template-columns: 18% 1fr 18%; /* Seiten : Mitte : Seiten */
+    grid-template-rows: 22% 1fr 22%;    /* Oben : Mitte : Unten */
+    gap: 1%;
+}
+
+/* --- Spielerbereiche --- */
+.player-area {
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    /* justify-content: center; Standardmäßig zentriert, unten überschrieben */
+    align-items: center;
+    position: relative;
+    overflow: hidden; /* Verhindert, dass Karten überlaufen und das Layout stören */
+}
+.player-bottom { justify-content: flex-end; } /* Eigene Info oben, Hand unten */
+.player-top { justify-content: flex-start; } /* Partner Info unten, Hand oben (gedreht) */
+.player-left, .player-right { justify-content: center; } /* Seitliche Spieler vertikal zentriert */
+
+
+.player-info {
+    font-size: 1.6em; /* Relativ zur Basisschrift des Spieltisches */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em; /* Abstand zwischen Elementen in der Info-Box */
+    padding: 0.5em 0.8em;
+    background-color: rgba(0,0,0,0.55);
+    border-radius: 0.3em;
+    margin-bottom: 0.5em; /* Abstand Info zur Hand (für Spieler unten) */
+    white-space: nowrap; /* Verhindert Umbruch bei Namen */
+    position: relative; /* Für z-index, falls Indikatoren überlappen sollen */
+    z-index: 2; /* Über den Karten der Hand */
+}
+.player-top .player-info { margin-bottom: 0; margin-top: 0.5em; order: 1; /* Info unter der Hand */ }
+.player-left .player-info { transform: rotate(90deg); margin-right: -2em; margin-left:0; /* Anpassung für rotierten Text */}
+.player-right .player-info { transform: rotate(-90deg); margin-left: -2em; margin-right:0; /* Anpassung */}
+
+
+.player-info .player-name { font-weight: bold; margin-right: 0.5em; }
+.player-info .card-count { font-style: italic; font-size: 0.9em; }
+.player-info .tichu-indicator,
+.player-info .turn-indicator,
+#bomb-icon { /* #bomb-icon ist auch in einer .player-info */
+    width: 1.5em; /* Größe relativ zur Schrift der Info-Box */
+    height: 1.5em;
+    object-fit: contain;
+}
+#bomb-icon { cursor: pointer; }
+.tichu-indicator:not(.hidden) { animation: pulse 1.5s infinite; }
+@keyframes pulse { /* Beibehalten von vorher */
+    0% { transform: scale(1); opacity: 0.7; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.7; }
+}
+.turn-indicator:not(.hidden) {
+    box-shadow: 0 0 8px 2px gold; /* Etwas dezenter */
+    border-radius: 50%;
+    background-color: rgba(255, 215, 0, 0.5);
+}
+
+
+/* --- Hände der Spieler --- */
+.hand {
+    display: flex;
+    justify-content: center;
+    position: relative;
+    width: 100%; /* Nimmt Breite der Spieler-Area-Zelle */
+}
+.player-bottom .hand { /* Eigene Hand */
+    align-items: flex-end;
+    height: 28%; /* Mehr Höhe für eigene Karten, ca. 1/3.5 der Spieler-Area-Höhe */
+    padding-bottom: 1%; /* Kleiner Abstand zum Rand */
+}
+.player-top .hand { /* Partner Hand */
+    align-items: flex-start; /* Karten oben für Partner */
+    height: 25%;
+    order: 0; /* Hand über der Info-Box */
+}
+.player-left .hand, .player-right .hand { /* Seitliche Hände */
+    flex-direction: column;
+    align-items: center;
+    width: 28%; /* Breite ist jetzt Höhe der Karten */
+    height: 100%; /* Höhe der Spieler-Area-Zelle */
+}
+.player-left .hand { justify-content: center; }
+.player-right .hand { justify-content: center; }
+
+
+/* Karten-Styling (allgemein) */
+.card {
+    border: 1px solid #555;
+    border-radius: calc(var(--wrapper-font-base) * 0.4); /* Ca. 4-6px bei Referenz */
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+    image-rendering: -webkit-optimize-contrast; /* Schärfere Bilder bei Skalierung */
+    image-rendering: crisp-edges;
+}
+
+/* Eigene Handkarten */
+.own-hand .card {
+    width: 7.5%; /* Ca. 105px bei 1080px Wrapper-Breite, Ziel 14 Karten auf ca. 70-80% der Breite */
+                /* 100% / 14 Karten = ~7.1% pro Karte ohne Überlappung */
+                /* Um sie auf ca. 75% der Breite zu bekommen: (75 / 14) = ~5.3% pro sichtbarem Teil */
+                /* Überlappung = 7.5 - 5.3 = 2.2% */
+    /* Besser: Feste Anzahl Karten, die sichtbar sein sollen, Rest Überlappung */
+    max-width: 90px;
+    min-width: 45px;
+    aspect-ratio: 63 / 88; /* Standard Kartenverhältnis */
+    margin: 0 -2.8vw; /* Starke Überlappung (ca. -30px bei 1080px) -> (7.5vw - X) * 14 = Handbreite */
+                     /* Anpassen, bis 14 Karten gut passen */
+    cursor: pointer;
+    transition: transform 0.15s ease-out;
+}
+.own-hand .card.selected {
+    transform: translateY(-20%); /* 20% der Kartenhöhe */
+}
+.own-hand.disabled-hand .card {
+    cursor: default;
+    opacity: 0.7;
+}
+
+/* Gegnerkarten (Rückseiten) */
+.opponent-hand .card-back {
+    width: 5%; /* Deutlich schmaler */
+    max-width: 65px;
+    min-width: 30px;
+    aspect-ratio: 63 / 88;
+    background-image: url('../images/cards/back.png');
+}
+.player-top .opponent-hand .card-back {
+    margin: 0 -2vw; /* Überlappung für obere Hand */
+    transform: rotate(180deg); /* Karten für Partner gedreht */
+}
+.player-left .opponent-hand .card-back {
+    margin-right: -70%; /* Vertikale Überlappung, da rotiert */
+    /* Höhe der Karte ist jetzt Breite, daher % der Höhe */
+    transform: rotate(90deg);
+}
+.player-right .opponent-hand .card-back {
+    margin-left: -70%; /* Vertikale Überlappung */
+    transform: rotate(-90deg);
+}
+
+/* Aufgedeckte Gegnerkarten */
+.opponent-hand.revealed .card-back { display: none; }
+.opponent-hand.revealed .card-face { /* Wird von JS hinzugefügt */
+    width: 5%; /* Gleiche Größe wie card-back */
+    max-width: 65px;
+    min-width: 30px;
+    aspect-ratio: 63 / 88;
+    margin: 0 -2vw; /* Für obere/untere aufgedeckte Hände */
+    /* Spezifische Margins/Transformationen für seitliche aufgedeckte Hände hier */
+}
+.player-left .opponent-hand.revealed .card-face { margin-right: -70%; transform: rotate(90deg); }
+.player-right .opponent-hand.revealed .card-face { margin-left: -70%; transform: rotate(-90deg); }
+
+
+/* --- Center Table & Played Cards --- */
+.center-table {
+    grid-area: 2 / 2 / 3 / 3; /* Mittlere Zelle */
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    width: 100%; /* Nimmt Breite/Höhe der Grid-Zelle */
+    height: 100%;
+    place-items: center;
+    gap: 1%;
+}
+.played-cards-pile {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    min-height: 12vh; /* Höhe für Kartenstapel */
+    transform-origin: center center;
+    width: 100%; /* Volle Breite/Höhe der Grid-Subzelle */
+    height: 100%;
+}
+#played-cards-pile-player-0 { grid-row: 2; grid-column: 1 / span 2; align-items: flex-start; padding-top: 2%; } /* Eigene Karten unten im mittleren Bereich, leicht nach oben */
+#played-cards-pile-player-1 { grid-row: 1 / span 2; grid-column: 2; transform: rotate(-90deg) translateX(-10%); } /* Rechts, leicht nach innen */
+#played-cards-pile-player-2 { grid-row: 1; grid-column: 1 / span 2; align-items: flex-end; padding-bottom: 2%; } /* Partner oben, leicht nach unten */
+#played-cards-pile-player-3 { grid-row: 1 / span 2; grid-column: 1; transform: rotate(90deg) translateX(10%); } /* Links, leicht nach innen */
+
+.played-cards-pile .card {
+    width: 6.5%; /* Größe gespielter Karten, relativ zur Wrapper-Breite */
+    max-width: 80px;
+    min-width: 40px;
+    aspect-ratio: 63 / 88;
+    margin: 0 0.3%; /* Kleiner Abstand zwischen gespielten Karten */
+}
+.played-cards-pile .played-pass,
+.played-cards-pile .played-bomb-text {
+    font-size: 1.5em; /* Relativ zur Basisschrift von #game-table-screen */
+    font-weight: bold;
+    padding: 0.5em;
+    background-color: rgba(0,0,0,0.6);
+    border-radius: 0.3em;
+}
+
+
+/* --- Indikatoren in der Mitte --- */
+#wish-indicator {
+    width: 10vh; /* Größe relativ zur Wrapper-Höhe */
+    height: 10vh;
+    position: absolute; /* Zentriert im .center-table */
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background-image: url('../images/wish-indicator.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    border-radius: 50%;
+    box-shadow: 0 0 10px gold, 0 0 5px gold inset; /* Stärkerer Effekt */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+.wish-value-text {
+    font-size: 3.5vh;
+    font-weight: bold;
+    color: #111;
+    text-shadow: 0 0 2px #fff;
+}
+
+
+/* --- Schupf-Zonen --- */
+.schupf-zones {
+    position: absolute;
+    /* Godot: Zonen sind über der eigenen Hand */
+    bottom: 32%; /* Prozentual von unten (Höhe der eigenen Hand + player-info + etwas Abstand) */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2vw; /* Abstand zwischen Zonen */
+    padding: 0.8vh 1vw;
+    background-color: rgba(0,0,0,0.35);
+    border-radius: 0.5em;
+    z-index: 5;
+}
+.schupf-zone {
+    width: 7.5%; /* Ähnliche Breite wie Handkarten */
+    max-width: 85px;
+    aspect-ratio: 63 / 88;
+    border: 2px dashed #bbb;
+    border-radius: 0.4em;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #ddd;
+    font-size: 1.3em; /* Relativ zur Basisschrift */
+    cursor: pointer; /* Um Karte per Klick auf Zone zu entfernen */
+}
+.schupf-zone .card { /* Karte in der Zone */
+    width: calc(100% - 8px); /* Etwas kleiner als Zone */
+    height: calc(100% - 8px);
+    border: none; /* Kein extra Rand für Karte in Zone */
+    box-shadow: none;
+    pointer-events: none; /* Klick geht an Zone */
+}
+.schupf-zone:empty::before { /* Zeigt R, P, L wenn leer */
+    content: attr(data-target-player-relative);
+    font-weight: bold;
+}
+
+
+/* --- Bottom Controls --- */
+.bottom-controls {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    height: 10%; /* Ca. 10% der Wrapper-Höhe */
+    padding: 0 2%;
+    background-color: rgba(0,0,0,0.7);
+    width: 100%;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    font-size: 1.7em; /* Relativ zur Basisschrift, beeinflusst Button-Schrift */
+}
+.bottom-controls .game-button {
+    flex-grow: 1;
+    margin: 0 1.5%; /* Abstand zwischen Buttons */
+    max-width: 30%;
+    font-size: 1em; /* Erbt von .bottom-controls, oder spezifisch setzen */
+    padding: 0.7em 0; /* Vertikales Padding, horizontales durch flex */
+    min-height: 6vh; /* Mindesthöhe für Klickfläche */
+}
+
+
+/* --- Visuelle Effekte & Animationen (von vorher übernommen) --- */
+.own-hand .card.playing,
+.played-cards-pile .card.just-played {
+    transition: transform 0.4s ease-out, opacity 0.4s ease-out;
+}
+.played-cards-pile .card.highlight-trick {
+    transform: scale(1.1) translateY(-3%);
+    box-shadow: 0 0 12px 3px gold, 0 0 4px gold inset;
+    border: 1px solid gold;
+    z-index: 5;
+}
+.card.flying {
+    position: fixed; /* Wichtig: fixed für Animation relativ zum Viewport */
+    transition: all 0.6s cubic-bezier(0.25, 0.75, 0.5, 1);
+    z-index: 100;
+}
+.own-hand .card.schupf-candidate { /* Karte in Hand, die zum Schupfen ausgewählt wurde */
+    opacity: 0.6;
+    border: 2px dashed yellow !important; /* Wichtig, um normalen Kartenrand zu überschreiben */
+    transform: translateY(-10%); /* Leicht anheben */
+}
+.own-hand .card.in-schupf-zone { /* Karte, die schon in einer Zone ist (unsichtbar in Hand) */
+    display: none !important;
+}
+.bomb-effect-text {
+    position: absolute;
+    top: 50%; left: 50%;
+    font-size: 5em; /* Relativ zur Basisschrift */
+    /* ... (Rest von vorher) ... */
+}
+.opponent-hand.revealed .card-face { /* Aufgedeckte Gegnerkarte */
+    /* ... (Styling von vorher) ... */
+    /* Wichtig: Die Größe muss der .opponent-hand .card-back entsprechen */
+    width: 5%; max-width: 65px; min-width: 30px; aspect-ratio: 63 / 88;
+}
+/* Styling für seitlich rotierte aufgedeckte Karten */
+.player-left .opponent-hand.revealed .card-face { margin-right: -70%; transform: rotate(90deg); }
+.player-right .opponent-hand.revealed .card-face { margin-left: -70%; transform: rotate(-90deg); }

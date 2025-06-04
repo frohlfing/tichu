@@ -37,23 +37,23 @@ const Config = {
     WEBSOCKET_URL: 'ws://localhost:8765/ws'
 };
 
-// /**
-//  * CardValueLabels - Labels für Kartenwerte 2 bis Ass.
-//  */
-// const CardValueLabels = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-//
-// /**
-//  * SpecialCardValues - Numerische Werte für Sonderkarten.
-//  */
-// const SpecialCardValues = {'MAH': 1, 'DOG': 0, 'DRA': 15, 'PHO': 16};
-//
-// /**
-//  * Numerische Werte für Kartenfarben.
-//  */
-// const CardSuits = {
-//     SPECIAL: 0, // Dog, Mahjong, Phoenix, Dragon
-//     SWORD: 1,   // Schwert/Schwarz
-//     PAGODA: 2,  // Pagode/Blau
-//     JADE: 3,    // Jade/Grün
-//     STAR: 4     // Stern/Rot
-// };
+/**
+ * CardValueLabels - Labels für Kartenwerte 2 bis Ass.
+ */
+const CardValueLabels = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+/**
+ * SpecialCardValues - Numerische Werte für Sonderkarten.
+ */
+const SpecialCardValues = {'MAH': 1, 'DOG': 0, 'DRA': 15, 'PHO': 16};
+
+/**
+ * Numerische Werte für Kartenfarben.
+ */
+const CardSuits = {
+    SPECIAL: 0, // Dog, Mahjong, Phoenix, Dragon
+    SWORD: 1,   // Schwert/Schwarz
+    PAGODA: 2,  // Pagode/Blau
+    JADE: 3,    // Jade/Grün
+    STAR: 4     // Stern/Rot
+};

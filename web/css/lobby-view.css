@@ -1,0 +1,88 @@
+/* css/lobby-view.css */
+#lobby-screen {
+    background-color: #34495e; /* Godot: Ähnlicher Blauton */
+    padding: 20px;
+    padding-top: 30px; /* Mehr Platz oben */
+    justify-content: flex-start;
+    overflow-y: auto;
+    flex-direction: column;
+    align-items: center;
+}
+#lobby-screen h2 {
+    margin-bottom: 20px; /* Godot: Mehr Abstand */
+    text-align: center;
+    font-size: 1.8em; /* Godot: Größere Überschrift */
+}
+
+#player-list-container {
+    width: 90%;
+    max-width: 450px; /* Godot: Liste nimmt ca. 80% der Breite ein */
+    margin-bottom: 25px;
+}
+#player-list-container > p { /* Der Text "Spieler am Tisch:" */
+    margin-bottom: 15px; /* Mehr Abstand zur Liste */
+    font-size: 1.1em;
+    text-align: center;
+}
+
+#lobby-player-list {
+    padding-left: 0;
+    width: 100%;
+}
+#lobby-player-list li {
+    background-color: #2c3e50; /* Godot: Dunklere Einträge */
+    padding: 12px 18px;
+    margin-bottom: 10px; /* Godot: Mehr Abstand */
+    border-radius: 6px;
+    list-style-type: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.1em; /* Godot: ca. 40-45px Schrift */
+}
+.player-order-controls button {
+    background: #4a6b82;
+    border: none;
+    color: #ecf0f1;
+    font-size: 1.2em; /* Größere Pfeile */
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 8px;
+}
+.player-order-controls button:hover { background-color: #5c7a90; }
+.player-order-controls button:disabled { background-color: #3a4b58; color: #787878; cursor: not-allowed; }
+
+/* Container für Host-Aktionen (Text "Spieler anordnen") */
+#team-assignment-container { /* Das ist der <p> Tag jetzt */
+    width: 90%;
+    max-width: 450px;
+    text-align: center;
+    margin-top: 20px; /* Abstand von Liste */
+    margin-bottom: 10px; /* Abstand zum nächsten Block */
+    font-size: 1.1em;
+}
+
+/* Container für die unteren Buttons */
+.lobby-actions-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80%; /* Etwas schmaler als Liste */
+    max-width: 350px;
+    gap: 12px; /* Abstand zwischen Buttons */
+    margin-top: 20px; /* Abstand vom oberen Inhalt */
+}
+
+#start-game-button, #leave-lobby-button {
+    padding: 14px 22px;
+    width: 100%;
+    font-size: 1.2em; /* Godot: Button Schrift ca. 45-50px */
+    border-radius: 8px; /* Godot: Stärker abgerundet */
+    /* Farben bleiben wie vorher definiert */
+}
+/* Spezifisches Styling für Start-Button, falls er sich vom Beenden-Button unterscheiden soll */
+#start-game-button { background-color: #f39c12; } /* Orange wie im Screenshot */
+#start-game-button:hover { background-color: #e67e22; }
+#leave-lobby-button { background-color: #e74c3c; } /* Rot wie im Screenshot */
+#leave-lobby-button:hover { background-color: #c0392b; }

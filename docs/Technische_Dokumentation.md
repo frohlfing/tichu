@@ -40,9 +40,11 @@
         
 8. [Frontend (zweite Ausbaustufe)](#8-frontend-zweite-ausbaustufe)
    1.  [Allgemeine Funktionsweise](#81-allgemeine-funktionsweise)
-   2.  [Verzeichnisstruktur](#82-verzeichnisstruktur)
-   3.  [Ressourcen](#83-ressourcen)
-   4.  [Verantwortlichkeiten der JavaScript-Module](#84-verantwortlichkeiten-der-javascript-module)
+   2.  [Architektur](#82-architektur)
+   2.  [Verzeichnisstruktur](#83-verzeichnisstruktur)
+   2.  [Viewport](#84-viewport)
+   4.  [Verantwortlichkeiten der JavaScript-Module](#85-verantwortlichkeiten-der-javascript-module)
+   3.  [Ressourcen](#86-ressourcen)
 
 **ANHANG**
 
@@ -485,7 +487,7 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
 
 `main.js` ist der Haupt-Einstiegspunkt der Tichu-Anwendung.
 
-### 8.2 Verzeichnisstruktur
+### 8.3 Verzeichnisstruktur
 
 ```
 web/ 
@@ -493,16 +495,29 @@ web/
 │   └── architect-s-daughter/
 ├── images/  # Bilder
 │   └── cards/
+├── css/  # Stylesheet-Dateien
 ├── js/  # JavaScript-Dateien
 │   └── views/ 
 ├── sounds/  # Audiodateien
 ├── vendor  # Drittanbieter-Assets
 ├── index.html  Startseite
-├── styles.css  Stylesheets
 │
 ```
 
-### 8.3 Ressourcen
+### 8.4 Viewport
+
+Die Ansicht wird für ein Viewport von 1080x1920 (Breite x Höhe) optimiert. 
+Das ist ein Seitenverhältnis von 9:16 (Hochformat); ein gängiges Smartphone-Hochformat.
+
+Der Hauptcontainer (`#app-container` oder direkt den `body`-Tag) behält dieses Seitenverhältnis bei und passt sich durch Skalierung in den Viewport des Browsers ein.
+
+Zum Skalieren bleibt die Breite fix (1080 als Referenz). 
+
+### 8.5 Verantwortlichkeiten der JavaScript-Module
+
+todo
+
+### 8.6 Ressourcen
 
 #### Images
 
@@ -528,7 +543,7 @@ web/
 	Vorlage: 
 	https://pixabay.com/de/vectors/drachen-eidechse-monster-chinesisch-149393/
 	Kostenlos, Zusammenfassung der Inhaltslizenz: https://pixabay.com/de/service/license-summary/
-* 
+ 
 *  web/images/wish-indicator.png
 	Vorlage:
 	https://github.com/Tichuana-Tichu/tichuana-tichu/tree/develop/src/ch/tichuana/tichu/client/resources/images/cards/mahjong.png
@@ -567,10 +582,6 @@ web/fonts/architect-s-daughter
 	https://godotengine.org/asset-library/asset/316
 	Die OFL erlaubt die freie Verwendung, Untersuchung, Änderung und Weiterverbreitung der lizenzierten Schriften, solange sie nicht selbst verkauft werden. 
 	Die Schriftarten können mit jeder Software gebündelt, eingebettet, weiterverteilt und/oder verkauft werden.
-
-### 8.4 Verantwortlichkeiten der JavaScript-Module
-
-todo
 
 # Anhang 
 
