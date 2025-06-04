@@ -2,7 +2,6 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport für responsive Skalierung des Wrappers -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, user-scalable=no">
     <title>Tichu Online</title>
     <link rel="stylesheet" href="css/common.css">
@@ -15,6 +14,7 @@
 </head>
 <body>
     <div id="game-wrapper"> <!-- Wrapper für den 9:16 Spielbereich -->
+
         <!-- Ladeanzeige -->
         <div id="loading-screen" class="view active"> <!-- active für initiales Anzeigen -->
             <img src="images/logo.png" alt="Logo" class="logo">
@@ -53,20 +53,32 @@
         <div id="game-table-screen" class="view">
             <div class="top-bar">
                 <button id="end-game-button" class="game-button">Beenden</button>
-                <div id="score-display">Team Wir: 0000 | Team Die: 0000</div>
+                <div id="score-display">0000 : 0000</div>
                 <button id="options-button" class="game-button">Optionen</button>
             </div>
             <div class="table-area">
                 <div class="player-area player-top" id="player-area-2">
-                    <div class="player-info"><span class="player-name">Partner</span><span class="card-count">0</span><img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T"><img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*"></div>
+                    <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                    <div class="player-info">
+                        <span class="player-name">Partner</span>
+                    </div>
+                    <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
                     <div class="hand opponent-hand" id="player-2-hand"></div>
                 </div>
                 <div class="player-area player-left" id="player-area-3">
-                     <div class="player-info"><span class="player-name">Gegner L.</span><span class="card-count">0</span><img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T"><img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*"></div>
+                    <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                     <div class="player-info">
+                         <span class="player-name">Gegner L.</span>
+                     </div>
+                    <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
                     <div class="hand opponent-hand" id="player-3-hand"></div>
                 </div>
                 <div class="player-area player-right" id="player-area-1">
-                    <div class="player-info"><span class="player-name">Gegner R.</span><span class="card-count">0</span><img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T"><img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*"></div>
+                    <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                    <div class="player-info">
+                        <span class="player-name">Gegner R.</span>
+                    </div>
+                    <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
                     <div class="hand opponent-hand" id="player-1-hand"></div>
                 </div>
                 <div class="center-table">
@@ -82,7 +94,12 @@
                     <div class="schupf-zone" id="schupf-zone-opponent-left" data-target-player-relative="3">L</div>
                 </div>
                 <div class="player-area player-bottom" id="player-area-0">
-                    <div class="player-info"><span class="player-name">Ich</span><span class="card-count">0</span><img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T"><img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*"><img src="images/bomb.png" id="bomb-icon" class="hidden" alt="B"></div>
+                    <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                    <img src="images/bomb.png" id="bomb-icon" class="hidden" alt="B">
+                    <div class="player-info">
+                        <span class="player-name">Ich</span>
+                    </div>
+                    <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
                     <div class="hand own-hand" id="player-0-hand"></div>
                 </div>
             </div>
@@ -94,9 +111,6 @@
         </div>
 
         <!-- Dialoge (modal) -->
-        <!-- Dialoge bleiben innerhalb des Wrappers, damit sie mitskalieren,
-             oder außerhalb, wenn sie immer browser-viewport-relativ sein sollen.
-             Fürs Erste im Wrapper, damit sie konsistent zum Spielbereich sind. -->
         <div id="wish-dialog" class="dialog hidden">
             <h3>Wähle einen Kartenwert</h3>
             <div id="wish-options"></div>
@@ -125,55 +139,71 @@
         <div id="error-toast" class="toast hidden">
             <p id="error-toast-message"></p>
         </div>
+
     </div> <!-- Ende #game-wrapper -->
 
     <!-- TEST BUTTONS (außerhalb des game-wrapper für feste Position auf PC) -->
-    <div id="test-controls-container" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color:white; padding: 15px; border-radius: 8px; z-index: 10001; display: flex; flex-direction: column; gap: 6px; max-height: 95vh; overflow-y: auto; font-size: 12px; width: 200px;">
+    <div id="test-controls-container" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color:white; padding: 15px; border-radius: 8px; z-index: 10001; display: flex; flex-direction: column; gap: 6px; max-height: 95vh; overflow-y: auto; font-size: 12px; width: 300px;">
         <h4 style="margin-bottom: 8px; text-align: center; font-size: 1.1em;">Visuelle Tests</h4>
-        <!-- ... (alle Test-Buttons und Inputs von vorher) ... -->
-        <button data-test="deal-own-cards">1. Eigene Karten austeilen</button>
-        <button data-test="select-cards">1.1 Karten selektieren</button>
+
         <hr>
-        <button data-test="play-selected-cards">2. Selektierte ausspielen</button>
+        <button data-test="deal-own-cards">Karten austeilen</button>
+
+        <hr>
+        <button data-test="select-cards">Karten selektieren</button>
+        <button data-test="play-selected-cards">Selektierte ausspielen</button>
+
+        <hr>
         <div style="display:flex; align-items:center; gap: 5px;">
            Mitspieler: <input type="number" id="test-player-index" value="1" min="1" max="3" style="width: 40px;" title="Mitspieler (1=R, 2=P, 3=L)">
         </div>
-        <button data-test="opponent-plays-cards">3. Mitspieler legt ab</button>
-        <button data-test="highlight-trick">4. Stich überstechen (Highlight)</button>
+        <button data-test="opponent-plays-cards">Mitspieler legt ab</button>
+        <button data-test="highlight-trick">Stich überstechen (Highlight)</button>
+
         <hr>
-        <button data-test="take-trick-self">5.1 Stich selbst kassieren</button>
-        <button data-test="take-trick-opponent">5.2 Stich zu Mitspieler</button>
+        <button data-test="take-trick-self">Stich selbst kassieren</button>
+        <button data-test="take-trick-opponent">Stich zu Mitspieler</button>
+
         <hr>
-        <button data-test="show-schupf-zones">6.1 Schupf-Zonen zeigen</button>
-        <button data-test="give-own-schupf-card">6.2 Eigene Schupfkarte abgeben</button>
-        <button data-test="opponent-schupf-cards">7. Schupfk. Gegner/Partner</button>
-        <button data-test="animate-schupf-exchange">8. Schupfk. vertauschen (Anim)</button>
-        <button data-test="take-schupf-cards">10. Schupfk. aufnehmen</button>
+        <button data-test="show-schupf-zones">Schupf-Zonen zeigen</button>
+        <button data-test="give-own-schupf-card">Eigene Schupfkarte abgeben</button>
+        <button data-test="opponent-schupf-cards">Schupfkarten Mitspieler</button>
+        <button data-test="animate-schupf-exchange">Schupfkarten tauschen</button>
+        <button data-test="take-schupf-cards">10. Schupfkarten aufnehmen</button>
+
         <hr>
         <div style="display:flex; align-items:center; gap: 5px;">
-            Score: <input type="text" id="test-score" value="100:50" title="Punkte (Wir:Die)" style="flex-grow:1;">
+            Score: <input type="text" id="test-score" value="0100:0050" title="Punkte (Wir:Gegner)" style="flex-grow:1;">
         </div>
-        <button data-test="update-score">11. Score ändern</button>
+        <button data-test="update-score">Score ändern</button>
+
+        <hr>
         <div style="display:flex; align-items:center; gap: 5px;">
             Name: <input type="text" id="test-player-name" value="NeuerName" title="Neuer Name für Spieler Rechts" style="flex-grow:1;">
         </div>
-        <button data-test="update-player-name">12. Mitspielername ändern</button>
+        <button data-test="update-player-name">Mitspielername ändern</button>
+
         <hr>
-        <button data-test="toggle-dragon-dialog">13. Drachen-Dialog</button>
-        <button data-test="toggle-wish-dialog">14.1 Wunsch-Dialog</button>
-        <button data-test="show-wish-indicator">14.2 Wunsch-Indikator zeigen (7)</button>
-        <button data-test="hide-wish-indicator">15. Wunsch-Indikator ausblenden</button>
+        <button data-test="throw-bomb-effect">Bombe werfen (Effekt)</button>
+
         <hr>
-        <button data-test="toggle-bomb-icon">16. Bomben-Icon</button>
-        <button data-test="throw-bomb-effect">17. Bombe werfen (Effekt)</button>
-        <button data-test="toggle-tichu-player1">18. Tichu-Indikator (Gegner R)</button>
-        <button data-test="next-turn-indicator">19. Turn-Indikator wandern</button>
-        <button data-test="reveal-opponent-cards">20. Karten Gegner zeigen</button>
+        <button data-test="toggle-bomb-icon">Bomben-Icon</button>
+        <button data-test="grand-tichu-indicator">Grand-Tichu-Indikator</button>
+        <button data-test="toggle-tichu-player1">Tichu-Indikator (Gegner R)</button>
+        <button data-test="next-turn-indicator">Turn-Indikator wandern</button>
+        <button data-test="show-wish-indicator">Wunsch-Indikator zeigen</button>
+        <button data-test="hide-wish-indicator">Wunsch-Indikator ausblenden</button>
+
         <hr>
-        <button data-test="toggle-round-end-dialog">21. Rundenende-Dialog</button>
-        <button data-test="toggle-game-end-dialog">22. Spielende-Dialog</button>
-        <button data-test="toggle-leave-dialog">23. Verlassen-Dialog</button>
-        <button data-test="show-error-toast">24. Fehler anzeigen</button>
+        <button data-test="reveal-opponent-cards">Karten Gegner zeigen</button>
+
+        <hr>
+        <button data-test="toggle-wish-dialog">Wunsch-Dialog</button>
+        <button data-test="toggle-dragon-dialog">Drachen-Dialog</button>
+        <button data-test="toggle-round-end-dialog">Runden-Ende-Dialog</button>
+        <button data-test="toggle-game-end-dialog">Partie-Ende-Dialog</button>
+        <button data-test="toggle-leave-dialog">Verlassen-Dialog</button>
+        <button data-test="show-error-toast">Fehler anzeigen</button>
     </div>
 
     <!-- Module (Reihenfolge ist wichtig!) -->

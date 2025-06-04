@@ -251,7 +251,6 @@ const GameTableView = (() => {
                 _testOwnCards.push({ ...cardData, element: cardEl }); // Füge DOM-Element Referenz hinzu
             }
         });
-        document.querySelector('#player-area-0 .card-count').textContent = _testOwnCards.length;
     }
 
     function _testSelectSomeCards() {
@@ -286,7 +285,6 @@ const GameTableView = (() => {
             }
         });
 
-        document.querySelector('#player-area-0 .card-count').textContent = _testOwnCards.length;
         console.log("Gespielt (visuell):", playedCardLabels.join(" "));
         setTimeout(() => pile.querySelectorAll('.playing').forEach(c => c.classList.remove('playing')), 500);
     }
@@ -306,12 +304,6 @@ const GameTableView = (() => {
         parsedOpponentCards.forEach(cd => {
             if (cd && cd.label) pile.appendChild(_createCardElement(cd));
         });
-
-        const countEl = document.querySelector(`#player-area-${relativeIdx} .card-count`);
-        if (countEl) {
-            let currentCount = parseInt(countEl.textContent) || 0;
-            countEl.textContent = Math.max(0, currentCount - parsedOpponentCards.length).toString();
-        }
     }
 
     function _testHighlightTrick(relativeIdx) {
@@ -422,7 +414,7 @@ const GameTableView = (() => {
 
     function _testUpdateScore() {
         const scoreStr = document.getElementById('test-score').value;
-        _scoreDisplay.textContent = `Wir: ${scoreStr.split(':')[0]} | Die: ${scoreStr.split(':')[1]}`;
+        _scoreDisplay.textContent = `${scoreStr.split(':')[0]} : ${scoreStr.split(':')[1]}`;
     }
 
     function _testUpdatePlayerName(relativeIdx) {
@@ -495,7 +487,7 @@ const GameTableView = (() => {
                 }
             });
         } else {
-            const cardCount = _testOpponentHands[relativeIdx] ? _testOpponentHands[relativeIdx].length : (parseInt(document.querySelector(`#player-area-${relativeIdx} .card-count`).textContent) || 5) ;
+            const cardCount = 10;
             handContainer.innerHTML = '';
             for (let i = 0; i < cardCount; i++) {
                 const cardBack = document.createElement('div');
@@ -525,9 +517,9 @@ const GameTableView = (() => {
             const team02Score = pubState.game_score[0].reduce((a, b) => a + b, 0);
             const team13Score = pubState.game_score[1].reduce((a, b) => a + b, 0);
             const myTeamIs02 = ownPIdx === 0 || ownPIdx === 2;
-            _scoreDisplay.textContent = `Wir: ${String(myTeamIs02 ? team02Score : team13Score).padStart(4, '0')} | Die: ${String(myTeamIs02 ? team13Score : team02Score).padStart(4, '0')}`;
+            _scoreDisplay.textContent = `${String(myTeamIs02 ? team02Score : team13Score).padStart(4, '0')} : ${String(myTeamIs02 ? team13Score : team02Score).padStart(4, '0')}`;
         } else {
-            _scoreDisplay.textContent = 'Team Wir: 0000 | Team Die: 0000';
+            _scoreDisplay.textContent = '0000 : 0000';
         }
 
         // Spieler-Infos aktualisieren
@@ -535,16 +527,12 @@ const GameTableView = (() => {
             const canonicalIdx = Helpers.getCanonicalPlayerIndex(relIdx);
             const playerArea = document.getElementById(`player-area-${relIdx}`);
             const nameEl = playerArea.querySelector('.player-name');
-            const countEl = playerArea.querySelector('.card-count');
             const tichuEl = playerArea.querySelector('.tichu-indicator');
             const turnEl = playerArea.querySelector('.turn-indicator');
 
             nameEl.textContent = (pubState.player_names && pubState.player_names[canonicalIdx])
                                ? pubState.player_names[canonicalIdx] + (canonicalIdx === ownPIdx ? " (Du)" : "")
                                : `Spieler ${relIdx}`;
-            countEl.textContent = (pubState.count_hand_cards && pubState.count_hand_cards[canonicalIdx] !== undefined)
-                                ? pubState.count_hand_cards[canonicalIdx]
-                                : (relIdx === 0 ? _testOwnCards.length : 14); // Fallback für Test
 
             if (tichuEl) tichuEl.classList.toggle('hidden', !(pubState.announcements && pubState.announcements[canonicalIdx] > 0));
             if (turnEl) turnEl.classList.toggle('hidden', pubState.current_turn_index !== canonicalIdx);
@@ -576,7 +564,6 @@ const GameTableView = (() => {
                 const canonicalIdx = Helpers.getCanonicalPlayerIndex(i);
                 const cardCount = (pubState.count_hand_cards && pubState.count_hand_cards[canonicalIdx] !== undefined)
                                   ? pubState.count_hand_cards[canonicalIdx] : 14;
-                document.querySelector(`#player-area-${i} .card-count`).textContent = cardCount;
                 for (let k = 0; k < cardCount; k++) {
                     const cardBack = document.createElement('div');
                     cardBack.className = 'card-back';
