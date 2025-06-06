@@ -82,11 +82,18 @@ const GameTableView = (() => {
     const _tichuIndicator = document.getElementById('tichu-indicator');
 
     /**
-     * Das Icon zur Anzeige eines offenen Wunsches.
+     * Das Hintergrund-Icon für den offenen Wunsch.
      *
      * @type {HTMLImageElement}
      */
     const _wishIndicator = document.getElementById('wish-indicator');
+
+    /**
+     * Die Anzeige des gewünschten Kartenwerts.
+     *
+     * @type {HTMLSpanElement}
+     */
+    const _wishIndicatorLabel = document.getElementById('wish-indicator-label');
 
     /**
      * Das Icon zur Anzeige des Spielers, der am Zug ist.
@@ -213,11 +220,10 @@ const GameTableView = (() => {
             case 'update-player-name': _testUpdatePlayerName(testPlayerRelativeIdx); break;
             case 'toggle-dragon-dialog': Dialogs.showDragonDialog('test-dragon-req'); break;
             case 'toggle-wish-dialog': Dialogs.showWishDialog('test-wish-req'); break;
-            case 'show-wish-indicator': _testShowWishIndicator(7); break;
-            case 'hide-wish-indicator': _wishIndicator.classList.add('hidden'); break;
+            case 'toggle-wish-indicator': _testToggleWishIndicator(); break;
             case 'toggle-bomb-icon': _bombIcon.classList.toggle('hidden'); break;
             case 'throw-bomb-effect': _testThrowBombEffect(); break;
-            case 'toggle-tichu-player1': _testToggleTichuIndicator(testPlayerRelativeIdx); break;
+            case 'toggle-tichu-indicator': _testToggleTichuIndicator(); break;
             case 'next-turn-indicator': _testNextTurnIndicator(); break;
             case 'reveal-opponent-cards': _testRevealOpponentCards(testPlayerRelativeIdx); break;
             case 'toggle-round-end-dialog': Dialogs.handleNotification('round_over', { game_score: [[120],[30]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
@@ -423,26 +429,15 @@ const GameTableView = (() => {
         if (nameEl) nameEl.textContent = newName;
     }
 
-    function _testShowWishIndicator(value) {
-        // Finde das Label für den Wert
-        let cardLabelForWish = String(value);
-        if (value === 14) cardLabelForWish = "A";
-        else if (value === 13) cardLabelForWish = "K";
-        else if (value === 12) cardLabelForWish = "D";
-        else if (value === 11) cardLabelForWish = "B";
-        else if (value === 10) cardLabelForWish = "Z"; // Für Zehn
-        // Annahme: Es gibt kein spezifisches Bild für "Mahjong mit Wert X",
-        // daher verwenden wir das generische Wunsch-Icon und zeigen den Wert als Text (oder eine andere visuelle Kennung)
-        _wishIndicator.style.backgroundImage = `url('images/wish-indicator.png')`; // Generisches Bild
-        // Erstelle ein temporäres Element für den Text, um es über das Bild zu legen
-        let existingText = _wishIndicator.querySelector('.wish-value-text');
-        if (!existingText) {
-            existingText = document.createElement('span');
-            existingText.className = 'wish-value-text'; // Style für diesen Text in CSS hinzufügen
-            _wishIndicator.appendChild(existingText);
+    let _wish_value = 1
+    function _testToggleWishIndicator() {
+        _wishIndicator.style.backgroundImage = `url('images/wish-indicator.png')`;
+        if (_wishIndicator.classList.contains('hidden')) {
+            _wish_value = _wish_value < 14 ? _wish_value + 1 : 2;
+            _wishIndicatorLabel.textContent = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "B", "D", "K", "A"][_wish_value];
+
         }
-        existingText.textContent = cardLabelForWish;
-        _wishIndicator.classList.remove('hidden');
+        _wishIndicator.classList.toggle('hidden');
     }
 
     function _testThrowBombEffect() {
@@ -456,9 +451,11 @@ const GameTableView = (() => {
         }, 800); // Dauer der Animation
     }
 
-    function _testToggleTichuIndicator(relativeIdx) {
-        const indicator = document.querySelector(`#player-area-${relativeIdx} .tichu-indicator`);
-        if (indicator) indicator.classList.toggle('hidden');
+    function _testToggleTichuIndicator() {
+        for (let relativeIdx=0; relativeIdx<4; relativeIdx++) {
+            const indicator = document.querySelector(`#player-area-${relativeIdx} .tichu-indicator`);
+            indicator.classList.toggle('hidden');
+        }
     }
 
     function _testNextTurnIndicator() {
@@ -487,7 +484,7 @@ const GameTableView = (() => {
                 }
             });
         } else {
-            const cardCount = 10;
+            const cardCount = 14;
             handContainer.innerHTML = '';
             for (let i = 0; i < cardCount; i++) {
                 const cardBack = document.createElement('div');
@@ -562,8 +559,7 @@ const GameTableView = (() => {
             const handContainer = document.getElementById(`player-${i}-hand`);
             if (handContainer.children.length === 0 && !handContainer.classList.contains('revealed')) {
                 const canonicalIdx = Helpers.getCanonicalPlayerIndex(i);
-                const cardCount = (pubState.count_hand_cards && pubState.count_hand_cards[canonicalIdx] !== undefined)
-                                  ? pubState.count_hand_cards[canonicalIdx] : 14;
+                const cardCount = 14;
                 for (let k = 0; k < cardCount; k++) {
                     const cardBack = document.createElement('div');
                     cardBack.className = 'card-back';
@@ -574,10 +570,15 @@ const GameTableView = (() => {
         // Bomben-Icon Sichtbarkeit
          _bombIcon.classList.toggle('hidden', !(State.getPrivateState()));
 
+        // Tichu-Indikator
+        for (let displayIdx=0; displayIdx < 4; displayIdx++) {
+            let tichuIndicator = document.querySelector(`#player-area-${displayIdx} .tichu-indicator`);
+            tichuIndicator.classList.toggle('hidden');
+        }
 
         // Wunsch-Indikator
         if (pubState.wish_value > 0) {
-            _testShowWishIndicator(pubState.wish_value); // Wiederverwende Test-Funktion
+            _testToggleWishIndicator(pubState.wish_value); // Wiederverwende Test-Funktion
         } else {
             _wishIndicator.classList.add('hidden');
         }
