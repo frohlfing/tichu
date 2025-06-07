@@ -457,9 +457,9 @@ const GameTableView = (() => {
     }
 
     function _testNextTurnIndicator() {
-        document.querySelector(`#player-area-${_currentTurnRelativeIndex} .turn-indicator`).classList.add('hidden');
+        document.querySelector(`#played-cards-pile-player-${_currentTurnRelativeIndex} .turn-indicator`).classList.add('hidden');
         _currentTurnRelativeIndex = (_currentTurnRelativeIndex + 1) % 4;
-        document.querySelector(`#player-area-${_currentTurnRelativeIndex} .turn-indicator`).classList.remove('hidden');
+        document.querySelector(`#played-cards-pile-player-${_currentTurnRelativeIndex} .turn-indicator`).classList.remove('hidden');
     }
 
     function _testRevealOpponentCards(relativeIdx) {
@@ -542,7 +542,7 @@ const GameTableView = (() => {
             if (turnEl) turnEl.classList.toggle('hidden', pubState.current_turn_index !== canonicalIdx);
         }
         if (pubState.current_turn_index === -1 && ownPIdx !== -1) { // Wenn Spiel beginnt, ist eigener Spieler oft Startspieler
-             const ownTurnEl = document.querySelector(`#player-area-0 .turn-indicator`);
+             const ownTurnEl = document.querySelector(`#played-cards-pile-player-0 .turn-indicator`);
              if(ownTurnEl && _currentTurnRelativeIndex === 0) ownTurnEl.classList.remove('hidden');
         }
 
@@ -575,7 +575,10 @@ const GameTableView = (() => {
             }
         }
 
-        // Tichu sichtber machen
+        // Wunsch sichtbar machen
+        _testToggleWishIndicator();
+
+        // Tichu sichtbar machen
         _testShowSchupfZones();
 
         // Bomben-Icon Sichtbarkeit
@@ -585,6 +588,11 @@ const GameTableView = (() => {
         for (let displayIdx=0; displayIdx < 4; displayIdx++) {
             let tichuIndicator = document.querySelector(`#player-area-${displayIdx} .tichu-indicator`);
             tichuIndicator.classList.toggle('hidden');
+        }
+
+        // Turn-Indikator
+        for (let _currentTurnRelativeIndex=0; _currentTurnRelativeIndex < 4; _currentTurnRelativeIndex++) {
+            document.querySelector(`#played-cards-pile-player-${_currentTurnRelativeIndex} .turn-indicator`).classList.toggle('hidden');
         }
 
         // Wunsch-Indikator

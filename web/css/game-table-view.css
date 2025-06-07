@@ -62,7 +62,7 @@
     right: 0;
 }
 
-/* Table Area: Tischmitte (hier werden die Karten abgelegt) */
+/* Table Area -> Tischmitte (umfasst Turn-und Wunsch-Indikator, Schupf-Zone und Stich-Zone (wo die Karten abgelegt werden)) */
 
 .center-table {
     position: absolute;
@@ -78,8 +78,7 @@
     border: 1px solid blue;
 }
 
-
-/* Table Area: Center Table: Wunsch-Indikator */
+/* Table Area -> Tischmitte -> Wunsch-Indikator */
 
 #wish-indicator {
     position: absolute;
@@ -106,9 +105,7 @@
     text-shadow: 0 0 3px #fff;
 }
 
-
-/* Table Area: Tischmitte: Stich */
-/*todo umbenennen in .trick*/
+/* Table Area -> Tischmitte -> Spieler-Bereich */
 .played-cards-pile {
     display: flex;
     flex-wrap: nowrap;
@@ -137,7 +134,28 @@
 #played-cards-pile-player-3 { grid-row: 1 / span 2; grid-column: 1; transform: rotate(90deg); }
 #played-cards-pile-player-1 { grid-row: 1 / span 2; grid-column: 2; transform: rotate(-90deg); }
 
-/* Table Area: Center Table:  Schupf-Zonen */
+/* Table Area -> Tischmitte -> Spieler-Bereich -> Turn-Indikator */
+
+.turn-indicator {
+    box-shadow: 0 0 8px 3px gold;
+    border-radius: 50%;
+    background-color: rgba(255, 215, 0, 0.4);
+    height: 160px;
+    width: 160px;
+    position: absolute;
+}
+
+#played-cards-pile-player-2 .turn-indicator,
+#played-cards-pile-player-0 .turn-indicator {
+    bottom: 25px;
+}
+
+#played-cards-pile-player-3 .turn-indicator,
+#played-cards-pile-player-1 .turn-indicator {
+    bottom: 400px;
+}
+
+/* Table Area -> Tischmitte -> Spieler-Bereich -> Schupf-Zonen */
 
 .schupf-zones {
     position: absolute;
@@ -181,7 +199,7 @@
 }
 .schupf-zone:empty::before { content: attr(data-target-player-relative); font-weight: bold; }
 
-/* Table Area: Spieler-Bereiche (Spieler-Info, Bomben-Icon und Handkarten eines Spielers)*/
+/* Table Area -> Spieler-Bereiche (Spieler-Info, Bomben-Icon und Handkarten eines Spielers)*/
 
 .player-area {
     position: absolute;
@@ -226,7 +244,7 @@
     right: 0;
 }
 
-/* Table Area: Spieler-Bereiche: Spieler-Infon (umfasst Tichu-Indikator und Spielername) */
+/* Table Area -> Spieler-Bereiche -> Spieler-Info (umfasst Tichu-Indikator und Spielername) */
 
 .player-info {
     font-size: 46px;
@@ -277,16 +295,7 @@
     bottom: 0;*/
 }
 
-/* Table Area: Spieler-Bereich: Turn-Indikator */
-
-.turn-indicator:not(.hidden) {
-    box-shadow: 0 0 8px 3px gold;
-    border-radius: 50%;
-    background-color: rgba(255, 215, 0, 0.4);
-    height: 100px;
-}
-
-/* Table Area: Spieler-Bereich: Bomben-Indikator */
+/* Table Area -> Spieler-Bereich -> Bomben-Indikator */
 
 #bomb-icon {
     cursor: pointer;
@@ -297,7 +306,7 @@
     right: 20px;
 }
 
-/* Table Area: Spieler-Bereich: Hände */
+/* Table Area -> Spieler-Bereich -> Hände */
 
 .hand {
     display: flex;
@@ -338,7 +347,7 @@
     left: 0;
 }
 
-/* Table Area: Spieler-Bereich: Eigene Handkarten */
+/* Table Area -> Spieler-Bereich -> Eigene Handkarten */
 
 .own-hand .card {
     width: 120px;
@@ -360,7 +369,7 @@
     cursor: default;
 }
 
-/* Table Area: Spieler-Bereich: Handkarten der Mitspieler (Kartenrückseite) */
+/* Table Area -> Spieler-Bereich -> Handkarten der Mitspieler (Kartenrückseite) */
 
 .opponent-hand .card-back {
     width: 120px;
@@ -389,7 +398,7 @@
     transform: rotate(-90deg);
 }
 
-/* Table Area: Spieler-Bereich: Handkarten der Mitspieler (offen gelegt) */
+/* Table Area -> Spieler-Bereich -> Handkarten der Mitspieler (offen gelegt) */
 
 .opponent-hand.revealed .card-back {
     /* display: none; */
