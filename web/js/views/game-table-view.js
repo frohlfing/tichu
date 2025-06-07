@@ -230,6 +230,7 @@ const GameTableView = (() => {
             case 'toggle-game-end-dialog': Dialogs.handleNotification('game_over', { game_score: [[1050],[780]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
             case 'toggle-leave-dialog': Dialogs.showLeaveConfirmDialog(); break;
             case 'show-error-toast': Dialogs.showErrorToast("Dies ist ein Test-Fehler!"); break;
+            case 'toggle-disabled': test_toggleDisabled(); break;
         }
     }
 
@@ -360,12 +361,9 @@ const GameTableView = (() => {
     }
 
     function _testShowSchupfZones() {
-        _schupfZonesContainer.classList.toggle('hidden');
-        if (!_schupfZonesContainer.classList.contains('hidden')) {
-            // Übergebe die clientseitigen Kartenobjekte
-            CardHandler.enableSchupfMode('test-schupf-req', _testOwnCards.map(c => ({value: c.value, suit: c.suit, label: c.label})));
-        } else {
-            CardHandler.disableSchupfMode();
+        for (let relativeIdx=0; relativeIdx<4; relativeIdx++) {
+            const zone = document.querySelector(`#played-cards-pile-player-${relativeIdx} .schupf-zones`);
+            zone.classList.toggle('hidden');
         }
     }
 
@@ -494,6 +492,15 @@ const GameTableView = (() => {
         }
     }
 
+    function test_toggleDisabled(isSchupfing) {
+        _endGameButton.disabled = !_endGameButton.disabled;
+        _optionsButton.disabled = !_optionsButton.disabled;
+        _passButton.disabled = !_passButton.disabled;
+        _tichuButton.disabled = !_tichuButton.disabled;
+        _playCardsButton.disabled = !_playCardsButton.disabled;
+    }
+
+
     // ---------------------------------------------------------
 
     /**
@@ -567,6 +574,10 @@ const GameTableView = (() => {
                 }
             }
         }
+
+        // Tichu sichtber machen
+        _testShowSchupfZones();
+
         // Bomben-Icon Sichtbarkeit
          _bombIcon.classList.toggle('hidden', !(State.getPrivateState()));
 
@@ -674,8 +685,7 @@ const GameTableView = (() => {
     function setPlayControlsForSchupfen(isSchupfing) {
         _passButton.classList.toggle('hidden', isSchupfing);
         _tichuButton.classList.toggle('hidden', isSchupfing);
-        // Der "Spielen"-Button könnte zu einem "Schupfen Bestätigen"-Button werden
-        _playCardsButton.textContent = isSchupfing ? "Schupfen Bestätigen" : "Spielen";
+
         if (isSchupfing) {
             _playCardsButton.onclick = () => {
                 CardHandler.confirmSchupf();

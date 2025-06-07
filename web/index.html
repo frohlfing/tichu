@@ -58,51 +58,70 @@
             </div>
             <div class="table-area">
                 <div class="center-table">
-                    <div id="played-cards-pile-player-0" class="played-cards-pile"></div>
-                    <div id="played-cards-pile-player-1" class="played-cards-pile"></div>
-                    <div id="played-cards-pile-player-2" class="played-cards-pile"></div>
-                    <div id="played-cards-pile-player-3" class="played-cards-pile"></div>
                     <div id="wish-indicator" class="hidden">
                         <span id="wish-indicator-label"></span>
                     </div>
+                    <div id="played-cards-pile-player-0" class="played-cards-pile">
+                        <div class="schupf-zones hidden">
+                            <div class="schupf-zone" id="schupf-zone-opponent-right" data-target-player-relative="1">R</div>
+                            <div class="schupf-zone" id="schupf-zone-partner" data-target-player-relative="2">P</div>
+                            <div class="schupf-zone" id="schupf-zone-opponent-left" data-target-player-relative="3">L</div>
+                        </div>
+                    </div>
+                    <div id="played-cards-pile-player-1" class="played-cards-pile">
+                        <div class="schupf-zones hidden">
+                            <div class="schupf-zone" id="schupf-zone-right-1" data-target-player-relative="1">R</div>
+                            <div class="schupf-zone" id="schupf-zone-right-2" data-target-player-relative="2">P</div>
+                            <div class="schupf-zone" id="schupf-zone-right-3" data-target-player-relative="3">L</div>
+                        </div>
+                    </div>
+                    <div id="played-cards-pile-player-2" class="played-cards-pile">
+                        <div class="schupf-zones hidden">
+                            <div class="schupf-zone" id="schupf-zone-top-1" data-target-player-relative="1">R</div>
+                            <div class="schupf-zone" id="schupf-zone-top-2" data-target-player-relative="2">P</div>
+                            <div class="schupf-zone" id="schupf-zone-top-3" data-target-player-relative="3">L</div>
+                        </div>
+                    </div>
+                    <div id="played-cards-pile-player-3" class="played-cards-pile">
+                        <div class="schupf-zones hidden">
+                            <div class="schupf-zone" id="schupf-zone-left-1" data-target-player-relative="1">R</div>
+                            <div class="schupf-zone" id="schupf-zone-left-2" data-target-player-relative="2">P</div>
+                            <div class="schupf-zone" id="schupf-zone-left-3" data-target-player-relative="3">L</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="player-area player-top" id="player-area-2">
+                    <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                    <div class="hand opponent-hand" id="player-2-hand"></div>
+                    <div class="player-info">
+                        <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
+                        <span class="player-name">Partner</span>
+                    </div>
                 </div>
                 <div class="player-area player-bottom" id="player-area-0">
-                    <div class="schupf-zones hidden">
-                        <div class="schupf-zone" id="schupf-zone-opponent-right" data-target-player-relative="1">R</div>
-                        <div class="schupf-zone" id="schupf-zone-partner" data-target-player-relative="2">P</div>
-                        <div class="schupf-zone" id="schupf-zone-opponent-left" data-target-player-relative="3">L</div>
-                    </div>
                     <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
-                    <img src="images/bomb.png" id="bomb-icon" class="hidden" alt="B">
                     <div class="player-info">
+                        <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
                         <span class="player-name">Ich</span>
                     </div>
-                    <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
+                    <img src="images/bomb.png" id="bomb-icon" class="hidden" alt="B">
                     <div class="hand own-hand" id="player-0-hand"></div>
+                </div>
+                <div class="player-area player-left" id="player-area-3">
+                    <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                    <div class="hand opponent-hand" id="player-3-hand"></div>
+                    <div class="player-info">
+                        <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
+                        <span class="player-name">Gegner L.</span>
+                    </div>
                 </div>
                 <div class="player-area player-right" id="player-area-1">
                     <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
                     <div class="player-info">
+                        <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
                         <span class="player-name">Gegner R.</span>
                     </div>
-                    <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
                     <div class="hand opponent-hand" id="player-1-hand"></div>
-                </div>
-                <div class="player-area player-top" id="player-area-2">
-                    <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
-                    <div class="player-info">
-                        <span class="player-name">Partner</span>
-                    </div>
-                    <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
-                    <div class="hand opponent-hand" id="player-2-hand"></div>
-                </div>
-                <div class="player-area player-left" id="player-area-3">
-                    <img src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
-                     <div class="player-info">
-                         <span class="player-name">Gegner L.</span>
-                     </div>
-                    <img src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
-                    <div class="hand opponent-hand" id="player-3-hand"></div>
                 </div>
             </div>
             <div class="bottom-controls">
@@ -205,6 +224,8 @@
         <button data-test="toggle-game-end-dialog">Partie-Ende-Dialog</button>
         <button data-test="toggle-leave-dialog">Verlassen-Dialog</button>
         <button data-test="show-error-toast">Fehler anzeigen</button>
+        <hr>
+        <button data-test="toggle-disabled">Buttons</button>
     </div>
 
     <!-- Module (Reihenfolge ist wichtig!) -->
