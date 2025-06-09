@@ -16,7 +16,7 @@ const GameTableView = (() => {
      *
      * @type {HTMLButtonElement}
      */
-    const _endGameButton = document.getElementById('end-game-button');
+    const _exitButton = document.getElementById('exit-button');
 
     /**
      * Button für Spieloptionen.
@@ -40,11 +40,11 @@ const GameTableView = (() => {
     const _tichuButton = document.getElementById('tichu-button');
 
     /**
-     * Button zum Karten ausspielen.
+     * Button zum schupfen, Tauschkarten aufnehmen und Karten ausspielen
      *
      * @type {HTMLButtonElement}
      */
-    const _playCardsButton = document.getElementById('play-cards-button');
+    const _playButton = document.getElementById('play-button');
 
     /**
      * Die Anzeige des Punktestandes.
@@ -52,34 +52,6 @@ const GameTableView = (() => {
      * @type {HTMLDivElement}
      */
     const _scoreDisplay = document.getElementById('score-display');
-
-    /**
-     * Der Container für die Handkarten des Benutzers.
-     *
-     * @type {HTMLDivElement}
-     */
-    const _ownHandContainer = document.getElementById('player-0-hand');
-
-    /**
-     * Der Container für die Ablage-Zonen der Tauschkarten.
-     *
-     * @type {HTMLDivElement}
-     */
-    const _schupfZonesContainer = document.querySelector('.schupf-zones');
-
-    /**
-     * Das Bomben-Icon.
-     *
-     * @type {HTMLImageElement}
-     */
-    const _bombIcon = document.getElementById('bomb-icon');
-
-    /**
-     * Das Icon zur Anzeige einer Tichu-Ansage.
-     *
-     * @type {HTMLImageElement}
-     */
-    const _tichuIndicator = document.getElementById('tichu-indicator');
 
     /**
      * Das Hintergrund-Icon für den offenen Wunsch.
@@ -96,14 +68,92 @@ const GameTableView = (() => {
     const _wishIndicatorLabel = document.getElementById('wish-indicator-label');
 
     /**
-     * Das Icon zur Anzeige des Spielers, der am Zug ist.
+     * Das Bomben-Icon.
      *
      * @type {HTMLImageElement}
      */
-    const _turnIndicator = document.getElementById('turn-indicator');
+    const _bombIcon = document.getElementById('bomb-icon');
+
+    /**
+     * Die Icons zur Anzeige des Spielers, der am Zug ist.
+     *
+     * @type {HTMLElement[]}
+     */
+    const _turnIndicators = [
+        document.getElementById('turn-indicator-bottom'),
+        document.getElementById('turn-indicator-right'),
+        document.getElementById('turn-indicator-top'),
+        document.getElementById('turn-indicator-left'),
+    ];
+
+    /**
+     * Die Icons zur Anzeige einer Tichu-Ansage.
+     *
+     * @type {HTMLElement[]}
+     */
+    const _tichuIndicators = [
+        document.getElementById('tichu-indicator-bottom'),
+        document.getElementById('tichu-indicator-right'),
+        document.getElementById('tichu-indicator-top'),
+        document.getElementById('tichu-indicator-left'),
+    ];
+
+    /**
+     * Die Namen der Spieler.
+     *
+     * @type {HTMLElement[]}
+     */
+    const _playerNames = [
+        document.getElementById('player-name-bottom'),
+        document.getElementById('player-name-right'),
+        document.getElementById('player-name-top'),
+        document.getElementById('player-name-left'),
+    ];
+
+    /**
+     * Die Container für die Ablage-Zonen der Tauschkarten.
+     *
+     * @type {HTMLDivElement}
+     */
+    const _schupfZonesContainers = [
+        document.getElementById('schupf-zones-bottom'),
+        document.getElementById('schupf-zones-right'),
+        document.getElementById('schupf-zones-top'),
+        document.getElementById('schupf-zones-left'),
+    ];
+
+    /**
+     * Die Ablage-Zonen der Tauschkarten.
+     *
+     * @type {HTMLDivElement}
+     */
+    const _schupfZones = [
+        [document.getElementById('schupf-zones-bottom-1'), document.getElementById('schupf-zones-bottom-2'), document.getElementById('schupf-zones-bottom-3')],
+        [document.getElementById('schupf-zones-right-1'), document.getElementById('schupf-zones-right-2'), document.getElementById('schupf-zones-right-3')],
+        [document.getElementById('schupf-zones-top-1'), document.getElementById('schupf-zones-top-2'), document.getElementById('schupf-zones-top-3')],
+        [document.getElementById('schupf-zones-left-1'), document.getElementById('schupf-zones-left-2'), document.getElementById('schupf-zones-left-3')],
+    ];
+
+    /**
+     * Die Container für die Handkarten.
+     *
+     * @type {HTMLDivElement}
+     */
+    const _hands = [
+        document.getElementById('hand-bottom'),
+        document.getElementById('hand-right'),
+        document.getElementById('hand-top'),
+        document.getElementById('hand-left'),
+    ];
+
+    /**
+     * Der Container für die Handkarten des Benutzers.
+     *
+     * @type {HTMLDivElement}
+     */
+    const _ownHandContainer = document.getElementById('hand-bottom');
 
     // --------------------------------------------------------
-    const _viewElement = _viewContainer
 
     // Für Test-Buttons
     const _testControlsContainer = document.getElementById('test-controls-container');
@@ -121,20 +171,20 @@ const GameTableView = (() => {
      */
     function init() {
         console.log("GAMETABLEVIEW: Initialisiere GameTableView (minimal)...");
-        _endGameButton.addEventListener('click', _handleEndGame);
+        _exitButton.addEventListener('click', _handleEndGame);
         _optionsButton.addEventListener('click', _handleOptions);
 
         // Event-Listener für später implementierte Features (vorerst nur Beispiele)
         // _passButton.addEventListener('click', _handlePass);
         // _tichuButton.addEventListener('click', _handleTichuAnnounce);
-        // _playCardsButton.addEventListener('click', _handlePlayCards);
+        // _playButton.addEventListener('click', _handlePlayCards);
         // _bombIcon.addEventListener('click', _handleBomb);
 
         // -----------------------------------------------------------
         // Die echten Action-Buttons sind vorerst für Tests deaktiviert oder lösen Testfunktionen aus
         _passButton.onclick = () => console.log("Test: Passen geklickt");
         _tichuButton.onclick = () => console.log("Test: Tichu geklickt");
-        _playCardsButton.onclick = () => _testPlaySelectedCards(); // Test für Ausspielen
+        _playButton.onclick = () => _testPlaySelectedCards(); // Test für Ausspielen
 
         // Event Listener für Test-Buttons
         if (_testControlsContainer) {
@@ -169,7 +219,7 @@ const GameTableView = (() => {
     // --- Hilfsfunktionen für visuelle Tests ---
     function _createCardElement(cardData, isOwnCard = false) {
         const cardDiv = document.createElement('div');
-        cardDiv.className = 'card';
+        cardDiv.className = 'card-face';
         // Stelle sicher, dass cardData.label existiert (sollte durch Helpers.parseCards der Fall sein)
         cardDiv.style.backgroundImage = `url('images/cards/${cardData.label || 'back'}.png')`;
         cardDiv.dataset.label = cardData.label || 'unbekannt';
@@ -226,8 +276,8 @@ const GameTableView = (() => {
             case 'toggle-tichu-indicator': _testToggleTichuIndicator(); break;
             case 'next-turn-indicator': _testNextTurnIndicator(); break;
             case 'reveal-opponent-cards': _testRevealOpponentCards(testPlayerRelativeIdx); break;
-            case 'toggle-round-end-dialog': Dialogs.handleNotification('round_over', { game_score: [[120],[30]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
-            case 'toggle-game-end-dialog': Dialogs.handleNotification('game_over', { game_score: [[1050],[780]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
+            case 'toggle-round-over-dialog': Dialogs.handleNotification('round_over', { game_score: [[120],[30]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
+            case 'toggle-game-over-dialog': Dialogs.handleNotification('game_over', { game_score: [[1050],[780]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
             case 'toggle-leave-dialog': Dialogs.showLeaveConfirmDialog(); break;
             case 'show-error-toast': Dialogs.showErrorToast("Dies ist ein Test-Fehler!"); break;
             case 'toggle-disabled': test_toggleDisabled(); break;
@@ -276,7 +326,7 @@ const GameTableView = (() => {
         const pile = _getTestPlayerPile(0);
         if (!pile) return;
 
-        const cardsToPlayElements = _ownHandContainer.querySelectorAll('.card.selected');
+        const cardsToPlayElements = _ownHandContainer.querySelectorAll('.card-face.selected');
         const playedCardLabels = [];
 
         cardsToPlayElements.forEach(cardEl => {
@@ -316,8 +366,8 @@ const GameTableView = (() => {
     function _testHighlightTrick(relativeIdx) {
         const pile = _getTestPlayerPile(relativeIdx);
         if (!pile) return;
-        pile.querySelectorAll('.card').forEach(c => c.classList.remove('highlight-trick')); // Alte Highlights entfernen
-        const cardsInPile = pile.querySelectorAll('.card');
+        pile.querySelectorAll('.card-face').forEach(c => c.classList.remove('highlight-trick')); // Alte Highlights entfernen
+        const cardsInPile = pile.querySelectorAll('.card-face');
         if (cardsInPile.length > 0) {
             cardsInPile[cardsInPile.length - 1].classList.add('highlight-trick'); // Letzte Karte hervorheben
         }
@@ -333,7 +383,7 @@ const GameTableView = (() => {
             const pile = _getTestPlayerPile(i);
             if (pile) {
                 Array.from(pile.children).forEach(cardEl => {
-                    if (cardEl.tagName === 'DIV' && cardEl.classList.contains('card')) {
+                    if (cardEl.tagName === 'DIV' && cardEl.classList.contains('card-face')) {
                         cardEl.classList.add('flying');
                         const cardRect = cardEl.getBoundingClientRect();
                         // Absolute Position setzen für Animation
@@ -362,14 +412,14 @@ const GameTableView = (() => {
 
     function _testShowSchupfZones() {
         for (let relativeIdx=0; relativeIdx<4; relativeIdx++) {
-            const zone = document.querySelector(`#played-cards-pile-player-${relativeIdx} .schupf-zones`);
-            zone.classList.toggle('hidden');
+            const zones = _schupfZonesContainers[relativeIdx];
+            zones.classList.toggle('hidden');
         }
     }
 
     function _testGiveOwnSchupfCard() {
         if (_testOwnCards.length > 0 && _testOwnCards[0].element &&
-            _schupfZonesContainer && !_schupfZonesContainer.classList.contains('hidden') &&
+            _schupfZones && !_schupfZones.classList.contains('hidden') &&
             CardHandler.isSchupfModeActive && CardHandler.isSchupfModeActive()) {
             // Übergebe das volle Kartenobjekt an CardHandler
             CardHandler.handleCardClick(_testOwnCards[0].element, {
@@ -390,13 +440,13 @@ const GameTableView = (() => {
         const cardDataB6 = Helpers.parseCards([[6, CardSuits.PAGODA]])[0];
         const cardDataG7 = Helpers.parseCards([[7, CardSuits.JADE]])[0];
 
-        if(schupfZoneRight.querySelector('.card')) schupfZoneRight.innerHTML = 'R';
+        if(schupfZoneRight.querySelector('.card-face')) schupfZoneRight.innerHTML = 'R';
         else { schupfZoneRight.innerHTML = ''; schupfZoneRight.appendChild(_createCardElement(cardDataS5));}
 
-        if(schupfZonePartner.querySelector('.card')) schupfZonePartner.innerHTML = 'P';
+        if(schupfZonePartner.querySelector('.card-face')) schupfZonePartner.innerHTML = 'P';
         else { schupfZonePartner.innerHTML = ''; schupfZonePartner.appendChild(_createCardElement(cardDataB6));}
 
-        if(schupfZoneLeft.querySelector('.card')) schupfZoneLeft.innerHTML = 'L';
+        if(schupfZoneLeft.querySelector('.card-face')) schupfZoneLeft.innerHTML = 'L';
         else { schupfZoneLeft.innerHTML = ''; schupfZoneLeft.appendChild(_createCardElement(cardDataG7));}
     }
 
@@ -408,9 +458,9 @@ const GameTableView = (() => {
     }
     function _testTakeSchupfCards() {
         // Simuliere Aufnahme: Eigene Schupfzonen leeren, Kartenanzahl erhöhen
-        _schupfZonesContainer.querySelectorAll('.schupf-zone .card').forEach(c => c.remove());
+        _schupfZones.querySelectorAll('.schupf-zone .card-face').forEach(c => c.remove());
         _testDealOwnCards(); // Simuliert neue Hand (vereinfacht)
-        _schupfZonesContainer.classList.add('hidden');
+        _schupfZones.classList.add('hidden');
         CardHandler.disableSchupfMode();
         Dialogs.showErrorToast("Schupfkarten 'aufgenommen' (Hand neu gemischt).");
     }
@@ -493,11 +543,11 @@ const GameTableView = (() => {
     }
 
     function test_toggleDisabled(isSchupfing) {
-        _endGameButton.disabled = !_endGameButton.disabled;
+        _exitButton.disabled = !_exitButton.disabled;
         _optionsButton.disabled = !_optionsButton.disabled;
         _passButton.disabled = !_passButton.disabled;
         _tichuButton.disabled = !_tichuButton.disabled;
-        _playCardsButton.disabled = !_playCardsButton.disabled;
+        _playButton.disabled = !_playButton.disabled;
     }
 
 
@@ -530,9 +580,9 @@ const GameTableView = (() => {
         for (let relIdx = 0; relIdx < 4; relIdx++) {
             const canonicalIdx = Helpers.getCanonicalPlayerIndex(relIdx);
             const playerArea = document.getElementById(`player-area-${relIdx}`);
-            const nameEl = playerArea.querySelector('.player-name');
-            const tichuEl = playerArea.querySelector('.tichu-indicator');
-            const turnEl = playerArea.querySelector('.turn-indicator');
+            const nameEl = _playerNames[relIdx];
+            const tichuEl = _tichuIndicators[relIdx];
+            const turnEl = _turnIndicators[relIdx]
 
             nameEl.textContent = (pubState.player_names && pubState.player_names[canonicalIdx])
                                ? pubState.player_names[canonicalIdx] + (canonicalIdx === ownPIdx ? " (Du)" : "")
@@ -563,7 +613,7 @@ const GameTableView = (() => {
 
         // Gegnerhände mit Kartenrücken füllen (nur initial oder wenn leer)
         for (let i = 1; i <= 3; i++) { // relative Indizes für Gegner
-            const handContainer = document.getElementById(`player-${i}-hand`);
+            const handContainer = _hands[i];
             if (handContainer.children.length === 0 && !handContainer.classList.contains('revealed')) {
                 const canonicalIdx = Helpers.getCanonicalPlayerIndex(i);
                 const cardCount = 14;
@@ -586,13 +636,13 @@ const GameTableView = (() => {
 
         // Tichu-Indikator
         for (let displayIdx=0; displayIdx < 4; displayIdx++) {
-            let tichuIndicator = document.querySelector(`#player-area-${displayIdx} .tichu-indicator`);
+            let tichuIndicator = _tichuIndicators[displayIdx];
             tichuIndicator.classList.toggle('hidden');
         }
 
         // Turn-Indikator
         for (let _currentTurnRelativeIndex=0; _currentTurnRelativeIndex < 4; _currentTurnRelativeIndex++) {
-            document.querySelector(`#played-cards-pile-player-${_currentTurnRelativeIndex} .turn-indicator`).classList.toggle('hidden');
+            _turnIndicators[_currentTurnRelativeIndex].classList.toggle('hidden');
         }
 
         // Wunsch-Indikator
@@ -638,7 +688,7 @@ const GameTableView = (() => {
      */
     function enablePlayControls(enable, requestId) {
         _passButton.disabled = !enable;
-        _playCardsButton.disabled = !enable;
+        _playButton.disabled = !enable;
         // Tichu-Button-Logik ist komplexer (abhängig von Kartenanzahl, Phase, bereits angesagt)
         // _tichuButton.disabled = !enable || ...;
 
@@ -648,11 +698,11 @@ const GameTableView = (() => {
 
         if (enable && requestId) {
             _passButton.dataset.requestId = requestId;
-            _playCardsButton.dataset.requestId = requestId;
+            _playButton.dataset.requestId = requestId;
         }
         else {
             delete _passButton.dataset.requestId;
-            delete _playCardsButton.dataset.requestId;
+            delete _playButton.dataset.requestId;
         }
     }
 
@@ -695,15 +745,15 @@ const GameTableView = (() => {
         _tichuButton.classList.toggle('hidden', isSchupfing);
 
         if (isSchupfing) {
-            _playCardsButton.onclick = () => {
+            _playButton.onclick = () => {
                 CardHandler.confirmSchupf();
                 SoundManager.playSound('buttonClick');
             };
         }
         else {
-            _playCardsButton.onclick = _handlePlayCards; // Standard-Handler wiederherstellen
+            _playButton.onclick = _handlePlayCards; // Standard-Handler wiederherstellen
         }
-        _playCardsButton.disabled = false; // Immer aktivierbar im Schupf-Modus (wenn Karten gewählt)
+        _playButton.disabled = false; // Immer aktivierbar im Schupf-Modus (wenn Karten gewählt)
     }
 
     // --- Private Handler für Action-Buttons (werden später implementiert) ---
@@ -733,7 +783,7 @@ const GameTableView = (() => {
     }
 
     function _handlePlayCards() {
-        const requestId = _playCardsButton.dataset.requestId;
+        const requestId = _playButton.dataset.requestId;
         const selectedCards = CardHandler.getSelectedCards(); // Client-Objekte {value, suit, label}
         if (requestId && selectedCards.length > 0) {
             SoundManager.playSound('play' + State.getPlayerIndex());
