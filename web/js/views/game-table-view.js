@@ -199,7 +199,7 @@ const GameTableView = (() => {
      */
     function _handleEndGame() {
         SoundManager.playSound('buttonClick');
-        Dialogs.showLeaveConfirmDialog();
+        Dialogs.showExitDialog();
     }
 
     /**
@@ -278,7 +278,7 @@ const GameTableView = (() => {
             case 'reveal-opponent-cards': _testRevealOpponentCards(testPlayerRelativeIdx); break;
             case 'toggle-round-over-dialog': Dialogs.handleNotification('round_over', { game_score: [[120],[30]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
             case 'toggle-game-over-dialog': Dialogs.handleNotification('game_over', { game_score: [[1050],[780]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
-            case 'toggle-leave-dialog': Dialogs.showLeaveConfirmDialog(); break;
+            case 'toggle-exit-dialog': Dialogs.showExitDialog(); break;
             case 'show-error-toast': Dialogs.showErrorToast("Dies ist ein Test-Fehler!"); break;
             case 'toggle-disabled': test_toggleDisabled(); break;
         }

@@ -30,21 +30,21 @@ const LobbyView = (() => {
      *
      * @type {HTMLElement}
      */
-    const _teamAssignmentContainer = document.getElementById('team-assignment-container');
+    const _teamAssignmentContainer = document.getElementById('lobby-team-assignment-container');
 
     /**
      * Button zum Starten des Spiels (nur für Host).
      *
      * @type {HTMLButtonElement}
      */
-    const _startGameButton = document.getElementById('start-game-button');
+    const _startGameButton = document.getElementById('lobby-start-button');
 
     /**
      * Button zum Verlassen der Lobby.
      *
      * @type {HTMLButtonElement}
      */
-    const _leaveLobbyButton = document.getElementById('leave-lobby-button');
+    const _leaveLobbyButton = document.getElementById('lobby-leave-button');
 
     /**
      * Initialisiert den Lobby-Bildschirm.

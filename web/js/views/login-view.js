@@ -23,14 +23,14 @@ const LoginView = (() => {
      *
      * @type {HTMLInputElement}
      */
-    const _playerNameInput = document.getElementById('player-name');
+    const _playerNameInput = document.getElementById('login-player-name');
 
     /**
      * Das Eingabefeld für den Tischnamen.
      *
      * @type {HTMLInputElement}
      */
-    const _tableNameInput = document.getElementById('table-name');
+    const _tableNameInput = document.getElementById('login-table-name');
 
     /**
      * Initialisiert den Bildschirm.

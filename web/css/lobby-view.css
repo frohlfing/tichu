@@ -14,12 +14,12 @@
     font-size: 1.8em; /* Godot: Größere Überschrift */
 }
 
-#player-list-container {
+#lobby-player-list-container {
     width: 90%;
     max-width: 450px; /* Godot: Liste nimmt ca. 80% der Breite ein */
     margin-bottom: 25px;
 }
-#player-list-container > p { /* Der Text "Spieler am Tisch:" */
+#lobby-player-list-container > p { /* Der Text "Spieler am Tisch:" */
     margin-bottom: 15px; /* Mehr Abstand zur Liste */
     font-size: 1.1em;
     text-align: center;
@@ -54,7 +54,7 @@
 .player-order-controls button:disabled { background-color: #3a4b58; color: #787878; cursor: not-allowed; }
 
 /* Container für Host-Aktionen (Text "Spieler anordnen") */
-#team-assignment-container { /* Das ist der <p> Tag jetzt */
+#lobby-team-assignment-container { /* Das ist der <p> Tag jetzt */
     width: 90%;
     max-width: 450px;
     text-align: center;

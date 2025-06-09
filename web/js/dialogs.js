@@ -242,7 +242,7 @@ const Dialogs = (() => {
         }
     }
 
-    function showLeaveConfirmDialog() {
+    function showExitDialog() {
         _showDialog(_exitDialog);
     }
 
@@ -296,7 +296,7 @@ const Dialogs = (() => {
         showGrandTichuPrompt,
         showWishDialog,
         showDragonDialog,
-        showLeaveConfirmDialog,
+        showExitDialog,
         handleNotification, // Damit AppController Notifications weiterleiten kann
         showErrorToast,
         closeDialogByRequestId // Um Dialoge bei Interrupts zu schließen

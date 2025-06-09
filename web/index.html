@@ -27,8 +27,8 @@
             <div class="login-background"></div>
             <h1>Tichu</h1>
             <form id="login-form">
-                <input type="text" id="player-name" title="" placeholder="Dein Name" required/>
-                <input type="text" id="table-name" title="" placeholder="Tischname" required/>
+                <input id="login-player-name" type="text" title="" placeholder="Dein Name" required>
+                <input id="login-table-name" type="text" title="" placeholder="Tischname" required>
                 <button type="submit">Betreten</button>
             </form>
         </div>
@@ -36,16 +36,16 @@
         <!-- Lobby-Bildschirm -->
         <div id="lobby-screen" class="view">
             <h2>Lobby: <span id="lobby-table-name"></span></h2>
-            <div id="player-list-container">
+            <div id="lobby-player-list-container">
                 <p>Spieler am Tisch:</p>
                 <ul id="lobby-player-list"></ul>
             </div>
-            <div id="team-assignment-container" class="hidden">
+            <div id="lobby-team-assignment-container" class="hidden">
                 <p>Spieler anordnen (Host):</p>
             </div>
             <div class="lobby-actions-bottom">
-                <button id="start-game-button" class="hidden">Spiel starten</button>
-                <button id="leave-lobby-button">Beenden</button>
+                <button id="lobby-start-button" class="hidden">Spiel starten</button>
+                <button id="lobby-leave-button">Beenden</button>
             </div>
         </div>
 
@@ -222,7 +222,7 @@
         <button data-test="toggle-dragon-dialog">Drachen-Dialog</button>
         <button data-test="toggle-round-over-dialog">Runden-Ende-Dialog</button>
         <button data-test="toggle-game-over-dialog">Partie-Ende-Dialog</button>
-        <button data-test="toggle-leave-dialog">Verlassen-Dialog</button>
+        <button data-test="toggle-exit-dialog">Verlassen-Dialog</button>
         <button data-test="show-error-toast">Fehler anzeigen</button>
         <hr>
         <button data-test="toggle-disabled">Buttons</button>
