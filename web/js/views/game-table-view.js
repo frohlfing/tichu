@@ -47,6 +47,13 @@ const GameTableView = (() => {
     const _playButton = document.getElementById('play-button');
 
     /**
+     * Das Bomben-Icon.
+     *
+     * @type {HTMLImageElement}
+     */
+    const _bombIcon = document.getElementById('bomb-icon');
+
+    /**
      * Die Anzeige des Punktestandes.
      *
      * @type {HTMLDivElement}
@@ -66,13 +73,6 @@ const GameTableView = (() => {
      * @type {HTMLSpanElement}
      */
     const _wishIndicatorLabel = document.getElementById('wish-indicator-label');
-
-    /**
-     * Das Bomben-Icon.
-     *
-     * @type {HTMLImageElement}
-     */
-    const _bombIcon = document.getElementById('bomb-icon');
 
     /**
      * Die Icons zur Anzeige des Spielers, der am Zug ist.
@@ -128,10 +128,10 @@ const GameTableView = (() => {
      * @type {HTMLDivElement}
      */
     const _schupfZones = [
-        [document.getElementById('schupf-zones-bottom-1'), document.getElementById('schupf-zones-bottom-2'), document.getElementById('schupf-zones-bottom-3')],
-        [document.getElementById('schupf-zones-right-1'), document.getElementById('schupf-zones-right-2'), document.getElementById('schupf-zones-right-3')],
-        [document.getElementById('schupf-zones-top-1'), document.getElementById('schupf-zones-top-2'), document.getElementById('schupf-zones-top-3')],
-        [document.getElementById('schupf-zones-left-1'), document.getElementById('schupf-zones-left-2'), document.getElementById('schupf-zones-left-3')],
+        [document.getElementById('schupf-zone-bottom-1'), document.getElementById('schupf-zone-bottom-2'), document.getElementById('schupf-zone-bottom-3')],
+        [document.getElementById('schupf-zone-right-1'), document.getElementById('schupf-zone-right-2'), document.getElementById('schupf-zone-right-3')],
+        [document.getElementById('schupf-zone-top-1'), document.getElementById('schupf-zone-top-2'), document.getElementById('schupf-zone-top-3')],
+        [document.getElementById('schupf-zone-left-1'), document.getElementById('schupf-zone-left-2'), document.getElementById('schupf-zone-left-3')],
     ];
 
     /**
@@ -171,47 +171,133 @@ const GameTableView = (() => {
      */
     function init() {
         console.log("GAMETABLEVIEW: Initialisiere GameTableView (minimal)...");
-        _exitButton.addEventListener('click', _handleEndGame);
-        _optionsButton.addEventListener('click', _handleOptions);
 
-        // Event-Listener für später implementierte Features (vorerst nur Beispiele)
-        // _passButton.addEventListener('click', _handlePass);
-        // _tichuButton.addEventListener('click', _handleTichuAnnounce);
-        // _playButton.addEventListener('click', _handlePlayCards);
-        // _bombIcon.addEventListener('click', _handleBomb);
+        // Event-Listener einrichten
+        _exitButton.addEventListener('click', _exitButton_click);
+        _optionsButton.addEventListener('click', _optionsButton_click);
+        _passButton.addEventListener('click', _passButton_click);
+        _tichuButton.addEventListener('click', _tichuButton_click);
+        _playButton.addEventListener('click', _playButton_click);
+        _bombIcon.addEventListener('click', _bombIcon_click);
+        _schupfZonesContainers[0].addEventListener('click', _schupfZone_click);
 
-        // -----------------------------------------------------------
-        // Die echten Action-Buttons sind vorerst für Tests deaktiviert oder lösen Testfunktionen aus
-        _passButton.onclick = () => console.log("Test: Passen geklickt");
-        _tichuButton.onclick = () => console.log("Test: Tichu geklickt");
-        _playButton.onclick = () => _testPlaySelectedCards(); // Test für Ausspielen
-
-        // Event Listener für Test-Buttons
+        // Event-Listener für Test-Buttons
         if (_testControlsContainer) {
             _testControlsContainer.addEventListener('click', _handleTestButtonClick);
         }
-        // -----------------------------------------------------------
     }
 
     /**
      * Event-Handler für den "Beenden"-Button.
-     * Zeigt einen Bestätigungsdialog an.
      */
-    function _handleEndGame() {
+    function _exitButton_click() {
         SoundManager.playSound('buttonClick');
         Dialogs.showExitDialog();
     }
 
     /**
      * Event-Handler für den "Optionen"-Button.
-     * (Aktuell Platzhalter).
      */
-    function _handleOptions() {
+    function _optionsButton_click() {
         SoundManager.playSound('buttonClick');
         console.log("GAMETABLEVIEW: Optionen-Button geklickt (noch keine Funktion).");
         Dialogs.showErrorToast("Optionen sind noch nicht implementiert.");
-        // Hier könnte ein Dialog mit Sound-Einstellungen etc. geöffnet werden.
-        // Beispiel: Dialogs.showOptionsDialog(SoundManager.areSoundsEnabled(), SoundManager.getVolume());
+    }
+
+    /**
+     * Event-Handler für den "Passen"-Button.
+     */
+    // --- Private Handler für Action-Buttons (werden später implementiert) ---
+    function _passButton_click() {
+        const requestId = _passButton.dataset.requestId;
+        if (requestId) {
+            SoundManager.playSound('pass' + State.getPlayerIndex());
+            AppController.sendResponse(requestId, {cards: []}); // Leeres Array für Passen (Server erwartet [[v,s]])
+            CardHandler.clearSelectedCards();
+            enablePlayControls(false);
+        }
+    }
+
+    /**
+     * Event-Handler für den "Tichu"-Button.
+     */
+    function _tichuButton_click() {
+        // Prüfen, ob Tichu angesagt werden darf (macht der Server, aber kleine Client-Prüfung schadet nicht)
+        const privState = State.getPrivateState();
+        const pubState = State.getPublicState();
+        if (privState && pubState && privState.hand_cards && privState.hand_cards.length === 14 &&
+            pubState.announcements && pubState.announcements[State.getPlayerIndex()] === 0) {
+            SoundManager.playSound('announce' + State.getPlayerIndex());
+            AppController.sendProactiveMessage('announce'); // Proaktive Ansage
+            _tichuButton.disabled = true; // Deaktivieren nach Ansage
+        }
+        else {
+            Dialogs.showErrorToast("Tichu kann jetzt nicht angesagt werden.");
+        }
+    }
+
+    /**
+     * Event-Handler für den "Schupfen"-, "Aufnehmen"- und "Spielen"-Button.
+     */
+    function _playButton_click() {
+        const requestId = _playButton.dataset.requestId;
+        const selectedCards = CardHandler.getSelectedCards(); // Client-Objekte {value, suit, label}
+        if (requestId && selectedCards.length > 0) {
+            SoundManager.playSound('play' + State.getPlayerIndex());
+            AppController.sendResponse(requestId, {cards: Helpers.formatCardsForServer(selectedCards)});
+            // Hand-Update erfolgt durch Server-Notification
+            CardHandler.clearSelectedCards();
+            enablePlayControls(false);
+        }
+        else if (selectedCards.length === 0) {
+            Dialogs.showErrorToast("Keine Karten zum Spielen ausgewählt.");
+        }
+    }
+
+    /**
+     * Event-Handler für das Anklicken auf das Bomben-Icon.
+     */
+    function _bombIcon_click() {
+        const selectedCards = CardHandler.getSelectedCards();
+        // TODO: Clientseitige Prüfung, ob ausgewählte Karten eine Bombe sind (optional, Server prüft final)
+        if (selectedCards.length >= 4) { // Minimale Voraussetzung für eine Bombe
+            SoundManager.playSound('bomb' + State.getPlayerIndex());
+            AppController.sendProactiveMessage('bomb', {cards: Helpers.formatCardsForServer(selectedCards)});
+            // UI-Feedback für Bombe (z.B. Animation oder Text)
+            // Hand-Update durch Server-Notification
+            CardHandler.clearSelectedCards();
+        }
+        else {
+            Dialogs.showErrorToast("Ungültige Auswahl für eine Bombe.");
+        }
+    }
+
+    function _schupfZone_click(event) {
+        if (typeof (event.target.dataset.schupfZone) != "undefined") {
+            // es wurde auf eine leere Schupf-Zone geklickt
+            const schupfZone = parseInt(event.target.dataset.schupfZone);
+            console.debug(`Schupf-Zone ${schupfZone}`);
+        }
+        else if (typeof (event.target.dataset.cardLabel) != "undefined") {
+            // es wurde auf eine Karte in der Schupf-Zone geklickt
+            const cardLabel = event.target.dataset.cardLabel;
+            const cardValue = parseInt(event.target.dataset.cardValue);
+            const cardSuit = event.target.dataset.cardSuit;
+            console.debug(`Karte ${cardLabel} ([${cardValue}, ${cardSuit}])`);
+        }
+    }
+
+    /**
+     * Event-Handler für das Anklicken einer Handkarte
+     */
+    function _hand_card_click() {
+        if (CardHandler.isSchupfModeActive && typeof CardHandler.isSchupfModeActive === 'function' && CardHandler.isSchupfModeActive()) {
+            CardHandler.handleCardClick(this, cardData);
+        }
+        else {
+            this.classList.toggle('selected');
+            SoundManager.playSound('cardSelect');
+        }
     }
 
     // ---------------------------------------------------------
@@ -220,23 +306,12 @@ const GameTableView = (() => {
     function _createCardElement(cardData, isOwnCard = false) {
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card-face';
-        // Stelle sicher, dass cardData.label existiert (sollte durch Helpers.parseCards der Fall sein)
-        cardDiv.style.backgroundImage = `url('images/cards/${cardData.label || 'back'}.png')`;
-        cardDiv.dataset.label = cardData.label || 'unbekannt';
-        cardDiv.dataset.value = cardData.value;
-        cardDiv.dataset.suit = cardData.suit;
+        cardDiv.style.backgroundImage = `url('images/cards/${cardData.label}.png')`;
+        cardDiv.dataset.cardLabel = cardData.label || 'unbekannt';
+        cardDiv.dataset.cardValue = cardData.value;
+        cardDiv.dataset.cardSuit = cardData.suit;
         if (isOwnCard) {
-            cardDiv.onclick = function() {
-                // Die Logik, die entscheidet, ob CardHandler oder normale Selektion,
-                // sollte hier oder im CardHandler selbst liegen.
-                // Fürs Erste: CardHandler immer nutzen, wenn Schupf-Modus aktiv ist.
-                if (CardHandler.isSchupfModeActive && typeof CardHandler.isSchupfModeActive === 'function' && CardHandler.isSchupfModeActive()) {
-                    CardHandler.handleCardClick(this, cardData);
-                } else {
-                    this.classList.toggle('selected');
-                    SoundManager.playSound('cardSelect');
-                }
-            };
+            cardDiv.addEventListener('click', _hand_card_click);
         }
         return cardDiv;
     }
@@ -333,10 +408,10 @@ const GameTableView = (() => {
             cardEl.classList.remove('selected');
             cardEl.classList.add('playing');
             pile.appendChild(cardEl); // Verschiebt das DOM-Element
-            playedCardLabels.push(cardEl.dataset.label);
+            playedCardLabels.push(cardEl.dataset.cardLabel);
 
             // Entferne die Karte aus dem _testOwnCards Array
-            const cardIndex = _testOwnCards.findIndex(c => c.label === cardEl.dataset.label);
+            const cardIndex = _testOwnCards.findIndex(c => c.label === cardEl.dataset.cardLabel);
             if (cardIndex > -1) {
                 _testOwnCards.splice(cardIndex, 1);
             }
@@ -479,7 +554,7 @@ const GameTableView = (() => {
 
     let _wish_value = 1
     function _testToggleWishIndicator() {
-        _wishIndicator.style.backgroundImage = `url('images/wish-indicator.png')`;
+        //_wishIndicator.style.backgroundImage = `url('images/wish-indicator.png')`;
         if (_wishIndicator.classList.contains('hidden')) {
             _wish_value = _wish_value < 14 ? _wish_value + 1 : 2;
             _wishIndicatorLabel.textContent = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "B", "D", "K", "A"][_wish_value];
@@ -645,12 +720,13 @@ const GameTableView = (() => {
             _turnIndicators[_currentTurnRelativeIndex].classList.toggle('hidden');
         }
 
-        // Wunsch-Indikator
-        if (pubState.wish_value > 0) {
-            _testToggleWishIndicator(pubState.wish_value); // Wiederverwende Test-Funktion
-        } else {
-            _wishIndicator.classList.add('hidden');
-        }
+        let cardData = {
+            value: 2,
+            suit: 1,
+            label: "S2"
+        };
+        let card = _createCardElement(cardData, true);
+        _schupfZones[0][0].appendChild(card);
     }
 
     /**
@@ -751,65 +827,9 @@ const GameTableView = (() => {
             };
         }
         else {
-            _playButton.onclick = _handlePlayCards; // Standard-Handler wiederherstellen
+            _playButton.onclick = _playButton_click; // Standard-Handler wiederherstellen
         }
         _playButton.disabled = false; // Immer aktivierbar im Schupf-Modus (wenn Karten gewählt)
-    }
-
-    // --- Private Handler für Action-Buttons (werden später implementiert) ---
-    function _handlePass() {
-        const requestId = _passButton.dataset.requestId;
-        if (requestId) {
-            SoundManager.playSound('pass' + State.getPlayerIndex());
-            AppController.sendResponse(requestId, {cards: []}); // Leeres Array für Passen (Server erwartet [[v,s]])
-            CardHandler.clearSelectedCards();
-            enablePlayControls(false);
-        }
-    }
-
-    function _handleTichuAnnounce() {
-        // Prüfen, ob Tichu angesagt werden darf (macht der Server, aber kleine Client-Prüfung schadet nicht)
-        const privState = State.getPrivateState();
-        const pubState = State.getPublicState();
-        if (privState && pubState && privState.hand_cards && privState.hand_cards.length === 14 &&
-            pubState.announcements && pubState.announcements[State.getPlayerIndex()] === 0) {
-            SoundManager.playSound('announce' + State.getPlayerIndex());
-            AppController.sendProactiveMessage('announce'); // Proaktive Ansage
-            _tichuButton.disabled = true; // Deaktivieren nach Ansage
-        }
-        else {
-            Dialogs.showErrorToast("Tichu kann jetzt nicht angesagt werden.");
-        }
-    }
-
-    function _handlePlayCards() {
-        const requestId = _playButton.dataset.requestId;
-        const selectedCards = CardHandler.getSelectedCards(); // Client-Objekte {value, suit, label}
-        if (requestId && selectedCards.length > 0) {
-            SoundManager.playSound('play' + State.getPlayerIndex());
-            AppController.sendResponse(requestId, {cards: Helpers.formatCardsForServer(selectedCards)});
-            // Hand-Update erfolgt durch Server-Notification
-            CardHandler.clearSelectedCards();
-            enablePlayControls(false);
-        }
-        else if (selectedCards.length === 0) {
-            Dialogs.showErrorToast("Keine Karten zum Spielen ausgewählt.");
-        }
-    }
-
-    function _handleBomb() {
-        const selectedCards = CardHandler.getSelectedCards();
-        // TODO: Clientseitige Prüfung, ob ausgewählte Karten eine Bombe sind (optional, Server prüft final)
-        if (selectedCards.length >= 4) { // Minimale Voraussetzung für eine Bombe
-            SoundManager.playSound('bomb' + State.getPlayerIndex());
-            AppController.sendProactiveMessage('bomb', {cards: Helpers.formatCardsForServer(selectedCards)});
-            // UI-Feedback für Bombe (z.B. Animation oder Text)
-            // Hand-Update durch Server-Notification
-            CardHandler.clearSelectedCards();
-        }
-        else {
-            Dialogs.showErrorToast("Ungültige Auswahl für eine Bombe.");
-        }
     }
 
     return {

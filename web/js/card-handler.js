@@ -71,9 +71,9 @@ const CardHandler = (() => {
             const cardElements = _ownHandContainer.querySelectorAll('.card.selected');
             cardElements.forEach(el => {
                 _selectedCards.push({
-                    value: parseInt(el.dataset.value),
-                    suit: parseInt(el.dataset.suit),
-                    label: el.dataset.label
+                    value: parseInt(el.dataset.cardValue),
+                    suit: parseInt(el.dataset.cardSuit),
+                    label: el.dataset.cardLabel
                 });
             });
         }
