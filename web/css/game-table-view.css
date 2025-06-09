@@ -115,9 +115,9 @@
     height: 100%;
     transform-origin: center center;
 }
+#played-cards-area-top { grid-row: 1; grid-column: 1 / span 2; transform: rotate(180deg); align-items: flex-end; padding-bottom: 20px;}
 #played-cards-area-left { grid-row: 1 / span 2; grid-column: 1; transform: rotate(90deg); }  /* todo grid? */
 #played-cards-area-right { grid-row: 1 / span 2; grid-column: 2; transform: rotate(-90deg); }
-#played-cards-area-top { grid-row: 1; grid-column: 1 / span 2; transform: rotate(180deg); align-items: flex-end; padding-bottom: 20px;}
 #played-cards-area-bottom { grid-row: 2; grid-column: 1 / span 2; align-items: flex-start; padding-top: 20px; }
 .played-cards-area .card-face {
     width: 80px; /* Größe gespielter Karten */
@@ -223,18 +223,18 @@
     right: 25px; /* Abstand rechter Rand des Tisches */
 }
 
+#player-area-top {
+    top: 0;
+    height: 240px; /* 150px für Tichu-Indikator + 90px für halbe Kartenhöhe */
+    justify-content: flex-start;
+}
+
 #player-area-left {
     left: 0;
 }
 
 #player-area-right {
     right: 0;
-}
-
-#player-area-top {
-    top: 0;
-    height: 240px; /* 150px für Tichu-Indikator + 90px für halbe Kartenhöhe */
-    justify-content: flex-start;
 }
 
 #player-area-bottom {
@@ -282,21 +282,6 @@
     height: 110px;
     margin-right: 15px;
 }
-#tichu-indicator-left {
-
-}
-#tichu-indicator-right {
-    /*right: 90px;
-    bottom: 0;*/
-}
-#tichu-indicator-top {
-    /*top: 90px;
-    right: 0;*/
-}
-#tichu-indicator-bottom {
-    /*bottom: 180px;
-    left: 28px;*/
-}
 
 /* Table Area -> Spieler-Bereich -> Bomben-Indikator */
 
@@ -331,17 +316,17 @@
     width: 100%;
 }
 
-#hand-right {
-    right: 0;
+#hand-top {
+    top: 0;
+    height: 90px; /* Hälfte der Kartenhöhe */
 }
 
 #hand-left {
     left: 0;
 }
 
-#hand-top {
-    top: 0;
-    height: 90px; /* Hälfte der Kartenhöhe */
+#hand-right {
+    right: 0;
 }
 
 #hand-bottom {
@@ -370,12 +355,12 @@
     background-image: url('../images/cards/back.png');
 }
 
+#hand-top .card-face,
+#hand-top .card-back,
 #hand-left .card-face,
 #hand-left .card-back,
 #hand-right .card-face,
-#hand-right .card-back,
-#hand-top .card-face,
-#hand-top .card-back {
+#hand-right .card-back {
     height: 90px; /* halbe Kartenhöhe */
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
@@ -394,6 +379,11 @@
     margin: 0 -95px; /* horizontale Überlappung für 14 Karten */
 }
 
+#hand-top .card-face,
+#hand-top .card-back {
+    transform: rotate(180deg);
+}
+
 #hand-left .card-face,
 #hand-left .card-back {
     transform: rotate(90deg);
@@ -401,11 +391,6 @@
 #hand-right .card-face,
 #hand-right .card-back {
     transform: rotate(-90deg);
-}
-
-#hand-top .card-face,
-#hand-top .card-back {
-    transform: rotate(180deg);
 }
 
 #hand-bottom .card-face {

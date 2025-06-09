@@ -61,6 +61,14 @@
                     <div id="wish-indicator" class="hidden">
                         <span id="wish-indicator-label"></span>
                     </div>
+                    <div id="played-cards-area-top" class="played-cards-area">
+                        <img id="turn-indicator-top" src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                        <div id="schupf-zones-top" class="schupf-zones hidden">
+                            <div id="schupf-zone-top-1" class="schupf-zone" data-target-player-relative="1">R</div>
+                            <div id="schupf-zone-top-2" class="schupf-zone" data-target-player-relative="2">P</div>
+                            <div id="schupf-zone-top-3" class="schupf-zone" data-target-player-relative="3">L</div>
+                        </div>
+                    </div>
                     <div id="played-cards-area-left" class="played-cards-area">
                         <img id="turn-indicator-left" src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
                         <div id="schupf-zones-left" class="schupf-zones hidden">
@@ -77,14 +85,6 @@
                             <div id="schupf-zone-right-3" class="schupf-zone" data-target-player-relative="3">L</div>
                         </div>
                     </div>
-                    <div id="played-cards-area-top" class="played-cards-area">
-                        <img id="turn-indicator-top" src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
-                        <div id="schupf-zones-top" class="schupf-zones hidden">
-                            <div id="schupf-zone-top-1" class="schupf-zone" data-target-player-relative="1">R</div>
-                            <div id="schupf-zone-top-2" class="schupf-zone" data-target-player-relative="2">P</div>
-                            <div id="schupf-zone-top-3" class="schupf-zone" data-target-player-relative="3">L</div>
-                        </div>
-                    </div>
                     <div id="played-cards-area-bottom" class="played-cards-area">
                         <img id="turn-indicator-bottom" src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
                         <div id="schupf-zones-bottom" class="schupf-zones hidden">
@@ -92,6 +92,13 @@
                             <div id="schupf-zone-bottom-2" class="schupf-zone" data-target-player-relative="2">P</div>
                             <div id="schupf-zone-bottom-3" class="schupf-zone" data-target-player-relative="3">L</div>
                         </div>
+                    </div>
+                </div>
+                <div id="player-area-top" class="player-area">
+                    <div id="hand-top" class="hand"></div>
+                    <div id="player-info-top" class="player-info">
+                        <img id="tichu-indicator-top" src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
+                        <span id="player-name-top" class="player-name">Partner</span>
                     </div>
                 </div>
                 <div id="player-area-left" class="player-area">
@@ -107,13 +114,6 @@
                         <span id="player-name-right" class="player-name">Gegner Rechts</span>
                     </div>
                     <div id="hand-right" class="hand"></div>
-                </div>
-                <div id="player-area-top" class="player-area">
-                    <div id="hand-top" class="hand"></div>
-                    <div id="player-info-top" class="player-info">
-                        <img id="tichu-indicator-top" src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
-                        <span id="player-name-top" class="player-name">Partner</span>
-                    </div>
                 </div>
                 <div id="player-area-bottom" class="player-area">
                     <div id="player-info-bottom" class="player-info">
@@ -135,7 +135,7 @@
         <div id="wish-dialog" class="dialog hidden">
             <h3>Wähle einen Kartenwert</h3>
             <div id="wish-options"></div>
-            <button id="confirm-wish-button">Wünschen</button>
+            <button id="wish-button">Wünschen</button>
         </div>
         <div id="dragon-dialog" class="dialog hidden">
             <h3>Wem den Drachenstich geben?</h3>
@@ -144,18 +144,18 @@
         </div>
         <div id="round-over-dialog" class="dialog hidden">
             <h3>Runde beendet</h3>
-            <p id="round-result-text">Ergebnis: 000 : 000</p>
-            <button id="ok-round-end-button">Ok</button>
+            <p id="round-over-text">Ergebnis: 000 : 000</p>
+            <button id="round-over-button">Ok</button>
         </div>
         <div id="game-over-dialog" class="dialog hidden">
             <h3>Partie beendet</h3>
-            <p id="game-result-text">Ergebnis: 0000 : 0000</p>
-            <button id="ok-game-end-button">Zur Lobby</button>
+            <p id="game-over-text">Ergebnis: 0000 : 0000</p>
+            <button id="game-over-button">Zur Lobby</button>
         </div>
-        <div id="leave-confirm-dialog" class="dialog hidden">
+        <div id="exit-dialog" class="dialog hidden">
             <h3>Wirklich beenden?</h3>
-            <button id="confirm-leave-button">Ja</button>
-            <button id="cancel-leave-button">Nein</button>
+            <button id="exit-ok-button">Ja</button>
+            <button id="exit-cancel-button">Nein</button>
         </div>
         <div id="error-toast" class="toast hidden">
             <p id="error-toast-message"></p>

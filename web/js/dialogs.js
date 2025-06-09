@@ -2,27 +2,57 @@
  * Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
  */
 const Dialogs = (() => {
-    // Referenzen zu den Dialog-DOM-Elementen
+
+    /**
+     * Dialog "Kartenwert wünschen"
+     *
+     * @type {HTMLElement}
+     */
     const _wishDialog = document.getElementById('wish-dialog');
     const _wishOptionsContainer = document.getElementById('wish-options');
-    const _confirmWishButton = document.getElementById('confirm-wish-button');
+    const _wishButton = document.getElementById('wish-button');
 
+    /**
+     * Dialog "Wer soll den Drachen bekommen?"
+     *
+     * @type {HTMLElement}
+     */
     const _dragonDialog = document.getElementById('dragon-dialog');
     const _dragonToLeftButton = document.getElementById('dragon-to-left-button');
     const _dragonToRightButton = document.getElementById('dragon-to-right-button');
 
-    const _roundEndDialog = document.getElementById('round-end-dialog');
-    const _roundResultText = document.getElementById('round-result-text');
-    const _okRoundEndButton = document.getElementById('ok-round-end-button');
+    /**
+     * Anzeige des Punktestands am Ende einer Runde.
+     *
+     * @type {HTMLElement}
+     */
+    const _roundOverDialog = document.getElementById('round-over-dialog');
+    const _roundOverText = document.getElementById('round-over-text');
+    const _roundOverButton = document.getElementById('round-over-button');
 
-    const _gameEndDialog = document.getElementById('game-end-dialog');
-    const _gameResultText = document.getElementById('game-result-text');
-    const _okGameEndButton = document.getElementById('ok-game-end-button');
+    /**
+     * Anzeige des Punktestands am Ende der Partie.
+     *
+     * @type {HTMLElement}
+     */
+    const _gameOverDialog = document.getElementById('game-over-dialog');
+    const _gameOverText = document.getElementById('game-over-text');
+    const _gameOverButton = document.getElementById('game-over-button');
 
-    const _leaveConfirmDialog = document.getElementById('leave-confirm-dialog');
-    const _confirmLeaveButton = document.getElementById('confirm-leave-button');
-    const _cancelLeaveButton = document.getElementById('cancel-leave-button');
+    /**
+     * Dialog "Wirklich beenden?"
+     *
+     * @type {HTMLElement}
+     */
+    const _exitDialog = document.getElementById('exit-dialog');
+    const _exitOkButton = document.getElementById('exit-ok-button');
+    const _exitCancelButton = document.getElementById('exit-cancel-button');
 
+    /**
+     * Fehler-Popup
+     *
+     * @type {HTMLElement}
+     */
     const _errorToast = document.getElementById('error-toast');
     const _errorToastMessage = document.getElementById('error-toast-message');
 
@@ -39,7 +69,7 @@ const Dialogs = (() => {
         console.log("DIALOGS: Initialisiere Dialogs...");
 
         // Wish Dialog
-        _confirmWishButton.addEventListener('click', _handleConfirmWish);
+        _wishButton.addEventListener('click', _handleConfirmWish);
         // Generiere Wish-Options-Buttons
         CardValueLabels.forEach(label => { // CardValueLabels aus constants.js
             const numVal = (label === 'A' ? 14 : (label === 'K' ? 13 : (label === 'D' ? 12 : (label === 'B' ? 11 : (label === 'Z' ? 10 : parseInt(label))))));
@@ -64,15 +94,15 @@ const Dialogs = (() => {
         _dragonToRightButton.addEventListener('click', () => _handleDragonChoice('right'));
 
         // Round End Dialog
-        _okRoundEndButton.addEventListener('click', () => {
-            _hideDialog(_roundEndDialog);
+        _roundOverButton.addEventListener('click', () => {
+            _hideDialog(_roundOverDialog);
             SoundManager.playSound('buttonClick');
             // Server startet nächste Runde automatisch oder sendet Lobby-Update
         });
 
         // Game End Dialog
-        _okGameEndButton.addEventListener('click', () => {
-            _hideDialog(_gameEndDialog);
+        _gameOverButton.addEventListener('click', () => {
+            _hideDialog(_gameOverDialog);
             SoundManager.playSound('buttonClick');
             // AppController entscheidet, ob zur Lobby oder zum Login gewechselt wird
             // (basierend auf Server-Nachricht oder einfach Standardverhalten)
@@ -80,13 +110,13 @@ const Dialogs = (() => {
         });
 
         // Leave Confirm Dialog
-        _confirmLeaveButton.addEventListener('click', () => {
-            _hideDialog(_leaveConfirmDialog);
+        _exitOkButton.addEventListener('click', () => {
+            _hideDialog(_exitDialog);
             SoundManager.playSound('buttonClick');
             AppController.leaveGame();
         });
-        _cancelLeaveButton.addEventListener('click', () => {
-            _hideDialog(_leaveConfirmDialog);
+        _exitCancelButton.addEventListener('click', () => {
+            _hideDialog(_exitDialog);
             SoundManager.playSound('buttonClick');
         });
     }
@@ -125,9 +155,9 @@ const Dialogs = (() => {
     function _closeAllDialogs() {
         _hideDialog(_wishDialog);
         _hideDialog(_dragonDialog);
-        _hideDialog(_roundEndDialog);
-        _hideDialog(_gameEndDialog);
-        _hideDialog(_leaveConfirmDialog);
+        _hideDialog(_roundOverDialog);
+        _hideDialog(_gameOverDialog);
+        _hideDialog(_exitDialog);
         _activeDialogRequestId = null; // Sicherheitshalber
     }
 
@@ -213,7 +243,7 @@ const Dialogs = (() => {
     }
 
     function showLeaveConfirmDialog() {
-        _showDialog(_leaveConfirmDialog);
+        _showDialog(_exitDialog);
     }
 
     /**
@@ -230,17 +260,17 @@ const Dialogs = (() => {
         switch (eventName) {
             case 'round_over':
                 _closeAllDialogs(); // Schließe ggf. offene Aktionsdialoge
-                _roundResultText.textContent = `Runde: Team ${pubState.player_names[0] || '0'}/${pubState.player_names[2] || '2'}: ${pubState.game_score[0].slice(-1)[0] || 0} | ` +
+                _roundOverText.textContent = `Runde: Team ${pubState.player_names[0] || '0'}/${pubState.player_names[2] || '2'}: ${pubState.game_score[0].slice(-1)[0] || 0} | ` +
                     `Team ${pubState.player_names[1] || '1'}/${pubState.player_names[3] || '3'}: ${pubState.game_score[1].slice(-1)[0] || 0}`;
-                _showDialog(_roundEndDialog);
+                _showDialog(_roundOverDialog);
                 break;
             case 'game_over':
                 _closeAllDialogs();
                 const totalScoreTeam02 = pubState.game_score[0].reduce((a, b) => a + b, 0);
                 const totalScoreTeam13 = pubState.game_score[1].reduce((a, b) => a + b, 0);
-                _gameResultText.textContent = `Partie Ende: Team ${pubState.player_names[0] || '0'}/${pubState.player_names[2] || '2'}: ${totalScoreTeam02} | ` +
+                _gameOverText.textContent = `Partie Ende: Team ${pubState.player_names[0] || '0'}/${pubState.player_names[2] || '2'}: ${totalScoreTeam02} | ` +
                     `Team ${pubState.player_names[1] || '1'}/${pubState.player_names[3] || '3'}: ${totalScoreTeam13}`;
-                _showDialog(_gameEndDialog);
+                _showDialog(_gameOverDialog);
                 break;
         }
     }
