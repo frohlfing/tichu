@@ -25,7 +25,7 @@ const Network = (() => {
             return;
         }
 
-        // Nimm die URL aus der globalen Config (server-generiert in constants.js)
+        // Nimm die URL aus der globalen Config (server-generiert in config.js)
         let wsUrl = (typeof Config !== 'undefined' && Config.WEBSOCKET_URL)
             ? Config.WEBSOCKET_URL
             : 'ws://localhost:8765/ws'; // Fallback

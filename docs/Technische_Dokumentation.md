@@ -468,8 +468,8 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
 
 #### Architekturkomponenten
 
-*   `ErrorCode`: Fehlercodes (definiert in `constants.js`).
-*   `Config`: Konfigurationsvariablen (definiert in `constants.js`).
+*   `ErrorCode`: Fehlercodes (definiert in `config.js`).
+*   `Config`: Konfigurationsvariablen (definiert in `config.js`).
 *   `Helpers`: Enthält allgemeine Hilfsfunktionen.
 *   `EventBus`: Zentrale Nachrichtenvermittlung zwischen den Komponenten.
 *   `SoundManager`: Verwaltet das Laden und Abspielen von Soundeffekten.

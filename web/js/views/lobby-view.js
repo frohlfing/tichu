@@ -127,7 +127,7 @@ const LobbyView = (() => {
         if (publicState.player_names && publicState.player_names.length === 4) {
             // Schleife über die relativen Sitzplätze (0=Du, 1=Rechts, 2=Partner, 3=Links)
             for (let relativeIndex=0; relativeIndex <= 3; relativeIndex++) {
-                let canonicalIndex = Helpers.getCanonicalPlayerIndex(relativeIndex);
+                let canonicalIndex = Lib.getCanonicalPlayerIndex(relativeIndex);
                 let name = publicState.player_names[canonicalIndex];
 
                 const li = document.createElement('li');

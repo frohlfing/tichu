@@ -91,7 +91,7 @@ const SoundManager = (() => {
             SoundManager.playSound(eventName);
         }
         else if (eventBelongsToPlayerIndex !== -1) {
-            const relativeIdx = Helpers.getRelativePlayerIndex(eventBelongsToPlayerIndex);
+            const relativeIdx = Lib.getRelativePlayerIndex(eventBelongsToPlayerIndex);
             let soundKey = eventName + "_" + relativeIdx
             if (soundFiles.hasOwnProperty(soundKey)) {
                 SoundManager.playSound(soundKey);

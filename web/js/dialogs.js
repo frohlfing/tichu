@@ -64,7 +64,7 @@ const Dialogs = (() => {
     const _errorToastMessage = document.getElementById('error-toast-message');
 
     // --------------------------------------------------------------------------------------
-    // Öffentliche Funktionen
+    // Öffentliche Funktionen und Ereignishändler
     // --------------------------------------------------------------------------------------
 
     /**
@@ -104,7 +104,7 @@ const Dialogs = (() => {
     /**
      * Zeigt den Dragon-Dialog an.
      */
-    function showDragonDialog(event) {
+    function showDragonDialog() {
         _showDialog(_dragonDialog);
     }
 

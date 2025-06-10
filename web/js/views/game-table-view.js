@@ -414,13 +414,8 @@ const GameTableView = (() => {
      * Event-Handler für den "Passen"-Button.
      */
     function _passButtonClick() {
-        const requestId = _passButton.dataset.requestId;
-        if (requestId) {
-            SoundManager.playSound('pass' + State.getPlayerIndex());
-            AppController.sendResponse(requestId, {cards: []}); // Leeres Array für Passen (Server erwartet [[v,s]])
-            CardHandler.clearSelectedCards();
-            //enablePlayControls(false);
-        }
+        SoundManager.playSound('player_passed_' + State.getPlayerIndex());
+        console.log("Pass")
     }
 
     /**
@@ -449,7 +444,7 @@ const GameTableView = (() => {
         const selectedCards = CardHandler.getSelectedCards(); // Client-Objekte {value, suit, label}
         if (requestId && selectedCards.length > 0) {
             SoundManager.playSound('play' + State.getPlayerIndex());
-            AppController.sendResponse(requestId, {cards: Helpers.formatCardsForServer(selectedCards)});
+            AppController.sendResponse(requestId, {cards: selectedCards});
             // Hand-Update erfolgt durch Server-Notification
             CardHandler.clearSelectedCards();
             //enablePlayControls(false);
@@ -466,7 +461,7 @@ const GameTableView = (() => {
         const selectedCards = CardHandler.getSelectedCards();
         if (selectedCards.length >= 4) { // Minimale Voraussetzung für eine Bombe  todo richtige Prüfung für Bombe einbauen
             SoundManager.playSound('bomb' + State.getPlayerIndex());
-            AppController.sendProactiveMessage('bomb', {cards: Helpers.formatCardsForServer(selectedCards)});
+            AppController.sendProactiveMessage('bomb', {cards: selectedCards});
             CardHandler.clearSelectedCards();
         }
         else {
@@ -543,7 +538,6 @@ const GameTableView = (() => {
     // todo schupfen
     // todo Play-Button: "Spielen" "Schupfen" "Kein Zug" "Aufnehmen" "Auswählen"
     // todo Grand Tichu
-    // todo Dialoge
     // todo card-handler.js und helpers.js löschen
 
     // Visuelle Effekte & Animationen
