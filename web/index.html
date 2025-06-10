@@ -168,64 +168,62 @@
         <h4 style="margin-bottom: 8px; text-align: center; font-size: 1.1em;">Visuelle Tests</h4>
 
         <hr>
-        <button data-test="deal-own-cards">Karten austeilen</button>
+        <button data-test="show-all-controls">Alles anzeigen</button>
+        <button data-test="reset-round">Neue Runde</button>
+        <button data-test="deal-cards">Karten austeilen</button>
+        <button data-test="toggle-wish">Wunsch anzeigen/ausblenden</button>
+        <button data-test="toggle-schupf-zones">Schupf-Zonen anzeigen/ausblenden</button>
+        <button data-test="toggle-bomb">Bombe anzeigen/ausblenden</button>
+        <button data-test="toggle-tichu">Tichu anzeigen/ausblenden</button>
+        <button data-test="move-turn-indicator">Aktueller Spieler wechseln</button>
 
-        <hr>
-        <button data-test="select-cards">Karten selektieren</button>
-        <button data-test="play-selected-cards">Selektierte ausspielen</button>
+<!--        <hr>-->
+<!--        <button data-test="select-cards">Karten selektieren</button>-->
+<!--        <button data-test="play-selected-cards">Selektierte ausspielen</button>-->
 
-        <hr>
-        <div style="display:flex; align-items:center; gap: 5px;">
-           Mitspieler: <input type="number" id="test-player-index" value="1" min="1" max="3" style="width: 40px;" title="Mitspieler (1=R, 2=P, 3=L)">
-        </div>
-        <button data-test="opponent-plays-cards">Mitspieler legt ab</button>
-        <button data-test="highlight-trick">Stich überstechen (Highlight)</button>
+<!--        <hr>-->
+<!--        <div style="display:flex; align-items:center; gap: 5px;">-->
+<!--           Mitspieler: <input type="number" id="test-player-index" value="1" min="1" max="3" style="width: 40px;" title="Mitspieler (1=R, 2=P, 3=L)">-->
+<!--        </div>-->
+<!--        <button data-test="opponent-plays-cards">Mitspieler legt ab</button>-->
+<!--        <button data-test="highlight-trick">Stich überstechen (Highlight)</button>-->
 
-        <hr>
-        <button data-test="take-trick-self">Stich selbst kassieren</button>
-        <button data-test="take-trick-opponent">Stich zu Mitspieler</button>
+<!--        <hr>-->
+<!--        <button data-test="take-trick-self">Stich selbst kassieren</button>-->
+<!--        <button data-test="take-trick-opponent">Stich zu Mitspieler</button>-->
 
-        <hr>
-        <button data-test="show-schupf-zones">Schupf-Zonen zeigen</button>
-        <button data-test="give-own-schupf-card">Eigene Schupfkarte abgeben</button>
-        <button data-test="opponent-schupf-cards">Schupfkarten Mitspieler</button>
-        <button data-test="animate-schupf-exchange">Schupfkarten tauschen</button>
-        <button data-test="take-schupf-cards">10. Schupfkarten aufnehmen</button>
+<!--        <hr>-->
+<!--        <button data-test="give-own-schupf-card">Eigene Schupfkarte abgeben</button>-->
+<!--        <button data-test="opponent-schupf-cards">Schupfkarten Mitspieler</button>-->
+<!--        <button data-test="animate-schupf-exchange">Schupfkarten tauschen</button>-->
+<!--        <button data-test="take-schupf-cards">10. Schupfkarten aufnehmen</button>-->
 
-        <hr>
-        <div style="display:flex; align-items:center; gap: 5px;">
-            Score: <input type="text" id="test-score" value="0100:0050" title="Punkte (Wir:Gegner)" style="flex-grow:1;">
-        </div>
-        <button data-test="update-score">Score ändern</button>
+<!--        <hr>-->
+<!--        <div style="display:flex; align-items:center; gap: 5px;">-->
+<!--            Score: <input type="text" id="test-score" value="0100:0050" title="Punkte (Wir:Gegner)" style="flex-grow:1;">-->
+<!--        </div>-->
+<!--        <button data-test="update-score">Score ändern</button>-->
 
-        <hr>
-        <div style="display:flex; align-items:center; gap: 5px;">
-            Name: <input type="text" id="test-player-name" value="NeuerName" title="Neuer Name für Spieler Rechts" style="flex-grow:1;">
-        </div>
-        <button data-test="update-player-name">Mitspielername ändern</button>
+<!--        <hr>-->
+<!--        <div style="display:flex; align-items:center; gap: 5px;">-->
+<!--            Name: <input type="text" id="test-player-name" value="NeuerName" title="Neuer Name für Spieler Rechts" style="flex-grow:1;">-->
+<!--        </div>-->
+<!--        <button data-test="update-player-name">Mitspielername ändern</button>-->
 
-        <hr>
-        <button data-test="throw-bomb-effect">Bombe werfen (Effekt)</button>
+<!--        <hr>-->
+<!--        <button data-test="throw-bomb-effect">Bombe werfen (Effekt)</button>-->
+<!--        <hr>-->
+<!--        <button data-test="reveal-opponent-cards">Karten Gegner zeigen</button>-->
 
-        <hr>
-        <button data-test="toggle-bomb-icon">Bomben-Icon</button>
-        <button data-test="grand-tichu-indicator">Grand-Tichu-Indikator</button>
-        <button data-test="toggle-tichu-indicator">Tichu-Indikator</button>
-        <button data-test="next-turn-indicator">Turn-Indikator wandern</button>
-        <button data-test="toggle-wish-indicator">Wunsch-Indikator</button>
-
-        <hr>
-        <button data-test="reveal-opponent-cards">Karten Gegner zeigen</button>
-
-        <hr>
-        <button data-test="toggle-wish-dialog">Wunsch-Dialog</button>
-        <button data-test="toggle-dragon-dialog">Drachen-Dialog</button>
-        <button data-test="toggle-round-over-dialog">Runden-Ende-Dialog</button>
-        <button data-test="toggle-game-over-dialog">Partie-Ende-Dialog</button>
-        <button data-test="toggle-exit-dialog">Verlassen-Dialog</button>
-        <button data-test="show-error-toast">Fehler anzeigen</button>
-        <hr>
-        <button data-test="toggle-disabled">Buttons</button>
+<!--        <hr>-->
+<!--        <button data-test="toggle-wish-dialog">Wunsch-Dialog</button>-->
+<!--        <button data-test="toggle-dragon-dialog">Drachen-Dialog</button>-->
+<!--        <button data-test="toggle-round-over-dialog">Runden-Ende-Dialog</button>-->
+<!--        <button data-test="toggle-game-over-dialog">Partie-Ende-Dialog</button>-->
+<!--        <button data-test="toggle-exit-dialog">Verlassen-Dialog</button>-->
+<!--        <button data-test="show-error-toast">Fehler anzeigen</button>-->
+<!--        <hr>-->
+<!--        <button data-test="toggle-disabled">Buttons</button>-->
     </div>
 
     <!-- Module (Reihenfolge ist wichtig!) -->

@@ -29,12 +29,12 @@ CARD_DRA = (15, 0)  # Phoenix
 CARD_PHO = (16, 0)  # Dragon
 
 # Kartendeck (56 Karten)
-# Werte:  14 (As), 13 (König), 12 (Dame), 11 (Bube), 10 bis 2
-# Farben: 0 (Sonderkarte), 1 (Schwarz/Schwert), 2 (Blau/Pagode), 3 (Grün/Jade), 4 (Rot/Stern)
+# Werte:  0 = Hund, 1 = Mahjong, 2 bis 10, 11 = Bube, 12 = Dame, 13 = König, 14 = As, 15 = Drache, 16 = Phönix
+# Farben: 0 = Sonderkarte, 1 = Schwarz/Schwert, 2 = Blau/Pagode, 3 = Grün/Jade, 4 = Rot/Stern
 deck = (  # const
     # schwarz blau  grün    rot
     (0, 0),                              # Hund
-    (1, 0),                              # MahJong
+    (1, 0),                              # Mahjong
     (2, 1), (2, 2), (2, 3), (2, 4),      # 2
     (3, 1), (3, 2), (3, 3), (3, 4),      # 3
     (4, 1), (4, 2), (4, 3), (4, 4),      # 4

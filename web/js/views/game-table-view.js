@@ -75,7 +75,7 @@ const GameTableView = (() => {
     const _wishIndicatorLabel = document.getElementById('wish-indicator-label');
 
     /**
-     * Die Icons zur Anzeige des Spielers, der am Zug ist.
+     * Die Turn-Indikatoren.
      *
      * @type {HTMLElement[]}
      */
@@ -85,6 +85,13 @@ const GameTableView = (() => {
         document.getElementById('turn-indicator-top'),
         document.getElementById('turn-indicator-left'),
     ];
+
+    /**
+     * Der aktuell sichtbare Turn-Indikator.
+     *
+     * @type {HTMLImageElement|null}
+     */
+    let _currentTurnIndicator = null
 
     /**
      * Die Icons zur Anzeige einer Tichu-Ansage.
@@ -147,26 +154,6 @@ const GameTableView = (() => {
     ];
 
     /**
-     * Der Container für die Handkarten des Benutzers.
-     *
-     * @type {HTMLDivElement}
-     */
-    const _ownHandContainer = document.getElementById('hand-bottom');
-
-    // --------------------------------------------------------
-
-    // Für Test-Buttons
-    const _testControlsContainer = document.getElementById('test-controls-container');
-
-    // Beispielkarten für Tests
-    let _testOwnCards = []; // Wird mit Objekten {value, suit, label, element} gefüllt
-    let _testOpponentHands = { 1: [], 2: [], 3: [] }; // Für aufgedeckte Karten
-
-    // Aktueller Spieler am Zug für Turn-Indikator Test
-    let _currentTurnRelativeIndex = 0;
-    // --------------------------------------------------------
-
-    /**
      * Initialisiert den Spieltisch-Bildschirm.
      */
     function init() {
@@ -181,11 +168,45 @@ const GameTableView = (() => {
         _bombIcon.addEventListener('click', _bombIcon_click);
         _schupfZonesContainers[0].addEventListener('click', _schupfZone_click);
 
-        // Event-Listener für Test-Buttons
-        if (_testControlsContainer) {
-            _testControlsContainer.addEventListener('click', _handleTestButtonClick);
-        }
+        // Event-Listener für Test-Buttons todo: nach Testphase entfernen
+        document.getElementById('test-controls-container').addEventListener('click', _handleTestButtonClick);
     }
+
+    /**
+     * Rendert den Spieltisch-Bildschirm.
+     */
+    function render() {
+    }
+
+    /**
+     * Rendert den Spieltisch-Bildschirm und zeigt ihn anschließend an.
+     */
+    function show() {
+        render();
+        _viewContainer.classList.add('active');
+    }
+
+    /**
+     * Blendet den Spieltisch-Bildschirm aus.
+     */
+    function hide() {
+        //enablePlayControls(false);
+        CardHandler.disableSchupfMode();
+        _viewContainer.classList.remove('active');
+    }
+
+    /**
+     * Ermittelt, ob der Spieltisch-Bildschirm gerade angezeigt wird.
+     *
+     * @returns {boolean}
+     */
+    function isVisible() {
+        return _viewContainer.classList.contains('active')
+    }
+
+    // --------------------------------------------------------------------------------------
+    // Event-Listener
+    // --------------------------------------------------------------------------------------
 
     /**
      * Event-Handler für den "Beenden"-Button.
@@ -214,7 +235,7 @@ const GameTableView = (() => {
             SoundManager.playSound('pass' + State.getPlayerIndex());
             AppController.sendResponse(requestId, {cards: []}); // Leeres Array für Passen (Server erwartet [[v,s]])
             CardHandler.clearSelectedCards();
-            enablePlayControls(false);
+            //enablePlayControls(false);
         }
     }
 
@@ -247,7 +268,7 @@ const GameTableView = (() => {
             AppController.sendResponse(requestId, {cards: Helpers.formatCardsForServer(selectedCards)});
             // Hand-Update erfolgt durch Server-Notification
             CardHandler.clearSelectedCards();
-            enablePlayControls(false);
+            //enablePlayControls(false);
         }
         else if (selectedCards.length === 0) {
             Dialogs.showErrorToast("Keine Karten zum Spielen ausgewählt.");
@@ -259,12 +280,9 @@ const GameTableView = (() => {
      */
     function _bombIcon_click() {
         const selectedCards = CardHandler.getSelectedCards();
-        // TODO: Clientseitige Prüfung, ob ausgewählte Karten eine Bombe sind (optional, Server prüft final)
-        if (selectedCards.length >= 4) { // Minimale Voraussetzung für eine Bombe
+        if (selectedCards.length >= 4) { // Minimale Voraussetzung für eine Bombe  todo richtige Prüfung für Bombe einbauen
             SoundManager.playSound('bomb' + State.getPlayerIndex());
             AppController.sendProactiveMessage('bomb', {cards: Helpers.formatCardsForServer(selectedCards)});
-            // UI-Feedback für Bombe (z.B. Animation oder Text)
-            // Hand-Update durch Server-Notification
             CardHandler.clearSelectedCards();
         }
         else {
@@ -272,8 +290,11 @@ const GameTableView = (() => {
         }
     }
 
+    /**
+     * Event-Handler für das Anklicken der Schupf-Zone.
+     */
     function _schupfZone_click(event) {
-        if (typeof (event.target.dataset.schupfZone) != "undefined") {
+       if (typeof (event.target.dataset.schupfZone) != "undefined") {
             // es wurde auf eine leere Schupf-Zone geklickt
             const schupfZone = parseInt(event.target.dataset.schupfZone);
             console.debug(`Schupf-Zone ${schupfZone}`);
@@ -291,37 +312,219 @@ const GameTableView = (() => {
      * Event-Handler für das Anklicken einer Handkarte
      */
     function _hand_card_click() {
-        if (CardHandler.isSchupfModeActive && typeof CardHandler.isSchupfModeActive === 'function' && CardHandler.isSchupfModeActive()) {
-            CardHandler.handleCardClick(this, cardData);
-        }
-        else {
-            this.classList.toggle('selected');
-            SoundManager.playSound('cardSelect');
+        // if (CardHandler.isSchupfModeActive && typeof CardHandler.isSchupfModeActive === 'function' && CardHandler.isSchupfModeActive()) {
+        //     CardHandler.handleCardClick(this, cardData);
+        // }
+        // else {
+             this.classList.toggle('selected');
+             SoundManager.playSound('cardSelect');
+        // }
+    }
+
+    // --------------------------------------------------------------------------------------
+    // Hilfsfunktionen
+    // --------------------------------------------------------------------------------------
+
+    /**
+     * Aktualisiert den Punktestand in der Top-Bar.
+     *
+     * @param {[number, number]} score Punkte des Teams 20 und des Teams 31.
+     */
+    function _updateScore(score) {
+        let team20 = score[0].toString().padStart(4, '0');
+        let team31 = score[1].toString().padStart(4, '0');
+        _scoreDisplay.textContent = `${team20} : ${team31}`;
+    }
+
+    /**
+     * Aktualisiert den Namen des Spielers
+     *
+     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
+     * @param {string} name - Der Name des Spielers.
+     */
+    function _updatePlayerName(relativeIndex, name) {
+        _playerNames[relativeIndex].textContent = name.trim()
+    }
+
+    /**
+     * Erzeugt eine offene Karte.
+     *
+     * @param {Card} cardData - Wert und Farbe der Karte
+     * @returns {HTMLDivElement}
+     */
+    function _createCardFaceElement(cardData) {
+        const cardFace = document.createElement('div');
+        cardFace.className = 'card-face';
+        cardFace.style.backgroundImage = `url('images/cards/${cardData.label}.png')`;
+        cardFace.dataset.cardLabel = cardData.label;
+        cardFace.dataset.cardValue = cardData.value;
+        cardFace.dataset.cardSuit = cardData.suit;
+        return cardFace;
+    }
+
+    /**
+     * Erzeugt eine verdeckte Karte.
+     *
+     * @returns {HTMLDivElement}
+     */
+    function _createCardBackElement() {
+        const cardBack = document.createElement('div');
+        cardBack.className = 'card-back';
+        return cardBack;
+    }
+
+    /**
+     * Teilt die Handkarten aus.
+     *
+     * @param {Cards} cardsData
+     */
+    function _dealOut(cardsData) {
+        // alte Karten entfernen
+        _clearCards()
+
+        // eigene Karten anzeigen
+        cardsData.forEach(cardData => {
+            const cardFace = _createCardFaceElement(cardData)
+            cardFace.addEventListener('click', _hand_card_click);
+            _hands[0].appendChild(cardFace);
+        });
+
+        // Kartenrückseite der Mitspieler zeigen
+        const cardCount = cardsData.length;
+        for (let i = 1; i <= 3; i++) {
+            for (let k = 0; k < cardCount; k++) {
+                _hands[i].appendChild(_createCardBackElement());
+            }
         }
     }
 
-    // ---------------------------------------------------------
-
-    // --- Hilfsfunktionen für visuelle Tests ---
-    function _createCardElement(cardData, isOwnCard = false) {
-        const cardDiv = document.createElement('div');
-        cardDiv.className = 'card-face';
-        cardDiv.style.backgroundImage = `url('images/cards/${cardData.label}.png')`;
-        cardDiv.dataset.cardLabel = cardData.label || 'unbekannt';
-        cardDiv.dataset.cardValue = cardData.value;
-        cardDiv.dataset.cardSuit = cardData.suit;
-        if (isOwnCard) {
-            cardDiv.addEventListener('click', _hand_card_click);
+    /**
+     * Entfernt alle Handkarten.
+     */
+    function _clearCards() {
+        // todo geht das nicht eleganter?
+        for (let i = 0; i <= 3; i++) {
+            while (_hands[i].children.length)
+                _hands[i].children[0].remove();
         }
-        return cardDiv;
     }
 
-    function _getTestPlayerPile(relativePlayerIndex) {
-        return document.getElementById(`played-cards-pile-player-${relativePlayerIndex}`);
+    /**
+     * Zeigt den Kartenwunsch an.
+     *
+     * @param {number} wishValue - Kartenwert zw. 2 und 14
+     */
+    function _showWish(wishValue) {
+        _wishIndicatorLabel.textContent = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "B", "D", "K", "A"][wishValue];
+        _wishIndicator.classList.remove('hidden');
     }
 
+    /**
+     * Blendet den Kartenwunsch aus.
+     */
+    function _hideWish() {
+        _wishIndicator.classList.add('hidden');
+    }
 
-    // --- Test-Button Handler ---
+    /**
+     * Zeigt die Schupf-Zonen an.
+     */
+    function _showSchupfZones() {
+        for (let i= 0; i <= 3; i++) {
+            _schupfZonesContainers[i].classList.remove('hidden');
+        }
+    }
+
+    /**
+     * Blendet die Schupf-Zonen aus.
+     */
+    function _hideSchupfZones() {
+        for (let i= 0; i <= 3; i++) {
+            _schupfZonesContainers[i].classList.add('hidden');
+        }
+    }
+
+    /**
+     * Zeigt das Bomben-Icon.
+     */
+    function _showBomb() {
+        _bombIcon.classList.remove('hidden');
+    }
+
+    /**
+     * Blendet das Bomben-Icon aus.
+     */
+    function _hideBomb() {
+        _bombIcon.classList.add('hidden');
+    }
+
+    /**
+     * Zeigt das Tichu-Icon an.
+     *
+     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
+     */
+    function _showTichu(relativeIndex) {
+        _tichuIndicators[relativeIndex].classList.remove('hidden');
+    }
+
+    /**
+     * Blendet das Tichu-Icon aus.
+     *
+     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
+     */
+    function _hideTichu(relativeIndex) {
+        _tichuIndicators[relativeIndex].classList.add('hidden');
+    }
+
+    /**
+     * Bewegt den Turn-Indikator zum angebenden Spieler.
+     *
+     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
+     */
+    function _moveTurnIndicator(relativeIndex) {
+        _hideTichuIndicator()
+        _turnIndicators[relativeIndex].classList.remove('hidden');
+    }
+
+    /**
+     * Blendet den Turn-Indikator aus.
+     */
+    function _hideTichuIndicator() {
+        for (let i = 0; i <= 3; i++) {
+            _turnIndicators[i].classList.add('hidden');
+        }
+    }
+
+    // todo Umbenennen: "Indikator" -> Icon
+    // Buttons disablen/enablen
+    // Kartenattribute: nur cardValue und cardSuit speichern (label brauchen wir nicht)
+    // todo top-bar-buttons und button-controls click event
+    // todo bomb_click()
+    // todo Selektierte Karten eingereiht lassen
+    // todo schupfen
+    // todo Play-Button: "Spielen" "Schupfen" "Kein Zug" "Aufnehmen"
+    // todo Grand Tichu
+    // todo Dialoge
+    // todo card-handler.js und helpers.js löschen
+
+    // Visuelle Effekte & Animationen
+    // todo Bombe werfen
+    // todo Tich ansagen (ein- oder 2mal Pulse-Effekt)
+    // todo Karten ablegen (von der Hand dorthin, wo auch die Schupfzone liegt)
+    // todo Karten kassieren (von der aktuellen Position der Karten zum Spieler, der die Karten bekommt)
+    // todo Schupfkarten tauschen (von Zone zu Zone)
+
+    // CSS optimieren
+    // todo Aufteilung anders lösen (wobei das Aussehen genauso bleiben soll!):
+    //  1) Die gesamte player-area drehen. Dann müssen die untergeordneten Elemente (hand und player-info) nicht mehr gedreht werden.
+    //  2) Die Schupfzone und Turn-Indikator in die player-area des Spielers verschieben.
+    //  3) wish-indikator direkt unter table-area ziehen. center-table wird dann nicht mehr benötigt.
+    //  4) position nur da aufführen, wo erforderlich.
+
+    // --------------------------------------------------------------------------------------
+    // Test-Buttons
+    // --------------------------------------------------------------------------------------
+
     function _handleTestButtonClick(event) {
         if (event.target.tagName !== 'BUTTON') return;
         const testAction = event.target.dataset.test;
@@ -329,507 +532,139 @@ const GameTableView = (() => {
         const testPlayerRelativeIdx = testPlayerRelativeIdxInput ? parseInt(testPlayerRelativeIdxInput.value) : 1;
 
         switch (testAction) {
-            case 'deal-own-cards': _testDealOwnCards(); break;
-            case 'select-cards': _testSelectSomeCards(); break;
-            case 'play-selected-cards': _testPlaySelectedCards(); break;
-            case 'opponent-plays-cards': _testOpponentPlaysCards(testPlayerRelativeIdx); break;
-            case 'highlight-trick': _testHighlightTrick(testPlayerRelativeIdx); break;
-            case 'take-trick-self': _testTakeTrick(0); break;
-            case 'take-trick-opponent': _testTakeTrick(testPlayerRelativeIdx); break;
-            case 'show-schupf-zones': _testShowSchupfZones(); break;
-            case 'give-own-schupf-card': _testGiveOwnSchupfCard(); break;
-            case 'opponent-schupf-cards': _testOpponentSchupfCards(); break;
-            case 'animate-schupf-exchange': _testAnimateSchupfExchange(); break;
-            case 'take-schupf-cards': _testTakeSchupfCards(); break;
-            case 'update-score': _testUpdateScore(); break;
-            case 'update-player-name': _testUpdatePlayerName(testPlayerRelativeIdx); break;
-            case 'toggle-dragon-dialog': Dialogs.showDragonDialog('test-dragon-req'); break;
-            case 'toggle-wish-dialog': Dialogs.showWishDialog('test-wish-req'); break;
-            case 'toggle-wish-indicator': _testToggleWishIndicator(); break;
-            case 'toggle-bomb-icon': _bombIcon.classList.toggle('hidden'); break;
-            case 'throw-bomb-effect': _testThrowBombEffect(); break;
-            case 'toggle-tichu-indicator': _testToggleTichuIndicator(); break;
-            case 'next-turn-indicator': _testNextTurnIndicator(); break;
-            case 'reveal-opponent-cards': _testRevealOpponentCards(testPlayerRelativeIdx); break;
-            case 'toggle-round-over-dialog': Dialogs.handleNotification('round_over', { game_score: [[120],[30]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
-            case 'toggle-game-over-dialog': Dialogs.handleNotification('game_over', { game_score: [[1050],[780]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
-            case 'toggle-exit-dialog': Dialogs.showExitDialog(); break;
-            case 'show-error-toast': Dialogs.showErrorToast("Dies ist ein Test-Fehler!"); break;
-            case 'toggle-disabled': test_toggleDisabled(); break;
+            case 'show-all-controls': _testShowAllControls(); break;
+            case 'reset-round': _testResetRound(); break;
+            case 'deal-cards': _testDealCards(); break;
+            case 'toggle-wish': _testToggleWish(); break;
+            case 'toggle-schupf-zones': _testToggleSchupfZones(); break;
+            case 'toggle-bomb': _testToggleBomb(); break;
+            case 'toggle-tichu': _testToggleTichu(); break;
+            case 'move-turn-indicator': _testMoveTurnIndicator(); break;
+            // case 'select-cards': _testSelectSomeCards(); break;
+            // case 'play-selected-cards': _testPlaySelectedCards(); break;
+            // case 'opponent-plays-cards': _testOpponentPlaysCards(testPlayerRelativeIdx); break;
+            // case 'highlight-trick': _testHighlightTrick(testPlayerRelativeIdx); break;
+            // case 'take-trick-self': _testTakeTrick(0); break;
+            // case 'take-trick-opponent': _testTakeTrick(testPlayerRelativeIdx); break;
+            // case 'give-own-schupf-card': _testGiveOwnSchupfCard(); break;
+            // case 'opponent-schupf-cards': _testOpponentSchupfCards(); break;
+            // case 'animate-schupf-exchange': _testAnimateSchupfExchange(); break;
+            // case 'take-schupf-cards': _testTakeSchupfCards(); break;
+            // case 'update-score': _testUpdateScore(); break;
+            // case 'update-player-name': _testUpdatePlayerName(testPlayerRelativeIdx); break;
+            // case 'toggle-dragon-dialog': Dialogs.showDragonDialog('test-dragon-req'); break;
+            // case 'toggle-wish-dialog': Dialogs.showWishDialog('test-wish-req'); break;
+            // case 'throw-bomb-effect': _testThrowBombEffect(); break;
+            // case 'reveal-opponent-cards': _testRevealOpponentCards(testPlayerRelativeIdx); break;
+            // case 'toggle-round-over-dialog': Dialogs.handleNotification('round_over', { game_score: [[120],[30]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
+            // case 'toggle-game-over-dialog': Dialogs.handleNotification('game_over', { game_score: [[1050],[780]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
+            // case 'toggle-exit-dialog': Dialogs.showExitDialog(); break;
+            // case 'show-error-toast': Dialogs.showErrorToast("Dies ist ein Test-Fehler!"); break;
+            // case 'toggle-disabled': test_toggleDisabled(); break;
         }
     }
 
-    // --- Implementierung der Test-Funktionen ---
-    function _testDealOwnCards() {
-        _ownHandContainer.innerHTML = '';
-        _testOwnCards = [];
-        // Testkarten als [value, suit] Tupel/Arrays definieren
-        const sampleCardTuples = [
-            [2, CardSuits.SWORD], [3, CardSuits.PAGODA], [4, CardSuits.JADE], [5, CardSuits.STAR],
-            [13, CardSuits.SWORD], [14, CardSuits.SWORD], // SK, SA
-            [SpecialCardValues.MAH, CardSuits.SPECIAL],  // Ma
-            [SpecialCardValues.DOG, CardSuits.SPECIAL],  // Hu
-            [SpecialCardValues.DRA, CardSuits.SPECIAL],  // Dr
-            [SpecialCardValues.PHO, CardSuits.SPECIAL],  // Ph
-            [7, CardSuits.SWORD], [8, CardSuits.PAGODA], [9, CardSuits.JADE], [10, CardSuits.STAR] // SZ bei Star = RZ
-        ];
+    function _testShowAllControls() {
+        _updateScore([321, 123]);
+        _testDealCards();
+        _testWishValue = _testWishValue < 14 ? _testWishValue + 1 : 2;
+        _showWish(_testWishValue);
+        _showSchupfZones();
+        _showBomb();
 
-        const parsedTestCards = Helpers.parseCards(sampleCardTuples);
-
-        parsedTestCards.forEach(cardData => {
-            if (cardData && cardData.label) { // Stelle sicher, dass die Karte valide geparst wurde
-                const cardEl = _createCardElement(cardData, true);
-                _ownHandContainer.appendChild(cardEl);
-                _testOwnCards.push({ ...cardData, element: cardEl }); // Füge DOM-Element Referenz hinzu
-            }
-        });
-    }
-
-    function _testSelectSomeCards() {
-        _testOwnCards.forEach((cardData, index) => {
-            // Stelle sicher, dass cardData.element existiert und eine DOM-Node ist
-            if (index < 3 && cardData.element && typeof cardData.element.classList !== 'undefined') {
-                cardData.element.classList.add('selected');
-            }
-        });
-    }
-
-    /**
-     * Spielt die aktuell im DOM als '.selected' markierten Karten visuell aus.
-     */
-    function _testPlaySelectedCards() {
-        const pile = _getTestPlayerPile(0);
-        if (!pile) return;
-
-        const cardsToPlayElements = _ownHandContainer.querySelectorAll('.card-face.selected');
-        const playedCardLabels = [];
-
-        cardsToPlayElements.forEach(cardEl => {
-            cardEl.classList.remove('selected');
-            cardEl.classList.add('playing');
-            pile.appendChild(cardEl); // Verschiebt das DOM-Element
-            playedCardLabels.push(cardEl.dataset.cardLabel);
-
-            // Entferne die Karte aus dem _testOwnCards Array
-            const cardIndex = _testOwnCards.findIndex(c => c.label === cardEl.dataset.cardLabel);
-            if (cardIndex > -1) {
-                _testOwnCards.splice(cardIndex, 1);
-            }
-        });
-
-        console.log("Gespielt (visuell):", playedCardLabels.join(" "));
-        setTimeout(() => pile.querySelectorAll('.playing').forEach(c => c.classList.remove('playing')), 500);
-    }
-
-    /**
-     * Simuliert, dass ein Mitspieler Karten ablegt.
-     * @param {number} relativeIdx - Der relative Index des Mitspielers (1=R, 2=P, 3=L).
-     */
-    function _testOpponentPlaysCards(relativeIdx) {
-        const pile = _getTestPlayerPile(relativeIdx);
-        if (!pile) return;
-        pile.innerHTML = '';
-        // Beispielkarten als [value, suit]
-        const sampleOpponentCardTuples = [[13, CardSuits.STAR], [12, CardSuits.STAR], [11, CardSuits.STAR]]; // RK, RD, RB
-        const parsedOpponentCards = Helpers.parseCards(sampleOpponentCardTuples);
-
-        parsedOpponentCards.forEach(cd => {
-            if (cd && cd.label) pile.appendChild(_createCardElement(cd));
-        });
-    }
-
-    function _testHighlightTrick(relativeIdx) {
-        const pile = _getTestPlayerPile(relativeIdx);
-        if (!pile) return;
-        pile.querySelectorAll('.card-face').forEach(c => c.classList.remove('highlight-trick')); // Alte Highlights entfernen
-        const cardsInPile = pile.querySelectorAll('.card-face');
-        if (cardsInPile.length > 0) {
-            cardsInPile[cardsInPile.length - 1].classList.add('highlight-trick'); // Letzte Karte hervorheben
-        }
-    }
-
-    function _testTakeTrick(takerRelativeIdx) {
-        console.log(`Stich geht zu Spieler (relativ) ${takerRelativeIdx}`);
-        const takerRect = document.getElementById(`player-area-${takerRelativeIdx}`).getBoundingClientRect();
-        const targetX = takerRect.left + takerRect.width / 2;
-        const targetY = takerRect.top + takerRect.height / 2;
-
-        for (let i = 0; i < 4; i++) {
-            const pile = _getTestPlayerPile(i);
-            if (pile) {
-                Array.from(pile.children).forEach(cardEl => {
-                    if (cardEl.tagName === 'DIV' && cardEl.classList.contains('card-face')) {
-                        cardEl.classList.add('flying');
-                        const cardRect = cardEl.getBoundingClientRect();
-                        // Absolute Position setzen für Animation
-                        cardEl.style.position = 'fixed'; // oder absolute, je nach Elter
-                        cardEl.style.left = cardRect.left + 'px';
-                        cardEl.style.top = cardRect.top + 'px';
-                        document.body.appendChild(cardEl); // An Body anhängen für freie Positionierung
-
-                        // Zielposition animieren
-                        setTimeout(() => { // Kleiner Timeout, damit CSS-Transition greift
-                            cardEl.style.transform = `translate(${targetX - cardRect.left - cardRect.width/2}px, ${targetY - cardRect.top - cardRect.height/2}px) scale(0.3)`;
-                            cardEl.style.opacity = '0';
-                        }, 20);
-
-                        // Element nach Animation entfernen
-                        setTimeout(() => {
-                            if (cardEl.parentNode) cardEl.parentNode.removeChild(cardEl);
-                        }, 750); // Etwas länger als Transition
-                    } else {
-                        pile.innerHTML = ''; // Andere Inhalte (PASS Text) einfach löschen
-                    }
-                });
-            }
-        }
-    }
-
-    function _testShowSchupfZones() {
-        for (let relativeIdx=0; relativeIdx<4; relativeIdx++) {
-            const zones = _schupfZonesContainers[relativeIdx];
-            zones.classList.toggle('hidden');
-        }
-    }
-
-    function _testGiveOwnSchupfCard() {
-        if (_testOwnCards.length > 0 && _testOwnCards[0].element &&
-            _schupfZones && !_schupfZones.classList.contains('hidden') &&
-            CardHandler.isSchupfModeActive && CardHandler.isSchupfModeActive()) {
-            // Übergebe das volle Kartenobjekt an CardHandler
-            CardHandler.handleCardClick(_testOwnCards[0].element, {
-                value: _testOwnCards[0].value,
-                suit: _testOwnCards[0].suit,
-                label: _testOwnCards[0].label
-            });
-        } else {
-            console.log("Keine Karten zum Schupfen oder Schupf-Modus nicht aktiv.");
-        }
-    }
-
-    function _testOpponentSchupfCards() { /* ... (bleibt strukturell gleich, verwendet jetzt korrekte Labels) ... */
-        const schupfZoneRight = document.getElementById('schupf-zone-opponent-right');
-        const schupfZonePartner = document.getElementById('schupf-zone-partner');
-        const schupfZoneLeft = document.getElementById('schupf-zone-opponent-left');
-        const cardDataS5 = Helpers.parseCards([[5, CardSuits.SWORD]])[0];
-        const cardDataB6 = Helpers.parseCards([[6, CardSuits.PAGODA]])[0];
-        const cardDataG7 = Helpers.parseCards([[7, CardSuits.JADE]])[0];
-
-        if(schupfZoneRight.querySelector('.card-face')) schupfZoneRight.innerHTML = 'R';
-        else { schupfZoneRight.innerHTML = ''; schupfZoneRight.appendChild(_createCardElement(cardDataS5));}
-
-        if(schupfZonePartner.querySelector('.card-face')) schupfZonePartner.innerHTML = 'P';
-        else { schupfZonePartner.innerHTML = ''; schupfZonePartner.appendChild(_createCardElement(cardDataB6));}
-
-        if(schupfZoneLeft.querySelector('.card-face')) schupfZoneLeft.innerHTML = 'L';
-        else { schupfZoneLeft.innerHTML = ''; schupfZoneLeft.appendChild(_createCardElement(cardDataG7));}
-    }
-
-    function _testAnimateSchupfExchange() {
-        // Komplexere Animation, hier nur ein Platzhalter
-        // Man bräuchte Startpositionen (Hände der Spieler) und Zielpositionen (Schupf-Zonen des Empfängers)
-        // und dann Karten-Elemente zwischen diesen animieren.
-        Dialogs.showErrorToast("Schupf-Animation noch nicht implementiert.");
-    }
-    function _testTakeSchupfCards() {
-        // Simuliere Aufnahme: Eigene Schupfzonen leeren, Kartenanzahl erhöhen
-        _schupfZones.querySelectorAll('.schupf-zone .card-face').forEach(c => c.remove());
-        _testDealOwnCards(); // Simuliert neue Hand (vereinfacht)
-        _schupfZones.classList.add('hidden');
-        CardHandler.disableSchupfMode();
-        Dialogs.showErrorToast("Schupfkarten 'aufgenommen' (Hand neu gemischt).");
-    }
-
-
-    function _testUpdateScore() {
-        const scoreStr = document.getElementById('test-score').value;
-        _scoreDisplay.textContent = `${scoreStr.split(':')[0]} : ${scoreStr.split(':')[1]}`;
-    }
-
-    function _testUpdatePlayerName(relativeIdx) {
-        const newName = document.getElementById('test-player-name').value;
-        const nameEl = document.querySelector(`#player-area-${relativeIdx} .player-name`);
-        if (nameEl) nameEl.textContent = newName;
-    }
-
-    let _wish_value = 1
-    function _testToggleWishIndicator() {
-        //_wishIndicator.style.backgroundImage = `url('images/wish-indicator.png')`;
-        if (_wishIndicator.classList.contains('hidden')) {
-            _wish_value = _wish_value < 14 ? _wish_value + 1 : 2;
-            _wishIndicatorLabel.textContent = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "B", "D", "K", "A"][_wish_value];
-
-        }
-        _wishIndicator.classList.toggle('hidden');
-    }
-
-    function _testThrowBombEffect() {
-        const bombTextEl = document.createElement('div');
-        bombTextEl.className = 'bomb-effect-text';
-        bombTextEl.textContent = 'BOMBE!';
-        document.body.appendChild(bombTextEl);
-        SoundManager.playSound('bomb' + _currentTurnRelativeIndex); // Sound des aktuellen Spielers
-        setTimeout(() => {
-            if (bombTextEl.parentNode) bombTextEl.parentNode.removeChild(bombTextEl);
-        }, 800); // Dauer der Animation
-    }
-
-    function _testToggleTichuIndicator() {
-        for (let relativeIdx=0; relativeIdx<4; relativeIdx++) {
-            const indicator = document.querySelector(`#player-area-${relativeIdx} .tichu-indicator`);
-            indicator.classList.toggle('hidden');
-        }
-    }
-
-    function _testNextTurnIndicator() {
-        document.querySelector(`#played-cards-pile-player-${_currentTurnRelativeIndex} .turn-indicator`).classList.add('hidden');
-        _currentTurnRelativeIndex = (_currentTurnRelativeIndex + 1) % 4;
-        document.querySelector(`#played-cards-pile-player-${_currentTurnRelativeIndex} .turn-indicator`).classList.remove('hidden');
-    }
-
-    function _testRevealOpponentCards(relativeIdx) {
-        const handContainer = document.getElementById(`player-${relativeIdx}-hand`);
-        if (!handContainer) return;
-
-        handContainer.classList.toggle('revealed');
-        if (handContainer.classList.contains('revealed')) {
-            handContainer.innerHTML = '';
-            // Beispielhafte Karten als [value, suit] Tupel
-            const sampleOpponentCardTuples = [[13, CardSuits.SWORD], [12, CardSuits.PAGODA], [11, CardSuits.JADE], [10, CardSuits.STAR]];
-            const parsedOpponentCards = Helpers.parseCards(sampleOpponentCardTuples);
-            _testOpponentHands[relativeIdx] = parsedOpponentCards; // Speichere für späteres Zudecken
-
-            parsedOpponentCards.forEach(cardData => {
-                if(cardData && cardData.label){
-                    const cardFace = _createCardElement(cardData);
-                    cardFace.classList.add('card-face');
-                    handContainer.appendChild(cardFace);
-                }
-            });
-        } else {
-            const cardCount = 14;
-            handContainer.innerHTML = '';
-            for (let i = 0; i < cardCount; i++) {
-                const cardBack = document.createElement('div');
-                cardBack.className = 'card-back';
-                handContainer.appendChild(cardBack);
-            }
-        }
-    }
-
-    function test_toggleDisabled(isSchupfing) {
-        _exitButton.disabled = !_exitButton.disabled;
-        _optionsButton.disabled = !_optionsButton.disabled;
-        _passButton.disabled = !_passButton.disabled;
-        _tichuButton.disabled = !_tichuButton.disabled;
-        _playButton.disabled = !_playButton.disabled;
-    }
-
-
-    // ---------------------------------------------------------
-
-    /**
-     * Rendert den Spieltisch-Bildschirm.
-     */
-    function render() {
-        if (State.getPublicState() === null) { // Sicherstellen, dass Daten da sind
-             console.log("GAMETABLEVIEW: Warte auf State für Render...");
-            _scoreDisplay.textContent = 'Lade...';
-            return;
-        }
-        console.log("GAMETABLEVIEW: Rendere Spieltisch...");
-
-        // Score (Beispiel, wie es mit neuem State aussehen könnte)
-        const pubState = State.getPublicState();
-        const ownPIdx = State.getPlayerIndex();
-        if (ownPIdx !== -1 && pubState && pubState.game_score && pubState.game_score.length === 2) {
-            const team02Score = pubState.game_score[0].reduce((a, b) => a + b, 0);
-            const team13Score = pubState.game_score[1].reduce((a, b) => a + b, 0);
-            const myTeamIs02 = ownPIdx === 0 || ownPIdx === 2;
-            _scoreDisplay.textContent = `${String(myTeamIs02 ? team02Score : team13Score).padStart(4, '0')} : ${String(myTeamIs02 ? team13Score : team02Score).padStart(4, '0')}`;
-        } else {
-            _scoreDisplay.textContent = '0000 : 0000';
+        const playerNames = ["Anton", "Beathe", "Chris", "Doris"];
+        for (let i= 0; i <= 3; i++) {
+            _showTichu(i);
+            _turnIndicators[i].classList.remove('hidden');
+            _updatePlayerName(i, playerNames[i]);
         }
 
-        // Spieler-Infos aktualisieren
-        for (let relIdx = 0; relIdx < 4; relIdx++) {
-            const canonicalIdx = Helpers.getCanonicalPlayerIndex(relIdx);
-            const playerArea = document.getElementById(`player-area-${relIdx}`);
-            const nameEl = _playerNames[relIdx];
-            const tichuEl = _tichuIndicators[relIdx];
-            const turnEl = _turnIndicators[relIdx]
-
-            nameEl.textContent = (pubState.player_names && pubState.player_names[canonicalIdx])
-                               ? pubState.player_names[canonicalIdx] + (canonicalIdx === ownPIdx ? " (Du)" : "")
-                               : `Spieler ${relIdx}`;
-
-            if (tichuEl) tichuEl.classList.toggle('hidden', !(pubState.announcements && pubState.announcements[canonicalIdx] > 0));
-            if (turnEl) turnEl.classList.toggle('hidden', pubState.current_turn_index !== canonicalIdx);
-        }
-        if (pubState.current_turn_index === -1 && ownPIdx !== -1) { // Wenn Spiel beginnt, ist eigener Spieler oft Startspieler
-             const ownTurnEl = document.querySelector(`#played-cards-pile-player-0 .turn-indicator`);
-             if(ownTurnEl && _currentTurnRelativeIndex === 0) ownTurnEl.classList.remove('hidden');
-        }
-
-
-        // Eigene Hand nur einmal initial mit Testkarten füllen, wenn leer
-        if (_ownHandContainer.children.length === 0 && _testOwnCards.length === 0) {
-            _testDealOwnCards(); // Diese Funktion sollte _testOwnCards füllen
-        } else if (_ownHandContainer.children.length === 0 && _testOwnCards.length > 0) {
-            // Hand neu aufbauen, falls sie geleert wurde aber _testOwnCards noch existieren
-            _testOwnCards.forEach(cardData => {
-                if (cardData && cardData.label) {
-                    const cardEl = _createCardElement(cardData, true);
-                    _ownHandContainer.appendChild(cardEl);
-                    cardData.element = cardEl; // DOM-Referenz aktualisieren
-                }
-            });
-        }
-
-        // Gegnerhände mit Kartenrücken füllen (nur initial oder wenn leer)
-        for (let i = 1; i <= 3; i++) { // relative Indizes für Gegner
-            const handContainer = _hands[i];
-            if (handContainer.children.length === 0 && !handContainer.classList.contains('revealed')) {
-                const canonicalIdx = Helpers.getCanonicalPlayerIndex(i);
-                const cardCount = 14;
-                for (let k = 0; k < cardCount; k++) {
-                    const cardBack = document.createElement('div');
-                    cardBack.className = 'card-back';
-                    handContainer.appendChild(cardBack);
-                }
-            }
-        }
-
-        // Wunsch sichtbar machen
-        _testToggleWishIndicator();
-
-        // Tichu sichtbar machen
-        _testShowSchupfZones();
-
-        // Bomben-Icon Sichtbarkeit
-         _bombIcon.classList.toggle('hidden', !(State.getPrivateState()));
-
-        // Tichu-Indikator
-        for (let displayIdx=0; displayIdx < 4; displayIdx++) {
-            let tichuIndicator = _tichuIndicators[displayIdx];
-            tichuIndicator.classList.toggle('hidden');
-        }
-
-        // Turn-Indikator
-        for (let _currentTurnRelativeIndex=0; _currentTurnRelativeIndex < 4; _currentTurnRelativeIndex++) {
-            _turnIndicators[_currentTurnRelativeIndex].classList.toggle('hidden');
-        }
-
+        // Karte in der Schupfzone ablegen
         let cardData = {
             value: 2,
             suit: 1,
             label: "S2"
         };
-        let card = _createCardElement(cardData, true);
+        let card = _createCardFaceElement(cardData);
         _schupfZones[0][0].appendChild(card);
     }
 
-    /**
-     * Rendert den Spieltisch-Bildschirm und zeigt ihn anschließend an.
-     */
-    function show() {
-        render();
-        _viewContainer.classList.add('active');
-    }
-
-    /**
-     * Blendet den Spieltisch-Bildschirm aus.
-     */
-    function hide() {
-        // console.log("GAMETABLEVIEW: GameTableView wird ausgeblendet.");
-        // Ggf. laufende Animationen stoppen oder Zustände zurücksetzen
-        enablePlayControls(false); // Steuerelemente deaktivieren, wenn der Tisch verlassen wird
-        CardHandler.disableSchupfMode();
-        _viewContainer.classList.remove('active');
-    }
-
-    /**
-     * Ermittelt, ob der Spieltisch-Bildschirm gerade angezeigt wird.
-     *
-     * @returns {boolean}
-     */
-    function isVisible() {
-        return _viewContainer.classList.contains('active')
-    }
-
-    /**
-     * Aktiviert/Deaktiviert die Steuerelemente für das Ausspielen von Karten.
-     * @param {boolean} enable - True zum Aktivieren, false zum Deaktivieren.
-     * @param {string} [requestId] - Die Request-ID für die aktuelle "play"-Aktion, falls aktiviert.
-     */
-    function enablePlayControls(enable, requestId) {
-        _passButton.disabled = !enable;
-        _playButton.disabled = !enable;
-        // Tichu-Button-Logik ist komplexer (abhängig von Kartenanzahl, Phase, bereits angesagt)
-        // _tichuButton.disabled = !enable || ...;
-
-        if (_ownHandContainer) {
-            _ownHandContainer.classList.toggle('disabled-hand', !enable);
+    function _testResetRound() {
+        _updateScore([0, 0]);
+        _clearCards();
+        _hideWish();
+        _hideSchupfZones();
+        _hideBomb();
+        for (let i= 0; i <= 3; i++) {
+            _hideTichu(i);
         }
+        _hideTichuIndicator();
+    }
 
-        if (enable && requestId) {
-            _passButton.dataset.requestId = requestId;
-            _playButton.dataset.requestId = requestId;
+    function _testDealCards() {
+        // Farben: 0 = Sonderkarte, 1 = Schwarz, 2 = Blau, 3 = Grün, 4 = Rot
+        _dealOut([
+            {value: 2, suit: 1, label: "S2"},
+            {value: 2, suit: 2, label: "B4"},
+            {value: 2, suit: 3, label: "G5"},
+            {value: 2, suit: 4, label: "R5"},
+            {value: 2, suit: 4, label: "R6"},
+            {value: 0, suit: 0, label: "Hu"},
+            {value: 1, suit: 0, label: "Ma"},
+            {value: 15, suit: 0, label: "Dr"},
+            {value: 16, suit: 0, label: "Ph"},
+            {value: 10, suit: 1, label: "SZ"},
+            {value: 11, suit: 2, label: "BB"},
+            {value: 12, suit: 2, label: "BD"},
+            {value: 13, suit: 3, label: "GK"},
+            {value: 14, suit: 3, label: "GA"},
+        ]);
+    }
+
+    let _testWishValue = 1
+    function _testToggleWish() {
+        if (_wishIndicator.classList.contains('hidden')) {
+            _testWishValue = _testWishValue < 14 ? _testWishValue + 1 : 2;
+            _showWish(_testWishValue);
         }
         else {
-            delete _passButton.dataset.requestId;
-            delete _playButton.dataset.requestId;
+            _hideWish();
         }
     }
 
-    /**
-     * Behandelt Server-Notifications, die für den Spieltisch relevant sind.
-     * Stößt spezifische UI-Updates an.
-     * @param {string} eventName - Der Name des Server-Events.
-     * @param {object} context - Der Kontext des Events.
-     */
-    function handleNotification(eventName, context) {
-        // console.log("GAMETABLEVIEW: Notification empfangen:", eventName, context);
-        // Diese Funktion wird sehr umfangreich, wenn alle Spielmechaniken implementiert sind.
-        // Für den initialen Test (Login/Lobby/Logout) ist sie noch nicht kritisch.
-        // Beispiel:
-        switch (eventName) {
-            case 'hand_cards_dealt':
-            case 'player_turn_changed':
-            case 'player_played':
-            case 'player_passed':
-            case 'trick_taken':
-                render(); // Einfaches Neu-Rendern bei vielen Events
-                break;
-            case 'player_announced':
-                // Spezifisches Update für Tichu-Indikator
-                if (context && typeof context.player_index === 'number') {
-                    const displayIdx = Helpers.getRelativePlayerIndex(context.player_index);
-                    const tichuIndicator = document.querySelector(`#player-area-${displayIdx} .tichu-indicator`);
-                    if (tichuIndicator) {
-                        tichuIndicator.classList.toggle('hidden', !context.announced);
-                    }
-                }
-                break;
-            // Weitere Events...
-        }
-    }
-
-    /** Passt Zustand der UI-Elemente für den Schupf-Vorgang an. */
-    function setPlayControlsForSchupfen(isSchupfing) {
-        _passButton.classList.toggle('hidden', isSchupfing);
-        _tichuButton.classList.toggle('hidden', isSchupfing);
-
-        if (isSchupfing) {
-            _playButton.onclick = () => {
-                CardHandler.confirmSchupf();
-                SoundManager.playSound('buttonClick');
-            };
+    function _testToggleSchupfZones() {
+        if (_schupfZonesContainers[0].classList.contains('hidden')) {
+            _showSchupfZones();
         }
         else {
-            _playButton.onclick = _playButton_click; // Standard-Handler wiederherstellen
+            _hideSchupfZones();
         }
-        _playButton.disabled = false; // Immer aktivierbar im Schupf-Modus (wenn Karten gewählt)
+    }
+
+    function _testToggleBomb() {
+        if (_bombIcon.classList.contains('hidden')) {
+            _showBomb();
+        }
+        else {
+            _hideBomb();
+        }
+    }
+
+    function _testToggleTichu() {
+        for (let i= 0; i <= 3; i++) {
+            if (_tichuIndicators[i].classList.contains('hidden')) {
+                _showTichu(i);
+            }
+            else {
+                _hideTichu(i);
+            }
+        }
+    }
+
+    let _testCurrentTurnIndex = 3  // relative zum Benutzer
+    function _testMoveTurnIndicator() {
+        _testCurrentTurnIndex = (_testCurrentTurnIndex + 1) % 4;
+        _moveTurnIndicator(_testCurrentTurnIndex);
     }
 
     return {
@@ -838,8 +673,5 @@ const GameTableView = (() => {
         show,
         hide,
         isVisible,
-        enablePlayControls, // Damit AppController dies steuern kann
-        handleNotification,  // Damit AppController dies aufrufen kann
-        setPlayControlsForSchupfen // Für CardHandler/AppController
     };
 })();

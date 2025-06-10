@@ -2,6 +2,8 @@
  * Type-Alias für eine Karte mit Wert und Farbe.
  *
  * @typedef {[number, number]} Card
+ * @property {number} 0 - Wert der Karte (0 = Hund, 1 = Mahjong, 2 bis 10, 11 = Bube, 12 = Dame, 13 = König, 14 = As, 15 = Drache, 16 = Phönix)
+ * @property {number} 1 - Farbe der Karte (0 = Sonderkarte, 1 = Schwarz/Schwert, 2 = Blau/Pagode, 3 = Grün/Jade, 4 = Rot/Stern)
  */
 
 /**
