@@ -244,7 +244,7 @@ background: #4a6b82; /* Hintergrund für bessere Sichtbarkeit */
 /* ----------------------------------------------------- */
 
 #game-table-screen {
-    background-image: url('../images/table.png');
+    background-image: url('../images/table-texture.png');
     background-size: cover;
     background-position: center;
 }
@@ -343,8 +343,8 @@ background: #4a6b82; /* Hintergrund für bessere Sichtbarkeit */
     object-fit: contain;
 }
 
-/* Tichu Indikator */
-.tichu-indicator:not(.hidden) {
+/* Tichu-Symbol */
+.tichu-icon:not(.hidden) {
     /* Optional: Animation beim Einblenden */
     animation: pulse 1.5s infinite;
 }
@@ -354,7 +354,7 @@ background: #4a6b82; /* Hintergrund für bessere Sichtbarkeit */
     100% { transform: scale(1); opacity: 0.7; }
 }
 
-/* Turn Indikator */
+/* Turn-Symbol */
 .turn-indicator:not(.hidden) {
     box-shadow: 0 0 10px 3px yellow;
     border-radius: 50%;

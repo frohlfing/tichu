@@ -58,11 +58,11 @@
             </div>
             <div class="table-area">
                 <div class="center-table">
-                    <div id="wish-indicator" class="hidden">
-                        <span id="wish-indicator-label"></span>
+                    <div id="wish-icon" class="hidden">
+                        <span id="wish-text"></span>
                     </div>
                     <div id="played-cards-area-top" class="played-cards-area">
-                        <img id="turn-indicator-top" src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                        <img id="turn-icon-top" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                         <div id="schupf-zones-top" class="schupf-zones hidden">
                             <div id="schupf-zone-top-1" class="schupf-zone"></div>
                             <div id="schupf-zone-top-2" class="schupf-zone"></div>
@@ -70,7 +70,7 @@
                         </div>
                     </div>
                     <div id="played-cards-area-left" class="played-cards-area">
-                        <img id="turn-indicator-left" src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                        <img id="turn-icon-left" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                         <div id="schupf-zones-left" class="schupf-zones hidden">
                             <div id="schupf-zone-left-1" class="schupf-zone"></div>
                             <div id="schupf-zone-left-2" class="schupf-zone"></div>
@@ -78,7 +78,7 @@
                         </div>
                     </div>
                     <div id="played-cards-area-right" class="played-cards-area">
-                        <img id="turn-indicator-right" src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                        <img id="turn-icon-right" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                         <div id="schupf-zones-right" class="schupf-zones hidden">
                             <div id="schupf-zone-right-1" class="schupf-zone"></div>
                             <div id="schupf-zone-right-2" class="schupf-zone"></div>
@@ -86,7 +86,7 @@
                         </div>
                     </div>
                     <div id="played-cards-area-bottom" class="played-cards-area">
-                        <img id="turn-indicator-bottom" src="images/turn-indicator.png" class="turn-indicator hidden" alt="*">
+                        <img id="turn-icon-bottom" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                         <div id="schupf-zones-bottom" class="schupf-zones hidden">
                             <div id="schupf-zone-bottom-1" class="schupf-zone" data-schupf-zone="1"></div>
                             <div id="schupf-zone-bottom-2" class="schupf-zone" data-schupf-zone="2"></div>
@@ -97,30 +97,30 @@
                 <div id="player-area-top" class="player-area">
                     <div id="hand-top" class="hand"></div>
                     <div id="player-info-top" class="player-info">
-                        <img id="tichu-indicator-top" src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
+                        <img id="tichu-icon-top" src="images/tichu-icon.png" class="tichu-icon hidden" alt="T">
                         <span id="player-name-top" class="player-name">Partner</span>
                     </div>
                 </div>
                 <div id="player-area-left" class="player-area">
                     <div id="hand-left" class="hand"></div>
                     <div id="player-info-left" class="player-info">
-                        <img id="tichu-indicator-left" src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
+                        <img id="tichu-icon-left" src="images/tichu-icon.png" class="tichu-icon hidden" alt="T">
                         <span id="player-name-left" class="player-name">Gegner Links</span>
                     </div>
                 </div>
                 <div id="player-area-right" class="player-area">
                     <div id="player-info-right" class="player-info">
-                        <img id="tichu-indicator-right" src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
+                        <img id="tichu-icon-right" src="images/tichu-icon.png" class="tichu-icon hidden" alt="T">
                         <span id="player-name-right" class="player-name">Gegner Rechts</span>
                     </div>
                     <div id="hand-right" class="hand"></div>
                 </div>
                 <div id="player-area-bottom" class="player-area">
                     <div id="player-info-bottom" class="player-info">
-                        <img id="tichu-indicator-bottom" src="images/tichu-indicator.png" class="tichu-indicator hidden" alt="T">
+                        <img id="tichu-icon-bottom" src="images/tichu-icon.png" class="tichu-icon hidden" alt="T">
                         <span id="player-name-bottom" class="player-name">Ich</span>
                     </div>
-                    <img id="bomb-icon" src="images/bomb.png" class="hidden" alt="B">
+                    <img id="bomb-icon" src="images/bomb-icon.png" class="hidden" alt="B">
                     <div id="hand-bottom" class="hand"></div>
                 </div>
             </div>
@@ -175,7 +175,7 @@
         <button data-test="toggle-schupf-zones">Schupf-Zonen anzeigen/ausblenden</button>
         <button data-test="toggle-bomb">Bombe anzeigen/ausblenden</button>
         <button data-test="toggle-tichu">Tichu anzeigen/ausblenden</button>
-        <button data-test="move-turn-indicator">Aktueller Spieler wechseln</button>
+        <button data-test="move-turn">Aktueller Spieler wechseln</button>
 
 <!--        <hr>-->
 <!--        <button data-test="select-cards">Karten selektieren</button>-->

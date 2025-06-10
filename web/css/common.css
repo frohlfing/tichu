@@ -1,4 +1,5 @@
 /* css/common.css */
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -14,10 +15,10 @@
 
 body {
     font-family: 'Architect s Daughter', sans-serif;
-    background-color: #000; /* Farbe für Letterbox/Pillarbox */
+    background-color: #000;
     color: #fff;
     overflow: hidden;
-    display: flex; /* Zentriert den #game-wrapper */
+    display: flex; /* zentriert den #game-wrapper */
     justify-content: center;
     align-items: center;
     height: 100vh;
@@ -26,9 +27,9 @@ body {
 }
 
 #game-wrapper {
-    width: 1080px;  /* Feste Breite der Godot-Vorlage */
-    height: 1920px; /* Feste Höhe der Godot-Vorlage */
-    position: relative; /* Für absolute Positionierung von Kindern und transform-origin */
+    width: 1080px;  /* feste Breite */
+    height: 1920px; /* feste Höhe  */
+    position: relative; /* für absolute Positionierung von Kindern und transform-origin */
     overflow: hidden;
     background-color: #282c34; /* Standard-Hintergrund des Spiels */
     box-shadow: 0 0 20px rgba(0,0,0,0.5);
@@ -41,8 +42,8 @@ body {
 
 .view {
     display: none;
-    width: 100%; /* Füllt den #game-wrapper */
-    height: 100%;/* Füllt den #game-wrapper */
+    width: 100%; /* füllt den #game-wrapper */
+    height: 100%; /* füllt den #game-wrapper */
     position: absolute;
     top: 0;
     left: 0;
@@ -51,6 +52,7 @@ body {
     align-items: center;
     overflow: hidden;
 }
+
 .view.active {
     display: flex !important; /* !important zur Sicherheit, falls andere Regeln stören */
 }

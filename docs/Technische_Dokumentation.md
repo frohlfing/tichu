@@ -451,7 +451,7 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
 ## 8. Frontend (zweite Ausbaustufe)
 
 ### 8.1 Allgemeine Funktionsweise
-1) Das Frontend für den Server-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden. Eine frühere Godot-basierte UI-Entwicklung wird nicht weiterverfolgt, kann aber als visuelle Vorlage dienen.
+1) Das Frontend für den Server-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden.
 2) Es kommuniziert über WebSockets mit dem Python-Backend. 
 3) Mit Verbindungsaufbau über die WebSocket sendet der Client als Query-Parameter in der URL den Tisch-Namen und seinen Namen mit. 
 4) Beim Wiederaufbau nach Verbindungsabbruch sendet der Spieler stattdessen die letzte Session-Id.
@@ -521,7 +521,7 @@ todo
 
 #### Images
 
-*  web/images/bomb.png
+*  web/images/bomb-icon.png
 	https://pixabay.com/de/vectors/bombe-karikatur-ikonisch-2025548/
 	Kostenlos, Zusammenfassung der Inhaltslizenz: https://pixabay.com/de/service/license-summary/
 
@@ -534,22 +534,22 @@ todo
 	https://pixabay.com/de/vectors/drachen-eidechse-monster-chinesisch-149393/
 	Kostenlos, Zusammenfassung der Inhaltslizenz: https://pixabay.com/de/service/license-summary/
 
-*  web/images/table.png
+*  web/images/table-texture.png
 	Vorlage:
 	https://github.com/BananaHolograma/Veneno/blob/main/assets/background/poker_table_green.jpg
 	LICENSE is MIT so you can use the code from this project for whatever you want, even commercially
 
-*  web/images/tichu-indicator.png 
+*  web/images/tichu-icon.png 
 	Vorlage: 
 	https://pixabay.com/de/vectors/drachen-eidechse-monster-chinesisch-149393/
 	Kostenlos, Zusammenfassung der Inhaltslizenz: https://pixabay.com/de/service/license-summary/
  
-*  web/images/wish-indicator.png
+*  web/images/wish-icon.png
 	Vorlage:
 	https://github.com/Tichuana-Tichu/tichuana-tichu/tree/develop/src/ch/tichuana/tichu/client/resources/images/cards/mahjong.png
 	Keine Lizenz-Hinweis!
 
-*  web/images/turn-indicator.png
+*  web/images/turn-icon.png
 	Selbst gemalt
 
 *  web/images/spinner.png

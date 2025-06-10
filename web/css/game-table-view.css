@@ -3,7 +3,7 @@
 /* --- Spieltisch-Bildschirm (umfasst die Top-Bar, den grünen Spieltisch und die Bottom-Controls) --- */
 
 #game-table-screen {
-    background-image: url('../images/table.png');
+    background-image: url('../images/table-texture.png');
     background-size: 1080px 1920px;
     background-position: center center;
     background-repeat: no-repeat;
@@ -22,13 +22,14 @@
     left: 0;
     width: 1080px;
     height: 140px;
-    background-color: rgba(0,0,0,0.65);
+    background-color: rgba(0, 0, 0, 0.65);
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 30px; /* Godot: Seitenabstand */
     z-index: 10;
 }
+
 .top-bar #score-display {
     font-weight: bold;
     font-size: 46px;
@@ -37,6 +38,7 @@
     flex-grow: 1;
     color: #f0f0f0;
 }
+
 .top-bar .game-button { /* Styling für Beenden, Optionen Buttons */
     padding: 10px 25px;
     font-family: 'Architect s Daughter', sans-serif;
@@ -49,8 +51,16 @@
     transition: background-color 0.2s;
     min-height: 80px;
 }
-.top-bar .game-button:hover:not(:disabled) { background-color: #717d86; }
-.top-bar .game-button:disabled { background-color: #424242; color: #888; cursor: not-allowed; }
+
+.top-bar .game-button:hover:not(:disabled) {
+    background-color: #717d86;
+}
+
+.top-bar .game-button:disabled {
+    background-color: #424242;
+    color: #888;
+    cursor: not-allowed;
+}
 
 /* --- Table-Area (der grüne Spieltisch) --- */
 
@@ -60,129 +70,6 @@
     bottom: 140px;
     left: 0;
     right: 0;
-}
-
-/* Table Area -> Tischmitte (umfasst Turn-und Wunsch-Indikator, Schupf-Zone und Stich-Zone (wo die Karten abgelegt werden)) */
-
-.center-table {
-    position: absolute;
-    left: 240px;
-    right: 240px;
-    top: 240px;
-    bottom: 355px;
-    display: grid;
-    /*grid-template-columns: 1fr 1fr;*/
-    /*grid-template-rows: 1fr 1fr; */
-    place-items: center; /* Zentriert die .played-cards-area in den Grid-Zellen */
-    /*gap: 10px;*/
-    border: 1px solid blue;
-}
-
-/* Table Area -> Tischmitte -> Wunsch-Indikator */
-
-#wish-indicator {
-    position: absolute;
-    /*left: 50%; top: 50%; transform: translate(-50%, -50%);*/ /* Zentriert im .center-table */
-    width: 160px;
-    height: 160px;
-    background-image: url('../images/wish-indicator.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    /*border-radius: 50%;*/
-    /*box-shadow: 0 0 12px 3px gold, 0 0 6px gold inset;*/
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    /*text-align: center;*/
-}
-#wish-indicator-label {
-    position: absolute;
-    font-size: 56px;
-    font-weight: bold;
-    color: #111;
-    text-shadow: 0 0 3px #fff;
-}
-
-/* Table Area -> Tischmitte -> Spieler-Bereich */
-.played-cards-area {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    width: 100%; /* Füllt die Grid-Zelle */
-    height: 100%;
-    transform-origin: center center;
-}
-#played-cards-area-top { grid-row: 1; grid-column: 1 / span 2; transform: rotate(180deg); align-items: flex-end; padding-bottom: 20px;}
-#played-cards-area-left { grid-row: 1 / span 2; grid-column: 1; transform: rotate(90deg); }  /* todo grid? */
-#played-cards-area-right { grid-row: 1 / span 2; grid-column: 2; transform: rotate(-90deg); }
-#played-cards-area-bottom { grid-row: 2; grid-column: 1 / span 2; align-items: flex-start; padding-top: 20px; }
-.played-cards-area .played-pass,
-.played-cards-area .played-bomb-text {
-    font-size: 30px; font-weight: bold; padding: 10px;
-    background-color: rgba(0,0,0,0.6); border-radius: 5px;
-}
-
-/* Table Area -> Tischmitte -> Spieler-Bereich -> Turn-Indikator */
-
-.turn-indicator {
-    box-shadow: 0 0 8px 3px gold;
-    border-radius: 50%;
-    background-color: rgba(255, 215, 0, 0.4);
-    height: 140px;
-    width: 140px;
-    position: absolute;
-}
-
-#turn-indicator-left,
-#turn-indicator-right {
-    bottom: 395px;
-}
-
-#turn-indicator-top,
-#turn-indicator-bottom {
-    bottom: 20px;
-}
-
-/* Table Area -> Tischmitte -> Spieler-Bereich -> Schupf-Zonen */
-
-.schupf-zones {
-    position: absolute;
-    display: flex;
-    gap: 30px;
-    /*padding: 15px 15px;*/
-    /*background-color: rgba(0,0,0,0.35);*/
-    /*border-radius: 10px;*/
-}
-
-#schupf-zones-left,
-#schupf-zones-right {
-    bottom: 375px;  /* todo wieso dieser Wert? */
-}
-
-#schupf-zones-top,
-#schupf-zones-bottom {
-    bottom: 0;
-}
-
-.schupf-zone {
-    width: 120px;
-    height: 180px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: #ddd;
-    font-size: 22px;
-    font-weight: bold;
-}
-#schupf-zones-bottom .schupf-zone {
-    cursor: pointer;
-    background-color: rgba(0,0,0,0.35);
-}
-.schupf-zone:empty {
-    border: 2px dashed #bbb;
-    border-radius: 10px;
 }
 
 /* Table Area -> Spieler-Bereiche (Spieler-Info, Bomben-Icon und Handkarten eines Spielers)*/
@@ -199,20 +86,19 @@
 #player-area-right {
     top: 300px; /* 240px für Höhe von player-top + 60px */
     bottom: 418px; /* 330px für Höhe von player-bottom + 28px für Border + 60px */
-    width: 240px; /* 150px für Tichu-Indikator + 90px für halbe Kartenhöhe */
+    width: 240px; /* 150px für Tichu-Symbol + 90px für halbe Kartenhöhe */
     justify-content: center;
 }
 
 #player-area-top,
-#player-area-bottom
- {
+#player-area-bottom {
     left: 25px; /* Abstand linker Rand des Tisches */
     right: 25px; /* Abstand rechter Rand des Tisches */
 }
 
 #player-area-top {
     top: 0;
-    height: 240px; /* 150px für Tichu-Indikator + 90px für halbe Kartenhöhe */
+    height: 240px; /* 150px für Tichu-Symbol + 90px für halbe Kartenhöhe */
     justify-content: flex-start;
 }
 
@@ -230,7 +116,7 @@
     justify-content: flex-end;
 }
 
-/* Table Area -> Spieler-Bereiche -> Spieler-Info (umfasst Tichu-Indikator und Spielername) */
+/* Table Area -> Spieler-Bereiche -> Spieler-Info (umfasst Spielername und Tichu-Symbol) */
 
 .player-info {
     font-size: 46px;
@@ -242,18 +128,22 @@
     height: 110px;
     position: relative;
 }
+
 #player-info-top {
     transform: rotate(180deg);
     top: 90px;
 }
+
 #player-info-left {
     transform: rotate(90deg);
     left: 25px;
 }
+
 #player-info-right {
     transform: rotate(-90deg);
     right: 25px;
 }
+
 #player-info-bottom {
     bottom: 180px;
 }
@@ -262,16 +152,16 @@
     transform: rotate(180deg);
 }
 
-/* Table Area: Spieler-Bereich: Tichu-Indikator */
+/* Table Area -> Spieler-Bereich -> Spieler-Info -> Tichu-Symbol */
 
-.tichu-indicator:not(.hidden) {
+.tichu-icon:not(.hidden) {
     /*animation: pulse 1.5s infinite;*/
     width: 110px;
     height: 110px;
     margin-right: 15px;
 }
 
-/* Table Area -> Spieler-Bereich -> Bomben-Indikator */
+/* Table Area -> Spieler-Bereich -> Bomben-Symbol */
 
 #bomb-icon {
     cursor: pointer;
@@ -282,7 +172,7 @@
     right: 20px;
 }
 
-/* Table Area -> Spieler-Bereich -> Hände */
+/* Table Area -> Spieler-Bereich -> Hand */
 
 .hand {
     display: flex;
@@ -322,13 +212,13 @@
     height: 180px; /* Kartenhöhe */
 }
 
-/* Table Area -> Spieler-Bereich -> Handkarten */
+/* Table Area -> Spieler-Bereich -> Hand -> Handkarten */
 
 .card-face,
 .card-back {
     width: 120px;
     height: 180px;
-    box-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
     border-radius: 10px;
     background-size: 118px 178px; /* ohne Border */
     background-repeat: no-repeat;
@@ -376,6 +266,7 @@
 #hand-left .card-back {
     transform: rotate(90deg);
 }
+
 #hand-right .card-face,
 #hand-right .card-back {
     transform: rotate(-90deg);
@@ -385,11 +276,168 @@
     height: 180px;
     cursor: pointer;
 }
+
 #hand-bottom .card-face.selected {
     transform: translateY(-30px);
 }
+
 #hand-bottom.disabled-hand .card-face {
     cursor: default;
+}
+
+/* Table Area -> Tischmitte (umfasst Wunsch-und Turn-Symbol, Schupf-Zone und Stich-Zone) */
+
+.center-table {
+    position: absolute;
+    left: 240px;
+    right: 240px;
+    top: 240px;
+    bottom: 355px;
+    display: grid;
+    /*grid-template-columns: 1fr 1fr;*/
+    /*grid-template-rows: 1fr 1fr; */
+    place-items: center; /* Zentriert die .played-cards-area in den Grid-Zellen */
+    /*gap: 10px;*/
+    border: 1px solid blue;
+}
+
+/* Table Area -> Tischmitte -> Wunsch-Symbol */
+
+#wish-icon {
+    position: absolute;
+    /*left: 50%; top: 50%; transform: translate(-50%, -50%);*/ /* Zentriert im .center-table */
+    width: 160px;
+    height: 160px;
+    background-image: url('../images/wish-icon.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    /*border-radius: 50%;*/
+    /*box-shadow: 0 0 12px 3px gold, 0 0 6px gold inset;*/
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /*text-align: center;*/
+}
+
+#wish-text {
+    position: absolute;
+    font-size: 56px;
+    font-weight: bold;
+    color: #111;
+    text-shadow: 0 0 3px #fff;
+}
+
+/* Table Area -> Tischmitte -> Spieler-Bereich */
+
+.played-cards-area {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    width: 100%; /* Füllt die Grid-Zelle */
+    height: 100%;
+    transform-origin: center center;
+}
+
+#played-cards-area-top {
+    grid-row: 1;
+    grid-column: 1 / span 2;
+    transform: rotate(180deg);
+    align-items: flex-end;
+    padding-bottom: 20px;
+}
+
+#played-cards-area-left {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+    transform: rotate(90deg);
+}
+
+/* todo grid? */
+#played-cards-area-right {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    transform: rotate(-90deg);
+}
+
+#played-cards-area-bottom {
+    grid-row: 2;
+    grid-column: 1 / span 2;
+    align-items: flex-start;
+    padding-top: 20px;
+}
+
+.played-cards-area .played-pass,
+.played-cards-area .played-bomb-text {
+    font-size: 30px;
+    font-weight: bold;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 5px;
+}
+
+/* Table Area -> Tischmitte -> Spieler-Bereich -> Turn-Symbol */
+
+.turn-icon {
+    box-shadow: 0 0 8px 3px gold;
+    border-radius: 50%;
+    background-color: rgba(255, 215, 0, 0.4);
+    height: 140px;
+    width: 140px;
+    position: absolute;
+}
+
+#turn-icon-left,
+#turn-icon-right {
+    bottom: 395px;
+}
+
+#turn-icon-top,
+#turn-icon-bottom {
+    bottom: 20px;
+}
+
+/* Table Area -> Tischmitte -> Spieler-Bereich -> Schupf-Zonen */
+
+.schupf-zones {
+    position: absolute;
+    display: flex;
+    gap: 30px;
+    /*padding: 15px 15px;*/
+    /*background-color: rgba(0,0,0,0.35);*/
+    /*border-radius: 10px;*/
+}
+
+#schupf-zones-left,
+#schupf-zones-right {
+    bottom: 375px; /* todo wieso dieser Wert? */
+}
+
+#schupf-zones-top,
+#schupf-zones-bottom {
+    bottom: 0;
+}
+
+.schupf-zone {
+    width: 120px;
+    height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #ddd;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+#schupf-zones-bottom .schupf-zone {
+    cursor: pointer;
+    background-color: rgba(0, 0, 0, 0.35);
+}
+
+.schupf-zone:empty {
+    border: 2px dashed #bbb;
+    border-radius: 10px;
 }
 
 /* --- Bottom-Controls --- */
@@ -400,13 +448,14 @@
     left: 0;
     width: 1080px;
     height: 140px;
-    background-color: rgba(0,0,0,0.7);
+    background-color: rgba(0, 0, 0, 0.7);
     display: flex;
     justify-content: space-around;
     align-items: center;
     padding: 0 40px; /* Mehr seitliches Padding für Button-Abstand */
     font-size: 32px;
 }
+
 .bottom-controls .game-button {
     flex-grow: 1; /* Buttons teilen sich den Platz */
     margin: 0 15px; /* Abstand zwischen Buttons */
@@ -422,8 +471,16 @@
     cursor: pointer;
     transition: background-color 0.2s;
 }
-.bottom-controls .game-button:hover:not(:disabled) { background-color: #717d86; }
-.bottom-controls .game-button:disabled { background-color: #424242; color: #888; cursor: not-allowed; }
+
+.bottom-controls .game-button:hover:not(:disabled) {
+    background-color: #717d86;
+}
+
+.bottom-controls .game-button:disabled {
+    background-color: #424242;
+    color: #888;
+    cursor: not-allowed;
+}
 
 /* --- Visuelle Effekte & Animationen --- */
 
@@ -451,13 +508,17 @@
 #hand-bottom .card.schupf-candidate {
     opacity: 0.6;
     border: 2px dashed gold !important;
-    transform: translateY(-10px); /* Leicht anheben */  /*todo */
+    transform: translateY(-10px); /* Leicht anheben */ /*todo */
 }
-#hand-bottom .card.in-schupf-zone { display: none !important; }
+
+#hand-bottom .card.in-schupf-zone {
+    display: none !important;
+}
 
 .bomb-effect-text {
     position: absolute;
-    top: 50%; left: 50%;
+    top: 50%;
+    left: 50%;
     font-size: 100px;
     color: red;
     font-weight: bold;
@@ -470,13 +531,31 @@
 }
 
 @keyframes bombExplode {
-    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.5; }
-    70% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0.5;
+    }
+    70% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 0;
+    }
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); opacity: 0.7; }
-    50% { transform: scale(1.15); opacity: 1; }
-    100% { transform: scale(1); opacity: 0.7; }
+    0% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
 }
