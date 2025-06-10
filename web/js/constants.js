@@ -12,7 +12,10 @@ const Config = {
     DEFAULT_REQUEST_TIMEOUT: 20,
     
     // WebSocket-URL
-    WEBSOCKET_URL: 'ws://localhost:8765/ws'
+    WEBSOCKET_URL: 'ws://localhost:8765/ws',
+
+    // Zeit für Fehler-Popup (in ms)
+    TOAST_TIMEOUT: 3500,
 };
 
 

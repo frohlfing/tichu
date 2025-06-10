@@ -161,13 +161,13 @@ const GameTableView = (() => {
         console.log("GAMETABLEVIEW: Initialisiere GameTableView (minimal)...");
 
         // Event-Listener einrichten
-        _exitButton.addEventListener('click', _exitButton_click);
-        _optionsButton.addEventListener('click', _optionsButton_click);
-        _passButton.addEventListener('click', _passButton_click);
-        _tichuButton.addEventListener('click', _tichuButton_click);
-        _playButton.addEventListener('click', _playButton_click);
-        _bombIcon.addEventListener('click', _bombIcon_click);
-        _schupfZonesContainers[0].addEventListener('click', _schupfZone_click);
+        _exitButton.addEventListener('click', _exitButtonClick);
+        _optionsButton.addEventListener('click', _optionsButtonClick);
+        _passButton.addEventListener('click', _passButtonClick);
+        _tichuButton.addEventListener('click', _tichuButtonClick);
+        _playButton.addEventListener('click', _playButtonClick);
+        _bombIcon.addEventListener('click', _bombIconClick);
+        _schupfZonesContainers[0].addEventListener('click', _schupfZoneClick);
 
         // Event-Listener für Test-Buttons todo: nach Testphase entfernen
         document.getElementById('test-controls-container').addEventListener('click', _handleTestButtonClick);
@@ -205,8 +205,6 @@ const GameTableView = (() => {
         return _viewContainer.classList.contains('active')
     }
 
-    // Funktionen speziell für den Spieltisch
-
     /**
      * Aktualisiert den Punktestand in der Top-Bar.
      *
@@ -240,7 +238,7 @@ const GameTableView = (() => {
         // eigene Karten anzeigen
         cardsData.forEach(cardData => {
             const cardFace = _createCardFaceElement(cardData)
-            cardFace.addEventListener('click', _hand_card_click);
+            cardFace.addEventListener('click', _handCardClick);
             _hands[0].appendChild(cardFace);
         });
 
@@ -318,8 +316,6 @@ const GameTableView = (() => {
     function hideTichuIcon(relativeIndex) {
         _tichuIcons[relativeIndex].classList.add('hidden');
     }
-
-    // Bottom-Controls
 
     /**
      * Aktiviert den Pass-Button.
@@ -401,7 +397,7 @@ const GameTableView = (() => {
     /**
      * Event-Handler für den "Beenden"-Button.
      */
-    function _exitButton_click() {
+    function _exitButtonClick() {
         SoundManager.playSound('buttonClick');
         Dialogs.showExitDialog();
     }
@@ -409,16 +405,15 @@ const GameTableView = (() => {
     /**
      * Event-Handler für den "Optionen"-Button.
      */
-    function _optionsButton_click() {
+    function _optionsButtonClick() {
         SoundManager.playSound('buttonClick');
-        console.log("GAMETABLEVIEW: Optionen-Button geklickt (noch keine Funktion).");
         Dialogs.showErrorToast("Optionen sind noch nicht implementiert.");
     }
 
     /**
      * Event-Handler für den "Passen"-Button.
      */
-    function _passButton_click() {
+    function _passButtonClick() {
         const requestId = _passButton.dataset.requestId;
         if (requestId) {
             SoundManager.playSound('pass' + State.getPlayerIndex());
@@ -431,7 +426,7 @@ const GameTableView = (() => {
     /**
      * Event-Handler für den "Tichu"-Button.
      */
-    function _tichuButton_click() {
+    function _tichuButtonClick() {
         // Prüfen, ob Tichu angesagt werden darf (macht der Server, aber kleine Client-Prüfung schadet nicht)
         const privState = State.getPrivateState();
         const pubState = State.getPublicState();
@@ -449,7 +444,7 @@ const GameTableView = (() => {
     /**
      * Event-Handler für den "Schupfen"-, "Aufnehmen"- und "Spielen"-Button.
      */
-    function _playButton_click() {
+    function _playButtonClick() {
         const requestId = _playButton.dataset.requestId;
         const selectedCards = CardHandler.getSelectedCards(); // Client-Objekte {value, suit, label}
         if (requestId && selectedCards.length > 0) {
@@ -467,7 +462,7 @@ const GameTableView = (() => {
     /**
      * Event-Handler für das Anklicken auf das Bomben-Icon.
      */
-    function _bombIcon_click() {
+    function _bombIconClick() {
         const selectedCards = CardHandler.getSelectedCards();
         if (selectedCards.length >= 4) { // Minimale Voraussetzung für eine Bombe  todo richtige Prüfung für Bombe einbauen
             SoundManager.playSound('bomb' + State.getPlayerIndex());
@@ -482,7 +477,7 @@ const GameTableView = (() => {
     /**
      * Event-Handler für das Anklicken der Schupf-Zone.
      */
-    function _schupfZone_click(event) {
+    function _schupfZoneClick(event) {
        if (typeof (event.target.dataset.schupfZone) != "undefined") {
             // es wurde auf eine leere Schupf-Zone geklickt
             const schupfZone = parseInt(event.target.dataset.schupfZone);
@@ -500,7 +495,7 @@ const GameTableView = (() => {
     /**
      * Event-Handler für das Anklicken einer Handkarte
      */
-    function _hand_card_click() {
+    function _handCardClick() {
         // if (CardHandler.isSchupfModeActive && typeof CardHandler.isSchupfModeActive === 'function' && CardHandler.isSchupfModeActive()) {
         //     CardHandler.handleCardClick(this, cardData);
         // }
@@ -546,7 +541,7 @@ const GameTableView = (() => {
     // todo bomb_click()
     // todo Selektierte Karten eingereiht lassen
     // todo schupfen
-    // todo Play-Button: "Spielen" "Schupfen" "Kein Zug" "Aufnehmen" "Auswählen"(?)
+    // todo Play-Button: "Spielen" "Schupfen" "Kein Zug" "Aufnehmen" "Auswählen"
     // todo Grand Tichu
     // todo Dialoge
     // todo card-handler.js und helpers.js löschen
@@ -584,6 +579,11 @@ const GameTableView = (() => {
             case 'toggle-bomb': _testToggleBomb(); break;
             case 'toggle-tichu': _testToggleTichu(); break;
             case 'move-turn': _testMoveTurn(); break;
+            case 'show-dragon-dialog': _testShowDragonDialog(); break;
+            case 'show-wish-dialog': _testShowWishDialog(); break;
+            case 'show-round-over-dialog': _testShowRoundOverDialog(); break;
+            case 'show-game-over-dialog': _testShowGameOverDialog(); break;
+
             // case 'select-cards': _testSelectSomeCards(); break;
             // case 'play-selected-cards': _testPlaySelectedCards(); break;
             // case 'opponent-plays-cards': _testOpponentPlaysCards(testPlayerRelativeIdx); break;
@@ -596,15 +596,9 @@ const GameTableView = (() => {
             // case 'take-schupf-cards': _testTakeSchupfCards(); break;
             // case 'update-score': _testUpdateScore(); break;
             // case 'update-player-name': _testUpdatePlayerName(testPlayerRelativeIdx); break;
-            // case 'toggle-dragon-dialog': Dialogs.showDragonDialog('test-dragon-req'); break;
-            // case 'toggle-wish-dialog': Dialogs.showWishDialog('test-wish-req'); break;
             // case 'throw-bomb-effect': _testThrowBombEffect(); break;
             // case 'reveal-opponent-cards': _testRevealOpponentCards(testPlayerRelativeIdx); break;
-            // case 'toggle-round-over-dialog': Dialogs.handleNotification('round_over', { game_score: [[120],[30]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
-            // case 'toggle-game-over-dialog': Dialogs.handleNotification('game_over', { game_score: [[1050],[780]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
-            // case 'toggle-exit-dialog': Dialogs.showExitDialog(); break;
-            // case 'show-error-toast': Dialogs.showErrorToast("Dies ist ein Test-Fehler!"); break;
-            // case 'toggle-disabled': test_toggleDisabled(); break;
+
         }
     }
 
@@ -715,6 +709,24 @@ const GameTableView = (() => {
     function _testMoveTurn() {
         _testCurrentTurnIndex = (_testCurrentTurnIndex + 1) % 4;
         moveTurnIcon(_testCurrentTurnIndex);
+    }
+
+    function _testShowDragonDialog() {
+        Dialogs.showDragonDialog();
+    }
+
+    function _testShowWishDialog() {
+        Dialogs.showWishDialog();
+    }
+
+    function _testShowRoundOverDialog() {
+        // Dialogs.handleNotification('round_over', { game_score: [[120],[30]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
+        Dialogs.showRoundOverDialog("Weiter geht's");
+    }
+
+    function _testShowGameOverDialog() {
+        // Dialogs.handleNotification('game_over', { game_score: [[1050],[780]], player_names: ["Ich","Chris","Partner","Alex"] }); break;
+        Dialogs.showGameOverDialog("Wir : Gegner<br\>1020 : 300<br\>400:200");
     }
 
     return {

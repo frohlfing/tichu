@@ -133,32 +133,45 @@
 
         <!-- Dialoge (modal) -->
         <div id="wish-dialog" class="dialog hidden">
-            <h3>Wähle einen Kartenwert</h3>
-            <div id="wish-options"></div>
-            <button id="wish-button">Wünschen</button>
+            <h3>Wunsch</h3>
+            <div id="wish-options">
+                <button data-value="2">2</button>
+                <button data-value="3">3</button>
+                <button data-value="4">4</button>
+                <button data-value="5">5</button>
+                <button data-value="6">6</button>
+                <button data-value="7">7</button>
+                <button data-value="8">8</button>
+                <button data-value="9">9</button>
+                <button data-value="10">10</button>
+                <button data-value="11">J</button>
+                <button data-value="12">Q</button>
+                <button data-value="13">K</button>
+                <button data-value="14">A</button>
+            </div>
         </div>
         <div id="dragon-dialog" class="dialog hidden">
-            <h3>Wem den Drachenstich geben?</h3>
-            <button id="dragon-to-left-button">Gegner Links</button>
-            <button id="dragon-to-right-button">Gegner Rechts</button>
+            <h3>Drachen verschenken</h3>
+            <button data-value="3">Links</button>
+            <button data-value="1">Rechts</button>
         </div>
         <div id="round-over-dialog" class="dialog hidden">
             <h3>Runde beendet</h3>
             <p id="round-over-text">Ergebnis: 000 : 000</p>
-            <button id="round-over-button">Ok</button>
+            <button>Ok</button>
         </div>
         <div id="game-over-dialog" class="dialog hidden">
             <h3>Partie beendet</h3>
             <p id="game-over-text">Ergebnis: 0000 : 0000</p>
-            <button id="game-over-button">Zur Lobby</button>
+            <button>Zur Lobby</button>
         </div>
         <div id="exit-dialog" class="dialog hidden">
             <h3>Wirklich beenden?</h3>
-            <button id="exit-ok-button">Ja</button>
-            <button id="exit-cancel-button">Nein</button>
+            <button data-value="1">Ja</button>
+            <button data-value="0">Nein</button>
         </div>
-        <div id="error-toast" class="toast hidden">
-            <p id="error-toast-message"></p>
+        <div id="error-toast" class="dialog hidden">
+            <div id="error-toast-message"></div>
         </div>
 
     </div> <!-- Ende #game-wrapper -->
@@ -176,6 +189,11 @@
         <button data-test="toggle-bomb">Bombe anzeigen/ausblenden</button>
         <button data-test="toggle-tichu">Tichu anzeigen/ausblenden</button>
         <button data-test="move-turn">Aktueller Spieler wechseln</button>
+        <hr>
+        <button data-test="show-wish-dialog">Wunsch-Dialog</button>
+        <button data-test="show-dragon-dialog">Drachen-Dialog</button>
+        <button data-test="show-round-over-dialog">Runden-Ende-Dialog</button>
+        <button data-test="show-game-over-dialog">Partie-Ende-Dialog</button>
 
 <!--        <hr>-->
 <!--        <button data-test="select-cards">Karten selektieren</button>-->
@@ -199,31 +217,10 @@
 <!--        <button data-test="take-schupf-cards">10. Schupfkarten aufnehmen</button>-->
 
 <!--        <hr>-->
-<!--        <div style="display:flex; align-items:center; gap: 5px;">-->
-<!--            Score: <input type="text" id="test-score" value="0100:0050" title="Punkte (Wir:Gegner)" style="flex-grow:1;">-->
-<!--        </div>-->
-<!--        <button data-test="update-score">Score ändern</button>-->
-
-<!--        <hr>-->
-<!--        <div style="display:flex; align-items:center; gap: 5px;">-->
-<!--            Name: <input type="text" id="test-player-name" value="NeuerName" title="Neuer Name für Spieler Rechts" style="flex-grow:1;">-->
-<!--        </div>-->
-<!--        <button data-test="update-player-name">Mitspielername ändern</button>-->
-
-<!--        <hr>-->
 <!--        <button data-test="throw-bomb-effect">Bombe werfen (Effekt)</button>-->
 <!--        <hr>-->
 <!--        <button data-test="reveal-opponent-cards">Karten Gegner zeigen</button>-->
 
-<!--        <hr>-->
-<!--        <button data-test="toggle-wish-dialog">Wunsch-Dialog</button>-->
-<!--        <button data-test="toggle-dragon-dialog">Drachen-Dialog</button>-->
-<!--        <button data-test="toggle-round-over-dialog">Runden-Ende-Dialog</button>-->
-<!--        <button data-test="toggle-game-over-dialog">Partie-Ende-Dialog</button>-->
-<!--        <button data-test="toggle-exit-dialog">Verlassen-Dialog</button>-->
-<!--        <button data-test="show-error-toast">Fehler anzeigen</button>-->
-<!--        <hr>-->
-<!--        <button data-test="toggle-disabled">Buttons</button>-->
     </div>
 
     <!-- Module (Reihenfolge ist wichtig!) -->

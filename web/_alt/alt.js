@@ -432,3 +432,84 @@ function render() {
         let card = _createCardElement(cardData, true);
         _schupfZones[0][0].appendChild(card);
     }
+
+
+    // Dialogs -------------------------------------
+    /** @let {string|null} _activeDialogRequestId - Speichert die Request-ID des aktuell offenen Dialogs. */
+    let _activeDialogRequestId = null;
+
+    /**
+     * Verarbeitet Server-Notifications, die für Dialoge relevant sind.
+     * @param {string} eventName - Der Name des Server-Events.
+     * @param {object} context - Der Kontext des Events.
+     */
+    function handleNotification(eventName, context) {
+        const pubState = State.getPublicState(); // Hole aktuellen State
+        if (!pubState) {
+            return;
+        }
+
+        switch (eventName) {
+            case 'round_over':
+                _closeAllDialogs(); // Schließe ggf. offene Aktionsdialoge
+                _roundOverText.textContent = `Runde: Team ${pubState.player_names[0] || '0'}/${pubState.player_names[2] || '2'}: ${pubState.game_score[0].slice(-1)[0] || 0} | ` +
+                    `Team ${pubState.player_names[1] || '1'}/${pubState.player_names[3] || '3'}: ${pubState.game_score[1].slice(-1)[0] || 0}`;
+                _showDialog(_roundOverDialog);
+                break;
+            case 'game_over':
+                _closeAllDialogs();
+                const totalScoreTeam02 = pubState.game_score[0].reduce((a, b) => a + b, 0);
+                const totalScoreTeam13 = pubState.game_score[1].reduce((a, b) => a + b, 0);
+                _gameOverText.textContent = `Partie Ende: Team ${pubState.player_names[0] || '0'}/${pubState.player_names[2] || '2'}: ${totalScoreTeam02} | ` +
+                    `Team ${pubState.player_names[1] || '1'}/${pubState.player_names[3] || '3'}: ${totalScoreTeam13}`;
+                _showDialog(_gameOverDialog);
+                break;
+        }
+    }
+
+     function _handleDragonChoice(direction) { // 'left' or 'right'
+        SoundManager.playSound('buttonClick');
+        const requestId = _dragonDialog.dataset.requestId || _activeDialogRequestId;
+        if (requestId) {
+            const recipientCanonicalIndex = (direction === 'left')
+                ? Helpers.getCanonicalPlayerIndex(3) // Relativ 3 = links
+                : Helpers.getCanonicalPlayerIndex(1); // Relativ 1 = rechts
+            AppController.sendResponse(requestId, {dragon_recipient: recipientCanonicalIndex});
+            _hideDialog(_dragonDialog);
+        }
+        else {
+            console.warn("DIALOGS: Konnte Drachenwahl nicht senden, RequestID fehlt.");
+        }
+    }
+
+    function _handleConfirmWish() {
+        SoundManager.playSound('buttonClick');
+        const selectedButton = _wishOptionsContainer.querySelector('.selected-wish');
+        const requestId = _wishDialog.dataset.requestId || _activeDialogRequestId;
+        if (selectedButton && requestId) {
+            const wishValue = parseInt(selectedButton.dataset.value);
+            AppController.sendResponse(requestId, {wish_value: wishValue});
+            _hideDialog(_wishDialog);
+        }
+        else if (!selectedButton) {
+            showErrorToast("Bitte einen Kartenwert auswählen.");
+        }
+        else {
+            console.warn("DIALOGS: Konnte Wunsch nicht senden, RequestID fehlt oder Dialog nicht korrekt initialisiert.");
+        }
+    }
+
+        /** Schließt den Dialog, der mit einer bestimmten Request-ID assoziiert ist. */
+    function closeDialogByRequestId(requestId) {
+        if (_activeDialogRequestId === requestId) {
+            // Finde heraus, welcher Dialog offen ist (oder iteriere über alle)
+            if (!_wishDialog.classList.contains('hidden') && _wishDialog.dataset.requestId === requestId) {
+                _hideDialog(_wishDialog);
+            }
+            if (!_dragonDialog.classList.contains('hidden') && _dragonDialog.dataset.requestId === requestId) {
+                _hideDialog(_dragonDialog);
+            }
+            // ... für andere Dialoge, die auf Requests reagieren
+            _activeDialogRequestId = null;
+        }
+    }

@@ -1,46 +1,67 @@
 /* css/dialogs.css */
+
 .dialog {
-    position: fixed; /* Bezogen auf den Browser-Viewport, nicht den game-wrapper */
+    position: fixed; /* bezogen auf den Browser-Viewport, nicht den game-wrapper */
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: #404040dd; /* Leicht transparent */
-    padding: clamp(15px, 3vh, 30px); /* Responsive Padding */
-    border-radius: 10px; /* Godot: Stärkere Abrundung */
-    box-shadow: 0 0 25px rgba(0,0,0,0.6);
-    z-index: 10000; /* Über Test-Button-Container */
+    min-height: 220px;
+    width: 550px;
+    padding: 25px 30px;
+    z-index: 10000;
     text-align: center;
-    min-width: 280px;
-    width: clamp(280px, 80vw, 450px); /* Responsive Breite */
-    max-width: 90vw;
+    align-content: center;
+    font-weight: bold;
+    font-size: 22px;
     color: #f0f0f0;
-    font-size: calc(var(--wrapper-font-base) * 2); /* Basis für Schrift in Dialogen */
+    background-color: #404040dd; /* leicht transparent */
+    border-radius: 10px;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
 }
+
+#error-toast {
+    z-index: 10002; /* über die anderen Dialogen */
+    font-size: 28px;
+    background-color: red;
+}
+
+#wish-dialog {
+    width: 1030px;
+}
+
 .dialog h3 {
-    margin-bottom: 2vh; /* Relativer Abstand */
-    font-size: 1.3em; /* Bezogen auf Dialog-Font-Size */
+    margin-bottom: 3vh; /* 25px, Relativer Abstand */
+    font-size: 1.3em; /* bezogen auf Dialog-Font-Size */
 }
+
 .dialog p {
-    margin-bottom: 2vh;
-    font-size: 1em;
+    margin-bottom: 3vh;
+    font-size: 1.1em;
     line-height: 1.4;
 }
+
 .dialog button {
-    padding: 1.5vh 3vw; /* Relative Paddings */
-    /* Godot: Buttons in Dialogen ca. 150-200px breit */
-    min-width: 100px;
-    margin: 1vh 0.5vw;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1em; /* Bezogen auf Dialog-Font-Size */
+    padding: 10px 25px;
+    font-family: 'Architect s Daughter', sans-serif;
+    font-size: 32px;
+    border-radius: 8px;
     background-color: #5cb85c;
     color: white;
-    transition: background-color 0.2s ease;
+    border: none;
+    cursor: pointer;
+    /*transition: background-color 0.2s;*/
+    min-height: 80px;
+    min-width: 160px;
+    margin: 0 20px;
 }
-.dialog button:hover { filter: brightness(1.1); }
-.dialog button.cancel-button { background-color: #d9534f; } /* Beispiel für Abbrechen-Button */
-.dialog button:nth-child(odd) { /* Veraltet, besser spezifische Klassen verwenden */ }
+
+.dialog button:hover {
+    filter: brightness(1.1);
+}
+
+.dialog button.cancel-button {
+    background-color: #d9534f;
+}
 
 #wish-options {
     display: flex;
@@ -49,21 +70,15 @@
     gap: 1vmin;
     margin-bottom: 2vh;
 }
-#wish-options button {
-    width: 6vh; /* Relativ zur Höhe */
-    height: 6vh;
-    min-width: 40px; min-height: 40px; /* Mindestgröße */
-    font-size: 1.1em;
-    background-color: #6c757d;
-    padding: 0; /* Für quadratische Buttons mit Text drin */
-}
-#wish-options button.selected-wish { background-color: #4CAF50; border: 2px solid #fff; }
 
-.toast { /* Bleibt viewport-relativ */
-    position: fixed;
-    bottom: 20px; /* Fester Abstand vom unteren Browserrand */
-    left: 50%;
-    transform: translateX(-50%);
-    /* ... (Rest Toast Styling von vorher) ... */
-    z-index: 10002; /* Über Dialogen und Test-Buttons */
+#wish-options button {
+    min-width: 65px;
+    min-height: 80px;
+    padding: 0;
+    margin: 0;
+}
+
+#wish-options button.selected-wish {
+    background-color: #4CAF50;
+    border: 2px solid #fff;
 }
