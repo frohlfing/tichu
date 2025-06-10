@@ -369,7 +369,7 @@ const GameTableView = (() => {
      * @param {number} wishValue - Kartenwert zw. 2 und 14
      */
     function showWishIcon(wishValue) {
-        _wishText.textContent = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "B", "D", "K", "A"][wishValue];
+        _wishText.textContent = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"][wishValue];
         _wishIcon.classList.remove('hidden');
     }
 

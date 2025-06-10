@@ -1,49 +1,4 @@
 /**
- * Type-Alias für eine Karte mit Wert und Farbe.
- *
- * @typedef {[number, number]} Card
- * @property {number} 0 - Wert der Karte (0 = Hund, 1 = Mahjong, 2 bis 10, 11 = Bube, 12 = Dame, 13 = König, 14 = As, 15 = Drache, 16 = Phönix)
- * @property {number} 1 - Farbe der Karte (0 = Sonderkarte, 1 = Schwarz/Schwert, 2 = Blau/Pagode, 3 = Grün/Jade, 4 = Rot/Stern)
- */
-
-/**
- * Type-Alias für eine Liste von Karten.
- *
- * @typedef {Card[]} Cards
- */
-
-/**
- * Enum für Kombinationstypen.
- */
-const CombinationType = {
-    // Passen (0)
-    PASS: 0,
-    // Einzelkarte (1)
-    SINGLE: 1,
-    // Paar (2)
-    PAIR: 2,
-    // Drilling (3)
-    TRIPLE: 3,
-    // Treppe (4)
-    STAIR: 4,
-    // Fullhouse (5)
-    FULLHOUSE: 5,
-    // Straße (6)
-    STREET: 6,
-    // Vierer-Bombe oder Farbbombe (7)
-    BOMB: 7
-};
-
-/**
- * Type-Alias für eine Kombination.
- *
- * @typedef {[CombinationType, number, number]} Combination
- * @property {CombinationType} 0 - Typ der Kombination.
- * @property {number} 1 - Länge der Kombination.
- * @property {number} 2 - Rang der Kombination.
- */
-
-/**
  * Type-Alias für einen Spielzug.
  *
  * @typedef {[number, Cards, Combination]} Turn
@@ -70,11 +25,11 @@ const CombinationType = {
  * @typedef {Object} PublicState
  * @property {string} table_name - Der Name des Tisches.
  * @property {string[]} player_names - Die eindeutigen Namen der 4 Spieler [Spieler 0-3].
- * @property {number} host_index - Index des Clients, der Host ist (-1 == kein Client).
+ * @property {number} host_index - Index des Clients, der Host ist (-1 = kein Client).
  * @property {boolean} is_running - True, wenn eine Partie gerade läuft.
  * @property {string} current_phase - Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
- * @property {number} current_turn_index - Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
- * @property {number} start_player_index - Index des Spielers mit Mahjong (-1 == steht noch nicht fest).
+ * @property {number} current_turn_index - Index des Spielers, der am Zug ist (-1 = Startspieler steht noch nicht fest).
+ * @property {number} start_player_index - Index des Spielers mit Mahjong (-1 = steht noch nicht fest).
  * @property {number[]} count_hand_cards - Anzahl der Handkarten pro Spieler [Spieler 0-3].
  * @property {Cards} played_cards - Bereits gespielte Karten in der Runde.
  * @property {number[]} announcements - Angekündigtes Tichu pro Spieler [Spieler 0-3] (0 = keine Ansage, 1 = einfaches, 2 = großes).
@@ -219,9 +174,12 @@ const State = (() => {
 
     return {
         init,
-        setPublicState, getPublicState,
-        setPrivateState, getPrivateState,
-        setPlayerIndex, getPlayerIndex,
+        setPublicState,
+        getPublicState,
+        setPrivateState,
+        getPrivateState,
+        setPlayerIndex,
+        getPlayerIndex,
         getPlayerName,
         getTableName,
         isHost: isHost,

@@ -154,29 +154,47 @@ def validate_cards(s: str) -> bool:
     return all(c in _cardlabels for c in s.split(" ")) if s else True
 
 
-# Parst die Karte aus dem String
-# s: z.B. "R6"
 # todo UnitTest hinzufügen
-def parse_card(s: str) -> Card:
-   return deck[_cardlabels_index[s]]
+def parse_card(label: str) -> Card:
+   """
+   Parst die Karte aus dem String.
+
+   :param label: Das Label der Karte, z.B. "R6".
+   :return: Die geparste Karte (mit Wert und Farbe).
+   """
+   return deck[_cardlabels_index[label]]
 
 
-# Parst die Karten aus dem String
-# s: z.B. "R6 B5 G4"
-def parse_cards(s: str) -> Cards:
-    return [deck[_cardlabels_index[c]] for c in s.split(" ")] if s else []
+def parse_cards(labels: str) -> Cards:
+    """
+    Parst die Karten aus dem String.
+
+    :param labels: Die Labels der Karten mit Leerzeichen getrennt, z.B. "R6 B5 G4".
+    :return: Liste der Karten.
+    """
+    return [deck[_cardlabels_index[label]] for label in labels.split(" ")] if labels else []
 
 
-# Formatiert die Karte als lesbaren String
-# card: Karte, z.B. (8,3)
 # todo UnitTest hinzufügen
 def stringify_card(card: Card) -> str:
-   return _cardlabels[_deck_index[card]]
+    """
+    Formatiert die Karte als lesbaren String.
+
+    :param card: Die Karte (Wert und Farbe), z.B. (8,3).
+    :return: Das Label der Karte.
+    """
+    return _cardlabels[_deck_index[card]]
 
 
 # Formatiert Karten als lesbaren String
 # cards: Karten, z.B. [(8,3),(2,4),(0,1)]
 def stringify_cards(cards: Iterable[Card]) -> str:
+    """
+    Formatiert die Karte als lesbaren String.
+
+    :param cards: Die Karten , z.B. [[8,3], [2,4], [0,1]].
+    :return: Die Labels der Karte mit Leerzeichen getrennt.
+    """
     return " ".join([_cardlabels[_deck_index[c]] for c in cards])
 
 

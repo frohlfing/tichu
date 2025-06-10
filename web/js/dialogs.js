@@ -72,7 +72,7 @@ const Dialogs = (() => {
         _wishButton.addEventListener('click', _handleConfirmWish);
         // Generiere Wish-Options-Buttons
         CardValueLabels.forEach(label => { // CardValueLabels aus constants.js
-            const numVal = (label === 'A' ? 14 : (label === 'K' ? 13 : (label === 'D' ? 12 : (label === 'B' ? 11 : (label === 'Z' ? 10 : parseInt(label))))));
+            const numVal = (label === 'A' ? 14 : (label === 'K' ? 13 : (label === 'Q' ? 12 : (label === 'J' ? 11 : parseInt(label)))));
             const btn = document.createElement('button');
             btn.textContent = label;
             btn.dataset.value = numVal;
