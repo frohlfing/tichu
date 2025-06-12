@@ -39,12 +39,11 @@
     3.  [Verantwortlichkeiten der Komponenten im Live-Betrieb](#73-aufgaben-der-komponenten-im-server-betrieb)
         
 8. [Frontend (zweite Ausbaustufe)](#8-frontend-zweite-ausbaustufe)
-   1.  [Allgemeine Funktionsweise](#81-allgemeine-funktionsweise)
-   2.  [Architektur](#82-architektur)
-   2.  [Verzeichnisstruktur](#83-verzeichnisstruktur)
-   2.  [Viewport](#84-viewport)
-   4.  [Verantwortlichkeiten der JavaScript-Module](#85-verantwortlichkeiten-der-javascript-module)
-   3.  [Ressourcen](#86-ressourcen)
+   1.  [Allgemeine Funktionsbeschreibung](#81-funktionsbeschreibung)
+   2.  [Module](#82-module)
+   3.  [Verzeichnisstruktur](#83-verzeichnisstruktur)
+   4.  [Viewport](#84-viewport)
+   5.  [Ressourcen](#86-ressourcen)
 
 **ANHANG**
 
@@ -450,27 +449,82 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
 
 ## 8. Frontend (zweite Ausbaustufe)
 
-### 8.1 Allgemeine Funktionsweise
-1) Das Frontend für den Server-Betrieb soll als reine Webanwendung mit HTML, CSS und JavaScript umgesetzt werden.
-2) Es kommuniziert über WebSockets mit dem Python-Backend. 
-3) Mit Verbindungsaufbau über die WebSocket sendet der Client als Query-Parameter in der URL den Tisch-Namen und seinen Namen mit. 
-4) Beim Wiederaufbau nach Verbindungsabbruch sendet der Spieler stattdessen die letzte Session-Id.
-5) Wenn der Client das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis er durch eine KI ersetzt wird.
-6) Der erste Client am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet. Das findet in der Lobby statt.
-7) Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
-8) Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
+### 8.1 Funktionsbeschreibung
 
-### 8.2 Architektur
+#### 8.1.1 Allgemeines
 
+*   Das Frontend ist eine reine Webanwendung mit HTML, CSS und JavaScript. Es wird nur Vanilla-JS verwendet (kein ECMAScript/ES6-Modul, kein TypoScript, keine Frameworks).
 *   Als Architektur für das Web-Frontend wurde die **Event-Driven Architecture** (EDA) gewählt.
-*   Es wird nur Vanilla-JS verwendet (kein ECMAScript/ES6-Modul, kein TypoScript, keine Frameworks).
 *   Die Module werden durch **Immediately Invoked Function Expression** (IIFE, selbstaufrufende anonyme Funktionen) erzeugt. 
+*   Die Kommunikation mit dem Python-Backend erfolgt über eine WebSocket-Verbindung.
 
-#### Architekturkomponenten
+#### 8.1.2 Verbindungsaufbau / Reconnect
+
+*   Mit initialem Verbindungsaufbau teilt der Client per Query-Parameter den Tisch-Namen und seinen Namen mit. 
+*   Beim Wiederaufbau nach Verbindungsabbruch übermittelt der Spieler per Query-Parameter die letzte Session-Id.
+*   Wenn der Client das Spiel verlassen will, kündigt er dies an, damit der Server nicht erst noch 20 Sekunden wartet, bis er durch eine KI ersetzt wird.
+   
+#### 8.1.3 Lobby
+
+*   Der erste Client am Tisch darf die Sitzplätze der Mitspieler bestimmen, bevor er das Spiel startet. Normalerweise wird er warten, bis seine Freunde auch am Tisch sitzen, und dann sagen, wer mit wem ein Team bildet.
+   
+#### 8.1.4 Rundenende
+
+*   Wenn die Runde beendet ist, und die Partie noch nicht entschieden ist, leitet der Server automatisch eine neue Runde ein.
+*   Wenn die Partie beendet ist, werden die Spiele wieder zur Lobby gebracht.  
+
+#### 8.1.5 Buttons-Controls
+
+*   GrandTichu-Phase - Austeilen 8 Karten:
+    *   „Weiter“,
+    *   „Großes Tichu“ (Bei Klick: „Lange drücken für Ansage“.) 
+    *   „Spielen“ (deaktiviert)
+
+*   Schupf-Phase - Austeilen 14 Karten:
+    - A) Abgeben:
+      *   „Passen“ (deaktiviert),
+      *   „Tichu“ (deaktiviert, wenn bereits angesagt)
+      *   „Schupfen“ (deaktiviert, wenn nicht 3 Karten in der Schupfzone liegen)
+
+      Nur eine Handkarte kann selektiert werden. Danach muss eine Schupfzone gewählt werden. 
+      
+    - B) Aufnehmen - Nach Klick auf Schupfen:
+      *   „Passen“ (deaktiviert),
+      *   „Tichu“ (deaktiviert, wenn bereits angesagt)
+      *   „Aufnehmen“
+  
+*   Spielphase
+    * A) Nicht am Zug:
+      *   „Passen“ (deaktiviert),
+      *   „Tichu“ (deaktiviert, wenn nicht möglich)
+      *   „Spielen“ (deaktiviert)
+      
+    * B) Am Zug (aber keine passende Kombination auf der Hand):
+      *   „Passen“,
+      *   „Tichu“ (deaktiviert, wenn nicht möglich)
+      *   „Kein Zug“ (deaktiviert)
+    
+    * C) Am Zug (passende Kombination auf der Hand, aber keine Karte selektiert):
+      *   „Passen“ (deaktiviert, wenn Anspiel),
+      *   „Tichu“ (deaktiviert, wenn nicht möglich)
+      *   „Auswählen“
+    
+      Bei Klick auf Auswählen wird der Button deaktiviert, die längste kleinstmögliche Kombination selektiert, nach Ablauf der Animation wird „Auswählen“ in „Spielen“ umbenannt.
+    
+    * D) Am Zug (passende Kombination auf der Hand, Karte selektiert):
+      *   „Passen“ (deaktiviert, wenn Anspiel),
+      *   „Tichu“ (deaktiviert, wenn nicht möglich)
+      *   „Spielen“ (deaktiviert, wenn selektierte Karten nicht spielbar sind)
+
+#### 8.1.6 Bombe
+
+Mit dem Klick auf die Bombe holt man sich nur das Zugrecht, es wird nicht direkt die Bombe geworfen. 
+
+### 8.2 Module
 
 *   `ErrorCode`: Fehlercodes (definiert in `config.js`).
 *   `Config`: Konfigurationsvariablen (definiert in `config.js`).
-*   `Helpers`: Enthält allgemeine Hilfsfunktionen.
+*   `Lib`: Enthält allgemeine Hilfsfunktionen.
 *   `EventBus`: Zentrale Nachrichtenvermittlung zwischen den Komponenten.
 *   `SoundManager`: Verwaltet das Laden und Abspielen von Soundeffekten.
 *   `State`: Datencontainer für den Spielzustand.
@@ -509,15 +563,9 @@ web/
 Die Ansicht wird für ein Viewport von 1080x1920 (Breite x Höhe) optimiert. 
 Das ist ein Seitenverhältnis von 9:16 (Hochformat); ein gängiges Smartphone-Hochformat.
 
-Der Hauptcontainer (`#app-container` oder direkt den `body`-Tag) behält dieses Seitenverhältnis bei und passt sich durch Skalierung in den Viewport des Browsers ein.
+Der Hauptcontainer (`#game-wrapper` passt sich durch Skalierung in den Viewport des Browsers ein.
 
-Zum Skalieren bleibt die Breite fix (1080 als Referenz). 
-
-### 8.5 Verantwortlichkeiten der JavaScript-Module
-
-todo
-
-### 8.6 Ressourcen
+### 8.5 Ressourcen
 
 #### Images
 

@@ -285,7 +285,7 @@
     cursor: default;
 }
 
-/* Table Area -> Tischmitte (umfasst Wunsch-und Turn-Symbol, Schupf-Zone und Stich-Zone) */
+/* Table Area -> Tischmitte (umfasst Wunsch-und Turn-Symbol, Schupfzone und Stich-Zone) */
 
 .center-table {
     position: absolute;
@@ -397,7 +397,7 @@
     bottom: 20px;
 }
 
-/* Table Area -> Tischmitte -> Spieler-Bereich -> Schupf-Zonen */
+/* Table Area -> Tischmitte -> Spieler-Bereich -> Schupfzonen */
 
 .schupf-zones {
     position: absolute;

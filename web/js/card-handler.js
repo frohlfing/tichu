@@ -71,35 +71,15 @@ const CardHandler = (() => {
             const cardElements = _ownHandContainer.querySelectorAll('.card.selected');
             cardElements.forEach(el => {
                 _selectedCards.push({
-                    value: parseInt(el.dataset.cardValue),
-                    suit: parseInt(el.dataset.cardSuit),
+                    value: parseInt(el.dataset.cardValue, 10),
+                    suit: parseInt(el.dataset.cardSuit, 10),
                     label: el.dataset.cardLabel
                 });
             });
         }
     }
 
-    /**
-     * Gibt die aktuell ausgewählten Karten zurück.
-     * @returns {Array<object>}
-     */
-    function getSelectedCards() {
-        // Sicherstellen, dass das Array aktuell ist, falls DOM direkt manipuliert wurde
-        // Normalerweise sollte es aber durch handleCardClick aktuell sein.
-        return _selectedCards.slice(); // Kopie zurückgeben
-    }
 
-    /**
-     * Entfernt die .selected Klasse von allen Karten und leert das _selectedCards Array.
-     */
-    function clearSelectedCards() {
-        _selectedCards = [];
-        if (_ownHandContainer) {
-            _ownHandContainer.querySelectorAll('.card.selected').forEach(el => {
-                el.classList.remove('selected');
-            });
-        }
-    }
 
     // --- Schupf-Modus Logik ---
 
@@ -264,8 +244,6 @@ const CardHandler = (() => {
     return {
         init,
         handleCardClick,
-        getSelectedCards,
-        clearSelectedCards,
         enableSchupfMode,
         disableSchupfMode, // Wird vom AppController bei Interrupts aufgerufen
         confirmSchupf      // Wird vom GameTableView-Button aufgerufen

@@ -513,3 +513,62 @@ function render() {
             _activeDialogRequestId = null;
         }
     }
+
+
+    /**
+     * Deaktiviert den Schupf-Modus.
+     */
+    function disableSchupfMode() {
+        if (!_isSchupfModeActive) {
+            return;
+        }
+        console.log("CARDHANDLER: Deaktiviere Schupf-Modus.");
+        _isSchupfModeActive = false;
+        _schupfRequestId = null;
+        _schupfCards = [null, null, null];
+
+        const schupfZonesContainer = document.querySelector('.schupf-zones');
+        if (schupfZonesContainer) {
+            schupfZonesContainer.classList.add('hidden');
+        }
+
+        // Ausgewählte Karten in der Hand (falls welche für Schupfen markiert waren) deselektieren
+        if (_ownHandContainer) {
+            _ownHandContainer.querySelectorAll('.schupf-candidate').forEach(c => c.classList.remove('schupf-candidate', 'in-schupf-zone'));
+        }
+        _renderSchupfZones(); // Leert die Zonen visuell
+        GameTableView.setPlayControlsForSchupfen(false); // Normale Spielbuttons wiederherstellen/deaktivieren
+    }
+
+    /**
+     * Event-Handler für den "Tichu"-Button.
+     */
+    function _tichuButtonClick() {
+        // Prüfen, ob Tichu angesagt werden darf (macht der Server, aber kleine Client-Prüfung schadet nicht)
+        const privState = State.getPrivateState();
+        const pubState = State.getPublicState();
+        if (privState && pubState && privState.hand_cards && privState.hand_cards.length === 14 &&
+            pubState.announcements && pubState.announcements[State.getPlayerIndex()] === 0) {
+            SoundManager.playSound('announce' + State.getPlayerIndex());
+            AppController.sendProactiveMessage('announce'); // Proaktive Ansage
+            _tichuButton.disabled = true; // Deaktivieren nach Ansage
+        }
+        else {
+            Dialogs.showErrorToast("Tichu kann jetzt nicht angesagt werden.");
+        }
+    }
+
+    /**
+     * Event-Handler für das Anklicken auf das Bomben-Icon.
+     */
+    function _bombIconClick() {
+        const selectedCards = getSelectedCards();
+        if (selectedCards.length >= 4) { // Minimale Voraussetzung für eine Bombe  todo richtige Prüfung für Bombe einbauen
+            SoundManager.playSound('bomb' + State.getPlayerIndex());
+            AppController.sendProactiveMessage('bomb', {cards: selectedCards});
+            clearSelectedCards();
+        }
+        else {
+            Dialogs.showErrorToast("Ungültige Auswahl für eine Bombe.");
+        }
+    }

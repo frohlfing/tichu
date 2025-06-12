@@ -4,9 +4,9 @@
  * Initialisiert den AppController, sobald das DOM geladen ist.
  */
 
+
 /**
- * Skaliert den #game-wrapper, um das 1080x1920 Seitenverhältnis beizubehalten
- * und ihn in den verfügbaren Browser-Viewport einzupassen.
+ * Skaliert den #game-wrapper, um das 1080x1920 Seitenverhältnis beizubehalten und ihn in den verfügbaren Browser-Viewport einzupassen.
  */
 function scaleGameWrapper() {
     const wrapper = document.getElementById('game-wrapper');
@@ -14,24 +14,14 @@ function scaleGameWrapper() {
         console.error("MAIN: #game-wrapper nicht im DOM gefunden für Skalierung.");
         return;
     }
-
     const targetWidth = 1080;
     const targetHeight = 1920;
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
-
     const scaleX = windowWidth / targetWidth;
     const scaleY = windowHeight / targetHeight;
     const scale = Math.min(scaleX, scaleY); // Wählt den kleineren Skalierungsfaktor, um alles sichtbar zu halten
-
-    // Wende die Skalierung an. transform-origin ist in CSS auf center center gesetzt.
     wrapper.style.transform = `scale(${scale})`;
-
-    // Optional: Wenn transform-origin nicht center ist oder man es präziser will:
-    // wrapper.style.left = `${(windowWidth - (targetWidth * scale)) / 2}px`;
-    // wrapper.style.top = `${(windowHeight - (targetHeight * scale)) / 2}px`;
-    // Dies wäre nötig, wenn der Wrapper nicht durch Flexbox im body zentriert würde.
-    // Da body jetzt Flex-Zentrierung hat und transform-origin: center, sollte es passen.
     console.log(`MAIN: Game-Wrapper skaliert auf: ${scale.toFixed(3)} (Win: ${windowWidth}x${windowHeight})`);
 }
 

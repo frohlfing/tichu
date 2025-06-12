@@ -89,7 +89,9 @@ const Dialogs = (() => {
     }
 
     /**
-     * Event-Handler für den Wish-Dialog.
+     * Ereignishändler für den Wish-Dialog.
+     *
+     * @param {PointerEvent} event
      */
     function _wishDialogSubmit(event) {
         if (event.target.tagName !== "BUTTON") {
@@ -97,7 +99,7 @@ const Dialogs = (() => {
         }
         SoundManager.playSound('buttonClick');
         _hideDialog(_wishDialog);
-        const wishValue = parseInt(event.target.dataset.value);
+        const wishValue = parseInt(event.target.dataset.value, 10);
         console.log(`_wishDialog_submit: ${wishValue}`);
     }
 
@@ -109,7 +111,9 @@ const Dialogs = (() => {
     }
 
     /**
-     * Event-Handler für den Dragon-Dialog.
+     * Ereignishändler für den Dragon-Dialog.
+     *
+     * @param {PointerEvent} event
      */
     function _dragonDialogSubmit(event) {
         if (event.target.tagName !== "BUTTON") {
@@ -117,7 +121,7 @@ const Dialogs = (() => {
         }
         SoundManager.playSound('buttonClick');
         _hideDialog(_dragonDialog);
-        const dragonRecipient = parseInt(event.target.dataset.value);
+        const dragonRecipient = parseInt(event.target.dataset.value, 10);
         console.log(`_dragonDialog_submit: ${dragonRecipient}`);
     }
 
@@ -132,7 +136,9 @@ const Dialogs = (() => {
     }
 
     /**
-     * Event-Handler für den RoundOver-Dialog.
+     * Ereignishändler für den RoundOver-Dialog.
+     *
+     * @param {PointerEvent} event
      */
     function _roundOverDialogSubmit(event) {
         if (event.target.tagName !== "BUTTON") {
@@ -153,7 +159,9 @@ const Dialogs = (() => {
     }
 
     /**
-     * Event-Handler für den GameOver-Dialog.
+     * Ereignishändler für den GameOver-Dialog.
+     *
+     * @param {PointerEvent} event
      */
     function _gameOverDialogSubmit(event) {
         if (event.target.tagName !== "BUTTON") {
@@ -171,7 +179,9 @@ const Dialogs = (() => {
     }
 
     /**
-     * Event-Handler für den Exit-Dialog.
+     * Ereignishändler für den Exit-Dialog.
+     *
+     * @param {PointerEvent} event
      */
     function _exitDialogSubmit(event) {
         if (event.target.tagName !== "BUTTON") {
@@ -179,7 +189,7 @@ const Dialogs = (() => {
         }
         SoundManager.playSound('buttonClick');
         _hideDialog(_exitDialog);
-        const ok = parseInt(event.target.dataset.value) === 1;
+        const ok = parseInt(event.target.dataset.value, 10) === 1;
         console.log(`_exitDialogSubmit: ${ok ? "ok" : "cancel"}`);
     }
 

@@ -64,33 +64,33 @@
                     <div id="played-cards-area-top" class="played-cards-area">
                         <img id="turn-icon-top" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                         <div id="schupf-zones-top" class="schupf-zones hidden">
-                            <div id="schupf-zone-top-1" class="schupf-zone"></div>
-                            <div id="schupf-zone-top-2" class="schupf-zone"></div>
-                            <div id="schupf-zone-top-3" class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
                         </div>
                     </div>
                     <div id="played-cards-area-left" class="played-cards-area">
                         <img id="turn-icon-left" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                         <div id="schupf-zones-left" class="schupf-zones hidden">
-                            <div id="schupf-zone-left-1" class="schupf-zone"></div>
-                            <div id="schupf-zone-left-2" class="schupf-zone"></div>
-                            <div id="schupf-zone-left-3" class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
                         </div>
                     </div>
                     <div id="played-cards-area-right" class="played-cards-area">
                         <img id="turn-icon-right" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                         <div id="schupf-zones-right" class="schupf-zones hidden">
-                            <div id="schupf-zone-right-1" class="schupf-zone"></div>
-                            <div id="schupf-zone-right-2" class="schupf-zone"></div>
-                            <div id="schupf-zone-right-3" class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
                         </div>
                     </div>
                     <div id="played-cards-area-bottom" class="played-cards-area">
                         <img id="turn-icon-bottom" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                         <div id="schupf-zones-bottom" class="schupf-zones hidden">
-                            <div id="schupf-zone-bottom-1" class="schupf-zone" data-schupf-zone="1"></div>
-                            <div id="schupf-zone-bottom-2" class="schupf-zone" data-schupf-zone="2"></div>
-                            <div id="schupf-zone-bottom-3" class="schupf-zone" data-schupf-zone="3"></div>
+                            <div class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
+                            <div class="schupf-zone"></div>
                         </div>
                     </div>
                 </div>
@@ -183,17 +183,25 @@
         <hr>
         <button data-test="show-all-controls">Alles anzeigen</button>
         <button data-test="reset-round">Neue Runde</button>
-        <button data-test="deal-cards">Karten austeilen</button>
         <button data-test="toggle-wish">Wunsch anzeigen/ausblenden</button>
-        <button data-test="toggle-schupf-zones">Schupf-Zonen anzeigen/ausblenden</button>
         <button data-test="toggle-bomb">Bombe anzeigen/ausblenden</button>
         <button data-test="toggle-tichu">Tichu anzeigen/ausblenden</button>
         <button data-test="move-turn">Aktueller Spieler wechseln</button>
+        <hr>
+        <button data-test="deal-cards">Karten austeilen</button>
+        <button data-test="get-selected-cards">Ausgewählte Karten ermitteln</button>
+        <button data-test="clear-selected-cards">Ausgewählte Karten zurücksetzen</button>
+        <hr>
+        <button data-test="toggle-schupf-zones">Schupf-Zonen anzeigen/ausblenden</button>
+        <button data-test="fill-schupf-zones">Schupf-Zonen füllen</button>
+        <button data-test="clear-schupf-zones">Schupf-Zonen leeren</button>
+        <button data-test="get-schupf-cards">Geschupfte Karten ermitteln</button>
         <hr>
         <button data-test="show-wish-dialog">Wunsch-Dialog</button>
         <button data-test="show-dragon-dialog">Drachen-Dialog</button>
         <button data-test="show-round-over-dialog">Runden-Ende-Dialog</button>
         <button data-test="show-game-over-dialog">Partie-Ende-Dialog</button>
+        <button data-test="show-error-toast">Fehler-Popup</button>
 
 <!--        <hr>-->
 <!--        <button data-test="select-cards">Karten selektieren</button>-->

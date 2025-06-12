@@ -148,6 +148,7 @@ const Lib = (() => {
     /**
      * Parst die Karten aus dem String.
      *
+     *
      * @param {string} label - Die Labels der Karten mit Leerzeichen getrennt, z.B. "R6 B5 G4".
      * @returns {Cards} Liste der Karten.
      */
@@ -162,7 +163,7 @@ const Lib = (() => {
      * @returns {string} Das Label der Karte.
      */
     function stringifyCard(card) {
-        return _cardLabels[_deck.indexOf(card)];
+        return _cardLabels[_deck.findIndex(entry => entry[0] === card[0] && entry[1] === card[1])];
     }
 
     /**

@@ -14,30 +14,28 @@
 }
 
 body {
-    font-family: 'Architect s Daughter', sans-serif;
-    background-color: #000;
-    color: #fff;
-    overflow: hidden;
     display: flex; /* zentriert den #game-wrapper */
     justify-content: center;
     align-items: center;
     height: 100vh;
     width: 100vw;
+    overflow: hidden;
+    font-family: 'Architect s Daughter', sans-serif;
+    color: #fff;
+    background-color: #000;
     -webkit-tap-highlight-color: transparent;
 }
 
 #game-wrapper {
     width: 1080px;  /* feste Breite */
     height: 1920px; /* feste Höhe  */
-    position: relative; /* für absolute Positionierung von Kindern und transform-origin */
+    transform-origin: center center; /* Skalierung erfolgt von der Mitte aus */
+    /*transform: scale(0.5);*/ /* wird in main.js berechnet */
+    /*position: relative;*/
     overflow: hidden;
     background-color: #282c34; /* Standard-Hintergrund des Spiels */
     box-shadow: 0 0 20px rgba(0,0,0,0.5);
-    transform-origin: center center; /* Skalierung erfolgt von der Mitte aus */
-    /* Der transform: scale() wird von JavaScript in main.js gesetzt */
-    /* Für schärfere Kanten bei Skalierung, kann aber auch pixelig wirken */
-    /* image-rendering: -webkit-optimize-contrast; */
-    /* image-rendering: crisp-edges; */
+    /*image-rendering: -webkit-optimize-contrast;*/ /* für schärfere Kanten, kann aber auch pixelig wirken */
 }
 
 .view {
