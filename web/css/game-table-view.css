@@ -86,31 +86,35 @@
     transform: rotate(180deg);
     top: 0;
     left: 90px;
-    right: 90px;
-    height: 200px; /* Tichu-Symbol + halbe Kartenhöhe */
+    /*right: 90px;*/
+    width: 900px;
+    height: 410px;
 }
 
 #player-area-left {
     transform: rotate(90deg);
-    top: 645px;
-    right: 530px;
+    top: 558px;
+    left: -245px;
+    /*bottom: 675px;*/
     width: 900px;
-    height: 200px;
+    height: 410px;
 }
 
 #player-area-right {
     transform: rotate(-90deg);
-    top: 645px;
-    left: 530px;
+    top: 558px;
+    right: -245px;
+    /*bottom: 675px;*/
     width: 900px;
-    height: 200px;
+    height: 410px;
 }
 
 #player-area-bottom {
     left: 25px;
-    right: 25px;
+    /*right: 25px;*/
     bottom: 25px;
-    height: 290px; /* Tichu-Symbol + Kartenhöhe */
+    height: 500px;
+    width: 1030px;
 }
 
 /* Table Area -> Spieler-Bereich -> Hand */
@@ -122,7 +126,7 @@
     width: 100%;
     justify-content: center;
     align-items: center;
-    border: 1px solid yellow;
+    /*border: 1px solid yellow;*/
 }
 
 #hand-top,
@@ -132,9 +136,7 @@
 }
 
 #hand-bottom {
-    bottom: 0;
     height: 180px; /* Kartenhöhe */
-    width: 100%;
 }
 
 /* Table Area -> Spieler-Bereich -> Hand -> Handkarten */
@@ -165,14 +167,14 @@
 #hand-right .card-face,
 #hand-right .card-back {
     height: 90px; /* halbe Kartenhöhe */
-    margin: 0 -90px; /* horizontale Überlappung */
+    margin: 0 -90px; /* Überlappung */
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
 #hand-bottom .card-face {
     height: 180px;
-    margin: 0 -95px; /* horizontale Überlappung */
+    margin: 0 -95px; /* Überlappung */
     cursor: pointer;
 }
 
@@ -197,7 +199,7 @@
     font-size: 46px;
     color: #efefbab8; /* in der Nähe von Beige */
     white-space: nowrap;
-    border: 1px solid blue;
+    /*border: 1px solid blue;*/
 }
 
 #player-info-top,
@@ -234,34 +236,85 @@
     cursor: pointer;
 }
 
-/* Table Area -> Tischmitte (umfasst Wunsch-und Turn-Symbol, Schupfzone und Stich-Zone) */
+/* Table Area -> Spieler-Bereich -> Turn-Symbol */
 
-.center-table {
+.turn-icon {
     position: absolute;
-    left: 240px;
-    right: 240px;
-    top: 240px;
-    bottom: 355px;
-    display: grid;
-    /*grid-template-columns: 1fr 1fr;*/
-    /*grid-template-rows: 1fr 1fr; */
-    place-items: center; /* Zentriert die .played-cards-area in den Grid-Zellen */
-    /*gap: 10px;*/
-    border: 1px solid blue;
+    top: 25px;
+    width: 130px;
+    height: 130px;
+    box-shadow: 0 0 8px 3px gold;
+    border-radius: 50%;
+    background-color: rgba(255, 215, 0, 0.4);
 }
 
-/* Table Area -> Tischmitte -> Wunsch-Symbol */
+/* Table Area -> Spieler-Bereich -> Schupfzonen */
+
+.schupf-zone {
+    position: absolute;
+    top: 0;
+    display: flex;
+    gap: 30px;
+}
+
+.schupf-subzone {
+    display: flex;
+    flex-direction: column;
+    width: 120px;
+    height: 180px;
+    justify-content: center;
+    align-items: center;
+    font-size: 22px;
+    font-weight: bold;
+    color: #ddd;
+}
+
+#schupf-zone-bottom .schupf-subzone {
+    background-color: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+}
+
+.schupf-subzone:empty {
+    border: 2px dashed #bbb;
+    border-radius: 10px;
+}
+
+/* Table Area -> Spieler-Bereich -> Stichzone */
+
+.played-cards-area {
+    position: absolute;
+    display: flex;
+    flex-wrap: nowrap;
+    top: 0;
+    width: 900px;
+    height: 180px;
+    justify-content: center;
+    align-items: center;
+    /*transform-origin: center center;*/
+    border: 1px solid white;
+}
+
+.played-cards-area .card-face {
+    margin: 0 -90px; /* Überlappung */
+}
+
+.played-cards-area.outbid .card-face { /* Stich überboten */
+    scale: 0.9;
+}
+
+/* Table Area -> Wunsch-Symbol */
 
 #wish-icon {
     position: absolute;
-    /*left: 50%; top: 50%; transform: translate(-50%, -50%);*/ /* Zentriert im .center-table */
+    top: 683px;
+    /*bottom: 798px;*/
+    left: 460px;
+    /*right: 460px;*/
     width: 160px;
     height: 160px;
     background-image: url('../images/wish-icon.png');
     background-size: contain;
     background-repeat: no-repeat;
-    /*border-radius: 50%;*/
-    /*box-shadow: 0 0 12px 3px gold, 0 0 6px gold inset;*/
     display: flex;
     justify-content: center;
     align-items: center;
@@ -274,119 +327,6 @@
     font-weight: bold;
     color: #111;
     text-shadow: 0 0 3px #fff;
-}
-
-/* Table Area -> Tischmitte -> Spieler-Bereich */
-
-.played-cards-area {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    width: 100%; /* Füllt die Grid-Zelle */
-    height: 100%;
-    transform-origin: center center;
-}
-
-#played-cards-area-top {
-    grid-row: 1;
-    grid-column: 1 / span 2;
-    transform: rotate(180deg);
-    align-items: flex-end;
-    padding-bottom: 20px;
-}
-
-#played-cards-area-left {
-    grid-row: 1 / span 2;
-    grid-column: 1;
-    transform: rotate(90deg);
-}
-
-/* todo grid? */
-#played-cards-area-right {
-    grid-row: 1 / span 2;
-    grid-column: 2;
-    transform: rotate(-90deg);
-}
-
-#played-cards-area-bottom {
-    grid-row: 2;
-    grid-column: 1 / span 2;
-    align-items: flex-start;
-    padding-top: 20px;
-}
-
-.played-cards-area .played-pass,
-.played-cards-area .played-bomb-text {
-    font-size: 30px;
-    font-weight: bold;
-    padding: 10px;
-    background-color: rgba(0, 0, 0, 0.6);
-    border-radius: 5px;
-}
-
-/* Table Area -> Tischmitte -> Spieler-Bereich -> Turn-Symbol */
-
-.turn-icon {
-    box-shadow: 0 0 8px 3px gold;
-    border-radius: 50%;
-    background-color: rgba(255, 215, 0, 0.4);
-    height: 130px;
-    width: 130px;
-    position: absolute;
-}
-
-#turn-icon-left,
-#turn-icon-right {
-    bottom: 400px;
-}
-
-#turn-icon-top,
-#turn-icon-bottom {
-    bottom: 25px;
-}
-
-/* Table Area -> Tischmitte -> Spieler-Bereich -> Schupfzonen */
-
-.schupf-zone {
-    position: absolute;
-    display: flex;
-    gap: 30px;
-    /*padding: 15px 15px;*/
-    /*background-color: rgba(0,0,0,0.35);*/
-    /*border-radius: 10px;*/
-}
-
-#schupf-zone-left,
-#schupf-zone-right {
-    bottom: 375px; /* todo wieso dieser Wert? */
-}
-
-#schupf-zone-top,
-#schupf-zone-bottom {
-    bottom: 0;
-}
-
-.schupf-subzone {
-    width: 120px;
-    height: 180px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: #ddd;
-    font-size: 22px;
-    font-weight: bold;
-}
-
-#schupf-zone-bottom .schupf-subzone {
-    cursor: pointer;
-    background-color: rgba(0, 0, 0, 0.35);
-}
-
-.schupf-subzone:empty {
-    border: 2px dashed #bbb;
-    border-radius: 10px;
 }
 
 /* --- Bottom-Controls --- */
@@ -454,11 +394,11 @@
     /* Und die Ziel left/top Werte ebenfalls relativ zum *Viewport* */
 }
 
-#hand-bottom .card.schupf-candidate {
-    opacity: 0.6;
-    border: 2px dashed gold !important;
-    transform: translateY(-10px); /* Leicht anheben */ /*todo */
-}
+/*#hand-bottom .card.schupf-candidate {*/
+/*    opacity: 0.6;*/
+/*    border: 2px dashed gold !important;*/
+/*    transform: translateY(-10px);*/
+/*}*/
 
 .bomb-effect-text {
     position: absolute;
@@ -473,6 +413,14 @@
     animation: bombExplode 0.8s ease-out forwards;
     pointer-events: none;
     transform: translate(-50%, -50%) scale(1);
+}
+
+.played-bomb-text {
+    font-size: 30px;
+    font-weight: bold;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 5px;
 }
 
 @keyframes bombExplode {
