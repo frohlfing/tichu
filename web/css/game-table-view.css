@@ -72,7 +72,7 @@
     right: 0;
 }
 
-/* Table Area -> Spieler-Bereiche (Spieler-Info, Bomben-Icon und Handkarten eines Spielers)*/
+/* Table Area -> Spieler-Bereiche */
 
 .player-area {
     position: absolute;
@@ -82,134 +82,59 @@
     border: 1px solid red;
 }
 
-#player-area-left,
-#player-area-right {
-    top: 300px; /* 240px für Höhe von player-top + 60px */
-    bottom: 418px; /* 330px für Höhe von player-bottom + 28px für Border + 60px */
-    width: 240px; /* 150px für Tichu-Symbol + 90px für halbe Kartenhöhe */
-    justify-content: center;
-}
-
-#player-area-top,
-#player-area-bottom {
-    left: 25px; /* Abstand linker Rand des Tisches */
-    right: 25px; /* Abstand rechter Rand des Tisches */
-}
-
 #player-area-top {
+    transform: rotate(180deg);
     top: 0;
-    height: 240px; /* 150px für Tichu-Symbol + 90px für halbe Kartenhöhe */
-    justify-content: flex-start;
+    left: 90px;
+    right: 90px;
+    height: 200px; /* Tichu-Symbol + halbe Kartenhöhe */
 }
 
 #player-area-left {
-    left: 0;
+    transform: rotate(90deg);
+    top: 645px;
+    right: 530px;
+    width: 900px;
+    height: 200px;
 }
 
 #player-area-right {
-    right: 0;
+    transform: rotate(-90deg);
+    top: 645px;
+    left: 530px;
+    width: 900px;
+    height: 200px;
 }
 
 #player-area-bottom {
-    bottom: 28px;
-    height: 330px;
-    justify-content: flex-end;
-}
-
-/* Table Area -> Spieler-Bereiche -> Spieler-Info (umfasst Spielername und Tichu-Symbol) */
-
-.player-info {
-    font-size: 46px;
-    color: #efefbab8; /* in der Nähe von Beige */
-    border-radius: 5px;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    height: 110px;
-    position: relative;
-}
-
-#player-info-top {
-    transform: rotate(180deg);
-    top: 90px;
-}
-
-#player-info-left {
-    transform: rotate(90deg);
     left: 25px;
-}
-
-#player-info-right {
-    transform: rotate(-90deg);
     right: 25px;
-}
-
-#player-info-bottom {
-    bottom: 180px;
-}
-
-#player-name-top {
-    transform: rotate(180deg);
-}
-
-/* Table Area -> Spieler-Bereich -> Spieler-Info -> Tichu-Symbol */
-
-.tichu-icon:not(.hidden) {
-    /*animation: pulse 1.5s infinite;*/
-    width: 110px;
-    height: 110px;
-    margin-right: 15px;
-}
-
-/* Table Area -> Spieler-Bereich -> Bomben-Symbol */
-
-#bomb-icon {
-    cursor: pointer;
-    width: 170px;
-    height: 170px;
-    position: absolute;
-    bottom: 215px;
-    right: 20px;
+    bottom: 25px;
+    height: 290px; /* Tichu-Symbol + Kartenhöhe */
 }
 
 /* Table Area -> Spieler-Bereich -> Hand */
 
 .hand {
+    position: absolute;
     display: flex;
+    bottom: 0;
+    width: 100%;
     justify-content: center;
     align-items: center;
     border: 1px solid yellow;
-    position: absolute;
-}
-
-#hand-left,
-#hand-right {
-    flex-direction: column;
-    height: 100%;
-    width: 90px; /* Hälfte der Kartenhöhe */
 }
 
 #hand-top,
-#hand-bottom {
-    width: 100%;
-}
-
-#hand-top {
-    top: 0;
-    height: 90px; /* Hälfte der Kartenhöhe */
-}
-
-#hand-left {
-    left: 0;
-}
-
+#hand-left,
 #hand-right {
-    right: 0;
+    height: 90px; /* Hälfte der Kartenhöhe */
 }
 
 #hand-bottom {
     bottom: 0;
     height: 180px; /* Kartenhöhe */
+    width: 100%;
 }
 
 /* Table Area -> Spieler-Bereich -> Hand -> Handkarten */
@@ -240,40 +165,14 @@
 #hand-right .card-face,
 #hand-right .card-back {
     height: 90px; /* halbe Kartenhöhe */
+    margin: 0 -90px; /* horizontale Überlappung */
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-#hand-left .card-face,
-#hand-left .card-back,
-#hand-right .card-face,
-#hand-right .card-back {
-    margin: -14px 0; /* vertikale Überlappung für 14 Karten */
-}
-
-#hand-top .card-face,
-#hand-top .card-back,
-#hand-bottom .card-face {
-    margin: 0 -95px; /* horizontale Überlappung für 14 Karten */
-}
-
-#hand-top .card-face,
-#hand-top .card-back {
-    transform: rotate(180deg);
-}
-
-#hand-left .card-face,
-#hand-left .card-back {
-    transform: rotate(90deg);
-}
-
-#hand-right .card-face,
-#hand-right .card-back {
-    transform: rotate(-90deg);
-}
-
 #hand-bottom .card-face {
     height: 180px;
+    margin: 0 -95px; /* horizontale Überlappung */
     cursor: pointer;
 }
 
@@ -283,6 +182,56 @@
 
 #hand-bottom.disabled-hand .card-face {
     cursor: default;
+}
+
+/* Table Area -> Spieler-Bereich -> Spieler-Info */
+
+.player-info {
+    position: absolute;
+    display: flex;
+    left: 0;
+    width: 100%;
+    height: 110px;
+    justify-content: center;
+    align-items: center;
+    font-size: 46px;
+    color: #efefbab8; /* in der Nähe von Beige */
+    white-space: nowrap;
+    border: 1px solid blue;
+}
+
+#player-info-top,
+#player-info-left,
+#player-info-right {
+    bottom: 90px;
+}
+
+#player-info-bottom {
+    bottom: 180px;
+}
+
+#player-name-top {
+    transform: rotate(180deg);
+}
+
+/* Table Area -> Spieler-Bereich -> Spieler-Info -> Tichu-Symbol */
+
+.tichu-icon:not(.hidden) {
+    /*animation: pulse 1.5s infinite;*/
+    width: 110px;
+    height: 110px;
+    margin-right: 15px;
+}
+
+/* Table Area -> Spieler-Bereich -> Bomben-Symbol */
+
+#bomb-icon {
+    position: absolute;
+    right: 20px;
+    bottom: 215px;
+    width: 170px;
+    height: 170px;
+    cursor: pointer;
 }
 
 /* Table Area -> Tischmitte (umfasst Wunsch-und Turn-Symbol, Schupfzone und Stich-Zone) */
