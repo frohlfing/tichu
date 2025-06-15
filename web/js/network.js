@@ -103,7 +103,7 @@ const Network = (() => {
     function send(type, payload) {
         if (websocket && websocket.readyState === WebSocket.OPEN) {
             const message = {type, payload: payload || {}};
-            // console.log('CLIENT: Sende Nachricht:', message); // Für Debugging
+            // console.log('CLIENT: Sende Nachricht', message); // Für Debugging
             try {
                 websocket.send(JSON.stringify(message));
             } catch (e) {
@@ -160,6 +160,7 @@ const Network = (() => {
         _onClose = cb;
     }
 
+    // noinspection JSUnusedGlobalSymbols
     return {
         connect,
         send,

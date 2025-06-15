@@ -167,9 +167,9 @@ async def main(args: argparse.Namespace):
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"announced": False}}},
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"announced": True}}},
         # schupf
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"to_opponent_right": (2,1), "to_partner": (2,2), "to_opponent_left": (2,3)}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": [(2,1), (2,2), (2,3)]}}},
         # play
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": [(2,1),(9,3)]}}},
+        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": [(2,1), (9,3)]}}},
         # wish
         {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"wish_value": 8}}},
         # give_dragon_away

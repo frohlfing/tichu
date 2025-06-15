@@ -9,8 +9,8 @@ from aiohttp import WSCloseCode
 from aiohttp.web import WebSocketResponse
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import Card, Cards, stringify_cards, deck
-from src.lib.combinations import Combination, build_action_space, CombinationType
+from src.lib.cards import Card, Cards, stringify_cards, deck, CARD_MAH
+from src.lib.combinations import Combination, build_action_space, CombinationType, FIGURE_DRA
 # noinspection PyUnresolvedReferences
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError, ErrorCode
 from src.players.player import Player
@@ -43,7 +43,7 @@ class Peer(Player):
         self._random = Random(seed)  # Zufallsgenerator
         self._pending_requests: Dict[str, asyncio.Future] = {}  # die noch vom Client unbeantworteten Anfragen
         self._pending_announce: Optional[bool] = None  # die noch vom Server abzuholende Tichu-Ansage
-        self._pending_bomb: Optional[Cards] = None  # die noch vom Server abzuholende Bombe
+        self._pending_bomb: Optional[Cards] = None  # die noch vom Server abzuholende Bombe todo in Type Optional[bool] ändern
 
     async def cleanup(self):
         """
@@ -106,6 +106,8 @@ class Peer(Player):
         """
         Der WebSocket-Handler ruft diese Funktion auf, wenn der Client außerhalb seines regulären Zuges eine Bombe geworfen hat.
 
+        todo Der Client kündigt die Bombe nur an. Welche Bombe es ist, wird explizit gefragt, sobald er am Zug ist.
+
         :param cards: Die Karten, aus denen die Bombe gebildet wurde.
         """
         # Parameter ok?
@@ -149,7 +151,7 @@ class Peer(Player):
             await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": cards})
             return
 
-        self._pending_bomb = cards
+        self._pending_bomb = cards  # todo nur True zuweisen
         self.interrupt_event.set()
 
     async def client_response(self, request_id: str, response_data: dict):
@@ -301,7 +303,7 @@ class Peer(Player):
             announced = payload["announced"]
 
         # Darf der Spieler noch ein großes Tichu sagen? (stellt die Engine sicher) todo rausnehmen
-        assert self.pub.start_player_index == -1 and self.pub.count_hand_cards[self.priv.player_index] == 8
+        assert self.pub.announcements[self.priv.player_index] == 0 and self.pub.start_player_index == -1 and self.pub.count_hand_cards[self.priv.player_index] == 8
 
         return announced
 
@@ -327,7 +329,9 @@ class Peer(Player):
         assert announced == True
 
         # Darf der Spieler noch Tichu sagen? (stellt die Engine sicher)  todo rausnehmen
-        assert self.pub.count_hand_cards[self.priv.player_index] == 14 and self.pub.announcements[self.priv.player_index] == 0
+        assert (self.pub.announcements[self.priv.player_index] == 0 and
+                ((self.pub.start_player_index == -1 and self.pub.count_hand_cards[self.priv.player_index] > 8) or
+                 (self.pub.start_player_index >= 0 and self.pub.count_hand_cards[self.priv.player_index] == 14)))
 
         return announced
 
@@ -347,17 +351,14 @@ class Peer(Player):
             payload = await self._ask("schupf", interruptable=True)
 
             # Ist der Payload ok?
-            if (not payload
-                    or not isinstance(payload.get("to_opponent_right"), Card)
-                    or not isinstance(payload.get("to_partner"), Card)
-                    or not isinstance(payload.get("to_opponent_left"), Card)):
+            if not payload or not isinstance(payload.get("given_schupf_cards"), Cards) or len(payload.get("given_schupf_cards")) != 3:
                 msg = "Ungültige Antwort für Anfrage \"schupf\""
                 logger.warning(f"Peer {self.name}: {msg}: {payload}")
                 await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
 
             # Label der Karten valide?
-            cards = payload["to_opponent_right"], payload["to_partner"], payload["to_opponent_left"]
+            cards = payload["given_schupf_cards"][0], payload["given_schupf_cards"][1], payload["given_schupf_cards"][2]
             if any(card not in deck for card in cards):
                 msg = "Mindestens eine Karte ist unbekannt"
                 logger.warning(f"Peer {self.name}: {msg}: {cards}")
@@ -381,7 +382,7 @@ class Peer(Player):
                 continue
 
         # Wurde noch nicht geschupft? (stellt die Engine sicher) todo rausnehmen
-        assert self.priv.given_schupf_cards is None
+        assert self.pub.count_hand_cards[self.priv.player_index] > 8 and self.priv.given_schupf_cards is None
 
         return cards
 
@@ -459,6 +460,9 @@ class Peer(Player):
 
         Da der Client proaktiv (also ungefragt) eine Bombe wirft, wird die Frage nicht an den Client
         weitergeleitet, sondern es wird im Puffer geschaut, ob ein Bombenwurf vorliegt.
+        todo Nein, das ist falsch! Richtig ist:
+        Da der Client proaktiv (also ungefragt) eine Bombe ankündigt, wird die Frage nur an den Client
+        weitergeleitet, wenn er zuvor die Bombe angekündigt hat.
 
         :return: Die Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wurde.
         """
@@ -522,7 +526,9 @@ class Peer(Player):
                 continue
 
         # Wurde noch kein Wunsch geäußert? (stellt die Engine sicher)  todo rausnehmen
-        assert self.pub.wish_value == 0
+        assert (self.pub.current_turn_index == self.priv.player_index and
+                self.pub.wish_value == 0 and
+                CARD_MAH in self.pub.played_cards) # oder alternativ: CARD_MAH in self.pub.trick_cards
 
         return wish_value
 
@@ -556,7 +562,9 @@ class Peer(Player):
                 continue
 
         # Ist der Drache noch zu verschenken? (stellt die Engine sicher)  todo rausnehmen
-        assert self.pub.dragon_recipient == -1
+        assert (self.pub.current_turn_index == self.priv.player_index and
+                self.pub.dragon_recipient == -1 and
+                self.pub.trick_combination == FIGURE_DRA)
 
         return dragon_recipient
 

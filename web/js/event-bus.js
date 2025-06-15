@@ -59,51 +59,10 @@ const EventBus = (() => {
         }
     }
 
+    // noinspection JSUnusedGlobalSymbols
     return {
         on,
         off,
         emit,
     };
 })();
-
-// /**
-//  * EventBus als Klasse
-//  *
-//  * Beispiel:
-//  *
-//  * const EventEmitter = require('events');
-//  * const eventBus = new EventEmitter();
-//  *
-//  * // Listener
-//  * eventBus.on('user:login', (data) => {
-//  *   console.log(`User logged in: ${data.name}`);
-//  * });
-//  *
-//  * // Emit event
-//  * eventBus.emit('user:login', { name: 'Bob' });
-//  */
-// class EventBus2 {
-//     constructor() {
-//         this.events = {};
-//     }
-//
-//     on(event, listener) {
-//         if (!this.events[event]) {
-//             this.events[event] = [];
-//         }
-//         this.events[event].push(listener);
-//     }
-//
-//     emit(event, data) {
-//         if (this.events[event]) {
-//             this.events[event].forEach(listener => listener(data));
-//         }
-//     }
-//
-//     off(event, listener) {
-//         if (this.events[event]) {
-//             this.events[event] = this.events[event].filter(l => l !== listener);
-//         }
-//     }
-// }
-

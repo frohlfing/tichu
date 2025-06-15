@@ -24,15 +24,15 @@ class PublicState:
     Diese Klasse sammelt alle Daten, die den Spielverlauf und den Zustand beschreiben, soweit sie für alle Teilnehmer sichtbar sind.
 
     :ivar table_name: Der Name des Tisches.
-    :ivar player_names: Die eindeutigen Namen der 4 Spieler (Spieler mit gleichen Namen werden durchnummeriert) [Spieler 0-3].
     :ivar host_index: Index des Clients, der Host des Tisches ist (-1 == kein Client am Tisch)
-    :ivar is_running: # True, wenn eine Partie gerade läuft
+    :ivar player_names: Die eindeutigen Namen der 4 Spieler (Spieler mit gleichen Namen werden durchnummeriert).
+    :ivar is_running: # Gibt an, ob eine Partie gerade läuft.
     :ivar current_phase: # Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
     :ivar current_turn_index: Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
-    :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest).
-    :ivar count_hand_cards: Anzahl der Handkarten pro Spieler [Spieler 0-3].
+    :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest; es wurde noch nicht geschupft).
+    :ivar count_hand_cards: Anzahl der Handkarten pro Spieler.
     :ivar played_cards: Bereits gespielte Karten in der aktuellen Runde [Card, ...].
-    :ivar announcements: Angekündigtes Tichu pro Spieler [Spieler 0-3] (0 == keine Ansage, 1 == einfaches, 2 == großes Tichu)
+    :ivar announcements: Angekündigtes Tichu pro Spieler (0 == keine Ansage, 1 == einfaches, 2 == großes Tichu)
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt)
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == noch niemand).
     :ivar trick_owner_index: Index des Spielers, der die letzte Kombination gespielt hat, also Besitzer des Stichs ist (-1 == leerer Stich).
@@ -40,7 +40,7 @@ class PublicState:
     :ivar trick_combination: Typ, Länge und Wert des aktuellen Stichs ((0,0,0) == leerer Stich)
     :ivar trick_points: Punkte des aktuellen Stichs.
     :ivar tricks: Liste der Stiche der aktuellen Runde.
-    :ivar points: Bisher kassierte Punkte in der aktuellen Runde pro Spieler [Spieler 0-3].
+    :ivar points: Bisher kassierte Punkte in der aktuellen Runde pro Spieler.
     :ivar winner_index: Index des Spielers, der zuerst in der aktuellen Runde fertig wurde (-1 == alle Spieler sind noch dabei).
     :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == Runde läuft noch oder wurde mit Doppelsieg beendet).
     :ivar is_round_over: Gibt an, ob die aktuelle Runde beendet ist.
@@ -51,8 +51,8 @@ class PublicState:
     """
     # --- Tisch- und Spielerinformationen ---
     table_name: str = ""
-    player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
     host_index: int = -1
+    player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
 
     # --- Information über die aktuelle Runde ---
     is_running: bool = False
@@ -101,7 +101,7 @@ class PublicState:
         self.wish_value = 0
         self.dragon_recipient = -1
         self.trick_owner_index = -1
-        self.trick_cards = []
+        self.trick_cards = []  # todo wird vermutlich überhaupt nicht aktualisiert
         self.trick_combination = (CombinationType.PASS, 0, 0)
         self.trick_points = 0
         self.tricks = []
@@ -126,8 +126,8 @@ class PublicState:
         """
         return {
             "table_name": self.table_name,
-            "player_names": self.player_names,
             "host_index": self.host_index,
+            "player_names": self.player_names,
             "is_running": self.is_running,
             "current_phase": self.current_phase,
             "current_turn_index": self.current_turn_index,
@@ -145,8 +145,8 @@ class PublicState:
             "points": self.points,
             "winner_Index": self.winner_index,
             "loser_index": self.loser_index,
-            "isRound_over": self.is_round_over,
-            "isDouble_victory": self.is_double_victory,
+            "is_round_over": self.is_round_over,
+            "is_double_victory": self.is_double_victory,
             "game_score": self.game_score,
             "round_counter": self.round_counter,
             "trick_counter": self.trick_counter,

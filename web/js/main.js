@@ -4,7 +4,6 @@
  * Initialisiert den AppController, sobald das DOM geladen ist.
  */
 
-
 /**
  * Skaliert den #game-wrapper, um das 1080x1920 Seitenverhältnis beizubehalten und ihn in den verfügbaren Browser-Viewport einzupassen.
  */
@@ -48,11 +47,10 @@ window.addEventListener('resize', () => {
 });
 
 /**
- * Optional: Wird ausgeführt, wenn die gesamte Seite inklusive aller Ressourcen
- * (Bilder, Stylesheets etc.) vollständig geladen ist.
+ * Wird ausgeführt, wenn die gesamte Seite inklusive aller Ressourcen (Bilder, Stylesheets etc.) vollständig geladen ist.
  * Nützlich für Dinge, die erst nach dem Laden aller Assets passieren sollen.
  */
-// window.onload = () => {
-//     console.log("MAIN: Seite vollständig geladen (inkl. Ressourcen).");
-//     // Hier könnten z.B. Sounds vorgeladen werden, falls nicht schon in SoundManager.init()
-// };
+window.onload = () => {
+    console.log("MAIN: Seite vollständig geladen (inkl. Ressourcen).");
+    // Hier könnten z.B. Sounds vorgeladen werden, falls nicht schon in SoundManager.init()
+};

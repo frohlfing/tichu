@@ -593,7 +593,7 @@ background: #4a6b82; /* Hintergrund für bessere Sichtbarkeit */
 
 /* --- Schupf-Zonen Styling --- */
 
-.schupf-zones {
+.schupf-zone {
     position: absolute; /* Über den Handkarten des eigenen Spielers */
     /*noinspection CssInvalidPropertyValue*/
     bottom: calc(1fr + 100px); /* Experimentell, anpassen! */
@@ -607,7 +607,7 @@ background: #4a6b82; /* Hintergrund für bessere Sichtbarkeit */
     z-index: 5;
 }
 
-.schupf-zone {
+.schupf-subzone {
     width: clamp(40px, 10vw, 55px);
     height: calc(clamp(40px, 10vw, 55px) * 1.4 + 10px); /* Etwas höher für Text */
     border: 2px dashed #aaa;
@@ -620,7 +620,7 @@ background: #4a6b82; /* Hintergrund für bessere Sichtbarkeit */
     font-size: 0.8em;
 }
 
-.schupf-zone .card { /* geschupfte Karte in der Zone */
+.schupf-subzone .card { /* geschupfte Karte in der Zone */
     width: calc(100% - 10px);
     height: calc((100% - 10px) * 1.4 / 1.5); /* Kleiner, damit Text passt */
     background-size: contain;

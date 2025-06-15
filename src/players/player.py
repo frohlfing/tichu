@@ -73,6 +73,11 @@ class Player:
         Die Engine fragt den Spieler, ob er ein großes Tichu ansagen möchte.
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein großes Tichu ansagen darf.
+        Die Bedingung ist::
+            self.pub.announcements[self.priv.player_index] == 0 and
+            self.pub.start_player_index == -1 and
+            self.pub.count_hand_cards[self.priv.player_index] == 8
+
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: True, wenn angesagt wird, sonst False.
@@ -84,6 +89,11 @@ class Player:
         Die Engine fragt den Spieler, ob er ein einfaches Tichu ansagen möchte.
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein einfaches Tichu ansagen darf.
+        Die Bedingung ist::
+            self.pub.announcements[self.priv.player_index] == 0 and
+            ((self.pub.start_player_index == -1 and self.pub.count_hand_cards[self.priv.player_index] > 8) or
+            (self.pub.start_player_index >= 0 and self.pub.count_hand_cards[self.priv.player_index] == 14))
+
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: True, wenn ein Tichu angesagt wird, sonst False.
@@ -95,6 +105,10 @@ class Player:
         Die Engine fordert den Spieler auf, drei Karten zum Schupfen auszuwählen.
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler noch Karten abgeben muss.
+        Die Bedingung ist::
+            self.pub.count_hand_cards[self.priv.player_index] > 8 and
+            self.priv.given_schupf_cards is None
+
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
         Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
@@ -108,6 +122,9 @@ class Player:
         Die Engine fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler am Zug ist.
+        Die Bedingung ist::
+            self.pub.current_turn_index == self.priv.player_index
+
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
         Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
@@ -121,6 +138,9 @@ class Player:
         Die Engine fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
 
         Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
+        Die Bedingung ist::
+            todo Schnelle Methode bereitstellen, die prüft, ob eine Bombe geworfen werden kann
+
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
@@ -132,6 +152,11 @@ class Player:
         Die Engine fragt den Spieler nach einem Kartenwert-Wunsch (nach Ausspielen des Mah Jong).
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler sich einen Kartenwert wünschen muss.
+        Die Bedingung ist::
+            self.pub.current_turn_index == self.priv.player_index and
+            self.pub.wish_value == 0 and
+            CARD_MAH in self.pub.played_cards  # oder alternativ: CARD_MAH in self.pub.trick_cards
+
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: Der gewünschte Kartenwert (2-14).
@@ -143,6 +168,11 @@ class Player:
         Die Engine fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler den Drachen verschenken muss.
+        Die Bedingung ist::
+            self.pub.current_turn_index == self.priv.player_index and
+            self.pub.dragon_recipient == -1 and
+            self.pub.trick_combination == FIGURE_DRA
+
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: Der Index (0-3) des Gegners, der den Stich erhält.

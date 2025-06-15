@@ -382,24 +382,24 @@
     box-shadow: 0 0 8px 3px gold;
     border-radius: 50%;
     background-color: rgba(255, 215, 0, 0.4);
-    height: 140px;
-    width: 140px;
+    height: 130px;
+    width: 130px;
     position: absolute;
 }
 
 #turn-icon-left,
 #turn-icon-right {
-    bottom: 395px;
+    bottom: 400px;
 }
 
 #turn-icon-top,
 #turn-icon-bottom {
-    bottom: 20px;
+    bottom: 25px;
 }
 
 /* Table Area -> Tischmitte -> Spieler-Bereich -> Schupfzonen */
 
-.schupf-zones {
+.schupf-zone {
     position: absolute;
     display: flex;
     gap: 30px;
@@ -408,17 +408,17 @@
     /*border-radius: 10px;*/
 }
 
-#schupf-zones-left,
-#schupf-zones-right {
+#schupf-zone-left,
+#schupf-zone-right {
     bottom: 375px; /* todo wieso dieser Wert? */
 }
 
-#schupf-zones-top,
-#schupf-zones-bottom {
+#schupf-zone-top,
+#schupf-zone-bottom {
     bottom: 0;
 }
 
-.schupf-zone {
+.schupf-subzone {
     width: 120px;
     height: 180px;
     display: flex;
@@ -430,12 +430,12 @@
     font-weight: bold;
 }
 
-#schupf-zones-bottom .schupf-zone {
+#schupf-zone-bottom .schupf-subzone {
     cursor: pointer;
     background-color: rgba(0, 0, 0, 0.35);
 }
 
-.schupf-zone:empty {
+.schupf-subzone:empty {
     border: 2px dashed #bbb;
     border-radius: 10px;
 }
@@ -509,10 +509,6 @@
     opacity: 0.6;
     border: 2px dashed gold !important;
     transform: translateY(-10px); /* Leicht anheben */ /*todo */
-}
-
-#hand-bottom .card.in-schupf-zone {
-    display: none !important;
 }
 
 .bomb-effect-text {

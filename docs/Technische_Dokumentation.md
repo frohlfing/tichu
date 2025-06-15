@@ -87,22 +87,20 @@ Die detaillierten Spielregeln für Tichu sind hier zu finden:
 2.  **Kartenausgabe (Initial):** Der Server verteilt je 8 Karten an jeden Spieler.
 3.  **Großes Tichu ansagen:** Jeder Spieler muss sich dann entscheiden, ob er ein großes Tichu ansagen möchte oder nicht.
 4.  **Kartenausgabe (restliche):** Sobald jeder Spieler sich entschieden hat, teilt der Server die restlichen Karten aus (je 6 pro Spieler, insgesamt 14).
-5.  **Einfaches Tichu ansagen:** Solange noch kein Spieler Karten zum Tausch (Schupfen) abgegeben hat, kann der Spieler ein Tichu ansagen.
-6.  **Schupfen:** Die Spieler müssen nun drei Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler).
+5.  **Einfaches Tichu ansagen:** Ab jetzt kann der Spieler jederzeit ein einfaches Tichu ansagen, solange er noch keine Kombination ausgespielt hat. 
+6.  **Schupfen:** Die Spieler müssen nun drei Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler). Falls während dessen jemand ein Tichu ansagt, nehmen alle Spieler ihre Karten zurück und geben erneut eine Tauschkarte ab. 
 7.  **Tauschkarte aufnehmen:** Sobald alle Spieler die Karten zum Tauschen abgegeben haben, werden diese an die adressierten Spieler verteilt.
-8.  **Kombinationen legen:**
-    *   Ab jetzt kann der Spieler jederzeit 
-        * a) Tichu ansagen (solange er noch 14 Karten auf der Hand hat) oder 
-        * b) eine Bombe werfen (sofern er eine besitzt und den Stich überstechen kann). Wer eine Bombe wirft, erhält sofort das Zugrecht. 
+8.  **Karten ausspielen:**
+    *   Ab jetzt kann der Spieler jederzeit eine Bombe ankündigen (sofern er eine besitzt und den Stich überstechen kann). Wer eine Bombe ankündigt, erhält sofort das Zugrecht und muss dann eine Bombe werfen. 
     *   Der Spieler mit dem MahJong muss als Erstes eine Kartenkombination ablegen.
+    *   Wird der MahJong gespielt, muss der Spieler, der den Mahjong ausgelegt hat, ein Kartenwert wünschen. Dieser Wunsch muss erfüllt werden, sobald die Regeln es zulassen.
+    *   Wird der Hund gespielt, bekommt der Partner das Zugrecht.
     *   Der nächste Spieler wird aufgefordert, Karten abzulegen oder zu Passen.
     *   Dies wird wiederholt, bis alle Mitspieler hintereinander gepasst haben, sodass der Spieler, der die letzten Karten gespielt hat, wieder an der Reihe ist.
-9.  **Stich kassieren:** Dieser Spieler darf die Karten kassieren.
-10. **Sonderkarten-Effekte:** MahJong (Wunsch äußern), Hund (Initiative zum Partner), Drache (Stich verschenken).
-11. **Spieler scheidet aus:** Wenn ein Spieler keine Handkarten mehr hat, kann er in die Karten der (noch aktiven) Mitspieler schauen (die Karten sind für ihn nicht mehr verdeckt).
-12. **Runden-Ende:** Die Runde endet, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wird. Punkte werden vergeben.
-13. **Partie-Ende:** Wenn die Runde beendet ist und die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), leitet der Server automatisch eine neue Runde ein (beginnend bei Punkt 2: Kartenausgabe).
-14. **Neustart:** Wenn die Partie beendet ist, beginnt der Prozess wieder in der Lobby (Punkt 1).
+9.  **Stich kassieren:** Dieser Spieler darf die Karten kassieren. Falls der Stich mit dem Drachen gewonnen wurde, muss der Spieler den Stich an einen der Gegner verschenken.
+10. **Spieler scheidet aus:** Wenn ein Spieler keine Handkarten mehr hat, kann er in die Karten der (noch aktiven) Mitspieler schauen (die Karten sind für ihn nicht mehr verdeckt).
+11. **Runden-Ende:** Die Runde endet, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wird. Punkte werden vergeben. Wenn die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), startet eine neue Runde ein (beginnend bei Punkt 2: Kartenausgabe).
+12. **Partie-Ende:** Wenn die Partie entschieden ist, wird die Punktetabelle angezeigt. Danach geht es zurück in die Lobby (Punkt 1).
 
 ### 2.3 Sonderfälle
 
@@ -320,13 +318,13 @@ Erhält er sie, liefert der Peer die Daten als Antwort an die Engine aus.
   
 #### 7.2.1 Request-/Response-Nachrichten
 
-| Request Action (vom Server) | Response Data (vom Client)                                            | Beschreibung                                                                                               |
-|-----------------------------|-----------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| "announce_grand_tichu"      | `{announced: bool}`                                                   | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                             |
-| "schupf"                    | `{to_opponent_right: Card, to_partner: Card, to_opponent_left: Card}` | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden. |
-| "play"                      | `{cards: Cards}` (`{cards: []}` für passen)                           | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.  |
-| "wish"                      | `{wish_value: int}`                                                   | Der Spieler muss sich einen Kartenwert wünschen.                                                           |
-| "give_dragon_away"          | `{dragon_recipient: int}`                                             | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
+| Request Action (vom Server) | Response Data (vom Client)                                                              | Beschreibung                                                                                               |
+|-----------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| "announce_grand_tichu"      | `{announced: bool}`                                                                     | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                             |
+| "schupf"                    | `{given_schupf_cards: [Card, Card, Card]}` (für rechten Gegner, Partner, linken Gegner) | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden. |
+| "play"                      | `{cards: Cards}` (`{cards: []}` für passen)                                             | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.  |
+| "wish"                      | `{wish_value: int}`                                                                     | Der Spieler muss sich einen Kartenwert wünschen.                                                           |
+| "give_dragon_away"          | `{dragon_recipient: int}`                                                               | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
 
 Akzeptiert die Engine die Client-Antwort, sendet sie eine entsprechende [Notification-Nachricht](#722-notification-nachrichten) an alle Spieler.
 Andernfalls sendet die Engine eine Fehlermeldung über den Peer an den Client.
@@ -350,7 +348,7 @@ Benachrichtigung an alle Spieler
 | "player_grand_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.       |
 | "player_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                   |
 | "player_schupfed"        | `{player_index: int}`                                                                                                             | Der Spieler hat drei Karten zum Tausch abgegeben.               |
-| "schupf_cards_dealt"     | `None` -> `{received_schupf_cards: Cards}`                                                                                        | Die Tauschkarten wurden an die Spieler verteilt.                |
+| "schupf_cards_dealt"     | `None` -> `{received_schupf_cards: [Card, Card, Card]}` (vom rechten Gegner, Partner, linken Gegner)                              | Die Tauschkarten wurden an die Spieler verteilt.                |
 | "player_passed"          | `{player_index: int}`                                                                                                             | Der Spieler hat hat gepasst.                                    |
 | "player_played"          | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat Karten ausgespielt.                             |
 | "player_bombed"          | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat eine Bombe geworfen.                            |

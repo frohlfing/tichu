@@ -2,6 +2,7 @@
  * Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
  */
 const Dialogs = (() => {
+
     // --------------------------------------------------------------------------------------
     // DOM-Elemente
     // --------------------------------------------------------------------------------------

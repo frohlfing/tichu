@@ -4,6 +4,7 @@
  * @type {View}
  */
 const GameTableView = (() => {
+
     // --------------------------------------------------------------------------------------
     // DOM-Elemente
     // --------------------------------------------------------------------------------------
@@ -49,9 +50,9 @@ const GameTableView = (() => {
     ];
 
     /**
-     * Die Container für die Handkarten.
+     * Die Hände (Container für die Handkarten).
      *
-     * @type {HTMLDivElement}
+     * @type {HTMLElement[]}
      */
     const _hands = [
         document.getElementById('hand-bottom'),
@@ -61,15 +62,15 @@ const GameTableView = (() => {
     ];
 
     /**
-     * Die Container für die Ablage-Zonen der Tauschkarten.
+     * Die Ablage-Zonen für die Tauschkarten.
      *
-     * @type {HTMLDivElement}
+     * @type {HTMLElement[]}
      */
     const _schupfZones = [
-        document.getElementById('schupf-zones-bottom'),
-        document.getElementById('schupf-zones-right'),
-        document.getElementById('schupf-zones-top'),
-        document.getElementById('schupf-zones-left'),
+        document.getElementById('schupf-zone-bottom'),
+        document.getElementById('schupf-zone-right'),
+        document.getElementById('schupf-zone-top'),
+        document.getElementById('schupf-zone-left'),
     ];
 
     /**
@@ -139,7 +140,32 @@ const GameTableView = (() => {
     const _playButton = document.getElementById('play-button');
 
     // --------------------------------------------------------------------------------------
-    // Öffentliche Funktionen und Ereignishändler
+    // Interne Variablen
+    // --------------------------------------------------------------------------------------
+
+    /**
+     * Wird gesetzt, wenn der Benutzer die drei Tauschkarten der Mitspieler aufgenommen hat.
+     *
+     * @type {boolean}
+     */
+    let _receivedSchupfCardsConfirmed = false;
+
+    /**
+     * Wird gesetzt, wenn der Benutzer eine passende Kombination auf der Hand hat.
+     *
+     * @type {boolean}
+     */
+    let _canPlay = false;
+
+    /**
+     * Wird gesetzt, wenn der Benutzer eine Bombe hat.
+     *
+     * @type {boolean}
+     */
+    let _hasBomb = true;
+
+    // --------------------------------------------------------------------------------------
+    // Öffentliche Funktionen
     // --------------------------------------------------------------------------------------
     
     /**
@@ -166,6 +192,19 @@ const GameTableView = (() => {
      * Rendert den Spieltisch-Bildschirm.
      */
     function render() {
+        _updateScore();
+        for (let playerIndex= 0; playerIndex <= 3; playerIndex++) {
+            _updatePlayerName(playerIndex);
+            _updateHand(playerIndex);
+            _updateSchupfZone(playerIndex);
+            _updateTichuIcon(playerIndex);
+        }
+        _updateTurnIcon();
+        _updateWishIcon();
+        _updateBombIcon();
+        _updatePassButton();
+        _updateTichuButton();
+        _updatePlayButton();
     }
 
     /**
@@ -192,6 +231,10 @@ const GameTableView = (() => {
         return _viewContainer.classList.contains('active');
     }
 
+    // --------------------------------------------------------------------------------------
+    // Ereignishändler
+    // --------------------------------------------------------------------------------------
+
     /**
      * Ereignishändler für das Anklicken auf den "Beenden"-Button.
      */
@@ -209,66 +252,6 @@ const GameTableView = (() => {
     }
 
     /**
-     * Aktualisiert den Punktestand in der Top-Bar.
-     *
-     * @param {[number, number]} score Punkte des Teams 20 und des Teams 31.
-     */
-    function updateScore(score) {
-        let team20 = score[0].toString().padStart(4, '0');
-        let team31 = score[1].toString().padStart(4, '0');
-        _scoreDisplay.textContent = `${team20} : ${team31}`;
-    }
-
-    /**
-     * Aktualisiert den Namen des Spielers.
-     *
-     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
-     * @param {string} name - Der Name des Spielers.
-     */
-    function updatePlayerName(relativeIndex, name) {
-        _playerNames[relativeIndex].textContent = name.trim()
-    }
-
-    /**
-     * Aktualisiert die Handkarten (zeigt die Vorderseite der Karten).
-     *
-     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
-     * @param {Cards} cards - Die Handkarten.
-     */
-    function updateHandCardFaces(relativeIndex, cards) {
-        clearHandCards(relativeIndex);
-        cards.forEach(card => {
-            const cardFace = _createCardFaceElement(card)
-            _hands[relativeIndex].appendChild(cardFace);
-        });
-    }
-
-    /**
-     * Aktualisiert die Anzahl der Handkarten (zeigt die Kartenrückseite).
-     *
-     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
-     * @param {number} cardCount - Anzahl der Handkarten.
-     */
-    function updateHandCardBacks(relativeIndex, cardCount) {
-        clearHandCards(relativeIndex);
-        for (let k = 0; k < cardCount; k++) {
-            _hands[relativeIndex].appendChild(_createCardBackElement());
-        }
-    }
-
-    /**
-     * Entfernt alle Handkarten des angegebenen Spielers.
-     *
-     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
-     */
-    function clearHandCards(relativeIndex) {
-        // todo geht das nicht eleganter?
-        while (_hands[relativeIndex].children.length) {
-            _hands[relativeIndex].children[0].remove();
-        }
-    }
-
-    /**
      * Ereignishändler für das Anklicken der eigenen Hand.
      *
      * @param {PointerEvent} event
@@ -282,8 +265,7 @@ const GameTableView = (() => {
 
         // Wenn die Schupfzone sichtbar ist, darf maximal nur eine Karte selektiert werden.
         if (!_schupfZones[0].classList.contains('hidden') && !cardElement.classList.contains("selected")) {
-            const selectedCardCount = _hands[0].querySelectorAll('.card-face.selected').length;
-            if (selectedCardCount > 0) {
+            if (_getSelectedCardsCount() > 0) {
                 return;
             }
         }
@@ -292,72 +274,7 @@ const GameTableView = (() => {
         const card = /** @type Card */ cardElement.dataset.card.split(",").map(value => parseInt(value, 10));
         console.debug(`_handClick: Karte ${Lib.stringifyCard(card)} (${card})`);
         cardElement.classList.toggle('selected');
-    }
-
-    /**
-     * Gibt die aktuell ausgewählten Karten zurück.
-     *
-     * @returns {Cards}
-     */
-    function getSelectedCards() {
-        let cards = [];
-        _hands[0].querySelectorAll('.card-face.selected').forEach(cardElement => {
-            cards.push(cardElement.dataset.card.split(",").map(value => parseInt(value, 10)));
-        });
-        return cards;
-    }
-
-    /**
-     * Setzt die ausgewählten Karten zurück.
-     */
-    function clearSelectedCards() {
-        _hands[0].querySelectorAll('.card-face.selected').forEach(cardElement => {
-            cardElement.classList.remove('selected');
-        });
-    }
-
-    /**
-     * Zeigt die Schupfzonen an.
-     */
-    function showSchupfZones() {
-        // ausgewählte Karen zurücksetzen, denn beim Schupfen darf nicht mehr als eine Karte selektiert werden
-        clearSelectedCards();
-        // Schupfzonen einblenden
-        for (let i= 0; i <= 3; i++) {
-            _schupfZones[i].classList.remove('hidden');
-        }
-    }
-
-    /**
-     * Blendet die Schupfzonen aus.
-     */
-    function hideSchupfZones() {
-        for (let i= 0; i <= 3; i++) {
-            _schupfZones[i].classList.add('hidden');
-        }
-    }
-
-    /**
-     * Füllt die Schupfzone mit verdeckten Karten.
-     *
-     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
-     */
-    function fillSchupfZone(relativeIndex) {
-        clearSchupfZone(relativeIndex);
-        _schupfZones[relativeIndex].querySelectorAll('.schupf-zone').forEach(schupfZoneElement => {
-            schupfZoneElement.appendChild(_createCardBackElement());
-        });
-    }
-
-    /**
-     * Entfernt die Karten in der Schupfzone des angegebenen Spielers.
-     *
-     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
-     */
-    function clearSchupfZone(relativeIndex) {
-        _schupfZones[relativeIndex].querySelectorAll('.schupf-zone .card-back, .schupf-zone .card-face').forEach(cardElement => {
-            cardElement.remove();
-        });
+        _updatePlayButton();
     }
 
     /**
@@ -366,15 +283,17 @@ const GameTableView = (() => {
      * @param {PointerEvent} event
      */
     function _schupfZoneClick(event) {
-        if (event.target.classList.contains('schupf-zone')) {
-            // es wurde auf eine leere Schupfzone geklickt
-            const schupfZoneElement = event.target;
+        if (event.target.classList.contains('schupf-subzone')) {
+            // es wurde auf eine leere Ablagefläche geklickt
+            const subzoneElement = event.target;
             const cardElement = _hands[0].querySelector('.card-face.selected');
             if (cardElement) {
                 SoundManager.playSound('buttonClick');
-                schupfZoneElement.appendChild(cardElement);
+                subzoneElement.appendChild(cardElement);
                 cardElement.classList.remove('selected');
             }
+            _updatePlayButton();
+            //_playButton.disabled = _getSchupfCardsCount() !== 3;
         }
         else if (event.target.classList.contains('card-face')) {
             // es wurde auf eine Karte in der Schupfzone geklickt
@@ -393,7 +312,7 @@ const GameTableView = (() => {
                 }
             }
 
-            // Karte in die Hand einsortieren
+            // Karte zurück in die Hand einsortieren
             SoundManager.playSound('buttonClick');
             if (referenceElement) {
                 _hands[0].insertBefore(cardElement, referenceElement);
@@ -402,71 +321,18 @@ const GameTableView = (() => {
                 _hands[0].appendChild(cardElement);
             }
             console.log("Karte zurückgelegt");
+
+            _updatePlayButton();
+            //_playButton.disabled = _getSchupfCardsCount() !== 3;
         }
     }
 
     /**
-     * Gibt die Karten zurück, die sich aktuell in der Schupfzone befinden.
-     *
-     * @returns {Cards}
+     * Ereignishändler für das Anklicken auf das Bomben-Icon.
      */
-    function getSchupfCards() {
-        let cards = [];
-        _schupfZones[0].querySelectorAll('.schupf-zone .card-face').forEach(cardElement => {
-            cards.push(cardElement.dataset.card.split(",").map(value => parseInt(value, 10)));
-        });
-        return cards;
-    }
-
-    /**
-     * Bewegt das Turn-Symbol zum angebenden Spieler.
-     *
-     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
-     */
-    function moveTurnIcon(relativeIndex) {
-        hideTurnIcon()
-        _turnIcon[relativeIndex].classList.remove('hidden');
-    }
-
-    /**
-     * Blendet das Turn-Symbol aus.
-     */
-    function hideTurnIcon() {
-        for (let i = 0; i <= 3; i++) {
-            _turnIcon[i].classList.add('hidden');
-        }
-    }
-
-    /**
-     * Zeigt das Tichu-Icon an.
-     *
-     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
-     */
-    function showTichuIcon(relativeIndex) {
-        _tichuIcons[relativeIndex].classList.remove('hidden');
-    }
-
-    /**
-     * Blendet das Tichu-Icon aus.
-     *
-     * @param {number} relativeIndex - Der Index des Spielers (relative zum Benutzer).
-     */
-    function hideTichuIcon(relativeIndex) {
-        _tichuIcons[relativeIndex].classList.add('hidden');
-    }
-
-    /**
-     * Aktiviert den Pass-Button.
-     */
-    function enablePassButton() {
-        _passButton.disabled = false;
-    }
-
-    /**
-     * Deaktiviert den Pass-Button.
-     */
-    function disablePassButton() {
-        _passButton.disabled = true;
+    function _bombIconClick() {
+        SoundManager.playSound('buttonClick');
+        console.log("_bombIconClick");
     }
 
     /**
@@ -478,39 +344,11 @@ const GameTableView = (() => {
     }
 
     /**
-     * Aktiviert den Tichu-Button.
-     */
-    function enableTichuButton() {
-        _tichuButton.disabled = false;
-    }
-
-    /**
-     * Deaktiviert den Tichu-Button.
-     */
-    function disableTichuButton() {
-        _tichuButton.disabled = true;
-    }
-
-    /**
      * Ereignishändler für das Anklicken auf den "Tichu"-Button.
      */
     function _tichuButtonClick() {
         SoundManager.playSound('buttonClick');
         console.log("_tichuButtonClick");
-    }
-
-    /**
-     * Aktiviert den Play-Button.
-     */
-    function enablePlayButton() {
-        _playButton.disabled = false;
-    }
-
-    /**
-     * Deaktiviert den Options-Button.
-     */
-    function disablePlayButton() {
-        _playButton.disabled = true;
     }
 
     /**
@@ -521,48 +359,60 @@ const GameTableView = (() => {
         console.log("_playButtonClick");
     }
 
-    /**
-     * Zeigt das Wunsch-Symbol an.
-     *
-     * @param {number} wishValue - Kartenwert zw. 2 und 14
-     */
-    function showWishIcon(wishValue) {
-        _wishText.textContent = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"][wishValue];
-        _wishIcon.classList.remove('hidden');
-    }
-
-    /**
-     * Blendet das Wunsch-Symbol aus.
-     */
-    function hideWishIcon() {
-        _wishIcon.classList.add('hidden');
-    }
-
-    /**
-     * Zeigt das Bomben-Symbol.
-     */
-    function showBombIcon() {
-        _bombIcon.classList.remove('hidden');
-    }
-
-    /**
-     * Blendet das Bomben-Symbol aus.
-     */
-    function hideBombIcon() {
-        _bombIcon.classList.add('hidden');
-    }
-
-    /**
-     * Ereignishändler für das Anklicken auf das Bomben-Icon.
-     */
-    function _bombIconClick() {
-        SoundManager.playSound('buttonClick');
-        console.log("_bombIconClick");
-    }
-
     // --------------------------------------------------------------------------------------
     // Hilfsfunktionen
     // --------------------------------------------------------------------------------------
+
+    /**
+     * Aktualisiert den Punktestand in der Top-Bar.
+     */
+    function _updateScore() {
+        const score = State.getTotalScore();
+        let team20 = score[0].toString().padStart(4, '0');
+        let team31 = score[1].toString().padStart(4, '0');
+        _scoreDisplay.textContent = `${team20} : ${team31}`;
+    }
+
+    /**
+     * Aktualisiert den Namen des angegebenen Spielers.
+     *
+     * @param {number} playerIndex - Der Index des Spielers.
+     */
+    function _updatePlayerName(playerIndex) {
+        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
+        _playerNames[relativeIndex].textContent = State.getPlayerName(playerIndex).trim();
+    }
+
+    /**
+     * Gibt die aktuell ausgewählten Karten zurück.
+     *
+     * @returns {Cards}
+     */
+    function _getSelectedCards() {
+        let cards = [];
+        _hands[0].querySelectorAll('.card-face.selected').forEach(cardElement => {
+            cards.push(cardElement.dataset.card.split(",").map(value => parseInt(value, 10)));
+        });
+        return cards;
+    }
+
+    /**
+     * Ermittelt die Anzahl der ausgewählten Handkarten.
+     *
+     * @returns {number}
+     */
+    function _getSelectedCardsCount() {
+        return _hands[0].querySelectorAll('.card-face.selected').length;
+    }
+
+    /**
+     * Setzt die ausgewählten Karten zurück.
+     */
+    function _clearSelectedCards() {
+        _hands[0].querySelectorAll('.card-face.selected').forEach(cardElement => {
+            cardElement.classList.remove('selected');
+        });
+    }
 
     /**
      * Erzeugt eine offene Karte.
@@ -589,12 +439,236 @@ const GameTableView = (() => {
         return cardBack;
     }
 
-    // todo top-bar-buttons und button-controls click event
+    /**
+     * Aktualisiert die Hand des angegebenen Spielers.
+     *
+     * @param {number} playerIndex - Der Index des Spielers.
+     */
+    function _updateHand(playerIndex) {
+        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
+
+        // Handkarten entfernen
+        _hands[relativeIndex].replaceChildren();
+
+        // wenn der Benutzer selbst keine Karten mehr hat, kann er in die Hände der Mitspieler sehen
+        // todo Diese Feature ist serverseitig noch nicht umgesetzt. Es gibt noch keine Variable im State, um die Karten der Mitspieler zu speichern.
+        //const revealed = State.getCountHandCards() === 0;  // Karten aufgedeckt
+
+        // Handkarten neu generieren
+        if (relativeIndex === 0) {
+            State.getHandCards().forEach(card => {
+                const cardFace = _createCardFaceElement(card)
+                _hands[relativeIndex].appendChild(cardFace);
+            });
+        }
+        else {
+            const cardCount = State.getCountHandCards(playerIndex);
+            for (let k = 0; k < cardCount; k++) {
+                _hands[relativeIndex].appendChild(_createCardBackElement());
+            }
+        }
+    }
+
+    /**
+     * Gibt die drei Karten zurück, die sich aktuell mit der Vorderseite in der Schupfzone des Benutzers befinden.
+     *
+     * Wenn nicht drei Karten mit der Vorderseite zu sehen sind, wird ein leeres Array zurückgegeben.
+     *
+     * @returns {Cards}
+     */
+    function _getSchupfCards() {
+        if (_getSchupfCardsCount() !== 3) {
+            return []
+        }
+        let cards = [];
+        const cardElements = _schupfZones[0].querySelectorAll('.schupf-subzone .card-face');
+        cardElements.forEach(cardElement => {
+            cards.push(cardElement.dataset.card.split(",").map(value => parseInt(value, 10)));
+        });
+        return cards;
+    }
+
+    /**
+     * Ermittelt die Anzahl der Karten, die mit der Vorderseite in der Schupfzone des Benutzers liegen.
+     *
+     * @returns {number}
+     */
+    function _getSchupfCardsCount() {
+        return _schupfZones[0].querySelectorAll('.schupf-subzone .card-face').length;
+    }
+
+    /**
+     * Leert die Schupfzone des Spielers.
+     *
+     * @param {number} playerIndex - Der Index des Spielers.
+     */
+    function _clearSchupfZone(playerIndex) {
+        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
+        _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone .card-back, .schupf-subzone .card-face').forEach(cardElement => {
+            cardElement.remove();
+        });
+    }
+
+    /**
+     * Aktualisiert die Schupfzone des angegebenen Spielers.
+     *
+     * @param {number} playerIndex - Der Index des Spielers.
+     */
+    function _updateSchupfZone(playerIndex) {
+        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
+        if (!State.getReceivedSchupfCards() && State.getCountHandCards() > 8) {
+            // Noch keine Tauschkarte aufgenommen und mehr als 8 Handkarten aufgenommen (Frage nach großes Tichu ist erfolgt).
+
+            // Handelt es sich um den Benutzer, ausgewählte Karen zurücksetzen, denn beim Schupfen darf nicht mehr als eine Karte selektiert werden.
+            if (relativeIndex === 0 && _getSelectedCardsCount() > 1) {
+                _clearSelectedCards();
+            }
+
+            // Wenn alle Karten noch auf der Hand abgebildet sind, Schupfzone leeren.
+            if (_hands[relativeIndex].children.length === 14) {
+               _clearSchupfZone(playerIndex);
+            }
+
+            // Schupfzone einblenden
+            _schupfZones[relativeIndex].classList.remove('hidden');
+
+            // Falls der Spieler nur noch 11 Karten in der Hand hat, müssen die übrigen drei in der Schupfzone liegen.
+            if (State.getCountHandCards(playerIndex) === 11 && _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone .card-back').length !== 3) {
+                // Drei verdeckte Karten zeigen.
+                _clearSchupfZone(playerIndex);
+                _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone').forEach(subzoneElement => {
+                    subzoneElement.appendChild(_createCardBackElement());
+                });
+            }
+        }
+        else {
+            // Schupfzone ausblenden
+            _schupfZones[relativeIndex].classList.add('hidden');
+        }
+    }
+
+    /**
+     * Aktualisiert das Tichu-Icon des angegebenen Spielers.
+     *
+     * @param {number} playerIndex - Der Index des Spielers.
+     */
+    function _updateTichuIcon(playerIndex) {
+        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
+        const announcement = State.getAnnouncement(playerIndex);
+        if (announcement) {
+            _tichuIcons.src = announcement === 2 ? "images/grand-tichu-icon.png" : "images/tichu-icon.png";
+            _tichuIcons[relativeIndex].classList.remove('hidden');
+        } else {
+            _tichuIcons[relativeIndex].classList.add('hidden');
+        }
+    }
+
+    /**
+     * Bewegt das Turn-Symbol zum aktuellen Spieler.
+     */
+    function _updateTurnIcon() {
+        for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
+            _turnIcon[relativeIndex].classList.add('hidden');
+        }
+        const relativeIndex = Lib.getRelativePlayerIndex(State.getCurrentTurnIndex());
+        if (relativeIndex !== -1) {
+            _turnIcon[relativeIndex].classList.remove('hidden');
+        }
+    }
+
+    /**
+     * Aktualisiert das Wunsch-Symbol.
+     */
+    function _updateWishIcon() {
+        const wishValue = State.getWishValue();
+        if (wishValue >= 2) {
+            _wishText.textContent = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"][wishValue - 2];
+            _wishIcon.classList.remove('hidden');
+        }
+        else {
+            _wishIcon.classList.add('hidden');
+        }
+    }
+
+     /**
+     * Aktualisiert das Bomben-Symbol.
+     */
+    function _updateBombIcon() {
+        if (_hasBomb) {
+            _bombIcon.classList.remove('hidden');
+        }
+        else {
+            _bombIcon.classList.add('hidden');
+        }
+        // todo Bomben-Symbol aktivieren / deaktivieren (anklickbar machen bzw. nicht)
+    }
+
+    /**
+     * Aktualisiert den Pass-Button.
+     */
+    function _updatePassButton() {
+        if (!State.getReceivedSchupfCards() && State.getCountHandCards() === 8) {
+            // Der Benutzer kann ein großes Tichu ansagen.
+            _passButton.textContent = "Weiter";
+            _passButton.disabled = false;
+        }
+        else if (_receivedSchupfCardsConfirmed && State.isCurrentPlayer()) {
+            // Der Benutzer ist am Zug.
+            _passButton.textContent = "Passen";
+            _passButton.disabled = State.getTrickCombination()[0] === CombinationType.PASS; // true, wenn Anspiel}
+        }
+        else {
+            _passButton.textContent = "Passen";
+            _passButton.disabled = true;
+        }
+    }
+
+    /**
+     * Aktualisiert den Tichu-Button.
+     */
+    function _updateTichuButton() {
+        _tichuButton.textContent = !State.getReceivedSchupfCards() && State.getCountHandCards() === 8 ? "Großes Tichu" : "Tichu";
+        _tichuButton.disabled = State.getAnnouncement() > 0;
+    }
+
+    /**
+     * Aktualisiert den Play-Button.
+     */
+    function _updatePlayButton() {
+        if (!State.getReceivedSchupfCards() && State.getCountHandCards() > 8) {
+            // Der Benutzer muss drei Tauschkarten abgeben.
+            _playButton.textContent = "Schupfen";
+            _playButton.disabled = _getSchupfCardsCount() !== 3;
+        }
+        else if (State.getReceivedSchupfCards() && !_receivedSchupfCardsConfirmed) {
+            // Der Benutzer muss die drei Tauschkarten der Mitspieler aufnehmen.
+            _playButton.textContent = "Aufnehmen";
+            _playButton.disabled = false;
+        }
+        else if (State.isCurrentPlayer() && !_canPlay) {
+            // Der Benutzer ist am Zug, hat aber keine passende Kombination auf der Hand.
+            _playButton.textContent = "Kein Zug";
+            _playButton.disabled = true;
+        }
+        else if (State.isCurrentPlayer() && _getSelectedCardsCount() === 0) {
+            // Der Benutzer ist am Zug, hat aber noch keine Karte ausgewählt.
+            _playButton.textContent = "Auswählen"; // bei Klick wird die längste kleinstmögliche Kombination ausgewählt
+            _playButton.disabled = false;
+        }
+        else if (State.isCurrentPlayer()) {
+            // Der Benutzer ist am Zug und hat mindestens eine Karte ausgewählt.
+            _playButton.textContent = "Spielen";
+            _playButton.disabled = false; // todo true, wenn die ausgewählte Kombination nicht spielbar ist
+        }
+        else {
+            _playButton.textContent = "Spielen";
+            _playButton.disabled = true;
+        }
+    }
+
+
     // todo bomb_click()
     // todo Selektierte Karten eingereiht lassen
-    // todo schupfen
-    // todo Play-Button: "Spielen" "Schupfen" "Kein Zug" "Aufnehmen" "Auswählen"
-    // todo Grand Tichu
     // todo Sound
 
     // Visuelle Effekte & Animationen
@@ -611,8 +685,6 @@ const GameTableView = (() => {
     //  3) wish-icon direkt unter table-area ziehen. center-table wird dann nicht mehr benötigt.
     //  4) position nur da aufführen, wo erforderlich.
 
-    // todo card-handler.js löschen
-
     // --------------------------------------------------------------------------------------
     // Test-Buttons
     // --------------------------------------------------------------------------------------
@@ -620,8 +692,8 @@ const GameTableView = (() => {
     function _handleTestButtonClick(event) {
         if (event.target.tagName !== 'BUTTON') return;
         const testAction = event.target.dataset.test;
-        const testPlayerRelativeIdxInput = document.getElementById('test-player-index');
-        const testPlayerRelativeIdx = testPlayerRelativeIdxInput ? parseInt(testPlayerRelativeIdxInput.value, 10) : 1;
+        //const testPlayerRelativeIdxInput = document.getElementById('test-player-index');
+        //const testPlayerRelativeIdx = testPlayerRelativeIdxInput ? parseInt(testPlayerRelativeIdxInput.value, 10) : 1;
 
         switch (testAction) {
             case 'show-all-controls': _testShowAllControls(); break;
@@ -646,6 +718,7 @@ const GameTableView = (() => {
             case 'show-game-over-dialog': _testShowGameOverDialog(); break;
             case 'show-error-toast': _testShowErrorToast(); break;
 
+            // todo
             // case 'select-cards': _testSelectSomeCards(); break;
             // case 'play-selected-cards': _testPlaySelectedCards(); break;
             // case 'opponent-plays-cards': _testOpponentPlaysCards(testPlayerRelativeIdx); break;
@@ -663,120 +736,136 @@ const GameTableView = (() => {
         }
     }
 
-    function _testShowAllControls() {
-        updateScore([321, 123]);
-        enablePassButton();
-        enableTichuButton();
-        enablePlayButton();
-        _testDealCards();
-        _testWishValue = _testWishValue < 14 ? _testWishValue + 1 : 2;
-        showWishIcon(_testWishValue);
-        showSchupfZones();
-        showBombIcon();
+    let _testWishValue = 2
+    let _testCurrentTurnIndex = 3;
 
+    function _testShowAllControls() {
+        State.resetGameScore();
+        State.addGameScore([123, 321]);
+        State.setStartPlayerIndex(2);
+        let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
+        State.setHandCards(cards);
         const playerNames = ["Anton", "Beathe", "Chris", "Doris"];
-        for (let i= 0; i <= 3; i++) {
-            showTichuIcon(i);
-            _turnIcon[i].classList.remove('hidden');
-            updatePlayerName(i, playerNames[i]);
+        for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
+            State.setPlayerName(playerIndex, playerNames[playerIndex]);
+            State.setCountHandCards(playerIndex, 14);
         }
+        State.setAnnouncement(0, 1);
+        State.setAnnouncement(1, 1);
+        State.setAnnouncement(2, 2);
+        State.setAnnouncement(3, 2);
+        State.setCurrentTurnIndex(_testCurrentTurnIndex);
+        State.setWishValue(_testWishValue);
+        _hasBomb = true;
+        render();
     }
 
     function _testResetRound() {
-        updateScore([0, 0]);
-        disablePassButton();
-        disableTichuButton();
-        disablePlayButton();
+        State.resetGameScore();
+        State.setStartPlayerIndex(-1);
+        State.setHandCards([]);
+        State.setGivenSchupfCards(null);
+        State.setReceivedSchupfCards(null);
         for (let i= 0; i <= 3; i++) {
-            clearHandCards(i);
+            State.setCountHandCards(i, 0);
+            State.setAnnouncement(i, 0);
         }
-        hideWishIcon();
-        hideSchupfZones();
-        hideBombIcon();
-        for (let i= 0; i <= 3; i++) {
-            hideTichuIcon(i);
-        }
-        hideTurnIcon();
+        State.setCurrentTurnIndex(-1);
+        State.setWishValue(0);
+        _hasBomb = false;
+        render();
     }
 
-    let _testWishValue = 1
     function _testToggleWish() {
         if (_wishIcon.classList.contains('hidden')) {
             _testWishValue = _testWishValue < 14 ? _testWishValue + 1 : 2;
-            showWishIcon(_testWishValue);
+            State.setWishValue(_testWishValue);
         }
         else {
-            hideWishIcon();
+            State.setWishValue(0);
         }
+        _updateWishIcon();
     }
 
     function _testToggleBomb() {
-        if (_bombIcon.classList.contains('hidden')) {
-            showBombIcon();
-        }
-        else {
-            hideBombIcon();
-        }
+        _hasBomb = !_hasBomb;
+        _updateBombIcon();
     }
 
     function _testToggleTichu() {
         for (let i= 0; i <= 3; i++) {
-            if (_tichuIcons[i].classList.contains('hidden')) {
-                showTichuIcon(i);
-            }
-            else {
-                hideTichuIcon(i);
-            }
+            State.setAnnouncement(i, _tichuIcons[i].classList.contains('hidden') ? 1 : 0);
+            _updateTichuIcon(i)
         }
     }
 
-    let _testCurrentTurnIndex = 3  // relative zum Benutzer
     function _testMoveTurn() {
         _testCurrentTurnIndex = (_testCurrentTurnIndex + 1) % 4;
-        moveTurnIcon(_testCurrentTurnIndex);
+        State.setCurrentTurnIndex(_testCurrentTurnIndex);
+        _updateTurnIcon();
     }
 
     function _testDealCards() {
+        let cardsCount = State.getCountHandCards();
+        cardsCount = cardsCount > 0 ? Math.floor(cardsCount / 2) : 14;
         let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
-        clearHandCards(0);
-        updateHandCardFaces(0, cards);
-        for (let i = 1; i <= 3; i++) {
-            clearHandCards(i);
-            updateHandCardBacks(i, cards.length);
+        cards.length = cardsCount;
+        State.setHandCards(cards);
+        for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
+            State.setCountHandCards(playerIndex, cardsCount);
+            _updateHand(playerIndex);
         }
     }
 
     function _testGetSelectedCards() {
-        console.log(getSelectedCards());
+        console.log(_getSelectedCards());
     }
 
     function _testClearSelectedCards() {
-        clearSelectedCards();
+        _clearSelectedCards();
     }
 
     function _testToggleSchupfZones() {
         if (_schupfZones[0].classList.contains('hidden')) {
-            showSchupfZones();
+            State.setReceivedSchupfCards(null);
+            for (let i = 0; i <= 3; i++) {
+                State.setCountHandCards(i, 14);
+                _updateSchupfZone(i);
+            }
         }
         else {
-            hideSchupfZones();
+            State.setReceivedSchupfCards(/** @type Cards */ [[3,1], [2,1], [10,3]]);
+            for (let i = 0; i <= 3; i++) {
+                _updateSchupfZone(i);
+            }
         }
     }
 
     function _testFillSchupfZones() {
+        State.setReceivedSchupfCards(null);
+        let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
+        cards.length = 11;
+        State.setHandCards(cards);
         for (let i = 0; i <= 3; i++) {
-            fillSchupfZone(i);
+            State.setCountHandCards(i, 11);
+            _updateHand(i);
+            _updateSchupfZone(i);
         }
     }
 
     function _testClearSchupfZones() {
+        State.setReceivedSchupfCards(null);
+        let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
+        State.setHandCards(cards);
         for (let i = 0; i <= 3; i++) {
-            clearSchupfZone(i);
+            State.setCountHandCards(i, 14);
+            _updateHand(i);
+            _updateSchupfZone(i);
         }
     }
 
     function _testGetSchupfCards() {
-        console.log(getSchupfCards());
+        console.log(_getSchupfCards());
     }
 
     function _testShowDragonDialog() {
@@ -799,37 +888,12 @@ const GameTableView = (() => {
         Dialogs.showErrorToast("Dies ist eine Fehlermeldung!");
     }
 
+    // noinspection JSUnusedGlobalSymbols
     return {
         init,
         render,
         show,
         hide,
         isVisible,
-        updateScore,
-        updatePlayerName,
-        updateHandCardFaces,
-        updateHandCardBacks,
-        clearHandCards,
-        getSelectedCards,
-        clearSelectedCards,
-        showSchupfZones,
-        hideSchupfZones,
-        fillSchupfZone,
-        clearSchupfZone,
-        getSchupfCards,
-        moveTurnIcon,
-        hideTurnIcon,
-        showTichuIcon,
-        hideTichuIcon,
-        showWishIcon,
-        hideWishIcon,
-        showBombIcon,
-        hideBombIcon,
-        enablePassButton,
-        disablePassButton,
-        enableTichuButton,
-        disableTichuButton,
-        enablePlayButton,
-        disablePlayButton,
     };
 })();

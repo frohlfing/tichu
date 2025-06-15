@@ -143,9 +143,9 @@ class GameEngine:
             return False
 
         self._players[available_index] = peer
-        self._public_state.player_names[available_index] = peer.name
         if self._public_state.host_index == -1:
             self._public_state.host_index = available_index
+        self._public_state.player_names[available_index] = peer.name
 
         peer.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
         peer.priv = self._private_states[available_index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
@@ -367,7 +367,6 @@ class GameEngine:
                 #   1| 3  -  1  2
                 #   2| 2  3  -  1
                 #   3| 1  2  3  -
-                # todo alle Spieler gleichzeitig ansprechen
                 for player_index in range(0, 4):  # Nehmer
                     priv = privs[player_index]
                     priv.received_schupf_cards = (

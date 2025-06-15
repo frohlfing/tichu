@@ -183,7 +183,7 @@
     }
     function _testTakeSchupfCards() {
         // Simuliere Aufnahme: Eigene Schupfzonen leeren, Kartenanzahl erhöhen
-        _schupfZones.querySelectorAll('.schupf-zone .card-face').forEach(c => c.remove());
+        _schupfZones.querySelectorAll('.schupf-subzone .card-face').forEach(c => c.remove());
         _testDealOwnCards(); // Simuliert neue Hand (vereinfacht)
         _schupfZones.classList.add('hidden');
         CardHandler.disableSchupfMode();
@@ -527,7 +527,7 @@ function render() {
         _schupfRequestId = null;
         _schupfCards = [null, null, null];
 
-        const schupfZonesContainer = document.querySelector('.schupf-zones');
+        const schupfZonesContainer = document.querySelector('.schupf-zone');
         if (schupfZonesContainer) {
             schupfZonesContainer.classList.add('hidden');
         }

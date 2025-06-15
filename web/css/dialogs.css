@@ -14,7 +14,7 @@
     font-weight: bold;
     font-size: 22px;
     color: #f0f0f0;
-    background-color: #404040dd; /* leicht transparent */
+    background-color: #404040f7; /* leicht transparent */
     border-radius: 10px;
     box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
 }

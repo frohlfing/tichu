@@ -96,7 +96,7 @@ const CardHandler = (() => {
         clearSelectedCards(); // Vorherige Auswahl löschen
 
         // Schupf-Zonen anzeigen
-        const schupfZonesContainer = document.querySelector('.schupf-zones');
+        const schupfZonesContainer = document.querySelector('.schupf-zone');
         if (schupfZonesContainer) {
             schupfZonesContainer.classList.remove('hidden');
         }
@@ -118,7 +118,7 @@ const CardHandler = (() => {
         _schupfRequestId = null;
         _schupfCards = [null, null, null];
 
-        const schupfZonesContainer = document.querySelector('.schupf-zones');
+        const schupfZonesContainer = document.querySelector('.schupf-zone');
         if (schupfZonesContainer) {
             schupfZonesContainer.classList.add('hidden');
         }

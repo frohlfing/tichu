@@ -83,6 +83,20 @@ const CombinationType = {
 const Lib = (() => {
 
     // --------------------------------------------------------------------------------------
+    // Allgemeine mathematische Funktionen
+    // --------------------------------------------------------------------------------------
+
+    /**
+     * Berechnet die Summe aller Zahlen in einem Array.
+     *
+     * @param {number[]} arr - Das Array von Zahlen.
+     * @returns {number} Die Summe der Zahlen im Array.
+     */
+    function sum(arr) {
+        return arr.reduce((acc, num) => acc + num, 0);
+    }
+
+    // --------------------------------------------------------------------------------------
     // Karte
     // --------------------------------------------------------------------------------------
 
@@ -180,28 +194,22 @@ const Lib = (() => {
      * Konvertiert den kanonischen (serverseitigen) Index eines Spielers in den aus Sicht des Benutzers relativen Index.
      *
      * @param {number} canonicalPlayerIndex - Der kanonische Index des Spielers (0-3).
-     * @returns {number} Der relative Index (0 = Benutzer, 1 = rechter Gegner, 2 = Partner, 3 = linker Gegner, -1 = der eigene Index ist noch nicht bekannt).
+     * @returns {number} Der relative Index (0 = Benutzer, 1 = rechter Gegner, 2 = Partner, 3 = linker Gegner, -1 = kein Spieler).
      */
     function getRelativePlayerIndex(canonicalPlayerIndex) {
         const ownPlayerIndex = State.getPlayerIndex(); // der eigene kanonische Index
-        if (ownPlayerIndex === -1 || canonicalPlayerIndex === -1) {
-            return -1;
-        }
-        return (canonicalPlayerIndex - ownPlayerIndex + 4) % 4;
+        return canonicalPlayerIndex !== -1 ? (canonicalPlayerIndex - ownPlayerIndex + 4) % 4 : -1;
     }
 
     /**
      * Konvertiert den aus Sicht des Benutzers relativen Index eines Spielers in den kanonischen (serverseitigen) Index.
      *
-     * @param {number} relativePlayerIndex - Aus Sicht des Benutzers relativer Index (0 = Benutzer, 1 = rechter Gegner, 2 = Partner, 3 = linker Gegner).
+     * @param {number} relativePlayerIndex - Aus Sicht des Benutzers relativer Index (0 = Benutzer, 1 = rechter Gegner, 2 = Partner, 3 = linker Gegner, -1 = kein Spieler).
      * @returns {number} Der kanonische Index des Spielers (0-3, oder -1, wenn der eigene Spielerindex noch nicht bekannt ist).
      */
     function getCanonicalPlayerIndex(relativePlayerIndex) {
         const ownPlayerIndex = State.getPlayerIndex(); // Holt den eigenen kanonischen Index
-        if (ownPlayerIndex === -1) {
-            return -1;
-        }
-        return (ownPlayerIndex + relativePlayerIndex) % 4;
+        return relativePlayerIndex !== -1 ? (ownPlayerIndex + relativePlayerIndex) % 4 : -1;
     }
 
     // --------------------------------------------------------------------------------------
@@ -210,7 +218,9 @@ const Lib = (() => {
 
     // todo
 
+    // noinspection JSUnusedGlobalSymbols
     return {
+        sum,
         parseCard,
         parseCards,
         stringifyCard,
