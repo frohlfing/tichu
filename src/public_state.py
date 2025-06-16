@@ -7,7 +7,7 @@ from src.lib.cards import Card, Cards, other_cards
 from src.lib.combinations import Combination, CombinationType
 from typing import List, Tuple, Dict, Any
 
-# Type-Alias für einen Spielzug
+# Type-Alias für einen Spielzug (inkl. Passen)
 Turn = Tuple[int, Cards, Combination]
 
 # Type-Alias für einen Stich (Liste von Spielzügen)
@@ -39,7 +39,7 @@ class PublicState:
     :ivar trick_cards: Die Karten der letzten Kombination im Stich [Card, ...].
     :ivar trick_combination: Typ, Länge und Wert des aktuellen Stichs ((0,0,0) == leerer Stich)
     :ivar trick_points: Punkte des aktuellen Stichs.
-    :ivar tricks: Liste der Stiche der aktuellen Runde.
+    :ivar tricks: Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen (wenn der Stich noch nicht einkassiert wurde).
     :ivar points: Bisher kassierte Punkte in der aktuellen Runde pro Spieler.
     :ivar winner_index: Index des Spielers, der zuerst in der aktuellen Runde fertig wurde (-1 == alle Spieler sind noch dabei).
     :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == Runde läuft noch oder wurde mit Doppelsieg beendet).
@@ -89,6 +89,7 @@ class PublicState:
     #  Aber ja, ich werde das später erst noch prüfen, in wie weit die Geschwindigkeit der Arena leiden würde.
     #  4) round_counter = ??  # kann aus game_score ermittelt werden
     #  5) trick_counter = ??  # kann aus tricks ermittelt werden
+    #  6) trick_owner_index, trick_cards, trick_combination bilden den letzten Eintrag aus tricks, der nicht Passen ist.
 
     def reset_round(self):
         """Status für eine neue Runde zurücksetzen."""

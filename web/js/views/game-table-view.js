@@ -74,6 +74,18 @@ const GameTableView = (() => {
     ];
 
     /**
+     * Die Ablage-Zonen für Stiche.
+     *
+     * @type {HTMLElement[]}
+     */
+    const _playedCardsAreas = [
+        document.getElementById('played-cards-area-bottom'),
+        document.getElementById('played-cards-area-right'),
+        document.getElementById('played-cards-area-top'),
+        document.getElementById('played-cards-area-left'),
+    ];
+
+    /**
      * Das Turn-Symbol.
      *
      * @type {HTMLElement[]}
@@ -192,11 +204,13 @@ const GameTableView = (() => {
      * Rendert den Spieltisch-Bildschirm.
      */
     function render() {
+        _receivedSchupfCardsConfirmed = State.getReceivedSchupfCards() !== null
         _updateScore();
         for (let playerIndex= 0; playerIndex <= 3; playerIndex++) {
             _updatePlayerName(playerIndex);
             _updateHand(playerIndex);
             _updateSchupfZone(playerIndex);
+            _updatePlayedCards(playerIndex);
             _updateTichuIcon(playerIndex);
         }
         _updateTurnIcon();
@@ -516,7 +530,7 @@ const GameTableView = (() => {
      */
     function _updateSchupfZone(playerIndex) {
         const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
-        if (!State.getReceivedSchupfCards() && State.getCountHandCards() > 8) {
+        if (!_receivedSchupfCardsConfirmed && State.getCountHandCards() > 8) {
             // Noch keine Tauschkarte aufgenommen und mehr als 8 Handkarten aufgenommen (Frage nach großes Tichu ist erfolgt).
 
             // Handelt es sich um den Benutzer, ausgewählte Karen zurücksetzen, denn beim Schupfen darf nicht mehr als eine Karte selektiert werden.
@@ -545,6 +559,44 @@ const GameTableView = (() => {
             // Schupfzone ausblenden
             _schupfZones[relativeIndex].classList.add('hidden');
         }
+    }
+
+    /**
+     * Erzeugt einen Spielzug.
+     *
+     * @param {Cards} cards - Die im Zug ausgespielten Karten.
+     * @returns {HTMLDivElement}
+     */
+    function _createTurnElement(cards) {
+        const turnElement = document.createElement('div');
+        turnElement.className = 'trick';
+        cards.forEach(card => {
+            const cardElement = _createCardFaceElement(card);
+            turnElement.appendChild(cardElement);
+        });
+        return turnElement;
+    }
+
+    /**
+     * Aktualisiert die ausgespielten Karten des angegebenen Spielers im aktuellen Stich.
+     *
+     * @param {number} playerIndex - Der Index des Spielers.
+     */
+    function _updatePlayedCards(playerIndex) {
+        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
+
+        // ausgespielte Karten entfernen
+        _playedCardsAreas[relativeIndex].replaceChildren();
+
+        // Spielzüge anzeigen
+        State.getTricks().forEach(trick => {
+            for (let turn of trick) {
+                if (turn[0] === playerIndex && turn[1]) {
+                    const turnElement = _createTurnElement(turn[1]);
+                    _playedCardsAreas[relativeIndex].appendChild(turnElement);
+                }
+            }
+        });
     }
 
     /**
@@ -712,6 +764,9 @@ const GameTableView = (() => {
             case 'clear-schupf-zones': _testClearSchupfZones(); break;
             case 'get-schupf-cards': _testGetSchupfCards(); break;
 
+            case 'add-trick': _testAddTrick(); break;
+            case 'remove-trick': _testRemoveTrick(); break;
+
             case 'show-dragon-dialog': _testShowDragonDialog(); break;
             case 'show-wish-dialog': _testShowWishDialog(); break;
             case 'show-round-over-dialog': _testShowRoundOverDialog(); break;
@@ -802,6 +857,7 @@ const GameTableView = (() => {
     function _testMoveTurn() {
         _testCurrentTurnIndex = (_testCurrentTurnIndex + 1) % 4;
         State.setCurrentTurnIndex(_testCurrentTurnIndex);
+        _canPlay = true;
         _updateTurnIcon();
     }
 
@@ -828,6 +884,7 @@ const GameTableView = (() => {
     function _testToggleSchupfZones() {
         if (_schupfZones[0].classList.contains('hidden')) {
             State.setReceivedSchupfCards(null);
+            _receivedSchupfCardsConfirmed = false;
             for (let i = 0; i <= 3; i++) {
                 State.setCountHandCards(i, 14);
                 _updateSchupfZone(i);
@@ -835,10 +892,12 @@ const GameTableView = (() => {
         }
         else {
             State.setReceivedSchupfCards(/** @type Cards */ [[3,1], [2,1], [10,3]]);
+            _receivedSchupfCardsConfirmed = true;
             for (let i = 0; i <= 3; i++) {
                 _updateSchupfZone(i);
             }
         }
+        _updatePlayButton();
     }
 
     function _testFillSchupfZones() {
@@ -866,6 +925,25 @@ const GameTableView = (() => {
 
     function _testGetSchupfCards() {
         console.log(_getSchupfCards());
+    }
+
+    function _testAddTrick() {
+        let trick = /** @type Trick */ []
+        for (let i=0; i < 8; i++) {
+            let turn = /** @type Turn */ [i % 4, [[i+3,1], [i+3,2]], [CombinationType.PAIR, 2, i+3]];
+            trick.push(turn);
+        }
+        State.setTricks([trick]);
+        for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
+            _updatePlayedCards(playerIndex);
+        }
+    }
+
+    function _testRemoveTrick() {
+        State.setTricks([]);
+        for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
+            _updatePlayedCards(playerIndex);
+        }
     }
 
     function _testShowDragonDialog() {

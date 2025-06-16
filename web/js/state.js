@@ -39,7 +39,7 @@
  * @property {Cards} trick_cards - Karten der letzten Kombination im Stich.
  * @property {Combination} trick_combination - Typ, Länge und Wert des aktuellen Stichs ([0,0,0] = leerer Stich).
  * @property {number} trick_points - Punkte des aktuellen Stichs.
- * @property {Trick[]} tricks - Liste der Stiche der aktuellen Runde.
+ * @property {Trick[]} tricks - Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen.
  * @property {number[]} points - Bisher kassierte Punkte in der aktuellen Runde pro Spieler.
  * @property {number} winner_index - Index des ersten Spielers, der fertig wurde (-1 = Runde läuft).
  * @property {number} loser_index - Index des letzten Spielers (-1 = Runde läuft oder Doppelsieg).
