@@ -74,15 +74,15 @@ const GameTableView = (() => {
     ];
 
     /**
-     * Die Ablage-Zonen für Stiche.
+     * Die Ablage-Zonen für den aktuellen Stich.
      *
      * @type {HTMLElement[]}
      */
-    const _playedCardsAreas = [
-        document.getElementById('played-cards-area-bottom'),
-        document.getElementById('played-cards-area-right'),
-        document.getElementById('played-cards-area-top'),
-        document.getElementById('played-cards-area-left'),
+    const _trickZones = [
+        document.getElementById('trick-zone-bottom'),
+        document.getElementById('trick-zone-right'),
+        document.getElementById('trick-zone-top'),
+        document.getElementById('trick-zone-left'),
     ];
 
     /**
@@ -210,9 +210,9 @@ const GameTableView = (() => {
             _updatePlayerName(playerIndex);
             _updateHand(playerIndex);
             _updateSchupfZone(playerIndex);
-            _updatePlayedCards(playerIndex);
             _updateTichuIcon(playerIndex);
         }
+        _updateTrick();
         _updateTurnIcon();
         _updateWishIcon();
         _updateBombIcon();
@@ -569,7 +569,7 @@ const GameTableView = (() => {
      */
     function _createTurnElement(cards) {
         const turnElement = document.createElement('div');
-        turnElement.className = 'trick';
+        turnElement.className = 'turn';
         cards.forEach(card => {
             const cardElement = _createCardFaceElement(card);
             turnElement.appendChild(cardElement);
@@ -578,28 +578,33 @@ const GameTableView = (() => {
     }
 
     /**
-     * Aktualisiert die ausgespielten Karten des angegebenen Spielers im aktuellen Stich.
-     *
-     * @param {number} playerIndex - Der Index des Spielers.
+     * Aktualisiert den aktuellen Stich.
      */
-    function _updatePlayedCards(playerIndex) {
-        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
-
-        // todo Trick und Turn geht durcheinander. CSS und JS korrigieren.
-        // todo der letzte Zug insgesamt größere ziehen, nicht pro Spieler.
-
+    function _updateTrick() {
         // ausgespielte Karten entfernen
-        _playedCardsAreas[relativeIndex].replaceChildren();
+        for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
+            _trickZones[relativeIndex].replaceChildren();
+        }
 
         // Spielzüge anzeigen
-        State.getTricks().forEach(trick => {
-            for (let turn of trick) {
-                if (turn[0] === playerIndex && turn[1]) {
+        const trick = State.getLastTrick();
+        if (trick) {
+            trick.forEach(turn => {
+                if (turn[1]) { // Karten vorhanden (nicht gepasst?
+                    const relativeIndex = Lib.getRelativePlayerIndex(turn[0]);
                     const turnElement = _createTurnElement(turn[1]);
-                    _playedCardsAreas[relativeIndex].appendChild(turnElement);
+                    _trickZones[relativeIndex].appendChild(turnElement);
+                }
+            });
+            // den letzten Spielzug hervorheben
+            const relativeIndex = Lib.getRelativePlayerIndex(State.getTrickOwnerIndex());
+            if (relativeIndex !== -1) {
+                const turnElement = _trickZones[relativeIndex].lastChild;
+                if (turnElement) {
+                    turnElement.classList.add("last");
                 }
             }
-        });
+        }
     }
 
     /**
@@ -767,7 +772,8 @@ const GameTableView = (() => {
             case 'clear-schupf-zones': _testClearSchupfZones(); break;
             case 'get-schupf-cards': _testGetSchupfCards(); break;
 
-            case 'add-trick': _testAddTrick(); break;
+            case 'update-trick': _testUpdateTrick(); break;
+            case 'add-turn': _testAddTurn(); break;
             case 'remove-trick': _testRemoveTrick(); break;
 
             case 'show-dragon-dialog': _testShowDragonDialog(); break;
@@ -799,7 +805,7 @@ const GameTableView = (() => {
 
     function _testShowAllControls() {
         State.resetGameScore();
-        State.addGameScore([123, 321]);
+        State.addGameScoreEntry([123, 321]);
         State.setStartPlayerIndex(2);
         let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
         State.setHandCards(cards);
@@ -930,23 +936,33 @@ const GameTableView = (() => {
         console.log(_getSchupfCards());
     }
 
-    function _testAddTrick() {
-        let trick = /** @type Trick */ []
+    function _testUpdateTrick() {
+        let trick = /** @type Trick */ [];
         for (let i=0; i < 8; i++) {
             let turn = /** @type Turn */ [i % 4, [[i+3,1], [i+3,2]], [CombinationType.PAIR, 2, i+3]];
             trick.push(turn);
         }
         State.setTricks([trick]);
-        for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
-            _updatePlayedCards(playerIndex);
+        State.setTrickOwnerIndex(3);
+        _updateTrick();
+    }
+
+    function _testAddTurn() {
+        const tricks = State.getTricks();
+        const trickOwnerIndex = (State.getTrickOwnerIndex() + 1) % 4;
+        let turn = /** @type Turn */ [trickOwnerIndex, [[14,1], [14,2]], [CombinationType.PAIR, 2, 14]];
+        if (!tricks.length) {
+            tricks.push([]);
         }
+        tricks[tricks.length - 1].push(turn);
+        State.setTricks(tricks);
+        State.setTrickOwnerIndex(trickOwnerIndex);
+        _updateTrick();
     }
 
     function _testRemoveTrick() {
         State.setTricks([]);
-        for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
-            _updatePlayedCards(playerIndex);
-        }
+        _updateTrick();
     }
 
     function _testShowDragonDialog() {

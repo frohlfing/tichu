@@ -322,7 +322,12 @@ const State = (() => {
     function setTricks(tricks) {
         _publicState.tricks = tricks;
     }
-    
+
+    /** @returns {Trick|null} Der letzte Stich der aktuellen Runde. */
+    function getLastTrick(){
+        return _publicState.tricks.length ? _publicState.tricks[_publicState.tricks.length - 1] : null;
+    }
+
     /**
      * @param {number|null} playerIndex - Der Index des Spielers. Wenn nicht angegeben, wird der Index des Benutzers genommen.
      * @returns {number} Bisher kassierte Punkte des Spielers in der aktuellen Runde.
@@ -390,7 +395,7 @@ const State = (() => {
     /**
      * @param {[number, number]} score - Ergebnis einer Partie (Punkte für Team 20 und für Team 31).
      */
-    function addGameScore(score) {
+    function addGameScoreEntry(score) {
         _publicState.game_score[0].push(score[0]);
         _publicState.game_score[1].push(score[1]);
     }
@@ -479,13 +484,13 @@ const State = (() => {
         getTrickCards, setTrickCards,
         getTrickCombination, setTrickCombination,
         getTrickPoints, setTrickPoints,
-        getTricks, setTricks,
+        getTricks, setTricks, getLastTrick,
         getPoints, setPoints,
         getWinnerIndex, setWinnerIndex,
         getLoserIndex, setLoserIndex,
         isRoundOver, setRoundOver,
         isDoubleVictory, setDoubleVictory,
-        getGameScore, addGameScore, resetGameScore,
+        getGameScore, addGameScoreEntry, resetGameScore,
         getTotalScore,
         isGameOver,
 

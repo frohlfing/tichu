@@ -282,7 +282,7 @@
 
 /* Table Area -> Spieler-Bereich -> Stichzone */
 
-.played-cards-area {
+.trick-zone {
     position: absolute;
     display: flex;
     /*flex-wrap: nowrap;*/
@@ -295,49 +295,50 @@
     border: 1px solid white;
 }
 
-.trick {
+.turn {
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.trick .card-face {
+.turn .card-face {
     margin: 0 -90px; /* Überlappung */
 }
 
-.trick:nth-child(1) {
+.turn:nth-child(1) {
     transform: translateX(0) translateY(0);
     z-index: 1;
 }
 
-.trick:nth-child(2) {
+.turn:nth-child(2) {
     transform: translateX(40px) translateY(-40px);
     z-index: 2;
 }
 
-.trick:nth-child(3) {
+.turn:nth-child(3) {
     transform: translateX(80px) translateY(-80px);
     z-index: 3;
 }
 
-.trick:nth-child(4) {
+.turn:nth-child(4) {
     transform: translateX(120px) translateY(-120px);
     z-index: 4;
 }
 
-.trick:nth-child(n+5) {
+.turn:nth-child(n+5) {
     transform: translateX(160px) translateY(-160px);
     z-index: 5;
 }
 
-.trick:last-child .card-face {
+.turn.last .card-face { /* highlight */
     width: 160px;
     height: 240px;
     margin: 0 -109px; /* Überlappung */
     border-radius: 13px;
+    border: 1px solid gold;
     background-size: 158px 238px;
+    box-shadow: 0 0 12px 3px gold, 0 0 4px gold inset;
 }
-
 
 /* Table Area -> Wunsch-Symbol */
 
@@ -410,32 +411,20 @@
 
 /* --- Visuelle Effekte & Animationen --- */
 
-#hand-bottom .card.playing,
-.played-cards-area .card.just-played {
+#hand-bottom .card-face.playing,
+.trick-zone .card-face.just-played {
     transition: transform 0.4s ease-out, opacity 0.4s ease-out;
     /* transform: scale(1.05); Beim Spielen leicht vergrößern/anheben */
 }
 
-.played-cards-area .card.highlight-trick {
-    transform: scale(1.1) translateY(-5px); /* Pixelwerte für feste Kartengrößen */ /*todo */
-    box-shadow: 0 0 12px 3px gold, 0 0 4px gold inset;
-    border: 1px solid gold;
-    z-index: 5; /* Über anderen Karten im Stapel */
-}
-
-.card.flying {
+.card-face.flying,
+.card-back.flying {
     position: fixed; /* Wichtig: fixed für Animation relativ zum Viewport, nicht zum skalierten Wrapper */
     transition: all 0.6s cubic-bezier(0.25, 0.75, 0.5, 1);
     z-index: 1000; /* Über fast allem */
     /* Die Start left/top Werte müssen von JS gesetzt werden, basierend auf der *Viewport*-Position der Karte */
     /* Und die Ziel left/top Werte ebenfalls relativ zum *Viewport* */
 }
-
-/*#hand-bottom .card.schupf-candidate {*/
-/*    opacity: 0.6;*/
-/*    border: 2px dashed gold !important;*/
-/*    transform: translateY(-10px);*/
-/*}*/
 
 .bomb-effect-text {
     position: absolute;
