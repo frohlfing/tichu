@@ -271,7 +271,7 @@ const GameTableView = (() => {
      * @param {PointerEvent} event
      */
     function _handClick(event) {
-        if (!event.target.classList.contains('card-face')) {
+        if (!event.target.classList.contains('card')) {
             return; // es wurde auf keine Karte geklickt (sondern irgendwo anders innerhalb der Hand)
         }
 
@@ -300,7 +300,7 @@ const GameTableView = (() => {
         if (event.target.classList.contains('schupf-subzone')) {
             // es wurde auf eine leere Ablagefläche geklickt
             const subzoneElement = event.target;
-            const cardElement = _hands[0].querySelector('.card-face.selected');
+            const cardElement = _hands[0].querySelector('.card.selected');
             if (cardElement) {
                 SoundManager.playSound('buttonClick');
                 subzoneElement.appendChild(cardElement);
@@ -309,7 +309,7 @@ const GameTableView = (() => {
             _updatePlayButton();
             //_playButton.disabled = _getSchupfCardsCount() !== 3;
         }
-        else if (event.target.classList.contains('card-face')) {
+        else if (event.target.classList.contains('card')) {
             // es wurde auf eine Karte in der Schupfzone geklickt
             const cardElement = event.target;
 
@@ -404,7 +404,7 @@ const GameTableView = (() => {
      */
     function _getSelectedCards() {
         let cards = [];
-        _hands[0].querySelectorAll('.card-face.selected').forEach(cardElement => {
+        _hands[0].querySelectorAll('.card.selected').forEach(cardElement => {
             cards.push(cardElement.dataset.card.split(",").map(value => parseInt(value, 10)));
         });
         return cards;
@@ -416,41 +416,35 @@ const GameTableView = (() => {
      * @returns {number}
      */
     function _getSelectedCardsCount() {
-        return _hands[0].querySelectorAll('.card-face.selected').length;
+        return _hands[0].querySelectorAll('.card.selected').length;
     }
 
     /**
      * Setzt die ausgewählten Karten zurück.
      */
     function _clearSelectedCards() {
-        _hands[0].querySelectorAll('.card-face.selected').forEach(cardElement => {
+        _hands[0].querySelectorAll('.card.selected').forEach(cardElement => {
             cardElement.classList.remove('selected');
         });
     }
 
     /**
-     * Erzeugt eine offene Karte.
+     * Erzeugt eine Karte.
      *
-     * @param {Card} card - Wert und Farbe der Karte
+     * @param {Card|null} card - Wert und Farbe der Karte. Wenn null, wird die Rückseite angezeigt.
      * @returns {HTMLDivElement}
      */
-    function _createCardFaceElement(card) {
-        const cardFace = document.createElement('div');
-        cardFace.className = 'card-face';
-        cardFace.style.backgroundImage = `url('images/cards/${Lib.stringifyCard(card)}.png')`;
-        cardFace.dataset.card = card.toString();
-        return cardFace;
-    }
-
-    /**
-     * Erzeugt eine verdeckte Karte.
-     *
-     * @returns {HTMLDivElement}
-     */
-    function _createCardBackElement() {
-        const cardBack = document.createElement('div');
-        cardBack.className = 'card-back';
-        return cardBack;
+    function _createCardElement(card= null) {
+        const cardElement = document.createElement('div');
+        cardElement.className = 'card';
+        if (card) {
+            cardElement.style.backgroundImage = `url('images/cards/${Lib.stringifyCard(card)}.png')`;
+            cardElement.dataset.card = card.toString();
+        }
+        else {
+            cardElement.classList.add('back-site');
+        }
+        return cardElement;
     }
 
     /**
@@ -471,93 +465,14 @@ const GameTableView = (() => {
         // Handkarten neu generieren
         if (relativeIndex === 0) {
             State.getHandCards().forEach(card => {
-                const cardFace = _createCardFaceElement(card)
-                _hands[relativeIndex].appendChild(cardFace);
+                _hands[relativeIndex].appendChild(_createCardElement(card));
             });
         }
         else {
             const cardCount = State.getCountHandCards(playerIndex);
             for (let k = 0; k < cardCount; k++) {
-                _hands[relativeIndex].appendChild(_createCardBackElement());
+                _hands[relativeIndex].appendChild(_createCardElement());
             }
-        }
-    }
-
-    /**
-     * Gibt die drei Karten zurück, die sich aktuell mit der Vorderseite in der Schupfzone des Benutzers befinden.
-     *
-     * Wenn nicht drei Karten mit der Vorderseite zu sehen sind, wird ein leeres Array zurückgegeben.
-     *
-     * @returns {Cards}
-     */
-    function _getSchupfCards() {
-        if (_getSchupfCardsCount() !== 3) {
-            return []
-        }
-        let cards = [];
-        const cardElements = _schupfZones[0].querySelectorAll('.schupf-subzone .card-face');
-        cardElements.forEach(cardElement => {
-            cards.push(cardElement.dataset.card.split(",").map(value => parseInt(value, 10)));
-        });
-        return cards;
-    }
-
-    /**
-     * Ermittelt die Anzahl der Karten, die mit der Vorderseite in der Schupfzone des Benutzers liegen.
-     *
-     * @returns {number}
-     */
-    function _getSchupfCardsCount() {
-        return _schupfZones[0].querySelectorAll('.schupf-subzone .card-face').length;
-    }
-
-    /**
-     * Leert die Schupfzone des Spielers.
-     *
-     * @param {number} playerIndex - Der Index des Spielers.
-     */
-    function _clearSchupfZone(playerIndex) {
-        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
-        _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone .card-back, .schupf-subzone .card-face').forEach(cardElement => {
-            cardElement.remove();
-        });
-    }
-
-    /**
-     * Aktualisiert die Schupfzone des angegebenen Spielers.
-     *
-     * @param {number} playerIndex - Der Index des Spielers.
-     */
-    function _updateSchupfZone(playerIndex) {
-        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
-        if (!_receivedSchupfCardsConfirmed && State.getCountHandCards() > 8) {
-            // Noch keine Tauschkarte aufgenommen und mehr als 8 Handkarten aufgenommen (Frage nach großes Tichu ist erfolgt).
-
-            // Handelt es sich um den Benutzer, ausgewählte Karen zurücksetzen, denn beim Schupfen darf nicht mehr als eine Karte selektiert werden.
-            if (relativeIndex === 0 && _getSelectedCardsCount() > 1) {
-                _clearSelectedCards();
-            }
-
-            // Wenn alle Karten noch auf der Hand abgebildet sind, Schupfzone leeren.
-            if (_hands[relativeIndex].children.length === 14) {
-               _clearSchupfZone(playerIndex);
-            }
-
-            // Schupfzone einblenden
-            _schupfZones[relativeIndex].classList.remove('hidden');
-
-            // Falls der Spieler nur noch 11 Karten in der Hand hat, müssen die übrigen drei in der Schupfzone liegen.
-            if (State.getCountHandCards(playerIndex) === 11 && _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone .card-back').length !== 3) {
-                // Drei verdeckte Karten zeigen.
-                _clearSchupfZone(playerIndex);
-                _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone').forEach(subzoneElement => {
-                    subzoneElement.appendChild(_createCardBackElement());
-                });
-            }
-        }
-        else {
-            // Schupfzone ausblenden
-            _schupfZones[relativeIndex].classList.add('hidden');
         }
     }
 
@@ -571,7 +486,7 @@ const GameTableView = (() => {
         const turnElement = document.createElement('div');
         turnElement.className = 'turn';
         cards.forEach(card => {
-            const cardElement = _createCardFaceElement(card);
+            const cardElement = _createCardElement(card);
             turnElement.appendChild(cardElement);
         });
         return turnElement;
@@ -608,6 +523,93 @@ const GameTableView = (() => {
     }
 
     /**
+     * Gibt die drei Karten zurück, die sich aktuell mit der Vorderseite in der Schupfzone des Benutzers befinden.
+     *
+     * Wenn nicht drei Karten mit der Vorderseite zu sehen sind, wird ein leeres Array zurückgegeben.
+     *
+     * @returns {Cards}
+     */
+    function _getSchupfCards() {
+        if (_getSchupfCardsCount() !== 3) {
+            return []
+        }
+        let cards = [];
+        const cardElements = _schupfZones[0].querySelectorAll('.schupf-subzone .card:not(.back-site)');
+        cardElements.forEach(cardElement => {
+            cards.push(cardElement.dataset.card.split(",").map(value => parseInt(value, 10)));
+        });
+        return cards;
+    }
+
+    /**
+     * Ermittelt die Anzahl der Karten, die mit der Vorderseite in der Schupfzone des Benutzers liegen.
+     *
+     * @returns {number}
+     */
+    function _getSchupfCardsCount() {
+        return _schupfZones[0].querySelectorAll('.schupf-subzone .card:not(.back-site)').length;
+    }
+
+    /**
+     * Leert die Schupfzone des Spielers.
+     *
+     * @param {number} playerIndex - Der Index des Spielers.
+     */
+    function _clearSchupfZone(playerIndex) {
+        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
+        _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone .card').forEach(cardElement => {
+            cardElement.remove();
+        });
+    }
+
+    /**
+     * Aktualisiert die Schupfzone des angegebenen Spielers.
+     *
+     * @param {number} playerIndex - Der Index des Spielers.
+     */
+    function _updateSchupfZone(playerIndex) {
+        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
+        if (!_receivedSchupfCardsConfirmed && State.getCountHandCards() > 8) {
+            // Noch keine Tauschkarte aufgenommen und mehr als 8 Handkarten aufgenommen (Frage nach großes Tichu ist erfolgt).
+
+            // Handelt es sich um den Benutzer, ausgewählte Karen zurücksetzen, denn beim Schupfen darf nicht mehr als eine Karte selektiert werden.
+            if (relativeIndex === 0 && _getSelectedCardsCount() > 1) {
+                _clearSelectedCards();
+            }
+
+            // Wenn alle Karten noch auf der Hand abgebildet sind, Schupfzone leeren.
+            if (_hands[relativeIndex].children.length === 14) {
+               _clearSchupfZone(playerIndex);
+            }
+
+            // Schupfzone einblenden
+            _schupfZones[relativeIndex].classList.remove('hidden');
+
+            // Falls der Spieler nur noch 11 Karten in der Hand hat, müssen die übrigen drei in der Schupfzone liegen.
+            if (State.getCountHandCards(playerIndex) === 11) {
+                const receivedCards = State.getReceivedSchupfCards();
+                _clearSchupfZone(playerIndex);
+                if (relativeIndex === 0 && receivedCards ) {
+                    // Der Tausch hat stattgefunden. Der Benutzer muss die erhaltenen Karten bestätigen.
+                    _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
+                        subzoneElement.appendChild(_createCardElement(receivedCards[i]));
+                    });
+                }
+                else {
+                    // Drei verdeckte Karten zeigen.
+                    _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone').forEach(subzoneElement => {
+                        subzoneElement.appendChild(_createCardElement());
+                    });
+                }
+            }
+        }
+        else {
+            // Schupfzone ausblenden
+            _schupfZones[relativeIndex].classList.add('hidden');
+        }
+    }
+
+    /**
      * Aktualisiert das Tichu-Icon des angegebenen Spielers.
      *
      * @param {number} playerIndex - Der Index des Spielers.
@@ -629,10 +631,12 @@ const GameTableView = (() => {
     function _updateTurnIcon() {
         for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
             _turnIcon[relativeIndex].classList.add('hidden');
+            _playerNames[relativeIndex].classList.remove('current-player');
         }
         const relativeIndex = Lib.getRelativePlayerIndex(State.getCurrentTurnIndex());
         if (relativeIndex !== -1) {
             _turnIcon[relativeIndex].classList.remove('hidden');
+            _playerNames[relativeIndex].classList.add('current-player');
         }
     }
 
@@ -910,7 +914,8 @@ const GameTableView = (() => {
     }
 
     function _testFillSchupfZones() {
-        State.setReceivedSchupfCards(null);
+        _receivedSchupfCardsConfirmed = false;
+        State.setReceivedSchupfCards(/** @type Cards */ [[3,1], [2,1], [10,3]]);
         let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
         cards.length = 11;
         State.setHandCards(cards);
@@ -919,6 +924,7 @@ const GameTableView = (() => {
             _updateHand(i);
             _updateSchupfZone(i);
         }
+        _updatePlayButton();
     }
 
     function _testClearSchupfZones() {

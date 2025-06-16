@@ -141,48 +141,40 @@
 
 /* Table Area -> Spieler-Bereich -> Hand -> Handkarten */
 
-.card-face,
-.card-back {
+.card {
     width: 120px;
     height: 180px;
     box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
     border-radius: 10px;
     background-size: 118px 178px; /* ohne Border */
     background-repeat: no-repeat;
-}
-
-.card-face {
     border: 1px solid #333;
 }
 
-.card-back {
+.card.back-site {
     border: 1px solid black;
     background-image: url('../images/cards/back.png');
 }
 
-#hand-top .card-face,
-#hand-top .card-back,
-#hand-left .card-face,
-#hand-left .card-back,
-#hand-right .card-face,
-#hand-right .card-back {
+#hand-top .card,
+#hand-left .card,
+#hand-right .card {
     height: 90px; /* halbe Kartenhöhe */
     margin: 0 -90px; /* Überlappung */
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-#hand-bottom .card-face {
-    height: 180px;
+#hand-bottom .card {
     margin: 0 -95px; /* Überlappung */
     cursor: pointer;
 }
 
-#hand-bottom .card-face.selected {
+#hand-bottom .card.selected {
     transform: translateY(-30px);
 }
 
-#hand-bottom.disabled-hand .card-face {
+#hand-bottom.disabled-hand .card {
     cursor: default;
 }
 
@@ -216,6 +208,11 @@
     transform: rotate(180deg);
 }
 
+.player-name.current-player {
+    color: yellow;
+    font-size: 52px;
+}
+
 /* Table Area -> Spieler-Bereich -> Spieler-Info -> Tichu-Symbol */
 
 .tichu-icon:not(.hidden) {
@@ -238,15 +235,77 @@
 
 /* Table Area -> Spieler-Bereich -> Turn-Symbol */
 
-.turn-icon {
+.turn-icon {  /*todo entfernen*/
+    display: none;
     position: absolute;
     top: 25px;
     width: 130px;
     height: 130px;
-    box-shadow: 0 0 8px 3px gold;
+    box-shadow: 0 0 8px 6px gold;
     border-radius: 50%;
-    background-color: rgba(255, 215, 0, 0.4);
+    background-color: rgb(18 195 118 / 56%);
+    /*background-color: rgba(255, 215, 0, 0.4);*/
     z-index: 9999;
+}
+
+/* Table Area -> Spieler-Bereich -> Stichzone */
+
+.trick-zone {
+    position: absolute;
+    display: flex;
+    /*flex-wrap: nowrap;*/
+    top: 0;
+    width: 900px;
+    height: 180px;
+    justify-content: center;
+    align-items: center;
+    /*transform-origin: center center;*/
+    border: 1px solid white;
+}
+
+.turn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.turn .card {
+    margin: 0 -90px; /* Überlappung */
+}
+
+.turn:nth-child(1) {
+    transform: translateX(0) translateY(0);
+    z-index: 1;
+}
+
+.turn:nth-child(2) {
+    transform: translateX(40px) translateY(-40px);
+    z-index: 2;
+}
+
+.turn:nth-child(3) {
+    transform: translateX(80px) translateY(-80px);
+    z-index: 3;
+}
+
+.turn:nth-child(4) {
+    transform: translateX(120px) translateY(-120px);
+    z-index: 4;
+}
+
+.turn:nth-child(n+5) {
+    transform: translateX(160px) translateY(-160px);
+    z-index: 5;
+}
+
+.turn.last .card { /* highlight */
+    width: 160px;
+    height: 240px;
+    margin: 0 -109px; /* Überlappung */
+    border-radius: 13px;
+    border: 1px solid gold;
+    background-size: 158px 238px;
+    box-shadow: 0 0 12px 3px gold, 0 0 4px gold inset;
 }
 
 /* Table Area -> Spieler-Bereich -> Schupfzonen */
@@ -278,66 +337,6 @@
 .schupf-subzone:empty {
     border: 2px dashed #bbb;
     border-radius: 10px;
-}
-
-/* Table Area -> Spieler-Bereich -> Stichzone */
-
-.trick-zone {
-    position: absolute;
-    display: flex;
-    /*flex-wrap: nowrap;*/
-    top: 0;
-    width: 900px;
-    height: 180px;
-    justify-content: center;
-    align-items: center;
-    /*transform-origin: center center;*/
-    border: 1px solid white;
-}
-
-.turn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.turn .card-face {
-    margin: 0 -90px; /* Überlappung */
-}
-
-.turn:nth-child(1) {
-    transform: translateX(0) translateY(0);
-    z-index: 1;
-}
-
-.turn:nth-child(2) {
-    transform: translateX(40px) translateY(-40px);
-    z-index: 2;
-}
-
-.turn:nth-child(3) {
-    transform: translateX(80px) translateY(-80px);
-    z-index: 3;
-}
-
-.turn:nth-child(4) {
-    transform: translateX(120px) translateY(-120px);
-    z-index: 4;
-}
-
-.turn:nth-child(n+5) {
-    transform: translateX(160px) translateY(-160px);
-    z-index: 5;
-}
-
-.turn.last .card-face { /* highlight */
-    width: 160px;
-    height: 240px;
-    margin: 0 -109px; /* Überlappung */
-    border-radius: 13px;
-    border: 1px solid gold;
-    background-size: 158px 238px;
-    box-shadow: 0 0 12px 3px gold, 0 0 4px gold inset;
 }
 
 /* Table Area -> Wunsch-Symbol */
@@ -411,14 +410,13 @@
 
 /* --- Visuelle Effekte & Animationen --- */
 
-#hand-bottom .card-face.playing,
-.trick-zone .card-face.just-played {
+#hand-bottom .card.playing,
+.trick-zone .card.just-played {
     transition: transform 0.4s ease-out, opacity 0.4s ease-out;
     /* transform: scale(1.05); Beim Spielen leicht vergrößern/anheben */
 }
 
-.card-face.flying,
-.card-back.flying {
+.card.flying {
     position: fixed; /* Wichtig: fixed für Animation relativ zum Viewport, nicht zum skalierten Wrapper */
     transition: all 0.6s cubic-bezier(0.25, 0.75, 0.5, 1);
     z-index: 1000; /* Über fast allem */
