@@ -585,6 +585,9 @@ const GameTableView = (() => {
     function _updatePlayedCards(playerIndex) {
         const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
 
+        // todo Trick und Turn geht durcheinander. CSS und JS korrigieren.
+        // todo der letzte Zug insgesamt größere ziehen, nicht pro Spieler.
+
         // ausgespielte Karten entfernen
         _playedCardsAreas[relativeIndex].replaceChildren();
 
