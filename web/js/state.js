@@ -109,22 +109,39 @@ const State = (() => {
         received_schupf_cards: null
     };
 
+    // /**
+    //  * Initialisiert den Spielzustand.
+    //  *
+    //  * @param {PublicState|null} publicState - Der öffentliche Spielzustand.
+    //  * @param {PrivateState|null} privateState - Der private Spielzustand.
+    //  */
+    // function init(publicState = null, privateState = null) {
+    //     if (publicState) {
+    //         _publicState = publicState;
+    //     }
+    //     if (privateState) {
+    //         _privateState = privateState;
+    //     }
+    // }
+
+    // /**
+    //  * Initialisiert den Spielzustand.
+    //  */
+    // function init() {
+    // }
+
     /**
-     * Initialisiert den Spielzustand.
+     * Übernimmt den serverseitigen Spielzustand.
      *
-     * @param {PublicState|null} publicState - Der öffentliche Spielzustand.
-     * @param {PrivateState|null} privateState - Der private Spielzustand.
+     * @param {PublicState} publicState - Der öffentliche Spielzustand.
+     * @param {PrivateState} privateState - Der private Spielzustand.
      */
-    function init(publicState, privateState) {
-        if (publicState) {
-            _publicState = publicState;
-        }
-        if (privateState) {
-            _privateState = privateState;
-        }
+    function set(publicState, privateState) {
+        _publicState = publicState;
+        _privateState = privateState;
     }
 
-     // öffentlicher Spielzustand
+    // öffentlicher Spielzustand
 
     /** @returns {string} Den Namen des aktuellen Tisches. */
     function getTableName() {
@@ -466,7 +483,7 @@ const State = (() => {
 
     // noinspection JSUnusedGlobalSymbols
     return {
-        init,
+        set,
 
         // öffentlicher Spielzustand
         getTableName,

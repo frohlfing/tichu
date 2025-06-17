@@ -27,7 +27,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0 30px; /* Godot: Seitenabstand */
-    z-index: 10;
+    /*z-index: 100;*/
 }
 
 .top-bar #score-display {
@@ -50,6 +50,7 @@
     cursor: pointer;
     /*transition: background-color 0.2s;*/
     min-height: 80px;
+    width: 230px;
 }
 
 .top-bar .game-button:hover:not(:disabled) {
@@ -178,6 +179,53 @@
     cursor: default;
 }
 
+.hand .card:nth-child(1) {
+    z-index: 1;
+}
+.hand .card:nth-child(2) {
+    z-index: 2;
+}
+.hand .card:nth-child(3) {
+    z-index: 3;
+}
+.hand .card:nth-child(4) {
+    z-index: 4;
+}
+.hand .card:nth-child(5) {
+    z-index: 5;
+}
+.hand .card:nth-child(6) {
+    z-index: 6;
+}
+.hand .card:nth-child(7) {
+    z-index: 7;
+}
+.hand .card:nth-child(8) {
+    z-index: 8;
+}
+.hand .card:nth-child(9) {
+    z-index: 9;
+}
+.hand .card:nth-child(10) {
+    z-index: 10;
+}
+.hand .card:nth-child(11) {
+    z-index: 11;
+}
+.hand .card:nth-child(12) {
+    z-index: 12;
+}
+.hand .card:nth-child(13) {
+    z-index: 13;
+}
+.hand .card:nth-child(14) {
+    z-index: 14;
+}
+
+
+
+
+
 /* Table Area -> Spieler-Bereich -> Spieler-Info */
 
 .player-info {
@@ -231,21 +279,6 @@
     width: 170px;
     height: 170px;
     cursor: pointer;
-}
-
-/* Table Area -> Spieler-Bereich -> Turn-Symbol */
-
-.turn-icon {  /*todo entfernen*/
-    display: none;
-    position: absolute;
-    top: 25px;
-    width: 130px;
-    height: 130px;
-    box-shadow: 0 0 8px 6px gold;
-    border-radius: 50%;
-    background-color: rgb(18 195 118 / 56%);
-    /*background-color: rgba(255, 215, 0, 0.4);*/
-    z-index: 9999;
 }
 
 /* Table Area -> Spieler-Bereich -> Stichzone */
@@ -380,6 +413,7 @@
     align-items: center;
     padding: 0 40px; /* Mehr seitliches Padding für Button-Abstand */
     font-size: 32px;
+    /*z-index: 100;*/
 }
 
 .bottom-controls .game-button {
@@ -419,7 +453,7 @@
 .card.flying {
     position: fixed; /* Wichtig: fixed für Animation relativ zum Viewport, nicht zum skalierten Wrapper */
     transition: all 0.6s cubic-bezier(0.25, 0.75, 0.5, 1);
-    z-index: 1000; /* Über fast allem */
+    z-index: 200;
     /* Die Start left/top Werte müssen von JS gesetzt werden, basierend auf der *Viewport*-Position der Karte */
     /* Und die Ziel left/top Werte ebenfalls relativ zum *Viewport* */
 }

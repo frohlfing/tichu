@@ -1,29 +1,44 @@
-// js/app-controller.js
-
 /**
  * Orchestriert die Anwendung.
  */
 const AppController = (() => {
-    let _activeServerRequest = null; // Die aktuelle Server-Anfrage, auf die eine Antwort erwartet wird.
-    let _isAttemptingReconnect = false; // True, wenn ein automatischer Reconnect-Versuch läuft.
+    /**
+     * Die aktuelle Server-Anfrage, auf die eine Antwort erwartet wird.
+     *
+     * @type {any}
+     */
+    let _activeServerRequest = null;
+
+    /**
+     * True, wenn ein automatischer Reconnect-Versuch läuft.
+     *
+     * @type {boolean}
+     */
+    let _isAttemptingReconnect = false;
 
     /**
      * Initialisiert die Anwendung und alle Kernmodule.
-     * Versucht einen automatischen Reconnect oder zeigt den Login-Screen.
+     *
+     * Wird durch main() aufgerufen.
      */
     function init() {
-        console.log("APP: Initialisiere AppController...");
-        State.init();
-        SoundManager.init();
-        ViewManager.init();
-        Dialogs.init();
-        CardHandler.init();
+        console.log("App: Initialisiere AppController...");
 
-        // Netzwerk-Callbacks setzen
-        Network.setOnOpen(_handleNetworkOpen);
-        Network.setOnMessage(_handleNetworkMessage);
-        Network.setOnError(_handleNetworkError);
-        Network.setOnClose(_handleNetworkClose);
+        //Config
+        //Lib
+        //State.init();
+        //User.init();
+        //EventBus
+        //Network
+        SoundManager.init();
+        Modals.init();
+        ViewManager.init();
+
+        EventBus.on("network:open", _handleNetworkOpen);
+        EventBus.on("network:close", _handleNetworkClose);
+        EventBus.on("network:message", _handleNetworkMessage);
+        EventBus.on("network:error", _handleNetworkError);
+
 
         // für TESTPHASE direkt zum Spieltisch springen!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         ViewManager.toggleView("gameTable");
@@ -36,13 +51,13 @@ const AppController = (() => {
         const paramTableName = urlParams.get('table_name');
 
         if (sessionId && (!paramPlayerName || !paramTableName)) {
-            console.log('APP: Versuche automatischen Reconnect mit Session ID:', sessionId);
+            console.log('App: Versuche automatischen Reconnect mit Session ID:', sessionId);
             _isAttemptingReconnect = true;
             ViewManager.toggleView('loading');
             Network.connect(null, null, sessionId);
         }
         else if (paramPlayerName && paramTableName) {
-            console.log('APP: Login mit URL-Parametern:', paramPlayerName, paramTableName);
+            console.log('App: Login mit URL-Parametern:', paramPlayerName, paramTableName);
             User.setSessionId(null); // Alte Session für expliziten URL-Login löschen
             User.setPlayerName(paramPlayerName); // Lokalen Namen setzen
             User.setTableName(paramTableName);   // Lokalen Tischnamen setzen
@@ -56,17 +71,55 @@ const AppController = (() => {
         }
     }
 
+    // --------------------------------------------------------------------------------------
+    // Network-Ereignisse
+    // --------------------------------------------------------------------------------------
+
     /**
      * Wird aufgerufen, wenn die WebSocket-Verbindung erfolgreich geöffnet wurde.
-     * @param {Event} _event - Das onopen-Event des WebSockets.
+     *
+     * @param {Event} _data - Das onopen-Event des WebSockets.
      */
-    function _handleNetworkOpen(_event) {
-        console.log("APP: Netzwerkverbindung geöffnet.");
+    function _handleNetworkOpen(_data) {
+        console.log("App: Netzwerkverbindung geöffnet.");
         _isAttemptingReconnect = false; // Erfolgreich verbunden (ob Reconnect oder neu)
     }
 
     /**
-     * Verarbeitet eingehende Nachrichten vom WebSocket-Server.
+     * Wird aufgerufen, wenn die WebSocket-Verbindung geschlossen wird.
+     *
+     * @param {CloseEvent} event - Das close-Event des WebSockets.
+     * @param {boolean} wasConnected - True, wenn vor dem Schließen eine Verbindung bestand.
+     */
+    function _handleNetworkClose(event, wasConnected) {
+        console.log(`App: Netzwerkverbindung geschlossen. Code: ${event.code}, Reconnect-Versuch: ${_isAttemptingReconnect}, Grund: ${event.reason}`);
+        const wasReconnectAttempt = _isAttemptingReconnect;
+        _isAttemptingReconnect = false;
+        _activeServerRequest = null;
+
+        if (event.code === 1008) { // Policy Violation
+            console.log("App: Verbindung wegen Policy Violation geschlossen (Code 1008).");
+            User.setSessionId(null);
+            Modals.showErrorToast("Sitzung ungültig oder abgelaufen. Bitte neu anmelden.");
+        } else if (wasConnected && event.code !== 1000 && !wasReconnectAttempt) {
+            Modals.showErrorToast("Verbindung zum Server verloren.");
+        } else if (wasReconnectAttempt && event.code !== 1000 && event.code !== 1008) {
+            console.log("App: Automatischer Reconnect fehlgeschlagen (Verbindung geschlossen).");
+            User.setSessionId(null);
+        }
+
+        if (event.code !== 1000) { // Wenn nicht normal vom Client beendet
+             ViewManager.toggleView('login');
+        } else if (!wasConnected && event.code === 1000) { // Wenn initial abgelehnt
+            ViewManager.toggleView('login');
+        }
+        // Wenn Code 1000 und wasConnected, dann hat der Client `leaveGame` aufgerufen,
+        // was den View schon auf Login setzt.
+    }
+
+    /**
+     * Wird aufgerufen, wenn eine Websocket-Nachricht empfangen wurde.
+     *
      * @param {object} message - Die geparste JSON-Nachricht vom Server.
      */
     function _handleNetworkMessage(message) {
@@ -81,12 +134,33 @@ const AppController = (() => {
                 _handleServerError(message.payload);
                 break;
             case 'pong': // Wird vom Peer direkt beantwortet, hier nur zur Kenntnisnahme.
-                console.log('APP: Pong vom Server empfangen:', message.payload.timestamp);
+                console.log('App: Pong vom Server empfangen:', message.payload.timestamp);
                 break;
             default:
-                console.warn('APP: Unbekannter Nachrichtentyp vom Server:', message.type, message);
+                console.warn('App: Unbekannter Nachrichtentyp vom Server:', message.type, message);
         }
     }
+
+    /**
+     * Wird aufgerufen, wenn ein Fehler bezüglich der Websocket-Verbindung auftritt.
+     *
+     * @param {object} message - Die geparste JSON-Nachricht vom Server.
+     */
+    function _handleNetworkError(errorEvent) {
+        console.error("App: Netzwerkfehler.", errorEvent.name, errorEvent.message);
+        if (!_isAttemptingReconnect) {
+            Modals.showErrorToast(errorEvent.message || "Verbindungsfehler zum Server.");
+        } else {
+            console.log("App: Automatischer Reconnect fehlgeschlagen (Netzwerkfehler).");
+        }
+        _isAttemptingReconnect = false;
+        User.setSessionId(null);
+        ViewManager.toggleView('login');
+    }
+
+    // --------------------------------------------------------------------------------------
+    // Sonstiges
+    // --------------------------------------------------------------------------------------
 
     /**
      * Verarbeitet eine 'request'-Nachricht vom Server.
@@ -96,7 +170,7 @@ const AppController = (() => {
      * @param {{request_id: string, action: string, public_state: PublicState, private_state: PrivateState}} payload - Der Payload der 'request'-Nachricht.
      */
     function _handleServerRequest(payload) {
-        console.log("APP: Server Request empfangen:", payload.action, payload.request_id);
+        console.log("App: Server Request empfangen:", payload.action, payload.request_id);
         State.setPublicState(payload.public_state)
         State.setPrivateState(payload.private_state)
         _activeServerRequest = { id: payload.request_id, action: payload.action, originalPayload: payload };
@@ -104,7 +178,7 @@ const AppController = (() => {
 
         switch (payload.action) {
             case 'announce_grand_tichu':
-                Dialogs.showGrandTichuPrompt(payload.request_id);
+                Modals.showGrandTichuPrompt(payload.request_id);
                 break;
             case 'schupf':
                 ViewManager.toggleView('gameTable');
@@ -115,13 +189,13 @@ const AppController = (() => {
                 GameTableView.enablePlayControls(true, payload.request_id);
                 break;
             case 'wish':
-                Dialogs.showWishDialog(payload.request_id);
+                Modals.showWishDialog(payload.request_id);
                 break;
             case 'give_dragon_away':
-                Dialogs.showDragonDialog(payload.request_id);
+                Modals.showDragonDialog(payload.request_id);
                 break;
             default:
-                console.warn('APP: Unbehandelte Server-Request-Aktion:', payload.action);
+                console.warn('App: Unbehandelte Server-Request-Aktion:', payload.action);
         }
     }
 
@@ -133,7 +207,7 @@ const AppController = (() => {
      * @param {object} payload - Der Payload der 'notification'-Nachricht. Enthält `event` und `context`.
      */
     function _handleServerNotification(payload) {
-        console.log(`APP: Server Notification: '${payload.event}'`, payload.context || {});
+        console.log(`App: Server Notification: '${payload.event}'`, payload.context || {});
         const eventName = payload.event;
         const context = payload.context || {};
 
@@ -189,14 +263,14 @@ const AppController = (() => {
         }
         else if (eventName === 'game_started' || eventName === 'round_started') { // Auch bei round_started
             _activeServerRequest = null;
-            Dialogs.closeAllDialogs();
+            Modals.closeAllDialogs();
             CardHandler.clearSelectedCards();
             CardHandler.disableSchupfMode();
             ViewManager.toggleView('gameTable'); // Bei round_started sind wir schon am Tisch
         }
 
         ViewManager.renderCurrentView();
-        Dialogs.handleNotification(eventName, context);
+        Modals.handleNotification(eventName, context);
         if (ViewManager.getCurrentViewName() === 'gameTable' && typeof GameTableView.handleNotification === 'function') {
             GameTableView.handleNotification(eventName, context);
         }
@@ -222,14 +296,14 @@ const AppController = (() => {
             }
 
             if (interrupt) {
-                console.log(`APP: Aktiver Request '${_activeServerRequest.action}' (ID: ${_activeServerRequest.id}) durch Event '${eventName}' unterbrochen.`);
+                console.log(`App: Aktiver Request '${_activeServerRequest.action}' (ID: ${_activeServerRequest.id}) durch Event '${eventName}' unterbrochen.`);
                 if (_activeServerRequest.action === 'play') {
                     GameTableView.enablePlayControls(false);
                 }
                 if (_activeServerRequest.action === 'schupf') {
                     CardHandler.disableSchupfMode();
                 }
-                Dialogs.closeDialogByRequestId(_activeServerRequest.id);
+                Modals.closeDialogByRequestId(_activeServerRequest.id);
                 _activeServerRequest = null;
             }
         }
@@ -243,8 +317,8 @@ const AppController = (() => {
      * @param {object} payload - Der Payload der 'error'-Nachricht (enthält message, code, context).
      */
     function _handleServerError(payload) {
-        console.error(`APP: Server Fehler ${payload.code}: ${payload.message}`, payload.context || {});
-        Dialogs.showErrorToast(`Fehler ${payload.code}: ${payload.message}`);
+        console.error(`App: Server Fehler ${payload.code}: ${payload.message}`, payload.context || {});
+        Modals.showErrorToast(`Fehler ${payload.code}: ${payload.message}`);
 
         // Spezifische Fehlerbehandlung für Session-Probleme
         if (payload.code === ErrorCode.SESSION_EXPIRED || payload.code === ErrorCode.SESSION_NOT_FOUND) {
@@ -256,13 +330,13 @@ const AppController = (() => {
         // Wenn der Fehler sich auf einen aktiven Request bezieht, diesen ggf. behandeln
         const requestIdOnError = payload.context ? payload.context.request_id : null;
         if (_activeServerRequest && _activeServerRequest.id === requestIdOnError) {
-            console.log("APP: Aktiver Request ist aufgrund eines Server-Fehlers fehlgeschlagen:", _activeServerRequest.id, payload.code);
+            console.log("App: Aktiver Request ist aufgrund eines Server-Fehlers fehlgeschlagen:", _activeServerRequest.id, payload.code);
             // Hier könnte man entscheiden, ob der User die Aktion wiederholen darf.
             // Für kritische Fehler oder wenn der Request veraltet ist, sollte er zurückgesetzt werden.
             if (payload.code === ErrorCode.REQUEST_OBSOLETE || payload.code === ErrorCode.INVALID_ACTION) {
                 if (_activeServerRequest.action === 'play') GameTableView.enablePlayControls(false); // Aktion nicht mehr gültig
                 if (_activeServerRequest.action === 'schupf') CardHandler.disableSchupfMode();
-                Dialogs.closeDialogByRequestId(_activeServerRequest.id);
+                Modals.closeDialogByRequestId(_activeServerRequest.id);
                 _activeServerRequest = null;
             } else {
                 // Bei anderen Fehlern könnte man dem User erlauben, es erneut zu versuchen,
@@ -276,49 +350,6 @@ const AppController = (() => {
         }
     }
 
-    function _handleNetworkError(errorEvent) {
-        console.error("APP: Netzwerkfehler.", errorEvent.name, errorEvent.message);
-        if (!_isAttemptingReconnect) {
-            Dialogs.showErrorToast(errorEvent.message || "Verbindungsfehler zum Server.");
-        } else {
-            console.log("APP: Automatischer Reconnect fehlgeschlagen (Netzwerkfehler).");
-        }
-        _isAttemptingReconnect = false;
-        User.setSessionId(null);
-        ViewManager.toggleView('login');
-    }
-
-    /**
-     * Wird aufgerufen, wenn die WebSocket-Verbindung geschlossen wird.
-     * @param {CloseEvent} event - Das close-Event des WebSockets.
-     * @param {boolean} wasConnected - True, wenn vor dem Schließen eine Verbindung bestand.
-     */
-    function _handleNetworkClose(event, wasConnected) {
-        console.log(`APP: Netzwerkverbindung geschlossen. Code: ${event.code}, Reconnect-Versuch: ${_isAttemptingReconnect}, Grund: ${event.reason}`);
-        const wasReconnectAttempt = _isAttemptingReconnect;
-        _isAttemptingReconnect = false;
-        _activeServerRequest = null;
-
-        if (event.code === 1008) { // Policy Violation
-            console.log("APP: Verbindung wegen Policy Violation geschlossen (Code 1008).");
-            User.setSessionId(null);
-            Dialogs.showErrorToast("Sitzung ungültig oder abgelaufen. Bitte neu anmelden.");
-        } else if (wasConnected && event.code !== 1000 && !wasReconnectAttempt) {
-            Dialogs.showErrorToast("Verbindung zum Server verloren.");
-        } else if (wasReconnectAttempt && event.code !== 1000 && event.code !== 1008) {
-            console.log("APP: Automatischer Reconnect fehlgeschlagen (Verbindung geschlossen).");
-            User.setSessionId(null);
-        }
-
-        if (event.code !== 1000) { // Wenn nicht normal vom Client beendet
-             ViewManager.toggleView('login');
-        } else if (!wasConnected && event.code === 1000) { // Wenn initial abgelehnt
-            ViewManager.toggleView('login');
-        }
-        // Wenn Code 1000 und wasConnected, dann hat der Client `leaveGame` aufgerufen,
-        // was den View schon auf Login setzt.
-    }
-
     // --- Öffentliche Methoden für UI-Interaktionen ---
 
     /**
@@ -327,7 +358,7 @@ const AppController = (() => {
      * @param {string} tableName - Der eingegebene Tischname.
      */
     function attemptLogin(playerName, tableName) {
-        console.log("APP: Login-Versuch GESTARTET für:", playerName, tableName);
+        console.log("App: Login-Versuch GESTARTET für:", playerName, tableName);
         User.setPlayerName(playerName); // Lokale Namen setzen
         User.setTableName(tableName);
         User.setSessionId(null);
@@ -347,9 +378,9 @@ const AppController = (() => {
             _activeServerRequest = null; // Anfrage gilt als beantwortet
         }
         else {
-            console.warn("APP: Versuch, auf eine nicht (mehr) aktive Anfrage zu antworten:", requestId);
+            console.warn("App: Versuch, auf eine nicht (mehr) aktive Anfrage zu antworten:", requestId);
             // Ggf. Fehlermeldung an UI, dass die Aktion veraltet ist.
-            Dialogs.showErrorToast("Aktion ist veraltet oder wurde bereits beantwortet.");
+            Modals.showErrorToast("Aktion ist veraltet oder wurde bereits beantwortet.");
         }
     }
 
@@ -366,7 +397,7 @@ const AppController = (() => {
      * Behandelt das Verlassen des Spiels/Tisches.
      */
     function leaveGame() {
-        console.log("APP: Verlasse Spiel/Tisch.");
+        console.log("App: Verlasse Spiel/Tisch.");
         AppController.sendProactiveMessage('leave');
         Network.disconnect(); // Führt zu _handleNetworkClose mit Code 1000
         ViewManager.toggleView('login'); // Explizit zum Login, da User Aktion

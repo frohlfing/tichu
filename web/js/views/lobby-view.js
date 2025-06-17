@@ -50,22 +50,22 @@ const LobbyView = (() => {
      * Initialisiert den Lobby-Bildschirm.
      */
     function init() {
-        _startGameButton.addEventListener('click', _startGameButton_click);
-        _leaveLobbyButton.addEventListener('click', _leaveLobbyButton_click);
+        _startGameButton.addEventListener('click', _handleStartGameButton_click);
+        _leaveLobbyButton.addEventListener('click', _handleLeaveLobbyButton_click);
     }
 
     /**
-     * Event-Handler für den "Spiel starten"-Button.
+     * Ereignishändler für den "Spiel starten"-Button.
      */
-    function _startGameButton_click() {
+    function _handleStartGameButton_click() {
         SoundManager.playSound('buttonClick');
         AppController.sendProactiveMessage('start_game');
     }
 
     /**
-     * Event-Handler für den "Beenden"-Button.
+     * Ereignishändler für den "Beenden"-Button.
      */
-    function _leaveLobbyButton_click() {
+    function _handleLeaveLobbyButton_click() {
         SoundManager.playSound('buttonClick');
         AppController.leaveGame();
     }

@@ -23,7 +23,7 @@ class CombinationType(enum.IntEnum):  # todo überall konsequent verwenden
     PAIR = 2  # Paar
     TRIPLE = 3  # Drilling
     STAIR = 4  # Treppe
-    FULLHOUSE = 5  # Full House
+    FULLHOUSE = 5  # Fullhouse
     STREET = 6  # Straße
     BOMB = 7  # Vierer-Bombe oder Farbbombe
 

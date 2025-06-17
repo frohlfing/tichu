@@ -11,14 +11,12 @@ from src.common.rand import Random
 # from scipy.special import comb
 # from scipy.stats import hypergeom
 # noinspection PyProtectedMember
-from src.lib.cards import _cardlabels, _cardlabels_index
 from src.lib.cards import *
 # noinspection PyProtectedMember
 from src.lib.combinations import *
 from src.lib.prob.statistic import calc_statistic
 # noinspection PyProtectedMember
 from src.lib.prob.prob_hi import possible_hands_hi, prob_of_higher_combi
-from src.lib.prob import *
 from timeit import timeit
 import time
 import asyncio
@@ -33,17 +31,6 @@ import asyncio
 # Cards
 #
 
-def benchmark_list_index():
-    s = 'Ph GK BD RB RZ R9 R8 R7 R6 B5 G4 G3 B2 Ma'
-    ar = s.split(' ')
-
-    print(f'cardlabels.index(): {timeit(lambda: [_cardlabels.index(c) for c in ar], number=1000000):5.3f} µs per loop')
-    # 4.654µs per loop
-
-    print(f'cardlabels_index[]: {timeit(lambda: [_cardlabels_index[c] for c in ar], number=1000000):5.3f} µs per loop')
-    # 0.728µs per loop
-
-
 def benchmark_get_figure():
     cards = parse_cards('Ph R8 R9 BZ RB RD RK')
     print(f'get_figure(): {timeit(lambda: get_figure(cards, 10, shift_phoenix=True), number=1000000):5.3f} µs per loop')
@@ -52,7 +39,6 @@ def benchmark_get_figure():
     cards = parse_cards('Ph R8 R9 BZ RB RD RK')
     print(f'get_figure(): {timeit(lambda: get_figure(cards, 10), number=1000000):5.3f} µs per loop')
     # 2.167 µs per loop
-
 
 #
 # Combinations
@@ -170,7 +156,7 @@ def hypergeometric_benchmark(N=56, n=14, M=4, k=3):
 
 def possible_hands_benchmark():
     cards = parse_cards("BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7 G6 G4 G3 Ph Hu Dr Ma")  # 20
-    #cards = parse_cards("B2 B3 B4 B5 B9 BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7 G6 G4 G3 Ph Hu Dr Ma")  # 25
+    #cards = parse_cards("B2 B3 B4 B5 B9 BK BD BB BZ B9 RK RD RB RZ R9 S2 S3 G7 G6 G4 G3 Ph Hu Dr Ma") # 25
     number = 1
     for figure in [(CombinationType.SINGLE, 1, 8), (CombinationType.PAIR, 2, 8), (CombinationType.TRIPLE, 3, 8), (CombinationType.STAIR, 6, 8), (CombinationType.FULLHOUSE, 5, 8), (CombinationType.STREET, 6, 8), (CombinationType.BOMB, 4, 8), (CombinationType.BOMB, 6, 8)]:
         for k in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]:
@@ -216,7 +202,7 @@ def calc_statistic_benchmark():
     combis = build_combinations(hand)
     number_of_cards = [len(hand), len(hidden), 0, 0]
     unplayed_cards = hand + hidden
-    t = timeit(lambda: calc_statistic(0, hand, combis, number_of_cards, (0, 0, 0), unplayed_cards), number=number) * 1000 / number
+    t = timeit(lambda: calc_statistic(0, hand, combis, number_of_cards, (CombinationType.PASS, 0, 0), unplayed_cards), number=number) * 1000 / number
     print(f"calc_statistic: {t:.6f} ms")
     #calc_statistic: 0.198650 ms
 
@@ -263,16 +249,6 @@ def validate_figure1(figure: tuple) -> bool:
         return 5 <= m <= 14 and m <= r <= 14
     return t == CombinationType.BOMB and 5 <= m <= 14 and m + 1 <= r <= 14  # Farbbombe
 
-def validate_figure2(figure: tuple) -> bool:
-    return figure in _figures
-
-def validate_figure_benchmark():
-    number = 1000
-    t = timeit(lambda: validate_figure1((7, 13, 14)), number=number) * 1000 / number
-    print(f"validate_figure1: {t:.6f} ms")
-    t = timeit(lambda: validate_figure2((7, 13, 14)), number=number) * 1000 / number
-    print(f"validate_figure2: {t:.6f} ms")
-
 
 async def async_func():
     return 4711
@@ -300,6 +276,7 @@ def sync_vs_async_benchmark():
 
     # Benchmark für asynchrone Funktion
     async def run_async():
+        # noinspection PyShadowingNames
         start = time.time()
         for _ in range(number):
             await async_func()
@@ -321,6 +298,7 @@ def sync_vs_async_benchmark():
 
     # Benchmark für asynchrone Funktion
     async def run_async2():
+        # noinspection PyShadowingNames
         start = time.time()
         for _ in range(number):
             await async_func2()

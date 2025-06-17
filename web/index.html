@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="css/login-view.css">
     <link rel="stylesheet" href="css/lobby-view.css">
     <link rel="stylesheet" href="css/game-table-view.css">
-    <link rel="stylesheet" href="css/dialogs.css">
+    <link rel="stylesheet" href="css/modals.css">
     <link rel="icon" href="images/icon.png" type="image/png">
 </head>
 <body>
@@ -54,11 +54,10 @@
             <div class="top-bar">
                 <button id="exit-button" class="game-button">Beenden</button>
                 <div id="score-display">0000 : 0000</div>
-                <button id="options-button" class="game-button">Optionen</button>
+                <button id="settings-button" class="game-button">Settings</button>
             </div>
             <div class="table-area">
                 <div id="player-area-top" class="player-area">
-                    <img id="turn-icon-top" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                     <div id="trick-zone-top" class="trick-zone"></div>
                     <div id="schupf-zone-top" class="schupf-zone hidden">
                         <div class="schupf-subzone"></div>
@@ -72,7 +71,6 @@
                     <div id="hand-top" class="hand"></div>
                 </div>
                 <div id="player-area-left" class="player-area">
-                    <img id="turn-icon-left" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                     <div id="trick-zone-left" class="trick-zone"></div>
                     <div id="schupf-zone-left" class="schupf-zone hidden">
                         <div class="schupf-subzone"></div>
@@ -86,7 +84,6 @@
                     <div id="hand-left" class="hand"></div>
                 </div>
                 <div id="player-area-right" class="player-area">
-                    <img id="turn-icon-right" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                     <div id="trick-zone-right" class="trick-zone"></div>
                     <div id="schupf-zone-right" class="schupf-zone hidden">
                         <div class="schupf-subzone"></div>
@@ -100,7 +97,6 @@
                     <div id="hand-right" class="hand"></div>
                 </div>
                 <div id="player-area-bottom" class="player-area">
-                    <img id="turn-icon-bottom" src="images/turn-icon.png" class="turn-icon hidden" alt="*">
                     <div id="trick-zone-bottom" class="trick-zone"></div>
                     <div id="schupf-zone-bottom" class="schupf-zone hidden">
                         <div class="schupf-subzone"></div>
@@ -125,47 +121,49 @@
             </div>
         </div>
 
-        <!-- Dialoge (modal) -->
-        <div id="wish-dialog" class="dialog hidden">
-            <h3>Wunsch</h3>
-            <div id="wish-options">
-                <button data-value="2">2</button>
-                <button data-value="3">3</button>
-                <button data-value="4">4</button>
-                <button data-value="5">5</button>
-                <button data-value="6">6</button>
-                <button data-value="7">7</button>
-                <button data-value="8">8</button>
-                <button data-value="9">9</button>
-                <button data-value="10">10</button>
-                <button data-value="11">J</button>
-                <button data-value="12">Q</button>
-                <button data-value="13">K</button>
-                <button data-value="14">A</button>
+        <!-- Modale Dialoge und Pop-up-Fenster -->
+        <div id="modals">
+            <div id="wish-dialog" class="modal dialog hidden">
+                <h3>Wunsch</h3>
+                <div id="wish-options">
+                    <button data-value="2">2</button>
+                    <button data-value="3">3</button>
+                    <button data-value="4">4</button>
+                    <button data-value="5">5</button>
+                    <button data-value="6">6</button>
+                    <button data-value="7">7</button>
+                    <button data-value="8">8</button>
+                    <button data-value="9">9</button>
+                    <button data-value="10">10</button>
+                    <button data-value="11">J</button>
+                    <button data-value="12">Q</button>
+                    <button data-value="13">K</button>
+                    <button data-value="14">A</button>
+                </div>
             </div>
-        </div>
-        <div id="dragon-dialog" class="dialog hidden">
-            <h3>Drachen verschenken</h3>
-            <button data-value="3">Links</button>
-            <button data-value="1">Rechts</button>
-        </div>
-        <div id="round-over-dialog" class="dialog hidden">
-            <h3>Runde beendet</h3>
-            <p id="round-over-text">Ergebnis: 000 : 000</p>
-            <button>Ok</button>
-        </div>
-        <div id="game-over-dialog" class="dialog hidden">
-            <h3>Partie beendet</h3>
-            <p id="game-over-text">Ergebnis: 0000 : 0000</p>
-            <button>Zur Lobby</button>
-        </div>
-        <div id="exit-dialog" class="dialog hidden">
-            <h3>Wirklich beenden?</h3>
-            <button data-value="1">Ja</button>
-            <button data-value="0">Nein</button>
-        </div>
-        <div id="error-toast" class="dialog hidden">
-            <div id="error-toast-message"></div>
+            <div id="dragon-dialog" class="modal dialog hidden">
+                <h3>Drachen verschenken</h3>
+                <button data-value="3">Links</button>
+                <button data-value="1">Rechts</button>
+            </div>
+            <div id="round-over-dialog" class="modal dialog hidden">
+                <h3>Runde beendet</h3>
+                <p id="round-over-text">Ergebnis: 000 : 000</p>
+                <button>Ok</button>
+            </div>
+            <div id="game-over-dialog" class="modal dialog hidden">
+                <h3>Partie beendet</h3>
+                <p id="game-over-text">Ergebnis: 0000 : 0000</p>
+                <button>Zur Lobby</button>
+            </div>
+            <div id="exit-dialog" class="modal dialog hidden">
+                <h3>Wirklich beenden?</h3>
+                <button data-value="1">Ja</button>
+                <button data-value="0">Nein</button>
+            </div>
+            <div id="error-toast" class="modal toast hidden">
+                <div id="error-toast-message"></div>
+            </div>
         </div>
 
     </div> <!-- Ende #game-wrapper -->
@@ -232,13 +230,12 @@
     <!-- Module (Reihenfolge ist wichtig!) -->
     <script src="js/config.js"></script>
     <script src="js/lib.js"></script>
-    <script src="js/event-bus.js"></script>
-    <script src="js/sound-manager.js"></script>
     <script src="js/state.js"></script>
     <script src="js/user.js"></script>
+    <script src="js/event-bus.js"></script>
     <script src="js/network.js"></script>
-    <script src="js/card-handler.js"></script>
-    <script src="js/dialogs.js"></script>
+    <script src="js/sound-manager.js"></script>
+    <script src="js/modals.js"></script>
     <script src="js/views/loading-view.js"></script>
     <script src="js/views/login-view.js"></script>
     <script src="js/views/lobby-view.js"></script>

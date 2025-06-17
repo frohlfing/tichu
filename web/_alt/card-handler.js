@@ -160,7 +160,7 @@ const CardHandler = (() => {
             _renderSchupfZones();
         }
         else {
-            Dialogs.showErrorToast("Alle 3 Schupf-Plätze sind bereits belegt.");
+            Modals.showErrorToast("Alle 3 Schupf-Plätze sind bereits belegt.");
         }
     }
 
@@ -228,7 +228,7 @@ const CardHandler = (() => {
             return;
         }
         if (_schupfCards.some(card => card === null)) {
-            Dialogs.showErrorToast("Bitte 3 Karten zum Schupfen auswählen.");
+            Modals.showErrorToast("Bitte 3 Karten zum Schupfen auswählen.");
             return;
         }
 

@@ -38,15 +38,15 @@ const LoginView = (() => {
      * Setzt den Event-Listener für das Absenden des Login-Formulars.
      */
     function init() {
-        _loginForm.addEventListener('submit', _loginForm_submit);
+        _loginForm.addEventListener('submit', _handleLoginFormSubmit);
     }
 
     /**
-     * Dieser Event-Handler wird aufgerufen, wenn das Login-Formular abgeschickt werden soll.
+     * Dieser Ereignishändler wird aufgerufen, wenn das Login-Formular abgeschickt werden soll.
      *
      * @param {Event} event - Das Submit-Event.
      */
-    function _loginForm_submit(event) {
+    function _handleLoginFormSubmit(event) {
         event.preventDefault(); // Standard-Formularabsendung verhindern
         const playerName = _playerNameInput.value.trim();
         const tableName = _tableNameInput.value.trim();
@@ -56,7 +56,7 @@ const LoginView = (() => {
             AppController.attemptLogin(playerName, tableName);
         }
         else {
-            Dialogs.showErrorToast("Bitte Spielername und Tischname eingeben.");
+            Modals.showErrorToast("Bitte Spielername und Tischname eingeben.");
             if (!playerName) {
                 _playerNameInput.focus();
             }

@@ -1,7 +1,7 @@
 /**
  * Enum für Fehlercodes.
  */
-const ErrorCode = { // Singular
+const ErrorCode = {
     UNKNOWN_ERROR: 100,
     INVALID_MESSAGE: 101,
     UNKNOWN_CARD: 102,
@@ -23,21 +23,25 @@ const ErrorCode = { // Singular
 /**
  * Kartenfarben.
  */
-const CardSuits = {
-    SPECIAL: 0, // Hund, Mahjong, Phönix, Drache
-    SWORD: 1,   // Schwert/Schwarz
-    PAGODA: 2,  // Pagode/Blau
-    JADE: 3,    // Jade/Grün
-    STAR: 4     // Stern/Rot
+const CardSuit = {
+    // Sonderkarte (0)
+    SPECIAL: 0, 
+    // Schwarz/Schwert (1)
+    SWORD: 1,   
+    // Blau/Pagode (2)
+    PAGODA: 2,  
+    // Grün/Jade (3)
+    JADE: 3,    
+    // Rot/Stern (4)
+    STAR: 4
 };
 
-// todo CardSuits hier verwenden. Auch in cards.py einführen. Grund: Farbe ist ein kategorialer Typ.
 /**
  * Type-Alias für eine Karte mit Wert und Farbe.
  *
- * @typedef {[number, number]} Card
+ * @typedef {[number, CardSuit]} Card
  * @property {number} 0 - Wert der Karte (0 = Hund, 1 = Mahjong, 2 bis 10, 11 = Bube, 12 = Dame, 13 = König, 14 = As, 15 = Drache, 16 = Phönix)
- * @property {number} 1 - Farbe der Karte (0 = Sonderkarte, 1 = Schwarz/Schwert, 2 = Blau/Pagode, 3 = Grün/Jade, 4 = Rot/Stern)
+ * @property {CardSuit} 1 - Farbe der Karte (0 = Sonderkarte, 1 = Schwarz/Schwert, 2 = Blau/Pagode, 3 = Grün/Jade, 4 = Rot/Stern)
  */
 
 /**
@@ -105,25 +109,24 @@ const Lib = (() => {
      *
      * @type {Cards}
      */
-    const _deck = [
-        // schwarz blau  grün    rot
-        [0, 0],                              // Hund
-        [1, 0],                              // Mahjong
-        [2, 1], [2, 2], [2, 3], [2, 4],      // 2
-        [3, 1], [3, 2], [3, 3], [3, 4],      // 3
-        [4, 1], [4, 2], [4, 3], [4, 4],      // 4
-        [5, 1], [5, 2], [5, 3], [5, 4],      // 5
-        [6, 1], [6, 2], [6, 3], [6, 4],      // 6
-        [7, 1], [7, 2], [7, 3], [7, 4],      // 7
-        [8, 1], [8, 2], [8, 3], [8, 4],      // 8
-        [9, 1], [9, 2], [9, 3], [9, 4],      // 9
-        [10, 1], [10, 2], [10, 3], [10, 4],  // 10
-        [11, 1], [11, 2], [11, 3], [11, 4],  // Bube
-        [12, 1], [12, 2], [12, 3], [12, 4],  // Dame
-        [13, 1], [13, 2], [13, 3], [13, 4],  // König
-        [14, 1], [14, 2], [14, 3], [14, 4],  // As
-        [15, 0],                             // Drache
-        [16, 0]                              // Phönix
+    const _deck = /** @type Cards */ [
+        [0, CardSuit.SPECIAL],                                                                    // Hund
+        [1, CardSuit.SPECIAL],                                                                    // Mahjong
+        [2, CardSuit.SWORD],  [2, CardSuit.PAGODA],  [2, CardSuit.JADE],  [2, CardSuit.STAR],  // 2
+        [3, CardSuit.SWORD],  [3, CardSuit.PAGODA],  [3, CardSuit.JADE],  [3, CardSuit.STAR],  // 3
+        [4, CardSuit.SWORD],  [4, CardSuit.PAGODA],  [4, CardSuit.JADE],  [4, CardSuit.STAR],  // 4
+        [5, CardSuit.SWORD],  [5, CardSuit.PAGODA],  [5, CardSuit.JADE],  [5, CardSuit.STAR],  // 5
+        [6, CardSuit.SWORD],  [6, CardSuit.PAGODA],  [6, CardSuit.JADE],  [6, CardSuit.STAR],  // 6
+        [7, CardSuit.SWORD],  [7, CardSuit.PAGODA],  [7, CardSuit.JADE],  [7, CardSuit.STAR],  // 7
+        [8, CardSuit.SWORD],  [8, CardSuit.PAGODA],  [8, CardSuit.JADE],  [8, CardSuit.STAR],  // 8
+        [9, CardSuit.SWORD],  [9, CardSuit.PAGODA],  [9, CardSuit.JADE],  [9, CardSuit.STAR],  // 9
+        [10, CardSuit.SWORD], [10, CardSuit.PAGODA], [10, CardSuit.JADE], [10, CardSuit.STAR], // 10
+        [11, CardSuit.SWORD], [11, CardSuit.PAGODA], [11, CardSuit.JADE], [11, CardSuit.STAR], // Bube
+        [12, CardSuit.SWORD], [12, CardSuit.PAGODA], [12, CardSuit.JADE], [12, CardSuit.STAR], // Dame
+        [13, CardSuit.SWORD], [13, CardSuit.PAGODA], [13, CardSuit.JADE], [13, CardSuit.STAR], // König
+        [14, CardSuit.SWORD], [14, CardSuit.PAGODA], [14, CardSuit.JADE], [14, CardSuit.STAR], // As
+        [15, CardSuit.SPECIAL],                                                                   // Drache
+        [16, CardSuit.SPECIAL]                                                                    // Phönix
     ];
 
     /**

@@ -7,30 +7,30 @@ const User = (() => {
      *
      * @type {string}
      */
-    let _playerName = "";
+    let _playerName = localStorage.getItem("tichuPlayerName") || "";
 
     /**
      * Der Tischname, den der Benutzer beim Login eingegeben oder gespeichert hat.
      *
      * @type {string}
      */
-    let _tableName = "";
+    let _tableName = localStorage.getItem("tichuTableName") || "";
 
     /**
      * Die aktuelle Session-ID des Spielers.
      *
      * @type {string | null}
      */
-    let _sessionId = null;
+    let _sessionId = localStorage.getItem("tichuSessionId") || null;
 
-    /**
-     * Initialisiert den Zustand, lädt Werte aus dem LocalStorage.
-     */
-    function init() {
-        _playerName = localStorage.getItem("tichuPlayerName") || "";
-        _tableName = localStorage.getItem("tichuTableName") || "";
-        _sessionId = localStorage.getItem("tichuSessionId") || null;
-    }
+    // /**
+    //  * Initialisiert den Zustand, lädt Werte aus dem LocalStorage.
+    //  */
+    // function init() {
+    //     _playerName = localStorage.getItem("tichuPlayerName") || "";
+    //     _tableName = localStorage.getItem("tichuTableName") || "";
+    //     _sessionId = localStorage.getItem("tichuSessionId") || null;
+    // }
 
     /** @returns {string} Den lokal gespeicherten/eingegebenen Spielernamen. */
     function getPlayerName() {
@@ -80,7 +80,6 @@ const User = (() => {
     }
 
     return {
-        init,
         getPlayerName, setPlayerName,
         getTableName, setTableName,
         getSessionId, setSessionId,

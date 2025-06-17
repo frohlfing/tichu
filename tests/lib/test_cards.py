@@ -1,6 +1,6 @@
 import pytest
 # noinspection PyProtectedMember
-from src.lib.cards import _deck_index, _cardlabels, _cardlabels_index
+from src.lib.cards import _card_labels
 from src.lib.cards import *
 
 # --- Tests für parse_cards ---
@@ -18,7 +18,7 @@ def test_parse_cards_empty():
 
 def test_parse_cards_invalid_label():
     """Testet das Parsen eines Strings mit ungültigem Label."""
-    with pytest.raises(KeyError): # Erwartet einen Fehler, da das Label nicht existiert
+    with pytest.raises(ValueError): # Erwartet einen Fehler, da das Label nicht existiert
         parse_cards("S2 XX G4")
 
 # --- Tests für stringify_cards ---
@@ -110,8 +110,6 @@ def test_cards_to_vector_simple():
     """Testet die Umwandlung in den vollständigen Karten-Vektor."""
     hand: Cards = [(2, 1), CARD_MAH] # Schwarz 2, MahJong
     # Erwarteter Vektor (Länge 56): Nur an den Indizes für S2 und MahJong ist eine 1.
-    # Index von S2 in _deck_index: 2
-    # Index von Ma in _deck_index: 1
     expected_vector = [0] * 56
     expected_vector[1] = 1 # MahJong
     expected_vector[2] = 1 # Schwarz 2
@@ -122,7 +120,7 @@ def test_cards_to_vector_simple():
 # -------------------------------------------------------
 
 def test_parse_and_stringify_cards():
-    assert len(deck) == len(_deck_index) == len(_cardlabels) == len(_cardlabels_index) == 56, "es gibt 56 Karten"
+    assert len(deck) == len(_card_labels) == 56, "es gibt 56 Karten"
     assert list(deck) == parse_cards(stringify_cards(deck)), "Index nicht OK"
 
 def test_ranks_to_vector():

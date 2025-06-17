@@ -2,21 +2,32 @@
 Dieses Modul definiert das Kartendeck und Eigenschaften der Spielkarten.
 """
 
-__all__ = "Card", "Cards", \
+__all__ = "CardSuit", "Card", "Cards", \
     "CARD_DOG", "CARD_MAH", "CARD_DRA", "CARD_PHO", \
     "deck", \
     "validate_card", "validate_cards", "parse_card", "parse_cards", "stringify_card", "stringify_cards", \
     "ranks_to_vector", "cards_to_vector", \
     "is_wish_in", "sum_card_points", "other_cards",
 
+import enum
 from typing import Tuple, List, Iterable
 
 # -----------------------------------------------------------------------------
 # Spielkarten
 # -----------------------------------------------------------------------------
 
+class CardSuit(enum.IntEnum):  # todo überall konsequent verwenden (ist ein kategorialer Typ)
+    """
+    Kartenfarben.
+    """
+    SPECIAL = 0  #  Sonderkarte (Hund, Mahjong, Drache, Phönix)
+    SWORD = 1  # Schwarz/Schwert
+    PAGODA = 2 # Blau/Pagode
+    JADE = 3  # Grün/Jade
+    STAR = 4  # Rot/Stern
+
 # Type-Alias für eine Karte
-Card = Tuple[int, int]  # Wert, Farbe   # todo überall konsequent verwenden
+Card = Tuple[int, CardSuit]  # Wert, Farbe   # todo überall konsequent verwenden
 
 # Type-Alias für mehrere Karten
 Cards = List[Card]  # todo überall konsequent verwenden
@@ -32,50 +43,27 @@ CARD_PHO = (16, 0)  # Dragon
 # Werte:  0 = Hund, 1 = Mahjong, 2 bis 10, 11 = Bube, 12 = Dame, 13 = König, 14 = As, 15 = Drache, 16 = Phönix
 # Farben: 0 = Sonderkarte, 1 = Schwarz/Schwert, 2 = Blau/Pagode, 3 = Grün/Jade, 4 = Rot/Stern
 deck = (  # const
-    # schwarz blau  grün    rot
-    (0, 0),                              # Hund
-    (1, 0),                              # Mahjong
-    (2, 1), (2, 2), (2, 3), (2, 4),      # 2
-    (3, 1), (3, 2), (3, 3), (3, 4),      # 3
-    (4, 1), (4, 2), (4, 3), (4, 4),      # 4
-    (5, 1), (5, 2), (5, 3), (5, 4),      # 5
-    (6, 1), (6, 2), (6, 3), (6, 4),      # 6
-    (7, 1), (7, 2), (7, 3), (7, 4),      # 7
-    (8, 1), (8, 2), (8, 3), (8, 4),      # 8
-    (9, 1), (9, 2), (9, 3), (9, 4),      # 9
-    (10, 1), (10, 2), (10, 3), (10, 4),  # 10
-    (11, 1), (11, 2), (11, 3), (11, 4),  # Bube
-    (12, 1), (12, 2), (12, 3), (12, 4),  # Dame
-    (13, 1), (13, 2), (13, 3), (13, 4),  # König
-    (14, 1), (14, 2), (14, 3), (14, 4),  # As
-    (15, 0),                             # Drache
-    (16, 0),                             # Phönix
+    (0, CardSuit.SPECIAL),  # Hund
+    (1, CardSuit.SPECIAL),  # Mahjong
+    (2, CardSuit.SWORD), (2, CardSuit.PAGODA), (2, CardSuit.JADE), (2, CardSuit.STAR),  # 2
+    (3, CardSuit.SWORD), (3, CardSuit.PAGODA), (3, CardSuit.JADE), (3, CardSuit.STAR),  # 3
+    (4, CardSuit.SWORD), (4, CardSuit.PAGODA), (4, CardSuit.JADE), (4, CardSuit.STAR),  # 4
+    (5, CardSuit.SWORD), (5, CardSuit.PAGODA), (5, CardSuit.JADE), (5, CardSuit.STAR),  # 5
+    (6, CardSuit.SWORD), (6, CardSuit.PAGODA), (6, CardSuit.JADE), (6, CardSuit.STAR),  # 6
+    (7, CardSuit.SWORD), (7, CardSuit.PAGODA), (7, CardSuit.JADE), (7, CardSuit.STAR),  # 7
+    (8, CardSuit.SWORD), (8, CardSuit.PAGODA), (8, CardSuit.JADE), (8, CardSuit.STAR),  # 8
+    (9, CardSuit.SWORD), (9, CardSuit.PAGODA), (9, CardSuit.JADE), (9, CardSuit.STAR),  # 9
+    (10, CardSuit.SWORD), (10, CardSuit.PAGODA), (10, CardSuit.JADE), (10, CardSuit.STAR),  # 10
+    (11, CardSuit.SWORD), (11, CardSuit.PAGODA), (11, CardSuit.JADE), (11, CardSuit.STAR),  # Bube
+    (12, CardSuit.SWORD), (12, CardSuit.PAGODA), (12, CardSuit.JADE), (12, CardSuit.STAR),  # Dame
+    (13, CardSuit.SWORD), (13, CardSuit.PAGODA), (13, CardSuit.JADE), (13, CardSuit.STAR),  # König
+    (14, CardSuit.SWORD), (14, CardSuit.PAGODA), (14, CardSuit.JADE), (14, CardSuit.STAR),  # As
+    (15, CardSuit.SPECIAL),  # Drache
+    (16, CardSuit.SPECIAL),                                                                    # Phönix
 )
 
-# wie deck.index(card), aber 6 mal schneller!
-_deck_index = {  # const
-    # schwarz    blau         grün        rot
-    (0, 0): 0,                                           # Hund
-    (1, 0): 1,                                           # MahJong
-    (2, 1): 2, (2, 2): 3, (2, 3): 4, (2, 4): 5,          # 2
-    (3, 1): 6, (3, 2): 7, (3, 3): 8, (3, 4): 9,          # 3
-    (4, 1): 10, (4, 2): 11, (4, 3): 12, (4, 4): 13,      # 4
-    (5, 1): 14, (5, 2): 15, (5, 3): 16, (5, 4): 17,      # 5
-    (6, 1): 18, (6, 2): 19, (6, 3): 20, (6, 4): 21,      # 6
-    (7, 1): 22, (7, 2): 23, (7, 3): 24, (7, 4): 25,      # 7
-    (8, 1): 26, (8, 2): 27, (8, 3): 28, (8, 4): 29,      # 8
-    (9, 1): 30, (9, 2): 31, (9, 3): 32, (9, 4): 33,      # 9
-    (10, 1): 34, (10, 2): 35, (10, 3): 36, (10, 4): 37,  # Zehn
-    (11, 1): 38, (11, 2): 39, (11, 3): 40, (11, 4): 41,  # Bube
-    (12, 1): 42, (12, 2): 43, (12, 3): 44, (12, 4): 45,  # Dame
-    (13, 1): 46, (13, 2): 47, (13, 3): 48, (13, 4): 49,  # König
-    (14, 1): 50, (14, 2): 51, (14, 3): 52, (14, 4): 53,  # As
-    (15, 0): 54,                                         # Drache
-    (16, 0): 55,                                         # Phönix
-}
-
 # Kartenlabel
-_cardlabels = (
+_card_labels = (
     # sw   bl    gr    rt
     "Hu",                    # Hund
     "Ma",                    # MahJong
@@ -95,28 +83,6 @@ _cardlabels = (
     "Dr",                    # Drache
     "Ph",                    # Phönix
 )
-
-# wie cardlabels.index(label), aber 6 mal schneller
-_cardlabels_index = {
-    # schwarz blau      grün      rot
-    "Hu": 0,                                 # Hund
-    "Ma": 1,                                 # MahJong
-    "S2": 2, "B2": 3, "G2": 4, "R2": 5,      # 2
-    "S3": 6, "B3": 7, "G3": 8, "R3": 9,      # 3
-    "S4": 10, "B4": 11, "G4": 12, "R4": 13,  # 4
-    "S5": 14, "B5": 15, "G5": 16, "R5": 17,  # 5
-    "S6": 18, "B6": 19, "G6": 20, "R6": 21,  # 6
-    "S7": 22, "B7": 23, "G7": 24, "R7": 25,  # 7
-    "S8": 26, "B8": 27, "G8": 28, "R8": 29,  # 8
-    "S9": 30, "B9": 31, "G9": 32, "R9": 33,  # 9
-    "SZ": 34, "BZ": 35, "GZ": 36, "RZ": 37,  # 10
-    "SB": 38, "BB": 39, "GB": 40, "RB": 41,  # Bube
-    "SD": 42, "BD": 43, "GD": 44, "RD": 45,  # Dame
-    "SK": 46, "BK": 47, "GK": 48, "RK": 49,  # König
-    "SA": 50, "BA": 51, "GA": 52, "RA": 53,  # As
-    "Dr": 54,                                # Drache
-    "Ph": 55,                                # Phönix
-}
 
 # Kartenwert → Punkte
 _card_points = (
@@ -144,14 +110,14 @@ _card_points = (
 # s: z.B. "R6"
 # todo UnitTest hinzufügen
 def validate_card(s: str) -> bool:
-   return s in _cardlabels
+   return s in _card_labels
 
 
 # Validiert die Karten im String
 # s: z.B. "R6 B5 G4"
 # todo UnitTest hinzufügen
 def validate_cards(s: str) -> bool:
-    return all(c in _cardlabels for c in s.split(" ")) if s else True
+    return all(c in _card_labels for c in s.split(" ")) if s else True
 
 
 # todo UnitTest hinzufügen
@@ -162,7 +128,7 @@ def parse_card(label: str) -> Card:
    :param label: Das Label der Karte, z.B. "R6".
    :return: Die geparste Karte (mit Wert und Farbe).
    """
-   return deck[_cardlabels_index[label]]
+   return deck[_card_labels.index(label)]
 
 
 def parse_cards(labels: str) -> Cards:
@@ -172,7 +138,7 @@ def parse_cards(labels: str) -> Cards:
     :param labels: Die Labels der Karten mit Leerzeichen getrennt, z.B. "R6 B5 G4".
     :return: Liste der Karten.
     """
-    return [deck[_cardlabels_index[label]] for label in labels.split(" ")] if labels else []
+    return [deck[_card_labels.index(label)] for label in labels.split(" ")] if labels else []
 
 
 # todo UnitTest hinzufügen
@@ -183,7 +149,7 @@ def stringify_card(card: Card) -> str:
     :param card: Die Karte (Wert und Farbe), z.B. (8,3).
     :return: Das Label der Karte.
     """
-    return _cardlabels[_deck_index[card]]
+    return _card_labels[deck.index(card)]
 
 
 # Formatiert Karten als lesbaren String
@@ -195,7 +161,7 @@ def stringify_cards(cards: Iterable[Card]) -> str:
     :param cards: Die Karten , z.B. [[8,3], [2,4], [0,1]].
     :return: Die Labels der Karte mit Leerzeichen getrennt.
     """
-    return " ".join([_cardlabels[_deck_index[c]] for c in cards])
+    return " ".join([_card_labels[deck.index(card)] for card in cards])
 
 
 # Zählt die Anzahl der Karten je Rang.

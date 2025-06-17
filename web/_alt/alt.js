@@ -179,7 +179,7 @@
         // Komplexere Animation, hier nur ein Platzhalter
         // Man bräuchte Startpositionen (Hände der Spieler) und Zielpositionen (Schupf-Zonen des Empfängers)
         // und dann Karten-Elemente zwischen diesen animieren.
-        Dialogs.showErrorToast("Schupf-Animation noch nicht implementiert.");
+        Modals.showErrorToast("Schupf-Animation noch nicht implementiert.");
     }
     function _testTakeSchupfCards() {
         // Simuliere Aufnahme: Eigene Schupfzonen leeren, Kartenanzahl erhöhen
@@ -187,7 +187,7 @@
         _testDealOwnCards(); // Simuliert neue Hand (vereinfacht)
         _schupfZones.classList.add('hidden');
         CardHandler.disableSchupfMode();
-        Dialogs.showErrorToast("Schupfkarten 'aufgenommen' (Hand neu gemischt).");
+        Modals.showErrorToast("Schupfkarten 'aufgenommen' (Hand neu gemischt).");
     }
 
 
@@ -434,8 +434,8 @@ function render() {
     }
 
 
-    // Dialogs -------------------------------------
-    /** @let {string|null} _activeDialogRequestId - Speichert die Request-ID des aktuell offenen Dialogs. */
+    // Modals -------------------------------------
+    /** @let {string|null} _activeDialogRequestId - Speichert die Request-ID des aktuell offenen Modals. */
     let _activeDialogRequestId = null;
 
     /**
@@ -554,7 +554,7 @@ function render() {
             _tichuButton.disabled = true; // Deaktivieren nach Ansage
         }
         else {
-            Dialogs.showErrorToast("Tichu kann jetzt nicht angesagt werden.");
+            Modals.showErrorToast("Tichu kann jetzt nicht angesagt werden.");
         }
     }
 
@@ -569,6 +569,6 @@ function render() {
             clearSelectedCards();
         }
         else {
-            Dialogs.showErrorToast("Ungültige Auswahl für eine Bombe.");
+            Modals.showErrorToast("Ungültige Auswahl für eine Bombe.");
         }
     }

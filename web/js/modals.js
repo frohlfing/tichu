@@ -1,7 +1,7 @@
 /**
  * Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
  */
-const Dialogs = (() => {
+const Modals = (() => {
 
     // --------------------------------------------------------------------------------------
     // DOM-Elemente
@@ -29,7 +29,7 @@ const Dialogs = (() => {
     const _roundOverDialog = document.getElementById('round-over-dialog');
 
     /**
-     * Ergebnistext des RoundOver-Dialogs
+     * Ergebnistext des RoundOver-Modals
      *
      * @type {HTMLElement}
      */
@@ -43,7 +43,7 @@ const Dialogs = (() => {
     const _gameOverDialog = document.getElementById('game-over-dialog');
 
     /**
-     * Ergebnistext des GameOver-Dialogs
+     * Ergebnistext des GameOver-Modals
      *
      * @type {HTMLElement}
      */
@@ -62,6 +62,12 @@ const Dialogs = (() => {
      * @type {HTMLElement}
      */
     const _errorToast = document.getElementById('error-toast');
+
+    /**
+     * Fehlermeldung des Fehler-Pop-ups.
+     *
+     * @type {HTMLElement}
+     */
     const _errorToastMessage = document.getElementById('error-toast-message');
 
     // --------------------------------------------------------------------------------------
@@ -69,24 +75,35 @@ const Dialogs = (() => {
     // --------------------------------------------------------------------------------------
 
     /**
-     * Initialisiert das Dialogs-Modul.
-     * Setzt Event-Listener für die Buttons in den Dialogen.
+     * Initialisiert das Modals-Modul.
      */
     function init() {
-        console.log("DIALOGS: Initialisiere Dialogs...");
-        // Event-Listener einrichten
-        _wishDialog.addEventListener('click', _wishDialogSubmit);
-        _dragonDialog.addEventListener('click', _dragonDialogSubmit);
-        _roundOverDialog.addEventListener('click', _roundOverDialogSubmit);
-        _gameOverDialog.addEventListener('click', _gameOverDialogSubmit);
-        _exitDialog.addEventListener('click', _exitDialogSubmit);
+        console.log("Modals: Initialisiere modale Fenster...");
+        // Ereignishändler einrichten
+        _wishDialog.addEventListener('click', _handleWishDialogClick);
+        _dragonDialog.addEventListener('click', _handleDragonDialogClick);
+        _roundOverDialog.addEventListener('click', _handleRoundOverDialogClick);
+        _gameOverDialog.addEventListener('click', _handleGameOverDialogClick);
+        _exitDialog.addEventListener('click', _handleExitDialogClick);
+        _errorToast.addEventListener('click', _handleErrorToastClick);
+    }
+
+    /**
+     * Versteckt alle Dialoge.
+     */
+    function hideDialogs() {
+        _hideModal(_wishDialog);
+        _hideModal(_dragonDialog);
+        _hideModal(_roundOverDialog);
+        _hideModal(_gameOverDialog);
+        _hideModal(_exitDialog);
     }
 
     /**
      * Zeigt den Wish-Dialog an.
      */
     function showWishDialog() {
-        _showDialog(_wishDialog);
+        _showModal(_wishDialog);
     }
 
     /**
@@ -94,21 +111,22 @@ const Dialogs = (() => {
      *
      * @param {PointerEvent} event
      */
-    function _wishDialogSubmit(event) {
-        if (event.target.tagName !== "BUTTON") {
+    function _handleWishDialogClick(event) {
+        if (typeof event.target.dataset.value === "undefined") {
             return;
         }
         SoundManager.playSound('buttonClick');
-        _hideDialog(_wishDialog);
-        const wishValue = parseInt(event.target.dataset.value, 10);
-        console.log(`_wishDialog_submit: ${wishValue}`);
+        _hideModal(_wishDialog);
+        const value = parseInt(event.target.dataset.value, 10);
+        EventBus.emit("wishDialog:select", value);
+        console.log(`Modals: _wishDialog: ${value}`);
     }
 
     /**
      * Zeigt den Dragon-Dialog an.
      */
     function showDragonDialog() {
-        _showDialog(_dragonDialog);
+        _showModal(_dragonDialog);
     }
 
     /**
@@ -116,14 +134,15 @@ const Dialogs = (() => {
      *
      * @param {PointerEvent} event
      */
-    function _dragonDialogSubmit(event) {
-        if (event.target.tagName !== "BUTTON") {
+    function _handleDragonDialogClick(event) {
+        if (typeof event.target.dataset.value === "undefined") {
             return;
         }
         SoundManager.playSound('buttonClick');
-        _hideDialog(_dragonDialog);
-        const dragonRecipient = parseInt(event.target.dataset.value, 10);
-        console.log(`_dragonDialog_submit: ${dragonRecipient}`);
+        _hideModal(_dragonDialog);
+        const value = parseInt(event.target.dataset.value, 10);
+        EventBus.emit("dragonDialog:select", value);
+        console.log(`Modals: _dragonDialog: ${value}`);
     }
 
     /**
@@ -133,7 +152,7 @@ const Dialogs = (() => {
      */
     function showRoundOverDialog(text) {
         _roundOverText.textContent = text;
-        _showDialog(_roundOverDialog);
+        _showModal(_roundOverDialog);
     }
 
     /**
@@ -141,12 +160,14 @@ const Dialogs = (() => {
      *
      * @param {PointerEvent} event
      */
-    function _roundOverDialogSubmit(event) {
+    function _handleRoundOverDialogClick(event) {
         if (event.target.tagName !== "BUTTON") {
             return;
         }
         SoundManager.playSound('buttonClick');
-        _hideDialog(_roundOverDialog);
+        _hideModal(_roundOverDialog);
+        EventBus.emit("roundOverDialog:click");
+        console.log("Modals: _roundOverDialog");
     }
 
     /**
@@ -156,7 +177,7 @@ const Dialogs = (() => {
      */
     function showGameOverDialog(text) {
         _gameOverText.textContent = text;
-        _showDialog(_gameOverDialog);
+        _showModal(_gameOverDialog);
     }
 
     /**
@@ -164,19 +185,21 @@ const Dialogs = (() => {
      *
      * @param {PointerEvent} event
      */
-    function _gameOverDialogSubmit(event) {
+    function _handleGameOverDialogClick(event) {
         if (event.target.tagName !== "BUTTON") {
             return;
         }
         SoundManager.playSound('buttonClick');
-        _hideDialog(_gameOverDialog);
+        _hideModal(_gameOverDialog);
+        EventBus.emit("gameOverDialog:click");
+        console.log("Modals: _gameOverDialog");
     }
 
     /**
      * Zeigt den Exit-Dialog an.
      */
     function showExitDialog() {
-        _showDialog(_exitDialog);
+        _showModal(_exitDialog);
     }
 
     /**
@@ -184,14 +207,15 @@ const Dialogs = (() => {
      *
      * @param {PointerEvent} event
      */
-    function _exitDialogSubmit(event) {
-        if (event.target.tagName !== "BUTTON") {
+    function _handleExitDialogClick(event) {
+        if (typeof event.target.dataset.value === "undefined") {
             return;
         }
         SoundManager.playSound('buttonClick');
-        _hideDialog(_exitDialog);
-        const ok = parseInt(event.target.dataset.value, 10) === 1;
-        console.log(`_exitDialogSubmit: ${ok ? "ok" : "cancel"}`);
+        _hideModal(_exitDialog);
+        const value = parseInt(event.target.dataset.value, 10);
+        EventBus.emit("exitDialog:select", value);
+        console.log(`Modals: _exitDialog: ${value}`);
     }
 
     /**
@@ -211,12 +235,26 @@ const Dialogs = (() => {
         if (_toastTimeoutId) {
             clearTimeout(_toastTimeoutId); // alten Timeout löschen, falls Toast schnell hintereinander kommt
         }
-        _errorToastMessage.textContent = message;
-        _errorToast.classList.remove('hidden');
         _toastTimeoutId = setTimeout(() => {
-            _errorToast.classList.add('hidden');
             _toastTimeoutId = null;
+            _hideModal(_errorToast);
         }, Config.TOAST_TIMEOUT);
+        _errorToastMessage.textContent = message;
+        _showModal(_errorToast);
+    }
+
+    /**
+     * Ereignishändler für den Fehler-Popup.
+     *
+     * @param {PointerEvent} _event
+     */
+    function _handleErrorToastClick(_event) {
+        if (_toastTimeoutId) {
+            clearTimeout(_toastTimeoutId);
+            _toastTimeoutId = null;
+        }
+        _hideModal(_errorToast);
+        console.log("Modals: _handleErrorToastClick");
     }
 
     // --------------------------------------------------------------------------------------
@@ -224,48 +262,28 @@ const Dialogs = (() => {
     // --------------------------------------------------------------------------------------
 
     /**
-     * Zeigt einen Dialog an.
+     * Zeigt ein modales Fenster an.
      *
-     * @param {HTMLElement} dialogElement - Das DOM-Element des Dialogs.
+     * @param {HTMLElement} modalElement - Das DOM-Element des Fensters.
      */
-    function _showDialog(dialogElement) {
-        _closeAllDialogs(); // alle anderen Dialoge schließen, um Überlappung zu vermeiden
-        // if (requestId) {
-        //     _activeDialogRequestId = requestId;
-        //     dialogElement.dataset.requestId = requestId; // Speichere Request-ID am Element
-        // }
-        dialogElement.classList.remove('hidden');
-        SoundManager.playSound('dialogOpen'); // Generischer Sound für Dialog öffnen (falls vorhanden)
+    function _showModal(modalElement) {
+        //hideDialogs();
+        modalElement.classList.remove('hidden');
     }
 
     /**
-     * Versteckt einen Dialog.
+     * Versteckt ein modales Fenster.
      *
-     * @param {HTMLElement} dialogElement - Das DOM-Element des Dialogs.
+     * @param {HTMLElement} modalElement - Das DOM-Element des Fensters.
      */
-    function _hideDialog(dialogElement) {
-        dialogElement.classList.add('hidden');
-        // if (dialogElement.dataset.requestId) {
-        //     delete dialogElement.dataset.requestId;
-        // }
-        // if (_activeDialogRequestId && dialogElement.dataset.requestId === _activeDialogRequestId) {
-        //     _activeDialogRequestId = null;
-        // }
+    function _hideModal(modalElement) {
+        modalElement.classList.add('hidden');
     }
 
-    /**
-     * Versteckt alle Dialoge.
-     */
-    function _closeAllDialogs() {
-        _hideDialog(_wishDialog);
-        _hideDialog(_dragonDialog);
-        _hideDialog(_roundOverDialog);
-        _hideDialog(_gameOverDialog);
-        _hideDialog(_exitDialog);
-    }
-
+    // noinspection JSUnusedGlobalSymbols
     return {
         init,
+        hideDialogs,
         showWishDialog,
         showDragonDialog,
         showRoundOverDialog,

@@ -28,7 +28,7 @@ const GameTableView = (() => {
      *
      * @type {HTMLButtonElement}
      */
-    const _optionsButton = document.getElementById('options-button');
+    const _settingsButton = document.getElementById('settings-button');
 
     /**
      * Die Anzeige des Punktestandes.
@@ -83,18 +83,6 @@ const GameTableView = (() => {
         document.getElementById('trick-zone-right'),
         document.getElementById('trick-zone-top'),
         document.getElementById('trick-zone-left'),
-    ];
-
-    /**
-     * Das Turn-Symbol.
-     *
-     * @type {HTMLElement[]}
-     */
-    const _turnIcon = [
-        document.getElementById('turn-icon-bottom'),
-        document.getElementById('turn-icon-right'),
-        document.getElementById('turn-icon-top'),
-        document.getElementById('turn-icon-left'),
     ];
 
     /**
@@ -186,17 +174,24 @@ const GameTableView = (() => {
     function init() {
         console.log("GAMETABLEVIEW: Initialisiere GameTableView (minimal)...");
 
-        // Event-Listener einrichten
-        _exitButton.addEventListener('click', _exitButtonClick);
-        _optionsButton.addEventListener('click', _optionsButtonClick);
-        _passButton.addEventListener('click', _passButtonClick);
-        _tichuButton.addEventListener('click', _tichuButtonClick);
-        _playButton.addEventListener('click', _playButtonClick);
-        _bombIcon.addEventListener('click', _bombIconClick);
-        _hands[0].addEventListener('click', _handClick);
-        _schupfZones[0].addEventListener('click', _schupfZoneClick);
+        // Ereignishändler für den Event-Bus einrichten
+        EventBus.on("wishDialog:select", _handleWishDialogSelect);
+        EventBus.on("dragonDialog:select", _handleDragonDialogSelect);
+        EventBus.on("roundOverDialog:click", _handleRoundOverDialogClick);
+        EventBus.on("gameOverDialog:click", _handleGameOverDialogClick);
+        EventBus.on("exitDialog:select", _handleExitDialogSelect);
 
-        // Event-Listener für Test-Buttons todo: nach Testphase entfernen
+        // Ereignishändler für die Controls einrichten
+        _exitButton.addEventListener('click', _handleExitButtonClick);
+        _settingsButton.addEventListener('click', _handleSettingsButtonClick);
+        _passButton.addEventListener('click', _handlePassButtonClick);
+        _tichuButton.addEventListener('click', _handleTichuButtonClick);
+        _playButton.addEventListener('click', _handlePlayButtonClick);
+        _bombIcon.addEventListener('click', _handleBombIconClick);
+        _hands[0].addEventListener('click', _handleHandClick);
+        _schupfZones[0].addEventListener('click', _handleSchupfZoneClick);
+
+        // Ereignishändler für Test-Buttons todo: nach Testphase entfernen
         document.getElementById('test-controls-container').addEventListener('click', _handleTestButtonClick);
     }
 
@@ -213,7 +208,7 @@ const GameTableView = (() => {
             _updateTichuIcon(playerIndex);
         }
         _updateTrick();
-        _updateTurnIcon();
+        _updateCurrentPlayer();
         _updateWishIcon();
         _updateBombIcon();
         _updatePassButton();
@@ -246,23 +241,68 @@ const GameTableView = (() => {
     }
 
     // --------------------------------------------------------------------------------------
-    // Ereignishändler
+    // Ereignishändler für den Event-Bus
+    // --------------------------------------------------------------------------------------
+
+    /**
+     * Ereignishändler für den Wish-Dialog.
+     *
+     * @param {number} value - Der gewählte Kartenwert (2 bis 14).
+     */
+    function _handleWishDialogSelect(value) {
+        console.log("GameTableView: _handleWishDialogSelect", value);
+    }
+
+    /**
+     * Ereignishändler für den Dragon-Dialog.
+     *
+     * @param {number} value - Der gewählte Gegner (1 == rechts, 3 == links).
+     */
+    function _handleDragonDialogSelect(value) {
+        console.log("GameTableView: _handleDragonDialogSelect", value);
+    }
+
+    /**
+     * Ereignishändler für den RoundOver-Dialog.
+     */
+    function _handleRoundOverDialogClick() {
+        console.log("GameTableView: _handleRoundOverDialogClick");
+    }
+
+    /**
+     * Ereignishändler für den GameOver-Dialog.
+     */
+    function _handleGameOverDialogClick() {
+        console.log("GameTableView: _handleGameOverDialogClick");
+    }
+
+    /**
+     * Ereignishändler für den Exit-Dialog.
+     *
+     * @param {number} value - Der gedrückte Button (1 == ja, 0 == nein).
+     */
+    function _handleExitDialogSelect(value) {
+        console.log("GameTableView: _handleExitDialogSelect", value);
+    }
+
+    // --------------------------------------------------------------------------------------
+    // Ereignishändler für Controls
     // --------------------------------------------------------------------------------------
 
     /**
      * Ereignishändler für das Anklicken auf den "Beenden"-Button.
      */
-    function _exitButtonClick() {
+    function _handleExitButtonClick() {
         SoundManager.playSound('buttonClick');
-        Dialogs.showExitDialog();
+        Modals.showExitDialog();
     }
 
     /**
      * Ereignishändler für das Anklicken auf den "Optionen"-Button.
      */
-    function _optionsButtonClick() {
+    function _handleSettingsButtonClick() {
         SoundManager.playSound('buttonClick');
-        Dialogs.showErrorToast("Optionen sind noch nicht implementiert.");
+        Modals.showErrorToast("Einstellungen sind noch nicht implementiert.");
     }
 
     /**
@@ -270,7 +310,7 @@ const GameTableView = (() => {
      *
      * @param {PointerEvent} event
      */
-    function _handClick(event) {
+    function _handleHandClick(event) {
         if (!event.target.classList.contains('card')) {
             return; // es wurde auf keine Karte geklickt (sondern irgendwo anders innerhalb der Hand)
         }
@@ -296,7 +336,7 @@ const GameTableView = (() => {
      *
      * @param {PointerEvent} event
      */
-    function _schupfZoneClick(event) {
+    function _handleSchupfZoneClick(event) {
         if (event.target.classList.contains('schupf-subzone')) {
             // es wurde auf eine leere Ablagefläche geklickt
             const subzoneElement = event.target;
@@ -344,33 +384,33 @@ const GameTableView = (() => {
     /**
      * Ereignishändler für das Anklicken auf das Bomben-Icon.
      */
-    function _bombIconClick() {
+    function _handleBombIconClick() {
         SoundManager.playSound('buttonClick');
-        console.log("_bombIconClick");
+        console.log("_handleBombIconClick");
     }
 
     /**
      * Ereignishändler für das Anklicken auf den "Passen"-Button.
      */
-    function _passButtonClick() {
+    function _handlePassButtonClick() {
         SoundManager.playSound('buttonClick');
-        console.log("_passButtonClick");
+        console.log("_handlePassButtonClick");
     }
 
     /**
      * Ereignishändler für das Anklicken auf den "Tichu"-Button.
      */
-    function _tichuButtonClick() {
+    function _handleTichuButtonClick() {
         SoundManager.playSound('buttonClick');
-        console.log("_tichuButtonClick");
+        console.log("_handleTichuButtonClick");
     }
 
     /**
      * Ereignishändler für das Anklicken auf den "Spielen"-Button.
      */
-    function _playButtonClick() {
+    function _handlePlayButtonClick() {
         SoundManager.playSound('buttonClick');
-        console.log("_playButtonClick");
+        console.log("_handlePlayButtonClick");
     }
 
     // --------------------------------------------------------------------------------------
@@ -628,14 +668,12 @@ const GameTableView = (() => {
     /**
      * Bewegt das Turn-Symbol zum aktuellen Spieler.
      */
-    function _updateTurnIcon() {
+    function _updateCurrentPlayer() {
         for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
-            _turnIcon[relativeIndex].classList.add('hidden');
             _playerNames[relativeIndex].classList.remove('current-player');
         }
         const relativeIndex = Lib.getRelativePlayerIndex(State.getCurrentTurnIndex());
         if (relativeIndex !== -1) {
-            _turnIcon[relativeIndex].classList.remove('hidden');
             _playerNames[relativeIndex].classList.add('current-player');
         }
     }
@@ -871,7 +909,7 @@ const GameTableView = (() => {
         _testCurrentTurnIndex = (_testCurrentTurnIndex + 1) % 4;
         State.setCurrentTurnIndex(_testCurrentTurnIndex);
         _canPlay = true;
-        _updateTurnIcon();
+        _updateCurrentPlayer();
     }
 
     function _testDealCards() {
@@ -972,23 +1010,23 @@ const GameTableView = (() => {
     }
 
     function _testShowDragonDialog() {
-        Dialogs.showDragonDialog();
+        Modals.showDragonDialog();
     }
 
     function _testShowWishDialog() {
-        Dialogs.showWishDialog();
+        Modals.showWishDialog();
     }
 
     function _testShowRoundOverDialog() {
-        Dialogs.showRoundOverDialog("Weiter geht's");
+        Modals.showRoundOverDialog("Weiter geht's");
     }
 
     function _testShowGameOverDialog() {
-        Dialogs.showGameOverDialog("Wir : Gegner<br\>1020 : 300<br\>400:200");
+        Modals.showGameOverDialog("Wir : Gegner<br\>1020 : 300<br\>400:200");
     }
 
     function _testShowErrorToast() {
-        Dialogs.showErrorToast("Dies ist eine Fehlermeldung!");
+        Modals.showErrorToast("Dies ist eine Fehlermeldung!");
     }
 
     // noinspection JSUnusedGlobalSymbols

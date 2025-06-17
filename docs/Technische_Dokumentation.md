@@ -529,7 +529,7 @@ Mit dem Klick auf die Bombe holt man sich nur das Zugrecht, es wird nicht direkt
 *   `User`: Datencontainer für die Benutzerdaten.
 *   `Network`: Verantwortlich für die WebSocket-Verbindung und Kommunikation mit dem Server.
 *   `CardHandler`: Verantwortlich für die Interaktionslogik mit den Karten.
-*   `Dialogs`: Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
+*   `Modals`: Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
 *   `LoadingView`: Anzeige und Interaktion der Ladeanzeige. 
 *   `LoginView`: Anzeige und Interaktion des Login-Bildschirms. 
 *   `LobbyView`: Anzeige und Interaktion der Lobby. 
@@ -687,13 +687,13 @@ web/fonts/architect-s-daughter
 
 ## A2. Exceptions
 
-| Error                    | Beschreibung                                                                                                                      |
-|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| PlayerInteractionError-  | Basisklasse für Fehler, die während der Interaktion mit einem Spieler auftreten können.                                           |
-| ClientDisconnectedError- | Wird ausgelöst, wenn versucht wird, eine Aktion mit einem Client auszuführen, der nicht (mehr) verbunden ist.                     |
-| PlayerInterruptError -   | Wird ausgelöst, wenn eine wartende Spieleraktion durch ein Engine-internes Ereignis (z.B. Tichu-Ansage, Bombe) unterbrochen wird. |
-| PlayerTimeoutError -     | Wird ausgelöst, wenn ein Spieler nicht innerhalb des vorgegebenen Zeitlimits auf eine Anfrage reagiert hat.                       |
-| PlayerResponseError-     | Wird ausgelöst, wenn ein Spieler eine ungültige, unerwartete oder nicht zum Kontext passende Antwort auf eine Anfrage sendet.     |
+| Error                   | Beschreibung                                                                                                                      |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| PlayerInteractionError  | Basisklasse für Fehler, die während der Interaktion mit einem Spieler auftreten können.                                           |
+| ClientDisconnectedError | Wird ausgelöst, wenn versucht wird, eine Aktion mit einem Client auszuführen, der nicht (mehr) verbunden ist.                     |
+| PlayerInterruptError    | Wird ausgelöst, wenn eine wartende Spieleraktion durch ein Engine-internes Ereignis (z.B. Tichu-Ansage, Bombe) unterbrochen wird. |
+| PlayerTimeoutError      | Wird ausgelöst, wenn ein Spieler nicht innerhalb des vorgegebenen Zeitlimits auf eine Anfrage reagiert hat.                       |
+| PlayerResponseError     | Wird ausgelöst, wenn ein Spieler eine ungültige, unerwartete oder nicht zum Kontext passende Antwort auf eine Anfrage sendet.     |
 
 ## A3. Versionsnummer
 
