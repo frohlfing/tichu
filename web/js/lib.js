@@ -2,22 +2,97 @@
  * Enum für Fehlercodes.
  */
 const ErrorCode = {
+    // Ein unbekannter Fehler ist aufgetreten.
     UNKNOWN_ERROR: 100,
+    // Ungültiges Nachrichtenformat empfangen.
     INVALID_MESSAGE: 101,
+    // Mindestens eine Karte ist unbekannt.
     UNKNOWN_CARD: 102,
+    // Mindestens eine Karte ist keine Handkarte.
     NOT_HAND_CARD: 103,
+    // Server wurde heruntergefahren.
     SERVER_DOWN: 106,
+    // Deine Session ist abgelaufen. Bitte neu verbinden.
     SESSION_EXPIRED: 200,
+    // Session nicht gefunden.
     SESSION_NOT_FOUND: 201,
     // Ungültige Aktion
     INVALID_ACTION: 300,
+    // Keine wartende Anfrage für die Antwort gefunden.
     INVALID_RESPONSE: 301,
+    // Mindestens zwei Karten sind identisch.
     NOT_UNIQUE_CARDS: 302,
+    // Die Karten bilden keine spielbare Kombination.
     INVALID_COMBINATION: 303,
+    // Ungültiger Kartenwunsch.
     INVALID_WISH: 306,
+    // Tichu-Ansage nicht möglich.
     INVALID_ANNOUNCE: 307,
+    // Wahl des Spielers, der den Drachen bekommt, ist ungültig.
     INVALID_DRAGON_RECIPIENT: 308,
+    // Zeit für Aktion abgelaufen.
     REQUEST_OBSOLETE: 310
+};
+
+/**
+ * Enum für die Spielphasen des Clients.
+ */
+const Phase = {
+    // Login-Formular wird angezeigt. Der Benutzer gibt sein Name und den gewünschten Tisch an und loggt sich ein.
+    LOGIN_DIALOG: 10,
+    // Die eingeloggten Spieler sind zu sehen. Der Benutzer wartet, dass das Spiel beginnt.
+    LOBBY_WAIT: 11,
+    // Die eingeloggten Spieler sind zu sehen. Der Benutzer ist der Host und kann die Reihenfolge der Spieler ändern (bestimmt, wer mit wem spielt).
+    LOBBY_ASSIGN_TEAM: 12,
+
+    // Eine neue Runde ist gestartet. Der Benutzer erhält 8 Handkarten (Animation läuft).
+    DEALING_INITIAL_ANIMATION: 20,
+    // Der Benutzer muss sich entscheiden, ob er ein großes Tichu ansagen möchte.
+    DEALING_TICHU_DECISION: 21,
+    // Der Benutzer hat die restlichen Karten erhalten (Animation läuft).
+    DEALING_REMAINING_ANIMATION: 22,
+
+    // Der Benutzer hat ein Tichu angesagt (Animation läuft).
+    TICHU_ANIMATION: 30,
+
+    // Der Benutzer wählt Karten zum Tauschen.
+    SCHUPFING_SELECT: 40,
+    // Der Benutzer hat die Tauschkarten ausgewählt (Tauschkarten wurden umgedreht).
+    SCHUPFING_CONFIRMED: 41,
+    // Die Tauschkarten werden getauscht (Animation läuft).
+    SCHUPFING_ANIMATION: 42,
+    // Der Benutzer hat die erhaltenen Tauschkarten offen vor sich und muss sie aufnehmen.
+    SCHUPFING_RECEIVE: 43,
+
+    // Karten werden ausgespielt, der Benutzer ist aber nicht am Zug.
+    PLAYING_WAIT: 50,
+    // Der Benutzer ist am Zug und muss Karten ausspielen (Passen nicht erlaubt wegen Anspiel oder offener Wunsch).
+    PLAYING_PLAY: 51,
+    // Der Benutzer muss Karten ausspielen oder passen.
+    PLAYING_PLAY_OR_PASS: 52,
+    // Karten werden ausgespielt (Animation läuft).
+    PLAYING_ANIMATION: 53,
+
+    // Ein Spieler hat eine Bombe angekündigt. Der Benutzer kann jetzt selbst keine Bombe werfen.
+    BOMBING_WAIT: 60,
+    // Der Benutzer hat eine Bombe angekündigt und muss diese jetzt auswählen.
+    BOMBING_SELECT: 61,
+    // Der Benutzer hat eine Bombe geworfen (Animation läuft).
+    BOMBING_ANIMATION: 62,
+
+    // Der Stich wird kassiert (Animation läuft).
+    TRICK_ANIMATION: 70,
+
+    // Der Wish-Dialog wird angezeigt. Der Benutzer muss sich ein Kartenwert wünschen.
+    WISH_DIALOG: 80,
+    // Der Drachen-Dialog wird angezeigt. Der Benutzer muss den Drachen verschenken.
+    DRAGON_DIALOG: 81,
+    // Runde ist beendet, das Rundenergebnis wird angezeigt.
+    ROUND_OVER_DIALOG: 82,
+    // Partie ist beendet, die Punktetabelle wird angezeigt.
+    GAME_OVER_DIALOG: 83,
+    // Der Exit-Dialog wird angezeigt.
+    EXIT_DIALOG: 84,
 };
 
 /**

@@ -549,10 +549,14 @@ class GameEngine:
                                         pub.dragon_recipient = opponent
                                         pub.points[opponent] += pub.trick_points
                                         assert -25 <= pub.points[opponent] <= 125
+                                        if clients_joined:
+                                            await self._broadcast("trick_taken", {"player_index": opponent})
                                     else:
                                         # Stich selbst kassieren
                                         pub.points[pub.trick_owner_index] += pub.trick_points
                                         assert -25 <= pub.points[pub.trick_owner_index] <= 125
+                                        if clients_joined:
+                                            await self._broadcast("trick_taken", {"player_index": pub.trick_owner_index})
 
                                     # Endwertung der Runde:
                                     # a) Der letzte Spieler gibt seine Handkarten an das gegnerische Team.

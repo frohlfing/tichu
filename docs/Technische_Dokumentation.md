@@ -225,9 +225,17 @@ Enthält Unit-Tests für die Module in `src/`, geschrieben mit `pytest`.
 
 ### 5.4 Spielphasen
 
-TODO!
+TODO! 
+
+Die Phasen dürfen sich nicht überlappen.
+Es sollen hier auch die Bedingungen dokumentiert werden, wann welche Phase aktiv ist. 
 
 (siehe hierzu [Ablauf einer Partie](#22-ablauf-einer-partie))
+
+Die Spielphasen des Servers unterscheiden sich von den Spielphasen des Clients. Beim Client laufen z.B. Animationen, Dialoge werden angezeigt, usw.
+
+Die Spielphasen des Servers werden nur bei der Validierung im Peer benötigt. 
+ 
 
 ## 6. Arena-Betrieb (erste Ausbaustufe)
 
