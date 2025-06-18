@@ -27,7 +27,6 @@ class PublicState:
     :ivar host_index: Index des Clients, der Host des Tisches ist (-1 == kein Client am Tisch)
     :ivar player_names: Die eindeutigen Namen der 4 Spieler (Spieler mit gleichen Namen werden durchnummeriert).
     :ivar is_running: # Gibt an, ob eine Partie gerade läuft.
-    :ivar current_phase: # Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
     :ivar current_turn_index: Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest; es wurde noch nicht geschupft).
     :ivar count_hand_cards: Anzahl der Handkarten pro Spieler.
@@ -56,7 +55,6 @@ class PublicState:
 
     # --- Information über die aktuelle Runde ---
     is_running: bool = False
-    current_phase: str = "setup"
     current_turn_index: int = -1
     start_player_index: int = -1
     count_hand_cards: List[int] = field(default_factory=lambda: [0, 0, 0, 0])
@@ -93,7 +91,6 @@ class PublicState:
 
     def reset_round(self):
         """Status für eine neue Runde zurücksetzen."""
-        self.current_phase: str = "setup"
         self.current_turn_index = -1
         self.start_player_index = -1
         self.count_hand_cards = [0, 0, 0, 0]
@@ -130,7 +127,6 @@ class PublicState:
             "host_index": self.host_index,
             "player_names": self.player_names,
             "is_running": self.is_running,
-            "current_phase": self.current_phase,
             "current_turn_index": self.current_turn_index,
             "start_player_index": self.start_player_index,
             "count_hand_cards": self.count_hand_cards,

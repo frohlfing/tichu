@@ -27,7 +27,6 @@
  * @property {number} host_index - Index des Clients, der Host ist (-1 = kein Client).
  * @property {string[]} player_names - Die eindeutigen Namen der 4 Spieler.
  * @property {boolean} is_running - Gibt an, ob eine Partie gerade läuft.
- * @property {string} current_phase - Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing").
  * @property {number} current_turn_index - Index des Spielers, der am Zug ist (-1 = Startspieler steht noch nicht fest).
  * @property {number} start_player_index - Index des Spielers mit Mahjong (-1 = steht noch nicht fest).
  * @property {number[]} count_hand_cards - Anzahl der Handkarten pro Spieler.
@@ -74,7 +73,6 @@ const State = (() => {
         host_index: -1,
         player_names: ["", "", "", ""],
         is_running: false,
-        current_phase: "init",
         current_turn_index: -1,
         start_player_index: -1,
         count_hand_cards: [0, 0, 0, 0],
@@ -203,7 +201,7 @@ const State = (() => {
     }
 
     /** @returns {boolean} Gibt an, ob der Benutzer am Zug ist. */
-    function isCurrentPlayer() {
+    function isCurrentPlayer() {  // todo umbenennen in "isTurn"
         return _privateState.player_index !== -1 && _publicState.current_turn_index === _privateState.player_index;
     }
 
@@ -436,6 +434,11 @@ const State = (() => {
         return score[0] >= 1000 || score[1] >= 1000;
     }
 
+    /** @returns {boolean} Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing"). */
+    function getPhase() {
+        // todo!
+    }
+
     // privater Spielzustand
 
     /** @returns {number} Den Index des Benutzers (zwischen 0 und 3). */
@@ -510,6 +513,7 @@ const State = (() => {
         getGameScore, addGameScoreEntry, resetGameScore,
         getTotalScore,
         isGameOver,
+        getPhase,
 
         // privater Spielzustand
         getPlayerIndex, setPlayerIndex,

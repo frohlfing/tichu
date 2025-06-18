@@ -619,7 +619,7 @@ const GameTableView = (() => {
 
             // Wenn alle Karten noch auf der Hand abgebildet sind, Schupfzone leeren.
             if (_hands[relativeIndex].children.length === 14) {
-               _clearSchupfZone(playerIndex);
+               _clearSchupfZone(playerIndex);  // todo in welchem Fall ist das notwendig?
             }
 
             // Schupfzone einblenden
@@ -629,7 +629,7 @@ const GameTableView = (() => {
             if (State.getCountHandCards(playerIndex) === 11) {
                 const receivedCards = State.getReceivedSchupfCards();
                 _clearSchupfZone(playerIndex);
-                if (relativeIndex === 0 && receivedCards ) {
+                if (relativeIndex === 0 && receivedCards) {
                     // Der Tausch hat stattgefunden. Der Benutzer muss die erhaltenen Karten bestätigen.
                     _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
                         subzoneElement.appendChild(_createCardElement(receivedCards[i]));
@@ -768,24 +768,13 @@ const GameTableView = (() => {
         }
     }
 
-
-    // todo bomb_click()
-    // todo Selektierte Karten eingereiht lassen
-    // todo Sound
-
     // Visuelle Effekte & Animationen
     // todo Bombe werfen
     // todo Tich ansagen (ein- oder 2mal Pulse-Effekt)
     // todo Karten ablegen (von der Hand dorthin, wo auch die Schupfzone liegt)
     // todo Karten kassieren (von der aktuellen Position der Karten zum Spieler, der die Karten bekommt)
     // todo Schupfkarten tauschen (von Zone zu Zone)
-
-    // CSS optimieren
-    // todo Aufteilung anders lösen (wobei das Aussehen genauso bleiben soll!):
-    //  1) Die gesamte player-area drehen. Dann müssen die untergeordneten Elemente (hand und player-info) nicht mehr gedreht werden.
-    //  2) Die Schupfzone und Turn-Symbol in die player-area des Spielers verschieben.
-    //  3) wish-icon direkt unter table-area ziehen. center-table wird dann nicht mehr benötigt.
-    //  4) position nur da aufführen, wo erforderlich.
+    // todo Sound
 
     // --------------------------------------------------------------------------------------
     // Test-Buttons

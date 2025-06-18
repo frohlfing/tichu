@@ -56,7 +56,6 @@ class GameEngine:
         self._public_state = PublicState(
             table_name = self._table_name,
             player_names = [p.name for p in self._players],
-            current_phase = "init",  # todo die Spielphasen sind noch nicht definiert
         )
         self._private_states = [PrivateState(player_index=i) for i in range(4)]
 
@@ -303,9 +302,6 @@ class GameEngine:
                 # Agents zurücksetzen
                 for player in self._players:
                     player.reset_round()
-
-                # Spielphase aktualisieren
-                pub.current_phase = "playing"  # todo Spielphasen müssen noch definiert werden
 
                 if clients_joined:
                     await self._broadcast("round_started")
@@ -633,7 +629,6 @@ class GameEngine:
         except asyncio.CancelledError:
             msg = f"[{self.table_name}] Spiel-Loop extern abgebrochen."
             logger.info(msg)
-            pub.current_phase = "aborted"
             # noinspection PyBroadException
             try:
                 if clients_joined:
@@ -644,7 +639,6 @@ class GameEngine:
         except Exception as e:
             msg = f"[{self.table_name}] Kritischer Fehler im Spiel-Loop: {e}"
             logger.exception(msg)
-            pub.current_phase = "error"
             # noinspection PyBroadException
             try:
                 if clients_joined:
