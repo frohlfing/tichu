@@ -109,9 +109,9 @@ const Network = (() => {
      * Sendet eine Nachricht an den Server.
      *
      * @param {string} type - Der Typ der Nachricht.
-     * @param {object} payload - Der Inhalt der Nachricht.
+     * @param {object|null} payload - Der Inhalt der Nachricht.
      */
-    function send(type, payload) {
+    function send(type, payload=null) {
         if (websocket && websocket.readyState === WebSocket.OPEN) {
             const message = {type, payload: payload || {}};
             // console.log('Network: Sende Nachricht', message); // Für Debugging

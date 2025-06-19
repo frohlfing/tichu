@@ -17,6 +17,20 @@ const AppController = (() => {
     let _isAttemptingReconnect = false;
 
     /**
+     * UUID der aktuellen Anfrage.
+     * 
+     * @type {object}
+     */
+    const _requestId = {
+        grandTichu: "4711",
+        schupf: "4713",
+        play: "4714",
+        bomb: "4715",
+        wish: "4716",
+        giveDragonAway: "4717",
+    };
+    
+    /**
      * Initialisiert die Anwendung und alle Kernmodule.
      *
      * Wird durch main() aufgerufen.
@@ -39,9 +53,19 @@ const AppController = (() => {
         EventBus.on("network:message", _handleNetworkMessage);
         EventBus.on("network:error", _handleNetworkError);
 
+        EventBus.on("gameTableView:grandTichu", _handleTableViewGrandTichu);
+        EventBus.on("gameTableView:tichu", _handleTableViewTichu);
+        EventBus.on("gameTableView:schupf", _handleTableViewSchupf);
+        EventBus.on("gameTableView:play", _handleTableViewPlay);
+        EventBus.on("gameTableView:bomb", _handleTableViewBomb);
+        EventBus.on("gameTableView:wish", _handleTableViewWish);
+        EventBus.on("gameTableView:giveDragonAway", _handleTableViewGiveDragonAway);
+        EventBus.on("gameTableView:gameOver", _handleTableViewGameOver);
+        EventBus.on("gameTableView:exit", _handleTableViewExit);
+
 
         // für TESTPHASE direkt zum Spieltisch springen!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        ViewManager.toggleView("gameTable");
+        ViewManager.showTableView();
         return
 
         // Logik für initialen Login oder Reconnect
@@ -53,7 +77,7 @@ const AppController = (() => {
         if (sessionId && (!paramPlayerName || !paramTableName)) {
             console.log('App: Versuche automatischen Reconnect mit Session ID:', sessionId);
             _isAttemptingReconnect = true;
-            ViewManager.toggleView('loading');
+            ViewManager.showLoadingView();
             Network.connect(null, null, sessionId);
         }
         else if (paramPlayerName && paramTableName) {
@@ -62,12 +86,12 @@ const AppController = (() => {
             User.setPlayerName(paramPlayerName); // Lokalen Namen setzen
             User.setTableName(paramTableName);   // Lokalen Tischnamen setzen
             _isAttemptingReconnect = false;
-            ViewManager.toggleView('loading');
+            ViewManager.showLoadingView();
             Network.connect(paramPlayerName, paramTableName, null);
         }
         else {
             _isAttemptingReconnect = false;
-            ViewManager.toggleView('login');
+            ViewManager.showLoginView();
         }
     }
 
@@ -109,9 +133,9 @@ const AppController = (() => {
         }
 
         if (event.code !== 1000) { // Wenn nicht normal vom Client beendet
-             ViewManager.toggleView('login');
+             ViewManager.showLoginView();
         } else if (!wasConnected && event.code === 1000) { // Wenn initial abgelehnt
-            ViewManager.toggleView('login');
+            ViewManager.showLoginView();
         }
         // Wenn Code 1000 und wasConnected, dann hat der Client `leaveGame` aufgerufen,
         // was den View schon auf Login setzt.
@@ -155,7 +179,104 @@ const AppController = (() => {
         }
         _isAttemptingReconnect = false;
         User.setSessionId(null);
-        ViewManager.toggleView('login');
+        ViewManager.showLoginView();
+    }
+
+    // --------------------------------------------------------------------------------------
+    // TableView-Ereignisse
+    // --------------------------------------------------------------------------------------
+
+    function _handleTableViewGrandTichu(announced) {
+        console.log(`app: GrandTichu: ${announced}`);
+        if (!_requestId.grandTichu) {
+            Modals.showErrorToast("Keine Anfrage für große Tichu-Ansage erhalten.");
+            return
+        }
+        Network.send("response", {
+            request_id: _requestId.grandTichu, 
+            response_data: {
+                announced: announced
+            }
+        });
+        _requestId.grandTichu = null;
+    }
+
+    function _handleTableViewTichu() {
+        console.log("app: Tichu");
+        Network.send("announce");
+    }
+
+    function _handleTableViewSchupf(givenSchupfCards) {
+        console.log(`app: Schupf: ${givenSchupfCards}`);
+        if (!_requestId.schupf) {
+            Modals.showErrorToast("Keine Anfrage für Schupfen erhalten.");
+            return
+        }
+        Network.send("response", {
+            request_id: _requestId.schupf, 
+            response_data: {
+                given_schupf_cards: givenSchupfCards
+            }
+        });
+        _requestId.schupf = null;
+    }
+
+    function _handleTableViewPlay(cards) {
+        console.log(`app: Play: ${cards}`);
+        if (!_requestId.play) {
+            Modals.showErrorToast("Keine Anfrage für Ausspielen erhalten.");
+            return
+        }
+        Network.send("response", {
+            request_id: _requestId.play, 
+            response_data: {
+                cards: cards
+            }
+        });
+        _requestId.play = null;
+    }
+
+    function _handleTableViewBomb() {
+        console.log("app: Bomb");
+        Network.send("bomb");
+    }
+
+    function _handleTableViewWish(wishValue) {
+        console.log(`app: Wish: ${wishValue}`);
+        if (!_requestId.wish) {
+            Modals.showErrorToast("Keine Anfrage für Wünschen erhalten.");
+            return
+        }
+        Network.send("response", {
+            request_id: _requestId.wish, 
+            response_data: {
+                wish_value: wishValue
+            }
+        });
+        _requestId.wish = null;
+    }
+
+    function _handleTableViewGiveDragonAway(dragonRecipient) {
+        console.log(`app: GiveDragonAway: ${dragonRecipient}`);
+        if (!_requestId.giveDragonAway) {
+            Modals.showErrorToast("Keine Anfrage für Wünschen erhalten.");
+            return
+        }
+        Network.send("response", {
+            request_id: _requestId.giveDragonAway, 
+            response_data: {
+                dragon_recipient: dragonRecipient
+            }
+        });
+        _requestId.giveDragonAway = null;
+    }
+
+    function _handleTableViewGameOver() {
+        ViewManager.showLobbyView();
+    }
+
+    function _handleTableViewExit() {
+
     }
 
     // --------------------------------------------------------------------------------------
@@ -181,11 +302,11 @@ const AppController = (() => {
                 Modals.showGrandTichuPrompt(payload.request_id);
                 break;
             case 'schupf':
-                ViewManager.toggleView('gameTable');
+                ViewManager.showTableView();
                 CardHandler.enableSchupfMode(payload.request_id, State.getPrivateState().hand_cards);
                 break;
             case 'play':
-                ViewManager.toggleView('gameTable');
+                ViewManager.showTableView();
                 GameTableView.enablePlayControls(true, payload.request_id);
                 break;
             case 'wish':
@@ -234,9 +355,9 @@ const AppController = (() => {
             }
 
             if (currentPublicState.is_running) {
-                ViewManager.toggleView('gameTable');
+                ViewManager.showTableView();
             } else {
-                ViewManager.toggleView('lobby');
+                ViewManager.showLobbyView();
             }
         } else if (eventName === 'player_left') {
             // Host-Index könnte sich geändert haben, wenn der Host gegangen ist.
@@ -266,7 +387,7 @@ const AppController = (() => {
             Modals.closeAllDialogs();
             CardHandler.clearSelectedCards();
             CardHandler.disableSchupfMode();
-            ViewManager.toggleView('gameTable'); // Bei round_started sind wir schon am Tisch
+            ViewManager.showTableView(); // Bei round_started sind wir schon am Tisch
         }
 
         ViewManager.renderCurrentView();
@@ -324,7 +445,7 @@ const AppController = (() => {
         if (payload.code === ErrorCode.SESSION_EXPIRED || payload.code === ErrorCode.SESSION_NOT_FOUND) {
             User.setSessionId(null); // Session ist ungültig oder nicht gefunden
             Network.disconnect(); // Aktive Verbindung trennen, falls noch vorhanden
-            ViewManager.toggleView('login'); // Zurück zum Login
+            ViewManager.showLoginView(); // Zurück zum Login
         }
 
         // Wenn der Fehler sich auf einen aktiven Request bezieht, diesen ggf. behandeln
@@ -363,7 +484,7 @@ const AppController = (() => {
         User.setTableName(tableName);
         User.setSessionId(null);
         _isAttemptingReconnect = false;
-        ViewManager.toggleView('loading');
+        ViewManager.showLoadingView();
         Network.connect(playerName, tableName, null);
     }
 
@@ -400,7 +521,7 @@ const AppController = (() => {
         console.log("App: Verlasse Spiel/Tisch.");
         AppController.sendProactiveMessage('leave');
         Network.disconnect(); // Führt zu _handleNetworkClose mit Code 1000
-        ViewManager.toggleView('login'); // Explizit zum Login, da User Aktion
+        ViewManager.showLoginView(); // Explizit zum Login, da User Aktion
     }
 
     return {

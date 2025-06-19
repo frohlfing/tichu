@@ -28,7 +28,7 @@ const ViewManager = (() => {
      * @property {View} loading - Die Ladeanzeige.
      * @property {LoginView} login - Der Login-Bildschirm.
      * @property {LobbyView} lobby - Der Lobby-Bildschirm.
-     * @property {GameTableView} gameTable - Der Spieltisch-Bildschirm.
+     * @property {GameTableView} table - Der Spieltisch-Bildschirm.
      */
     const _views = {};
 
@@ -46,28 +46,56 @@ const ViewManager = (() => {
         _views.lobby = LobbyView;
         _views.lobby.init();
 
-        _views.gameTable = GameTableView;
-        _views.gameTable.init();
+        _views.table = GameTableView;
+        _views.table.init();
 
         // Aktuelle View rendern
         for (const name in _views) {
             if (_views.hasOwnProperty(name) && _views[name].isVisible()) {
                 _views[name].render();
                 _currentViewName = name;
-                console.debug(`VIEWMGR: Aktuelle View ist '${name}'.`);
+                console.debug(`ViewManager: Aktuelle View ist '${name}'.`);
                 break;
             }
         }
     }
 
     /**
+     * Zeigt die Loading-View an und blendet die andere aus.
+     */
+    function showLoadingView() {
+        _showView("loading");
+    }
+
+    /**
+     * Zeigt die Login-View an und blendet die andere aus.
+     */
+    function showLoginView() {
+        _showView("login");
+    }
+
+    /**
+     * Zeigt die Lobby-View an und blendet die andere aus.
+     */
+    function showLobbyView() {
+        _showView("lobby");
+    }
+
+    /**
+     * Zeigt die Table-View an und blendet die andere aus.
+     */
+    function showTableView() {
+        _showView("table");
+    }
+
+    /**
      * Zeigt einen bestimmten View an und blendet andere aus.
      *
-     * @param {string} viewName - Der Name des Views, der angezeigt werden soll ('loading', 'login', 'lobby', 'gameTable').
+     * @param {string} viewName - Der Name des Views, der angezeigt werden soll ('loading', 'login', 'lobby', 'table').
      */
-    function toggleView(viewName) {
+    function _showView(viewName) {
         if (!_views.hasOwnProperty(viewName)) {
-            console.error(`VIEWMGR: View '${viewName}' nicht gefunden.`);
+            console.error(`ViewManager: View '${viewName}' nicht gefunden.`);
             return;
         }
 
@@ -87,7 +115,7 @@ const ViewManager = (() => {
         // Gewünschten View anzeigen
         _views[viewName].show();
         _currentViewName = viewName;
-        console.debug(`VIEWMGR: Zeige view '${viewName}'.`);
+        console.debug(`ViewManager: Zeige view '${viewName}'.`);
     }
 
     /**
@@ -110,7 +138,10 @@ const ViewManager = (() => {
 
     return {
         init,
-        toggleView,
+        showLoadingView,
+        showLoginView,
+        showLobbyView,
+        showTableView,
         renderCurrentView,
         getCurrentViewName
     };

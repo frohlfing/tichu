@@ -14,20 +14,28 @@
     height: 100%;
 }
 
-/* --- Top-Bar --- */
+/* --- Top-Bar und Button-Controls --- */
 
-.top-bar {
+.top-bar,
+.bottom-controls {
     position: absolute;
-    top: 0;
     left: 0;
     width: 1080px;
     height: 140px;
-    background-color: rgba(0, 0, 0, 0.65);
+    background-color: rgba(0, 0, 0, 0.7);
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
     align-items: center;
-    padding: 0 30px; /* Godot: Seitenabstand */
-    /*z-index: 100;*/
+    padding: 0 30px;
+}
+
+.top-bar {
+    top: 0;
+}
+
+.bottom-controls {
+    bottom: 0;
+    padding: 0 40px; /* mehr seitliches Padding als in der Top-Bar */
 }
 
 .top-bar #score-display {
@@ -39,28 +47,34 @@
     color: #f0f0f0;
 }
 
-.top-bar .game-button { /* Styling für Beenden, Optionen Buttons */
-    padding: 10px 25px;
+.game-button {
+    width: 230px;
+    height: 80px;
     font-family: 'Architect s Daughter', sans-serif;
     font-size: 32px;
-    border-radius: 8px;
-    background-color: #5a6670; /* Etwas dunkleres Grau */
     color: white;
+    border-radius: 8px;
+    background-color: #5a6670; /* etwas dunkleres Grau */
     border: none;
     cursor: pointer;
-    /*transition: background-color 0.2s;*/
-    min-height: 80px;
-    width: 230px;
 }
 
-.top-bar .game-button:hover:not(:disabled) {
+/*.top-bar .game-button {*/
+/*    width: 230px;*/
+/*}*/
+
+.bottom-controls .game-button {
+    width: 280px;
+}
+
+.game-button:hover:not(:disabled) {
     background-color: #717d86;
 }
 
-.top-bar .game-button:disabled {
+.game-button:disabled {
     background-color: #424242;
     color: #888;
-    cursor: not-allowed;
+    cursor: default;
 }
 
 /* --- Table-Area (der grüne Spieltisch) --- */
@@ -281,6 +295,15 @@
     cursor: pointer;
 }
 
+#bomb-icon:hover:not(.disabled) {
+    background-color: #717d86;
+}
+
+#bomb-icon.disabled {
+    opacity: 50%;
+    cursor: default;
+}
+
 /* Table Area -> Spieler-Bereich -> Stichzone */
 
 .trick-zone {
@@ -397,49 +420,6 @@
     font-weight: bold;
     color: #111;
     text-shadow: 0 0 3px #fff;
-}
-
-/* --- Bottom-Controls --- */
-
-.bottom-controls {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 1080px;
-    height: 140px;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 0 40px; /* Mehr seitliches Padding für Button-Abstand */
-    font-size: 32px;
-    /*z-index: 100;*/
-}
-
-.bottom-controls .game-button {
-    flex-grow: 1; /* Buttons teilen sich den Platz */
-    margin: 0 15px; /* Abstand zwischen Buttons */
-    max-width: 280px; /* Maximale Breite pro Button */
-    padding: 12px 0; /* Vertikales Padding, horizontales durch flex */
-    min-height: 80px;
-    font-family: 'Architect s Daughter', sans-serif;
-    font-size: 32px; /* Erbt von .bottom-controls */
-    border-radius: 8px;
-    background-color: #5a6670;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.bottom-controls .game-button:hover:not(:disabled) {
-    background-color: #717d86;
-}
-
-.bottom-controls .game-button:disabled {
-    background-color: #424242;
-    color: #888;
-    cursor: not-allowed;
 }
 
 /* --- Visuelle Effekte & Animationen --- */

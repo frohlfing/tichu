@@ -250,6 +250,7 @@ const GameTableView = (() => {
      * @param {number} value - Der gewählte Kartenwert (2 bis 14).
      */
     function _handleWishDialogSelect(value) {
+        EventBus.emit("gameTableView:wish", value);
         console.log("GameTableView: _handleWishDialogSelect", value);
     }
 
@@ -259,6 +260,7 @@ const GameTableView = (() => {
      * @param {number} value - Der gewählte Gegner (1 == rechts, 3 == links).
      */
     function _handleDragonDialogSelect(value) {
+        EventBus.emit("gameTableView:giveDragonAway", value);
         console.log("GameTableView: _handleDragonDialogSelect", value);
     }
 
@@ -273,6 +275,7 @@ const GameTableView = (() => {
      * Ereignishändler für den GameOver-Dialog.
      */
     function _handleGameOverDialogClick() {
+        EventBus.emit("gameTableView:gameOver");
         console.log("GameTableView: _handleGameOverDialogClick");
     }
 
@@ -282,7 +285,10 @@ const GameTableView = (() => {
      * @param {number} value - Der gedrückte Button (1 == ja, 0 == nein).
      */
     function _handleExitDialogSelect(value) {
-        console.log("GameTableView: _handleExitDialogSelect", value);
+        if (value) {
+            EventBus.emit("gameTableView:exit");
+        }
+        console.log("GameTableView: _handleExitDialogSelect");
     }
 
     // --------------------------------------------------------------------------------------
@@ -290,7 +296,7 @@ const GameTableView = (() => {
     // --------------------------------------------------------------------------------------
 
     /**
-     * Ereignishändler für das Anklicken auf den "Beenden"-Button.
+     * Ereignishändler für den "Beenden"-Button.
      */
     function _handleExitButtonClick() {
         SoundManager.playSound('buttonClick');
@@ -298,7 +304,7 @@ const GameTableView = (() => {
     }
 
     /**
-     * Ereignishändler für das Anklicken auf den "Optionen"-Button.
+     * Ereignishändler für den "Optionen"-Button.
      */
     function _handleSettingsButtonClick() {
         SoundManager.playSound('buttonClick');
@@ -382,35 +388,88 @@ const GameTableView = (() => {
     }
 
     /**
-     * Ereignishändler für das Anklicken auf das Bomben-Icon.
+     * Ereignishändler für das Bomben-Icon.
      */
     function _handleBombIconClick() {
+        // Der Benutzer möchte eine Bombe ankündigen.
+        _bombIcon.classList.add("disabled");
         SoundManager.playSound('buttonClick');
-        console.log("_handleBombIconClick");
+        EventBus.emit("gameTableView:bomb");
+        console.log("gameTableView: bomb");
     }
 
     /**
-     * Ereignishändler für das Anklicken auf den "Passen"-Button.
+     * Ereignishändler für den Pass-Button.
      */
     function _handlePassButtonClick() {
+        _passButton.disabled = true;
         SoundManager.playSound('buttonClick');
         console.log("_handlePassButtonClick");
+        switch (_passButton.dataset.mode) {
+            case "NO_GRAND_TICHU": // Der Benutzer möchte kein großes Tichu ansagen.
+                EventBus.emit("gameTableView:grandTichu", false);
+                console.log("gameTableView: grandTichu", false);
+                break;
+            case "PASS": // Der Benutzer möchte passen.
+                EventBus.emit("gameTableView:play", []);
+                console.log("gameTableView: pass");
+                break;
+            default:
+                console.error(`PlayButton-Mode ${_passButton.dataset.mode} nicht gehandelt.`);
+            break;
+        }
     }
 
     /**
-     * Ereignishändler für das Anklicken auf den "Tichu"-Button.
+     * Ereignishändler für den Tichu-Button.
      */
     function _handleTichuButtonClick() {
+        _tichuButton.disabled = true;
         SoundManager.playSound('buttonClick');
-        console.log("_handleTichuButtonClick");
+        switch (_tichuButton.dataset.mode) {
+            case "GRAND_TICHU": // Der Benutzer möchte ein großes Tichu ansagen.
+                EventBus.emit("gameTableView:grandTichu", true);
+                console.log("gameTableView: grandTichu", true);
+                break;
+            case "TICHU": // Der Benutzer möchte ein einfaches Tichu ansagen.
+                EventBus.emit("gameTableView:tichu");
+                console.log("gameTableView: tichu");
+                break;
+            default:
+                console.error(`TichuButton-Mode ${_tichuButton.dataset.mode} nicht gehandelt.`);
+            break;
+        }
     }
 
     /**
-     * Ereignishändler für das Anklicken auf den "Spielen"-Button.
+     * Ereignishändler für den Play-Button.
      */
     function _handlePlayButtonClick() {
+        _playButton.disabled = true;
         SoundManager.playSound('buttonClick');
-        console.log("_handlePlayButtonClick");
+        switch (_playButton.dataset.mode) {
+            case "SCHUPF": // Der Benutzer möchte drei Tauschkarten für die Mitspieler abgeben.
+                EventBus.emit("gameTableView:schupf", _getSchupfCards());
+                console.log("gameTableView: schupf", _getSchupfCards());
+                break;
+            case "RECEIVE": // Der Benutzer nimmt die drei Tauschkarten der Mitspieler auf.
+                _receivedSchupfCardsConfirmed = true;
+                const playerIndex = State.getPlayerIndex();
+                _updateHand(playerIndex);
+                _updateSchupfZone(playerIndex);
+                break;
+            case "AUTOSELECT": // Die längste kleinstmögliche Kombination auswählen.
+                // todo
+                console.log("gameTableView: autoselect");
+                break;
+            case "PLAY": // Der Benutzer möchte die ausgewählten Karten spielen.
+                EventBus.emit("gameTableView:play", _getSelectedCards());
+                console.log("gameTableView: play", _getSelectedCards());
+                break;
+            default:
+                console.error(`PlayButton-Mode ${_playButton.dataset.mode} nicht gehandelt.`);
+            break;
+        }
     }
 
     // --------------------------------------------------------------------------------------
@@ -711,15 +770,18 @@ const GameTableView = (() => {
     function _updatePassButton() {
         if (!State.getReceivedSchupfCards() && State.getCountHandCards() === 8) {
             // Der Benutzer kann ein großes Tichu ansagen.
+            _passButton.dataset.mode = "NO_GRAND_TICHU";
             _passButton.textContent = "Weiter";
             _passButton.disabled = false;
         }
         else if (_receivedSchupfCardsConfirmed && State.isCurrentPlayer()) {
             // Der Benutzer ist am Zug.
+            _passButton.dataset.mode = "PASS";
             _passButton.textContent = "Passen";
             _passButton.disabled = State.getTrickCombination()[0] === CombinationType.PASS; // true, wenn Anspiel}
         }
         else {
+            _passButton.dataset.mode = "PASS";
             _passButton.textContent = "Passen";
             _passButton.disabled = true;
         }
@@ -729,7 +791,14 @@ const GameTableView = (() => {
      * Aktualisiert den Tichu-Button.
      */
     function _updateTichuButton() {
-        _tichuButton.textContent = !State.getReceivedSchupfCards() && State.getCountHandCards() === 8 ? "Großes Tichu" : "Tichu";
+        if (!State.getReceivedSchupfCards() && State.getCountHandCards() === 8) {
+            _tichuButton.dataset.mode = "GRAND_TICHU";
+            _tichuButton.textContent = "Großes Tichu";
+        }
+        else {
+            _tichuButton.dataset.mode = "TICHU";
+            _tichuButton.textContent = "Tichu";
+        }
         _tichuButton.disabled = State.getAnnouncement() > 0;
     }
 
@@ -738,31 +807,38 @@ const GameTableView = (() => {
      */
     function _updatePlayButton() {
         if (!State.getReceivedSchupfCards() && State.getCountHandCards() > 8) {
-            // Der Benutzer muss drei Tauschkarten abgeben.
+            // Der Benutzer muss drei Tauschkarten für die Mitspieler abgeben.
+            _playButton.dataset.mode = "SCHUPF";
             _playButton.textContent = "Schupfen";
             _playButton.disabled = _getSchupfCardsCount() !== 3;
         }
         else if (State.getReceivedSchupfCards() && !_receivedSchupfCardsConfirmed) {
             // Der Benutzer muss die drei Tauschkarten der Mitspieler aufnehmen.
+            _playButton.dataset.mode = "RECEIVE";
             _playButton.textContent = "Aufnehmen";
             _playButton.disabled = false;
         }
         else if (State.isCurrentPlayer() && !_canPlay) {
             // Der Benutzer ist am Zug, hat aber keine passende Kombination auf der Hand.
+            _playButton.dataset.mode = "PLAY";
             _playButton.textContent = "Kein Zug";
             _playButton.disabled = true;
         }
         else if (State.isCurrentPlayer() && _getSelectedCardsCount() === 0) {
-            // Der Benutzer ist am Zug, hat aber noch keine Karte ausgewählt.
+            // Der Benutzer ist am Zug, hat mindestens eine passende Kombination, aber noch keine Karte ausgewählt.
+            _playButton.dataset.mode = "AUTOSELECT";
             _playButton.textContent = "Auswählen"; // bei Klick wird die längste kleinstmögliche Kombination ausgewählt
             _playButton.disabled = false;
         }
         else if (State.isCurrentPlayer()) {
-            // Der Benutzer ist am Zug und hat mindestens eine Karte ausgewählt.
+            // Der Benutzer ist am Zug, hat mindestens eine passende Kombination und mindestens eine Karte ausgewählt.
+            _playButton.dataset.mode = "PLAY";
             _playButton.textContent = "Spielen";
             _playButton.disabled = false; // todo true, wenn die ausgewählte Kombination nicht spielbar ist
         }
         else {
+            // Karten werden ausgespielt, der Benutzer ist aber nicht am Zug.
+            _playButton.dataset.mode = "PLAY";
             _playButton.textContent = "Spielen";
             _playButton.disabled = true;
         }

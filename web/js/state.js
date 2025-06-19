@@ -434,10 +434,10 @@ const State = (() => {
         return score[0] >= 1000 || score[1] >= 1000;
     }
 
-    /** @returns {boolean} Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing"). */
-    function getPhase() {
-        // todo!
-    }
+    // /** @returns {boolean} Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing"). */
+    // function getPhase() {
+    //     // todo!
+    // }
 
     // privater Spielzustand
 
@@ -513,7 +513,7 @@ const State = (() => {
         getGameScore, addGameScoreEntry, resetGameScore,
         getTotalScore,
         isGameOver,
-        getPhase,
+        //getPhase,
 
         // privater Spielzustand
         getPlayerIndex, setPlayerIndex,
