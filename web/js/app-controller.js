@@ -340,46 +340,37 @@ const AppController = (() => {
 
         if (eventName === 'player_joined' && context.private_state && typeof context.private_state.player_index === 'number') {
             eventBelongsToCanonicalPlayerIndex = context.private_state.player_index;
+            ViewManager.showTableView();
         } else if (typeof context.player_index === 'number') { // Für andere Events (player_played etc.)
             eventBelongsToCanonicalPlayerIndex = context.player_index;
         }
 
         if (eventName === 'player_joined' && eventBelongsToCanonicalPlayerIndex === ownPlayerIndex && ownPlayerIndex !== -1) {
             if (context.session_id) User.setSessionId(context.session_id);
-            const currentPublicState = State.getPublicState(); // Hole den gerade aktualisierten State
-            if (currentPublicState && currentPublicState.player_names && currentPublicState.player_names[ownPlayerIndex]) {
+            if (State.getPlayerName(ownPlayerIndex)) {
                  //State.setPlayerName(currentPublicState.player_names[ownPlayerIndex]);
             }
-            if (currentPublicState && currentPublicState.table_name) {
-                 //State.setTableName(currentPublicState.table_name);
-            }
-
-            if (currentPublicState.is_running) {
-                ViewManager.showTableView();
-            } else {
-                ViewManager.showLobbyView();
-            }
+            // if (currentPublicState.is_running) {
+            //     ViewManager.showTableView();
+            // } else {
+            //     ViewManager.showLobbyView();
+            // }
         } else if (eventName === 'player_left') {
-            // Host-Index könnte sich geändert haben, wenn der Host gegangen ist.
-            // Server-Doku sagt: context hat jetzt auch `host_index`.
-            if (State.getPublicState() && typeof context.host_index === 'number') {
-                State.getPublicState().host_index = context.host_index;
-            }
             if (ViewManager.getCurrentViewName() === 'lobby') {
                 ViewManager.renderCurrentView(); // Lobby neu rendern
             }
         }
         else if (eventName === 'players_swapped') {
             if (typeof context.player_index_1 === 'number' && typeof context.player_index_2 === 'number') {
-                let name1 = State.getPublicState().player_names[context.player_index_1]
-                State.getPublicState().player_names[context.player_index_1] = State.getPublicState().player_names[context.player_index_2]
-                State.getPublicState().player_names[context.player_index_2] = name1
-                if (State.getPlayerIndex() === context.player_index_1) {
-                    State.setPlayerIndex(context.player_index_2)
-                }
-                else if (State.getPlayerIndex() === context.player_index_2) {
-                    State.setPlayerIndex(context.player_index_1)
-                }
+                // let name1 = State.getPlayerName(context.player_index_1)
+                // State.getPublicState().player_names[context.player_index_1] = State.getPublicState().player_names[context.player_index_2]
+                // State.getPublicState().player_names[context.player_index_2] = name1
+                // if (State.getPlayerIndex() === context.player_index_1) {
+                //     State.setPlayerIndex(context.player_index_2)
+                // }
+                // else if (State.getPlayerIndex() === context.player_index_2) {
+                //     State.setPlayerIndex(context.player_index_1)
+                // }
             }
         }
         else if (eventName === 'game_started' || eventName === 'round_started') { // Auch bei round_started
@@ -391,10 +382,10 @@ const AppController = (() => {
         }
 
         ViewManager.renderCurrentView();
-        Modals.handleNotification(eventName, context);
-        if (ViewManager.getCurrentViewName() === 'gameTable' && typeof GameTableView.handleNotification === 'function') {
-            GameTableView.handleNotification(eventName, context);
-        }
+        //Modals.handleNotification(eventName, context);
+        // if (ViewManager.getCurrentViewName() === 'gameTable' && typeof GameTableView.handleNotification === 'function') {
+        //     GameTableView.handleNotification(eventName, context);
+        // }
 
         SoundManager.playNotificationSound(eventName, eventBelongsToCanonicalPlayerIndex);
 
@@ -465,7 +456,7 @@ const AppController = (() => {
                 // Das hängt von der gewünschten User Experience ab.
                 // Fürs Erste: Bei den meisten Fehlern, die einen Request betreffen, die UI nicht blockieren.
                  if (_activeServerRequest.action === 'play') GameTableView.enablePlayControls(true, _activeServerRequest.id);
-                 if (_activeServerRequest.action === 'schupf') CardHandler.enableSchupfMode(_activeServerRequest.id, State.getPrivateState().hand_cards);
+                 //if (_activeServerRequest.action === 'schupf') CardHandler.enableSchupfMode(_activeServerRequest.id, State.getPrivateState().hand_cards);
 
             }
         }

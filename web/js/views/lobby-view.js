@@ -78,11 +78,6 @@ const LobbyView = (() => {
      */
     function _upOrDownButton_click(playerIndex, direction) {
         SoundManager.playSound('buttonClick');
-        const publicState = State.getPublicState();
-        if (!publicState || !publicState.player_names || publicState.player_names.length !== 4) {
-            return;
-        }
-
         let playerIndex2 = playerIndex + direction
 
         // Gültigkeitsprüfungen (z.B. nicht aus der Liste schieben, erster Spieler fix)
@@ -105,10 +100,10 @@ const LobbyView = (() => {
      */
     function render() {
         // console.log("LOBBYVIEW: Rendere LobbyView.");
-        const publicState = State.getPublicState();
+        const tableName = State.getTableName();
         const localPlayerCanonicalIndex = State.getPlayerIndex();
 
-        if (!publicState) {
+        if (!tableName) {
             _lobbyTableNameElement.textContent = '...?';
             _playerListElement.innerHTML = '<li>Lade Spieler...</li>';
             _teamAssignmentContainer.classList.add('hidden');
@@ -124,51 +119,46 @@ const LobbyView = (() => {
         _startGameButton.classList.toggle('hidden', !isHost);
 
         // Zeige Spieler in der aktuellen Reihenfolge an
-        if (publicState.player_names && publicState.player_names.length === 4) {
-            // Schleife über die relativen Sitzplätze (0=Du, 1=Rechts, 2=Partner, 3=Links)
-            for (let relativeIndex=0; relativeIndex <= 3; relativeIndex++) {
-                let canonicalIndex = Lib.getCanonicalPlayerIndex(relativeIndex);
-                let name = publicState.player_names[canonicalIndex];
+        // Schleife über die relativen Sitzplätze (0=Benutzer, 1=Rechts, 2=Partner, 3=Links)
+        for (let relativeIndex=0; relativeIndex <= 3; relativeIndex++) {
+            let canonicalIndex = Lib.getCanonicalPlayerIndex(relativeIndex);
+            let name = State.getPlayerName(canonicalIndex);
 
-                const li = document.createElement('li');
+            const li = document.createElement('li');
 
-                let displayName = name || `Spieler ${canonicalIndex + 1}`;
-                if (canonicalIndex === localPlayerCanonicalIndex) {
-                    displayName += ' (Du)';
-                }
-                else if (canonicalIndex === publicState.host_index) {
-                    displayName += ' (Host)';
-                }
-
-                const nameSpan = document.createElement('span');
-                nameSpan.textContent = displayName;
-                li.appendChild(nameSpan);
-
-                // Controls zum Verschieben (nur für Host, nicht für eigenen Namen oder ersten Spieler, wenn fix)
-                if (isHost && canonicalIndex !== 0) { // Host kann andere Spieler verschieben (außer Spieler 0)
-                    const controlsDiv = document.createElement('div');
-                    controlsDiv.className = 'player-order-controls';
-
-                    const upButton = document.createElement('button');
-                    upButton.innerHTML = '▲'; // Pfeil hoch
-                    upButton.title = 'Nach oben verschieben';
-                    upButton.disabled = canonicalIndex === 1; // Kann nicht vor den ersten Nicht-Host geschoben werden
-                    upButton.onclick = () => _upOrDownButton_click(canonicalIndex, -1);
-                    controlsDiv.appendChild(upButton);
-
-                    const downButton = document.createElement('button');
-                    downButton.innerHTML = '▼'; // Pfeil runter
-                    downButton.title = 'Nach unten verschieben';
-                    downButton.disabled = canonicalIndex === publicState.player_names.length - 1;
-                    downButton.onclick = () => _upOrDownButton_click(canonicalIndex, 1);
-                    controlsDiv.appendChild(downButton);
-                    li.appendChild(controlsDiv);
-                }
-                _playerListElement.appendChild(li);
+            let displayName = name || `Spieler ${canonicalIndex + 1}`;
+            if (canonicalIndex === localPlayerCanonicalIndex) {
+                displayName += ' (Du)';
             }
-        }
-        else {
-            _playerListElement.innerHTML = '<li>Warte auf Spieler...</li>';
+            else if (canonicalIndex === publicState.host_index) {
+                displayName += ' (Host)';
+            }
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = displayName;
+            li.appendChild(nameSpan);
+
+            // Controls zum Verschieben (nur für Host, nicht für eigenen Namen oder ersten Spieler, wenn fix)
+            if (isHost && canonicalIndex !== 0) { // Host kann andere Spieler verschieben (außer Spieler 0)
+                const controlsDiv = document.createElement('div');
+                controlsDiv.className = 'player-order-controls';
+
+                const upButton = document.createElement('button');
+                upButton.innerHTML = '▲'; // Pfeil hoch
+                upButton.title = 'Nach oben verschieben';
+                upButton.disabled = canonicalIndex === 1; // Kann nicht vor den ersten Nicht-Host geschoben werden
+                upButton.onclick = () => _upOrDownButton_click(canonicalIndex, -1);
+                controlsDiv.appendChild(upButton);
+
+                const downButton = document.createElement('button');
+                downButton.innerHTML = '▼'; // Pfeil runter
+                downButton.title = 'Nach unten verschieben';
+                downButton.disabled = canonicalIndex === publicState.getPlayerName().length - 1;
+                downButton.onclick = () => _upOrDownButton_click(canonicalIndex, 1);
+                controlsDiv.appendChild(downButton);
+                li.appendChild(controlsDiv);
+            }
+            _playerListElement.appendChild(li);
         }
     }
 

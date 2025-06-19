@@ -129,13 +129,20 @@ const State = (() => {
     // }
 
     /**
-     * Übernimmt den serverseitigen Spielzustand.
+     * Übernimmt den serverseitig öffentlichen Spielzustand.
      *
      * @param {PublicState} publicState - Der öffentliche Spielzustand.
+     */
+    function setPublicState(publicState) {
+        _publicState = publicState;
+    }
+
+    /**
+     * Übernimmt den serverseitig privaten Spielzustand.
+     *
      * @param {PrivateState} privateState - Der private Spielzustand.
      */
-    function set(publicState, privateState) {
-        _publicState = publicState;
+    function setPrivateState(privateState) {
         _privateState = privateState;
     }
 
@@ -486,7 +493,8 @@ const State = (() => {
 
     // noinspection JSUnusedGlobalSymbols
     return {
-        set,
+        setPublicState,
+        setPrivateState,
 
         // öffentlicher Spielzustand
         getTableName,
