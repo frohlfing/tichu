@@ -279,10 +279,6 @@
      * @param {object} context - Der Kontext des Events.
      */
     function handleNotification(eventName, context) {
-        // console.log("GAMETABLEVIEW: Notification empfangen:", eventName, context);
-        // Diese Funktion wird sehr umfangreich, wenn alle Spielmechaniken implementiert sind.
-        // Für den initialen Test (Login/Lobby/Logout) ist sie noch nicht kritisch.
-        // Beispiel:
         switch (eventName) {
             case 'hand_cards_dealt':
             case 'player_turn_changed':
@@ -537,7 +533,7 @@ function render() {
             _ownHandContainer.querySelectorAll('.schupf-candidate').forEach(c => c.classList.remove('schupf-candidate', 'in-schupf-zone'));
         }
         _renderSchupfZones(); // Leert die Zonen visuell
-        GameTableView.setPlayControlsForSchupfen(false); // Normale Spielbuttons wiederherstellen/deaktivieren
+        TableView.setPlayControlsForSchupfen(false); // Normale Spielbuttons wiederherstellen/deaktivieren
     }
 
     /**

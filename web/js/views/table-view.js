@@ -3,7 +3,7 @@
  *
  * @type {View}
  */
-const GameTableView = (() => {
+const TableView = (() => {
 
     // --------------------------------------------------------------------------------------
     // DOM-Elemente
@@ -14,7 +14,7 @@ const GameTableView = (() => {
      *
      * @type {HTMLDivElement}
      */
-    const _viewContainer = document.getElementById('game-table-screen');
+    const _viewContainer = document.getElementById('table-screen');
 
     /**
      * Button zum Beenden des Spiels/Verlassen des Tisches.
@@ -172,13 +172,13 @@ const GameTableView = (() => {
      * Initialisiert den Spieltisch-Bildschirm.
      */
     function init() {
-        console.log("GAMETABLEVIEW: Initialisiere GameTableView (minimal)...");
+        console.log("TableView: Initialisiere TableView (minimal)...");
 
         // Ereignishändler für den Event-Bus einrichten
         EventBus.on("wishDialog:select", _handleWishDialogSelect);
         EventBus.on("dragonDialog:select", _handleDragonDialogSelect);
-        EventBus.on("roundOverDialog:click", _handleRoundOverDialogClick);
-        EventBus.on("gameOverDialog:click", _handleGameOverDialogClick);
+        EventBus.on("roundOverDialog:confirm", _handleRoundOverDialogConfirm);
+        EventBus.on("gameOverDialog:confirm", _handleGameOverDialogConfirm);
         EventBus.on("exitDialog:select", _handleExitDialogSelect);
 
         // Ereignishändler für die Controls einrichten
@@ -250,8 +250,8 @@ const GameTableView = (() => {
      * @param {number} value - Der gewählte Kartenwert (2 bis 14).
      */
     function _handleWishDialogSelect(value) {
-        EventBus.emit("gameTableView:wish", value);
-        console.log("GameTableView: _handleWishDialogSelect", value);
+        EventBus.emit("tableView:wish", value);
+        console.log("TableView: _handleWishDialogSelect", value);
     }
 
     /**
@@ -260,23 +260,23 @@ const GameTableView = (() => {
      * @param {number} value - Der gewählte Gegner (1 == rechts, 3 == links).
      */
     function _handleDragonDialogSelect(value) {
-        EventBus.emit("gameTableView:giveDragonAway", value);
-        console.log("GameTableView: _handleDragonDialogSelect", value);
+        EventBus.emit("tableView:giveDragonAway", value);
+        console.log("TableView: _handleDragonDialogSelect", value);
     }
 
     /**
      * Ereignishändler für den RoundOver-Dialog.
      */
-    function _handleRoundOverDialogClick() {
-        console.log("GameTableView: _handleRoundOverDialogClick");
+    function _handleRoundOverDialogConfirm() {
+        console.log("TableView: _handleRoundOverDialogConfirm");
     }
 
     /**
      * Ereignishändler für den GameOver-Dialog.
      */
-    function _handleGameOverDialogClick() {
-        EventBus.emit("gameTableView:gameOver");
-        console.log("GameTableView: _handleGameOverDialogClick");
+    function _handleGameOverDialogConfirm() {
+        EventBus.emit("tableView:gameOver");
+        console.log("TableView: _handleGameOverDialogConfirm");
     }
 
     /**
@@ -286,9 +286,9 @@ const GameTableView = (() => {
      */
     function _handleExitDialogSelect(value) {
         if (value) {
-            EventBus.emit("gameTableView:exit");
+            EventBus.emit("tableView:exit");
         }
-        console.log("GameTableView: _handleExitDialogSelect");
+        console.log("TableView: _handleExitDialogSelect");
     }
 
     // --------------------------------------------------------------------------------------
@@ -394,8 +394,8 @@ const GameTableView = (() => {
         // Der Benutzer möchte eine Bombe ankündigen.
         _bombIcon.classList.add("disabled");
         SoundManager.playSound('buttonClick');
-        EventBus.emit("gameTableView:bomb");
-        console.log("gameTableView: bomb");
+        EventBus.emit("tableView:bomb");
+        console.log("tableView: bomb");
     }
 
     /**
@@ -407,12 +407,12 @@ const GameTableView = (() => {
         console.log("_handlePassButtonClick");
         switch (_passButton.dataset.mode) {
             case "NO_GRAND_TICHU": // Der Benutzer möchte kein großes Tichu ansagen.
-                EventBus.emit("gameTableView:grandTichu", false);
-                console.log("gameTableView: grandTichu", false);
+                EventBus.emit("tableView:grandTichu", false);
+                console.log("tableView: grandTichu", false);
                 break;
             case "PASS": // Der Benutzer möchte passen.
-                EventBus.emit("gameTableView:play", []);
-                console.log("gameTableView: pass");
+                EventBus.emit("tableView:play", []);
+                console.log("tableView: pass");
                 break;
             default:
                 console.error(`PlayButton-Mode ${_passButton.dataset.mode} nicht gehandelt.`);
@@ -428,12 +428,12 @@ const GameTableView = (() => {
         SoundManager.playSound('buttonClick');
         switch (_tichuButton.dataset.mode) {
             case "GRAND_TICHU": // Der Benutzer möchte ein großes Tichu ansagen.
-                EventBus.emit("gameTableView:grandTichu", true);
-                console.log("gameTableView: grandTichu", true);
+                EventBus.emit("tableView:grandTichu", true);
+                console.log("tableView: grandTichu", true);
                 break;
             case "TICHU": // Der Benutzer möchte ein einfaches Tichu ansagen.
-                EventBus.emit("gameTableView:tichu");
-                console.log("gameTableView: tichu");
+                EventBus.emit("tableView:tichu");
+                console.log("tableView: tichu");
                 break;
             default:
                 console.error(`TichuButton-Mode ${_tichuButton.dataset.mode} nicht gehandelt.`);
@@ -449,8 +449,8 @@ const GameTableView = (() => {
         SoundManager.playSound('buttonClick');
         switch (_playButton.dataset.mode) {
             case "SCHUPF": // Der Benutzer möchte drei Tauschkarten für die Mitspieler abgeben.
-                EventBus.emit("gameTableView:schupf", _getSchupfCards());
-                console.log("gameTableView: schupf", _getSchupfCards());
+                EventBus.emit("tableView:schupf", _getSchupfCards());
+                console.log("tableView: schupf", _getSchupfCards());
                 break;
             case "RECEIVE": // Der Benutzer nimmt die drei Tauschkarten der Mitspieler auf.
                 _receivedSchupfCardsConfirmed = true;
@@ -460,11 +460,11 @@ const GameTableView = (() => {
                 break;
             case "AUTOSELECT": // Die längste kleinstmögliche Kombination auswählen.
                 // todo
-                console.log("gameTableView: autoselect");
+                console.log("tableView: autoselect");
                 break;
             case "PLAY": // Der Benutzer möchte die ausgewählten Karten spielen.
-                EventBus.emit("gameTableView:play", _getSelectedCards());
-                console.log("gameTableView: play", _getSelectedCards());
+                EventBus.emit("tableView:play", _getSelectedCards());
+                console.log("tableView: play", _getSelectedCards());
                 break;
             default:
                 console.error(`PlayButton-Mode ${_playButton.dataset.mode} nicht gehandelt.`);

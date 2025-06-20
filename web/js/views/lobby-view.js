@@ -16,7 +16,7 @@ const LobbyView = (() => {
      *
      * @type {HTMLElement}
      */
-    const _lobbyTableNameElement = document.getElementById('lobby-table-name');
+    const _tableNameElement = document.getElementById('lobby-table-name');
 
     /**
      * Die Liste der Spieler am Tisch.
@@ -26,140 +26,91 @@ const LobbyView = (() => {
     const _playerListElement = document.getElementById('lobby-player-list');
 
     /**
-     * Container für Host-Aktionen.
+     * Container für Teamzuordnung.
      *
      * @type {HTMLElement}
      */
-    const _teamAssignmentContainer = document.getElementById('lobby-team-assignment-container');
+    const _assignmentContainer = document.getElementById('lobby-assignment-container');
 
     /**
      * Button zum Starten des Spiels (nur für Host).
      *
      * @type {HTMLButtonElement}
      */
-    const _startGameButton = document.getElementById('lobby-start-button');
+    const _startButton = document.getElementById('lobby-start-button');
 
     /**
      * Button zum Verlassen der Lobby.
      *
      * @type {HTMLButtonElement}
      */
-    const _leaveLobbyButton = document.getElementById('lobby-leave-button');
+    const _exitButton = document.getElementById('lobby-exit-button');
 
     /**
      * Initialisiert den Lobby-Bildschirm.
      */
     function init() {
-        _startGameButton.addEventListener('click', _handleStartGameButton_click);
-        _leaveLobbyButton.addEventListener('click', _handleLeaveLobbyButton_click);
-    }
-
-    /**
-     * Ereignishändler für den "Spiel starten"-Button.
-     */
-    function _handleStartGameButton_click() {
-        SoundManager.playSound('buttonClick');
-        AppController.sendProactiveMessage('start_game');
-    }
-
-    /**
-     * Ereignishändler für den "Beenden"-Button.
-     */
-    function _handleLeaveLobbyButton_click() {
-        SoundManager.playSound('buttonClick');
-        AppController.leaveGame();
-    }
-
-    /**
-     * Sendet eine Aktion zum Vertauschen zweier Spieler an den Server.
-     *
-     * @param {number} playerIndex - Der Index des zu tauschenden Spielers.
-     * @param {number} direction - +1 um mit dem nächsten zu tauschen, -1 um mit dem vorherigen.
-     */
-    function _upOrDownButton_click(playerIndex, direction) {
-        SoundManager.playSound('buttonClick');
-        let playerIndex2 = playerIndex + direction
-
-        // Gültigkeitsprüfungen (z.B. nicht aus der Liste schieben, erster Spieler fix)
-        // Der erste Spieler kann nicht verschoben werden.
-        // Und Spieler können nicht an Position 0 geschoben werden.
-        if (playerIndex2 < 1 || playerIndex2 > 3) {
-            console.log("LOBBYVIEW: Verschieben nicht möglich an diese Position.");
-            return;
-        }
-
-        console.log("LOBBYVIEW: Sende neue Indezies zum Vertauschen", [playerIndex, playerIndex2]);
-        AppController.sendProactiveMessage('swap_players', {
-            player_index_1: playerIndex,
-            player_index_2: playerIndex2
-        });
+        _startButton.addEventListener('click', _handleStartButtonClick);
+        _exitButton.addEventListener('click', _handleExitButtonClick);
     }
 
     /**
      * Rendert den Lobby-View basierend auf dem aktuellen Spielzustand.
      */
     function render() {
-        // console.log("LOBBYVIEW: Rendere LobbyView.");
-        const tableName = State.getTableName();
-        const localPlayerCanonicalIndex = State.getPlayerIndex();
+        // console.log("LobbyView: Rendere LobbyView.");
 
-        if (!tableName) {
-            _lobbyTableNameElement.textContent = '...?';
-            _playerListElement.innerHTML = '<li>Lade Spieler...</li>';
-            _teamAssignmentContainer.classList.add('hidden');
-            _startGameButton.classList.add('hidden'); // Sicherstellen, dass Buttons versteckt sind
-            return;
-        }
-
-        _lobbyTableNameElement.textContent = State.getTableName(); // Nimmt Wert aus State
+        _tableNameElement.textContent = State.getTableName();
         _playerListElement.innerHTML = '';
 
         const isHost = State.isHost();
-        _teamAssignmentContainer.classList.toggle('hidden', !isHost);
-        _startGameButton.classList.toggle('hidden', !isHost);
+        _assignmentContainer.classList.toggle('hidden', !isHost);
+        _startButton.classList.toggle('hidden', !isHost);
 
         // Zeige Spieler in der aktuellen Reihenfolge an
         // Schleife über die relativen Sitzplätze (0=Benutzer, 1=Rechts, 2=Partner, 3=Links)
-        for (let relativeIndex=0; relativeIndex <= 3; relativeIndex++) {
+        for (let relativeIndex= 0; relativeIndex <= 3; relativeIndex++) {
             let canonicalIndex = Lib.getCanonicalPlayerIndex(relativeIndex);
             let name = State.getPlayerName(canonicalIndex);
 
             const li = document.createElement('li');
 
             let displayName = name || `Spieler ${canonicalIndex + 1}`;
-            if (canonicalIndex === localPlayerCanonicalIndex) {
+            if (relativeIndex === 0) {
                 displayName += ' (Du)';
             }
-            else if (canonicalIndex === publicState.host_index) {
+            else if (canonicalIndex === State.getHostIndex()) {
                 displayName += ' (Host)';
             }
-
             const nameSpan = document.createElement('span');
             nameSpan.textContent = displayName;
             li.appendChild(nameSpan);
 
             // Controls zum Verschieben (nur für Host, nicht für eigenen Namen oder ersten Spieler, wenn fix)
-            if (isHost && canonicalIndex !== 0) { // Host kann andere Spieler verschieben (außer Spieler 0)
+            if (isHost && relativeIndex > 0) { // Host kann andere Spieler verschieben, aber nicht sich selber
                 const controlsDiv = document.createElement('div');
                 controlsDiv.className = 'player-order-controls';
 
                 const upButton = document.createElement('button');
                 upButton.innerHTML = '▲'; // Pfeil hoch
                 upButton.title = 'Nach oben verschieben';
-                upButton.disabled = canonicalIndex === 1; // Kann nicht vor den ersten Nicht-Host geschoben werden
+                upButton.disabled = relativeIndex === 1;
                 upButton.onclick = () => _upOrDownButton_click(canonicalIndex, -1);
                 controlsDiv.appendChild(upButton);
 
                 const downButton = document.createElement('button');
                 downButton.innerHTML = '▼'; // Pfeil runter
                 downButton.title = 'Nach unten verschieben';
-                downButton.disabled = canonicalIndex === publicState.getPlayerName().length - 1;
+                downButton.disabled = relativeIndex === 3;
                 downButton.onclick = () => _upOrDownButton_click(canonicalIndex, 1);
                 controlsDiv.appendChild(downButton);
                 li.appendChild(controlsDiv);
             }
             _playerListElement.appendChild(li);
         }
+
+        _startButton.disabled = false;
+        _exitButton.disabled = false;
     }
 
     /**
@@ -184,6 +135,51 @@ const LobbyView = (() => {
      */
     function isVisible() {
         return _viewContainer.classList.contains('active')
+    }
+
+    /**
+     * Ereignishändler für den StartGame-Button.
+     */
+    function _handleStartButtonClick() {
+        _startButton.disabled = true;
+        _exitButton.disabled = true;
+        // todo Buttons in .player-order-controls deaktivieren
+
+        SoundManager.playSound('buttonClick');
+        EventBus.emit("lobbyView:start");
+    }
+
+    /**
+     * Ereignishändler für den Exit-Button.
+     */
+    function _handleExitButtonClick() {
+        _startButton.disabled = true;
+        _exitButton.disabled = true;
+        // todo Buttons in .player-order-controls deaktivieren
+
+        SoundManager.playSound('buttonClick');
+        EventBus.emit("lobbyView:exit");
+    }
+
+    /**
+     * Sendet eine Aktion zum Vertauschen zweier Spieler an den Server.
+     *
+     * @param {number} playerIndex - Der Index des zu tauschenden Spielers.
+     * @param {number} direction - +1 um mit dem nächsten zu tauschen, -1 um mit dem vorherigen.
+     */
+    function _upOrDownButton_click(playerIndex, direction) {
+        SoundManager.playSound('buttonClick');
+        let playerIndex2 = playerIndex + direction
+
+        // Der erste Spieler kann nicht verschoben werden.
+        // Und Spieler können nicht an Position 0 geschoben werden.
+        if (playerIndex2 < 1 || playerIndex2 > 3) {
+            console.log("LobbyView: Verschieben an diese Position nicht möglich.");
+            return;
+        }
+
+        console.log("LobbyView: Sende neue Indezies zum Vertauschen", [playerIndex, playerIndex2]);
+        EventBus.emit("lobbyView:swap", {playerIndex1: playerIndex, playerIndex2: playerIndex2});
     }
 
     return {

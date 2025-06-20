@@ -1,8 +1,8 @@
-/* css/game-table-view.css */
+/* css/table-view.css */
 
 /* --- Spieltisch-Bildschirm (umfasst die Top-Bar, den grünen Spieltisch und die Bottom-Controls) --- */
 
-#game-table-screen {
+#table-screen {
     background-image: url('../images/table-texture.png');
     background-size: 1080px 1920px;
     background-position: center center;

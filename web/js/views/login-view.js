@@ -50,13 +50,12 @@ const LoginView = (() => {
         event.preventDefault(); // Standard-Formularabsendung verhindern
         const playerName = _playerNameInput.value.trim();
         const tableName = _tableNameInput.value.trim();
-
         if (playerName && tableName) {
             SoundManager.playSound('buttonClick'); // Beispiel für UI-Sound
-            AppController.attemptLogin(playerName, tableName);
+            EventBus.emit("loginView:login", {playerName: playerName, tableName: tableName});
         }
         else {
-            Modals.showErrorToast("Bitte Spielername und Tischname eingeben.");
+            Modals.showErrorToast("Bitte Spielername und Tisch eingeben.");
             if (!playerName) {
                 _playerNameInput.focus();
             }

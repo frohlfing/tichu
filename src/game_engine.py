@@ -620,13 +620,14 @@ class GameEngine:
                 if break_time:
                     await asyncio.sleep(break_time)
                 if clients_joined:
-                    await self._broadcast("round_over", {"game_score": pub.game_score, "is_double_victory": pub.is_double_victory})
+                    score_entry = pub.game_score[0][-1], pub.game_score[1][-1]
+                    await self._broadcast("round_over", {"score_entry": score_entry, "is_double_victory": pub.is_double_victory})
 
             # Partie ist beendet
             score20, score31 = pub.total_score
             logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {score20}, Team 31: {score31}")
             if clients_joined:
-                await self._broadcast("game_over", {"game_score": pub.game_score, "is_double_victory": pub.is_double_victory})
+                await self._broadcast("game_over", {"game_score": pub.game_score})
             pub.is_running = False
             return pub
 

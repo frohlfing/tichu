@@ -33,19 +33,19 @@ const WSCloseCode = {
 };
 
 /**
- * Typdefinition für eine Netzwerknachricht.
- *
- * @typedef {Object} NetworkMessage
- * @property {string} type - Der Typ der Nachricht.
- * @property {Object<string, any>} [payload] - Nachrichtenspezifische Daten (optional).
- */
-
-/**
  * Typdefinition für einen Netzwerkfehler.
  *
  * @typedef {Object} NetworkError
  * @property {string} message - Die Fehlermeldung.
  * @property {Object<string, any>} [context] - Zusätzliche Informationen (optional).
+ */
+
+/**
+ * Typdefinition für eine Netzwerknachricht.
+ *
+ * @typedef {Object} NetworkMessage
+ * @property {string} type - Der Typ der Nachricht.
+ * @property {Object<string, any>} [payload] - Nachrichtenspezifische Daten (optional).
  */
 
 /**
@@ -199,7 +199,7 @@ const Network = (() => {
 
         _websocket.onclose = (event) => {
             console.log(`Network: WebSocket-Verbindung geschlossen: Code ${event.code}, Grund: '${event.reason}', Clean: ${event.wasClean}`);
-            if (event.code === WSCloseCode.POLICY_VIOLATION) {
+            if ([WSCloseCode.OK, WSCloseCode.GOING_AWAY, WSCloseCode.POLICY_VIOLATION].includes(event.code)) {
                 _removeSessionId();
                 console.log("Network: SessionID gelöscht.");
             }
@@ -210,6 +210,11 @@ const Network = (() => {
                     _open(`session_id=${_sessionId}`);
                 }, Config.RECONNECT_DELAY);
             }
+        };
+
+        _websocket.onerror = (event) => {
+            console.error('Network: WebSocket-Fehler.', event);
+            EventBus.emit("network:error", {message: "WebSocket-Fehler aufgetreten.", context: event});
         };
 
         _websocket.onmessage = (event) => {
@@ -228,11 +233,6 @@ const Network = (() => {
                 console.error('Network: Fehler beim Parsen der Server-Nachricht:', event.data);
                 EventBus.emit("network:error", {message: "Ungültige Nachricht empfangen.", context: event.data});
             }
-        };
-
-        _websocket.onerror = (event) => {
-            console.error('Network: WebSocket-Fehler.', event);
-            EventBus.emit("network:error", {message: "WebSocket-Fehler aufgetreten.", context: event});
         };
     }
 

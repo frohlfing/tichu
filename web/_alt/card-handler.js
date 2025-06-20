@@ -31,7 +31,7 @@ const CardHandler = (() => {
             document.getElementById('schupf-zone-partner'),
             document.getElementById('schupf-zone-opponent-left')
         ];
-        // Event-Listener für Kartenklicks werden dynamisch beim Rendern der Hand gesetzt (in GameTableView)
+        // Event-Listener für Kartenklicks werden dynamisch beim Rendern der Hand gesetzt (in TableView)
         // Event-Listener für Schupf-Zonen, falls nötig (z.B. um Karten dorthin zu "legen")
         _schupfZones.forEach((zone, index) => {
             if (zone) {
@@ -41,7 +41,7 @@ const CardHandler = (() => {
     }
 
     /**
-     * Wird von GameTableView aufgerufen, wenn eine Karte in der eigenen Hand geklickt wird.
+     * Wird von TableView aufgerufen, wenn eine Karte in der eigenen Hand geklickt wird.
      * @param {HTMLElement} cardElement - Das geklickte Karten-DOM-Element.
      * @param {object} cardData - Das Kartenobjekt ({value, suit, label}).
      */
@@ -102,7 +102,7 @@ const CardHandler = (() => {
         }
 
         // UI anpassen: z.B. Hinweis anzeigen, andere Buttons deaktivieren
-        GameTableView.setPlayControlsForSchupfen(true); // z.B. nur "Schupfen Bestätigen"-Button
+        TableView.setPlayControlsForSchupfen(true); // z.B. nur "Schupfen Bestätigen"-Button
         _renderSchupfZones(); // Visuelles Feedback für leere Zonen
     }
 
@@ -128,7 +128,7 @@ const CardHandler = (() => {
             _ownHandContainer.querySelectorAll('.schupf-candidate').forEach(c => c.classList.remove('schupf-candidate', 'in-schupf-zone'));
         }
         _renderSchupfZones(); // Leert die Zonen visuell
-        GameTableView.setPlayControlsForSchupfen(false); // Normale Spielbuttons wiederherstellen/deaktivieren
+        TableView.setPlayControlsForSchupfen(false); // Normale Spielbuttons wiederherstellen/deaktivieren
     }
 
     /**
@@ -246,6 +246,6 @@ const CardHandler = (() => {
         handleCardClick,
         enableSchupfMode,
         disableSchupfMode, // Wird vom AppController bei Interrupts aufgerufen
-        confirmSchupf      // Wird vom GameTableView-Button aufgerufen
+        confirmSchupf      // Wird vom TableView-Button aufgerufen
     };
 })();

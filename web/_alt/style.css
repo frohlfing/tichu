@@ -243,7 +243,7 @@ background: #4a6b82; /* Hintergrund für bessere Sichtbarkeit */
 /* Game Table Screen                                     */
 /* ----------------------------------------------------- */
 
-#game-table-screen {
+#table-screen {
     background-image: url('../images/table-texture.png');
     background-size: cover;
     background-position: center;

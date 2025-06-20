@@ -297,14 +297,14 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 Der WebSocket-Handler empfängt diese Nachrichten und leitet sie an deb Peer weiter. 
 Ausnahme: Ein `ping` wird direkt vom WebSocket-Handler mit einem `pong` quittiert.
 
-| Type             | Payload                                      | Beschreibung                                                                                                                   | Antwort vom Server (Type) | Antwort vom Server (Payload)                      |
-|------------------|----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|---------------------------|---------------------------------------------------|
-| `"ping"`         | `{timestamp: "ISO8601_string"}`              | Verbindungstest.                                                                                                               | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}` |
-| `"leave"`        |                                              | Der Spieler möchte den Tisch verlassen.                                                                                        | keine Antwort             |                                                   |
-| `"swap_players"` | `{player_index_1: int, player_index_2: int}` | Der Host möchte die Position zweier Spieler vertauschen (der Host darf nicht verschoben werden; nur vor Spielstart möglich).   | keine Antwort             |                                                   |
-| `"start_game"`   |                                              | Der Host möchte das Spiel starten.                                                                                             | keine Antwort             |                                                   |
-| `"announce"`     |                                              | Der Spieler möchte außerhalb seines regulären Zuges Tichu ansagen.                                                             | keine Antwort             |                                                   |
-| `"bomb"`         | `{cards: Cards}`                             | Der Spieler möchte außerhalb seines regulären Zuges eine Bombe werfen.                                                         | keine Antwort             |                                                   |
+| Type             | Payload                                      | Beschreibung                                                                                                                 | Antwort vom Server (Type) | Antwort vom Server (Payload)                      |
+|------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|---------------------------|---------------------------------------------------|
+| `"ping"`         | `{timestamp: "ISO8601_string"}`              | Verbindungstest.                                                                                                             | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}` |
+| `"leave"`        |                                              | Der Spieler möchte den Tisch verlassen.                                                                                      | keine Antwort             |                                                   |
+| `"swap_players"` | `{player_index_1: int, player_index_2: int}` | Der Host möchte die Position zweier Spieler vertauschen (der Host darf nicht verschoben werden; nur vor Spielstart möglich). | keine Antwort             |                                                   |
+| `"start_game"`   |                                              | Der Host möchte das Spiel starten.                                                                                           | keine Antwort             |                                                   |
+| `"announce"`     |                                              | Der Spieler möchte Tichu ansagen.                                                                                            | keine Antwort             |                                                   |
+| `"bomb"`         | `{cards: Cards}`                             | Der Spieler möchte eine Bombe ankündigen.                                                                                    | keine Antwort             |                                                   |
 
 **Proaktive Nachrichten vom Server an den Client:**
 
@@ -326,13 +326,14 @@ Erhält er sie, liefert der Peer die Daten als Antwort an die Engine aus.
   
 #### 7.2.1 Request-/Response-Nachrichten
 
-| Request Action (vom Server) | Response Data (vom Client)                                                              | Beschreibung                                                                                               |
-|-----------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| "announce_grand_tichu"      | `{announced: bool}`                                                                     | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                             |
-| "schupf"                    | `{given_schupf_cards: [Card, Card, Card]}` (für rechten Gegner, Partner, linken Gegner) | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden. |
-| "play"                      | `{cards: Cards}` (`{cards: []}` für passen)                                             | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.  |
-| "wish"                      | `{wish_value: int}`                                                                     | Der Spieler muss sich einen Kartenwert wünschen.                                                           |
-| "give_dragon_away"          | `{dragon_recipient: int}`                                                               | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                       |
+| Request Action (vom Server) | Response Data (vom Client)                                                              | Beschreibung                                                                                                                                       |
+|-----------------------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| "announce_grand_tichu"      | `{announced: bool}`                                                                     | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                                                                     |
+| "schupf"                    | `{given_schupf_cards: [Card, Card, Card]}` (für rechten Gegner, Partner, linken Gegner) | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden.                                         |
+| "play"                      | `{cards: Cards}` (`{cards: []}` für passen)                                             | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.                                          |
+| "bomb"                      | `{cards: Cards}` (`{cards: []}` für passen)                                             | Der Spieler kann eine Bombe werfen. Wenn der Client zuvor eine Bombe angekündigt hat, muss er eine Bombe auswählen. Ansonsten kann er auch passen. |
+| "wish"                      | `{wish_value: int}`                                                                     | Der Spieler muss sich einen Kartenwert wünschen.                                                                                                   |
+| "give_dragon_away"          | `{dragon_recipient: int}`                                                               | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                                                               |
 
 Akzeptiert die Engine die Client-Antwort, sendet sie eine entsprechende [Notification-Nachricht](#722-notification-nachrichten) an alle Spieler.
 Andernfalls sendet die Engine eine Fehlermeldung über den Peer an den Client.
@@ -357,15 +358,15 @@ Benachrichtigung an alle Spieler
 | "player_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                   |
 | "player_schupfed"        | `{player_index: int}`                                                                                                             | Der Spieler hat drei Karten zum Tausch abgegeben.               |
 | "schupf_cards_dealt"     | `None` -> `{received_schupf_cards: [Card, Card, Card]}` (vom rechten Gegner, Partner, linken Gegner)                              | Die Tauschkarten wurden an die Spieler verteilt.                |
-| "player_passed"          | `{player_index: int}`                                                                                                             | Der Spieler hat hat gepasst.                                    |
+| "player_passed"          | `{player_index: int}`                                                                                                             | Der Spieler hat gepasst.                                        |
 | "player_played"          | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat Karten ausgespielt.                             |
 | "player_bombed"          | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat eine Bombe geworfen.                            |
 | "wish_made"              | `{wish_value: int}`                                                                                                               | Ein Kartenwert wurde sich gewünscht.                            |
 | "wish_fulfilled"         |                                                                                                                                   | Der Wunsch wurde erfüllt.                                       |
 | "trick_taken"            | `{player_index: int}`                                                                                                             | Der Spieler hat den Stich kassiert.                             |
 | "player_turn_changed"    | `{current_turn_index: int}`                                                                                                       | Der Spieler ist jetzt am Zug.                                   |
-| "round_over"             | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Karten werden neu gemischt.        |
-| "game_over"              | `{game_score: (list, list), is_double_victory: bool}`                                                                             | Die Runde ist vorbei und die Partie ist entschieden.            |
+| "round_over"             | `{score20: int, score31: int, is_double_victory: bool}`                                                                           | Die Runde ist vorbei und die Karten werden neu gemischt.        |
+| "game_over"              | `{game_score: (list, list)}`                                                                                                      | Die Runde ist vorbei und die Partie ist entschieden.            |
 
 "->" bedeutet, dass der Peer den vom Server gesendeten Kontext mit privaten Statusinformationen des Spielers anreichert, bevor er es an den Spieler weiterleitet.
 Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigenen Spieler handelt.
@@ -541,7 +542,7 @@ Mit dem Klick auf die Bombe holt man sich nur das Zugrecht, es wird nicht direkt
 *   `LoadingView`: Anzeige und Interaktion der Ladeanzeige. 
 *   `LoginView`: Anzeige und Interaktion des Login-Bildschirms. 
 *   `LobbyView`: Anzeige und Interaktion der Lobby. 
-*   `GameTableView`: Anzeige und Interaktion des Spieltisch-Bildschirms. 
+*   `TableView`: Anzeige und Interaktion des Spieltisch-Bildschirms. 
 *   `ViewManager`: Schaltet zwischen den Views der Anwendung um.
 *   `AppController`: Orchestriert die Anwendung.
 

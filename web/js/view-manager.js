@@ -28,7 +28,7 @@ const ViewManager = (() => {
      * @property {View} loading - Die Ladeanzeige.
      * @property {LoginView} login - Der Login-Bildschirm.
      * @property {LobbyView} lobby - Der Lobby-Bildschirm.
-     * @property {GameTableView} table - Der Spieltisch-Bildschirm.
+     * @property {TableView} table - Der Spieltisch-Bildschirm.
      */
     const _views = {};
 
@@ -46,7 +46,7 @@ const ViewManager = (() => {
         _views.lobby = LobbyView;
         _views.lobby.init();
 
-        _views.table = GameTableView;
+        _views.table = TableView;
         _views.table.init();
 
         // Aktuelle View rendern
