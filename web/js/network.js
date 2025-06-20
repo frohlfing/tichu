@@ -33,126 +33,234 @@ const WSCloseCode = {
 };
 
 /**
+ * Typdefinition für eine Netzwerknachricht.
+ *
+ * @typedef {Object} NetworkMessage
+ * @property {string} type - Der Typ der Nachricht.
+ * @property {Object<string, any>} [payload] - Nachrichtenspezifische Daten (optional).
+ */
+
+/**
+ * Typdefinition für einen Netzwerkfehler.
+ *
+ * @typedef {Object} NetworkError
+ * @property {string} message - Die Fehlermeldung.
+ * @property {Object<string, any>} [context] - Zusätzliche Informationen (optional).
+ */
+
+/**
+ * Typdefinition für eine Anfrage des Servers.
+ *
+ * @typedef {Object} ServerRequest
+ * @property {string} request_id - Die UUID der Anfrage.
+ * @property {string} action - Die Aktion der Anfrage.
+ * @property {PublicState} public_state - Der öffentliche Spielzustand.
+ * @property {PrivateState} private_state - Der private Spielzustand.
+ */
+
+/**
+ * Typdefinition für eine Benachrichtigung des Servers.
+ *
+ * @typedef {Object} ServerNotification
+ * @property {string} event - Das Ereignis.
+ * @property {Object<string, any>} [context] - Zusätzliche Informationen (optional).
+ */
+
+/**
+ * Typdefinition für eine Fehlermeldung des Servers.
+ *
+ * @typedef {Object} ServerError
+ * @property {string} message - Die Fehlermeldung.
+ * @property {number} code - Der Fehler.
+ * @property {Object<string, any>} [context] - Zusätzliche Informationen (optional).
+ */
+
+/**
  * Verantwortlich für die WebSocket-Verbindung und Kommunikation mit dem Server.
  */
 const Network = (() => {
-    /** @type {WebSocket|null} websocket - Die aktive WebSocket-Instanz. */
-    let websocket = null;
+    /**
+     * Die aktive WebSocket-Instanz.
+     *
+     * @type {WebSocket|null}
+     */
+    let _websocket = null;
 
     /**
-     * Stellt eine WebSocket-Verbindung zum Server her.
+     * Die Session-UUID der aktuellen Verbindung.
+     *
+     * @type {string|null}
+     */
+    let _sessionId = localStorage.getItem("tichuSessionId") || null;
+
+    // --------------------------------------------------------------------------------------
+    // Öffentliche Funktionen und Ereignishändler
+    // --------------------------------------------------------------------------------------
+
+    /**
+     * Initialisiert das Netzwerk und versucht, die letzte Session wieder aufzubauen.
+     */
+    function init() {
+        if (_sessionId) {
+            _open(`session_id=${_sessionId}`);
+        }
+    }
+
+    /**
+     * Öffnet eine WebSocket-Verbindung.
      *
      * @param {string | null} playerName - Der Name des Spielers (für neuen Login).
      * @param {string | null} tableName - Der Name des Tisches (für neuen Login).
-     * @param {string | null} sessionId - Die Session-ID für einen Reconnect.
      */
-    function connect(playerName, tableName, sessionId) {
-        if (websocket && websocket.readyState !== WebSocket.CLOSED) {
-            console.warn('Network: WebSocket-Verbindung besteht bereits oder wird aufgebaut.');
-            return;
+    function open(playerName, tableName) {
+        _removeSessionId();
+        _open(`player_name=${encodeURIComponent(playerName)}&table_name=${encodeURIComponent(tableName)}`);
+    }
+
+    /**
+     * Schließt die WebSocket-Verbindung, falls vorhanden.
+     */
+    function close() {
+        _removeSessionId();
+        console.log("Network: SessionID gelöscht.");
+        if (_websocket && _websocket.readyState !== WebSocket.CLOSED) {
+            console.log("Network: Schließe WebSocket-Verbindung clientseitig.");
+            _websocket.close(WSCloseCode.OK, "Client hat Verbindung aktiv beendet");
         }
+    }
 
-        let wsUrl = Config.WEBSOCKET_URL || 'ws://localhost:8765/ws';
-        
-        if (sessionId) {
-            wsUrl += `?session_id=${sessionId}`;
-        }
-        else if (playerName && tableName) {
-            wsUrl += `?player_name=${encodeURIComponent(playerName)}&table_name=${encodeURIComponent(tableName)}`;
-        }
-        else {
-            console.error('Network: Ungültige Parameter für WebSocket-Verbindung.');
-            EventBus.emit("network:error", {name: "ClientSetupError", message: "Ungültige Verbindungsparameter."});
-            return;
-        }
+    /**
+     * Gibt an, ob die WebSocket zum Senden und Empfangen von Nachrichten bereit ist.
+     *
+     * @returns {boolean} True, wenn verbunden und offen, sonst false.
+     */
+    function isReady() {
+        return _websocket && _websocket.readyState === WebSocket.OPEN;
+    }
 
-        console.log(`Network: Versuche Verbindung zu: ${wsUrl}`);
-
-        try {
-            websocket = new WebSocket(wsUrl);
-        }
-        catch (e) {
-            console.error("Network: Fehler beim Erstellen des WebSocket-Objekts:", e);
-            EventBus.emit("network:error", {name: "WebSocketCreationError", message: e.message, context: {originalError: e}});
-            return;
-        }
-
-        websocket.onopen = (event) => {
-            console.log('Network: WebSocket-Verbindung geöffnet.');
-            EventBus.emit("network:open", event);
-        };
-
-        websocket.onclose = (event) => {
-            console.log(`Network: WebSocket-Verbindung geschlossen: Code ${event.code}, Grund: '${event.reason}', Clean: ${event.wasClean}`);
-            EventBus.emit("network:close", event);
-        };
-
-        websocket.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                console.log('Network: Nachricht vom Server:', data);
-                EventBus.emit("network:message", data);
-            } 
-            catch (e) {
-                console.error('Network: Fehler beim Parsen der Server-Nachricht:', e, event.data);
-                EventBus.emit("network:error", {name: "MessageParseError", message: "Ungültige Server-Nachricht empfangen.", context: event.data});
-            }
-        };
-
-        websocket.onerror = (event) => {
-            console.error('Network: WebSocket-Fehler.', event);
-            EventBus.emit("network:error", {name: "WebSocketError", message: "WebSocket-Fehler aufgetreten.", context: event});
-        };
+    /** @returns {string|null} Die Session-UUID der aktuellen Verbindung. */
+    function getSessionId() {
+        return _sessionId;
     }
 
     /**
      * Sendet eine Nachricht an den Server.
      *
      * @param {string} type - Der Typ der Nachricht.
-     * @param {object|null} payload - Der Inhalt der Nachricht.
+     * @param {Object<string, any>|null} payload - Der Inhalt der Nachricht.
      */
     function send(type, payload=null) {
-        if (websocket && websocket.readyState === WebSocket.OPEN) {
-            const message = {type, payload: payload || {}};
-            // console.log('Network: Sende Nachricht', message); // Für Debugging
-            try {
-                websocket.send(JSON.stringify(message));
-            }
-            catch (e) {
-                console.error("Network: Fehler beim Senden der WebSocket-Nachricht:", e);
-                EventBus.emit("network:error", {name: "SendError", message: "Fehler beim Senden.", context: {originalError: e}});
-            }
+        if (!isReady()) {
+            console.error('Network: WebSocket nicht bereit zum Senden.');
+            EventBus.emit("network:error", {message: "WebSocket nicht bereit zum Senden."});
+            return;
+
         }
-        else {
-            console.error('Network: WebSocket nicht verbunden oder nicht bereit zum Senden.');
-            EventBus.emit("network:error", {name: "NotConnectedError", message: "Keine Verbindung zum Senden der Nachricht." });
+        const message = payload !== null ? {type: type, payload: payload} : {type: type};
+        try {
+            _websocket.send(JSON.stringify(message));
+        }
+        catch (e) {
+            console.error("Network: Fehler beim Senden der WebSocket-Nachricht:", e);
+            EventBus.emit("network:error", {message: "Fehler beim Senden.", context: e});
         }
     }
 
-    /**
-     * Schließt die WebSocket-Verbindung, falls vorhanden.
-     */
-    function disconnect() {
-        if (websocket) {
-            console.log("Network: Schließe WebSocket-Verbindung clientseitig.");
-            websocket.close(WSCloseCode.OK, "Client hat Verbindung aktiv beendet");
-        }
-    }
+    // --------------------------------------------------------------------------------------
+    // Hilfsfunktionen
+    // --------------------------------------------------------------------------------------
 
     /**
-     * Prüft, ob die WebSocket-Verbindung aktiv ist.
+     * Stellt eine WebSocket-Verbindung her.
      *
-     * @returns {boolean} True, wenn verbunden und offen, sonst false.
+     * @param {string} queryString - Die Abfragezeichenfolge der URL.
      */
-    function isConnected() {
-        return websocket && websocket.readyState === WebSocket.OPEN;
+    function _open(queryString) {
+        if (_websocket && _websocket.readyState !== WebSocket.CLOSED) {
+            console.warn('Network: WebSocket-Verbindung besteht bereits oder wird aufgebaut.');
+            return;
+        }
+
+        const url = `${Config.WEBSOCKET_URL}?${queryString}`;
+        console.log(`Network: Verbinde ${url}...`);
+        try {
+            _websocket = new WebSocket(url);
+        }
+        catch (e) {
+            console.error("Network: Verbindungsaufbau fehlgeschlagen:", e);
+            EventBus.emit("network:error", {message: "Verbindungsaufbau fehlgeschlagen", context: e});
+            return;
+        }
+
+        _websocket.onopen = (event) => {
+            console.log('Network: WebSocket-Verbindung geöffnet.');
+            EventBus.emit("network:open", event);
+        };
+
+        _websocket.onclose = (event) => {
+            console.log(`Network: WebSocket-Verbindung geschlossen: Code ${event.code}, Grund: '${event.reason}', Clean: ${event.wasClean}`);
+            if (event.code === WSCloseCode.POLICY_VIOLATION) {
+                _removeSessionId();
+                console.log("Network: SessionID gelöscht.");
+            }
+            EventBus.emit("network:close", event);
+            if (_sessionId) {
+                // versuche, die Verbindung automatisch wiederherzustellen
+                setTimeout(() => {
+                    _open(`session_id=${_sessionId}`);
+                }, Config.RECONNECT_DELAY);
+            }
+        };
+
+        _websocket.onmessage = (event) => {
+            try {
+                /** @param {NetworkMessage} data */
+                const data = JSON.parse(event.data);
+                if (data.type === 'notification' && data.payload.event === 'player_joined' && data.payload.context.session_id !== undefined) {
+                    /** @param {{payload: {context: {session_id: string}}}} data */
+                    _setSessionId(data.payload.context.session_id);
+                    console.log("Network: SessionID gesetzt.", _sessionId);
+                }
+                console.log('Network: Nachricht vom Server:', data);
+                EventBus.emit("network:message", data);
+            }
+            catch (_e) {
+                console.error('Network: Fehler beim Parsen der Server-Nachricht:', event.data);
+                EventBus.emit("network:error", {message: "Ungültige Nachricht empfangen.", context: event.data});
+            }
+        };
+
+        _websocket.onerror = (event) => {
+            console.error('Network: WebSocket-Fehler.', event);
+            EventBus.emit("network:error", {message: "WebSocket-Fehler aufgetreten.", context: event});
+        };
+    }
+
+    /**
+     * Setzt die Session-ID.
+     *
+     * @param {string} sessionId - Die neue Session-ID.
+     */
+    function _setSessionId(sessionId) {
+        _sessionId = sessionId;
+        localStorage.setItem('tichuSessionId', sessionId);
+    }
+
+    /**
+     * Löscht die Session-ID.
+     */
+    function _removeSessionId() {
+        _sessionId = null;
+        localStorage.removeItem('tichuSessionId');
     }
 
     // noinspection JSUnusedGlobalSymbols
     return {
-        connect,
+        init,
+        open,
+        close,
+        isReady,
+        getSessionId,
         send,
-        disconnect,
-        isConnected,
     };
 })();
