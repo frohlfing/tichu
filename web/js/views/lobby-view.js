@@ -16,21 +16,14 @@ const LobbyView = (() => {
      *
      * @type {HTMLElement}
      */
-    const _tableNameElement = document.getElementById('lobby-table-name');
+    const _tableName = document.getElementById('lobby-table-name');
 
     /**
      * Die Liste der Spieler am Tisch.
      *
      * @type {HTMLUListElement}
      */
-    const _playerListElement = document.getElementById('lobby-player-list');
-
-    /**
-     * Container für Teamzuordnung.
-     *
-     * @type {HTMLElement}
-     */
-    const _assignmentContainer = document.getElementById('lobby-assignment-container');
+    const _playerList = document.getElementById('lobby-player-list');
 
     /**
      * Button zum Starten des Spiels (nur für Host).
@@ -60,11 +53,10 @@ const LobbyView = (() => {
     function render() {
         // console.log("LobbyView: Rendere LobbyView.");
 
-        _tableNameElement.textContent = State.getTableName();
-        _playerListElement.innerHTML = '';
+        _tableName.textContent = State.getTableName();
+        _playerList.innerHTML = '';
 
         const isHost = State.isHost();
-        _assignmentContainer.classList.toggle('hidden', !isHost);
         _startButton.classList.toggle('hidden', !isHost);
 
         // Zeige Spieler in der aktuellen Reihenfolge an
@@ -106,7 +98,7 @@ const LobbyView = (() => {
                 controlsDiv.appendChild(downButton);
                 li.appendChild(controlsDiv);
             }
-            _playerListElement.appendChild(li);
+            _playerList.appendChild(li);
         }
 
         _startButton.disabled = false;
@@ -134,17 +126,14 @@ const LobbyView = (() => {
      * @returns {boolean}
      */
     function isVisible() {
-        return _viewContainer.classList.contains('active')
+        return _viewContainer.classList.contains('active');
     }
 
     /**
      * Ereignishändler für den StartGame-Button.
      */
     function _handleStartButtonClick() {
-        _startButton.disabled = true;
-        _exitButton.disabled = true;
-        // todo Buttons in .player-order-controls deaktivieren
-
+        _disableButtons();
         SoundManager.playSound('buttonClick');
         EventBus.emit("lobbyView:start");
     }
@@ -153,10 +142,7 @@ const LobbyView = (() => {
      * Ereignishändler für den Exit-Button.
      */
     function _handleExitButtonClick() {
-        _startButton.disabled = true;
-        _exitButton.disabled = true;
-        // todo Buttons in .player-order-controls deaktivieren
-
+        _disableButtons();
         SoundManager.playSound('buttonClick');
         EventBus.emit("lobbyView:exit");
     }
@@ -178,8 +164,18 @@ const LobbyView = (() => {
             return;
         }
 
+        _disableButtons();
         console.log("LobbyView: Sende neue Indezies zum Vertauschen", [playerIndex, playerIndex2]);
         EventBus.emit("lobbyView:swap", {playerIndex1: playerIndex, playerIndex2: playerIndex2});
+    }
+
+    /**
+     * Deaktiviert alle Buttons.
+     */
+    function _disableButtons() {
+        _startButton.disabled = true;
+        _exitButton.disabled = true;
+        // todo Buttons in .player-order-controls deaktivieren
     }
 
     return {

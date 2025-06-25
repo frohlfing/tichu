@@ -1,10 +1,10 @@
 #lobby-screen {
     background-color: #34495e;
-    padding: 30px 20px 20px; /* Mehr Platz oben */
-    justify-content: flex-start;
-    overflow-y: auto;
-    flex-direction: column;
-    align-items: center;
+    /*padding: 30px;*/
+    /*justify-content: flex-start;*/
+    /*overflow-y: auto;*/
+    /*flex-direction: column;*/
+    /*align-items: center;*/
 }
 
 #lobby-screen h2 {
@@ -14,8 +14,7 @@
 }
 
 #lobby-player-list-container {
-    width: 90%;
-    max-width: 450px;
+    width: 600px;
     margin-bottom: 25px;
 }
 
@@ -63,15 +62,6 @@
     cursor: not-allowed;
 }
 
-#lobby-assignment-container {
-    width: 90%;
-    max-width: 450px;
-    text-align: center;
-    margin-top: 20px;
-    margin-bottom: 10px;
-    font-size: 1.1em;
-}
-
 .lobby-actions-bottom {
     display: flex;
     flex-direction: column;
@@ -82,7 +72,7 @@
     margin-top: 20px;
 }
 
-#lobby-start-button, #lobby-exit-button {
+.lobby-actions-bottom button {
     padding: 14px 22px;
     width: 100%;
     font-size: 1.2em;

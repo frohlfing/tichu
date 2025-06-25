@@ -1,24 +1,31 @@
 #loading-screen {
     background-color: #1a1a1a;
-    /* z-index: 100; /* Sicherstellen, dass es über anderen ist, wenn aktiv */
 }
+
 #loading-screen .logo {
     width: 60%;
-    max-width: 250px; /* Referenz Godot: ca. 50-60% der Breite */
+    max-width: 250px;
     margin-bottom: 20px;
 }
+
 #loading-screen p {
-    font-size: 1.2em; /* Referenz Godot: Etwas größerer Text */
+    font-size: 1.2em;
     margin-bottom: 25px;
 }
+
 #loading-screen .spinner {
-    width: 50px; /* Referenz Godot: ca. 100px */
+    width: 50px;
     height: 50px;
     animation: spin 1s linear infinite;
     background-image: url('../images/spinner.png');
     background-size: contain;
 }
+
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }

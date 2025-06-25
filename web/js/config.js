@@ -11,7 +11,7 @@ const Config = {
     WEBSOCKET_URL: 'ws://localhost:8765/ws',
 
     // Automatische Wiederherstellung der Verbindung, wenn diese nicht manuell beendet wurde (in ms).
-    RECONNECT_DELAY: 500,
+    RECONNECT_DELAY: 1500,
 
     // Zeit für Fehler-Popup (in ms)
     TOAST_TIMEOUT: 3500,

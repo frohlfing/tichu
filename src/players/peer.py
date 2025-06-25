@@ -9,7 +9,7 @@ from aiohttp import WSCloseCode
 from aiohttp.web import WebSocketResponse
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import Card, Cards, stringify_cards, deck, CARD_MAH
+from src.lib.cards import Card, Cards, stringify_cards, deck, CARD_MAH, CardSuit
 from src.lib.combinations import Combination, build_action_space, CombinationType, FIGURE_DRA
 # noinspection PyUnresolvedReferences
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError, ErrorCode
@@ -111,7 +111,7 @@ class Peer(Player):
         :param cards: Die Karten, aus denen die Bombe gebildet wurde.
         """
         # Parameter ok?
-        if not isinstance(cards, Cards):
+        if not isinstance(cards, list):
             msg = "Ungültige Parameter für \"bomb\""
             logger.warning(f"Peer {self.name}: {msg}: {cards}")
             await self.error(msg, ErrorCode.INVALID_MESSAGE, context={"cards": cards})
@@ -351,14 +351,16 @@ class Peer(Player):
             payload = await self._ask("schupf", interruptable=True)
 
             # Ist der Payload ok?
-            if not payload or not isinstance(payload.get("given_schupf_cards"), Cards) or len(payload.get("given_schupf_cards")) != 3:
+            if not payload or not isinstance(payload.get("given_schupf_cards"), list) or len(payload.get("given_schupf_cards")) != 3:
                 msg = "Ungültige Antwort für Anfrage \"schupf\""
                 logger.warning(f"Peer {self.name}: {msg}: {payload}")
                 await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
 
             # Label der Karten valide?
-            cards = payload["given_schupf_cards"][0], payload["given_schupf_cards"][1], payload["given_schupf_cards"][2]
+            cards = ((payload["given_schupf_cards"][0][0], CardSuit(payload["given_schupf_cards"][0][1])),
+                     (payload["given_schupf_cards"][1][0], CardSuit(payload["given_schupf_cards"][1][1])),
+                     (payload["given_schupf_cards"][2][0], CardSuit(payload["given_schupf_cards"][2][1])))
             if any(card not in deck for card in cards):
                 msg = "Mindestens eine Karte ist unbekannt"
                 logger.warning(f"Peer {self.name}: {msg}: {cards}")
@@ -403,14 +405,14 @@ class Peer(Player):
             payload = await self._ask("play", interruptable=True)
 
             # Ist der Payload ok?
-            if not payload or not isinstance(payload.get("cards"), Cards):
+            if not payload or not isinstance(payload.get("cards"), list):
                 msg = "Ungültige Antwort für Anfrage \"play\""
                 logger.warning(f"Peer {self.name}: {msg}: {payload}")
                 await self.error(msg, ErrorCode.INVALID_MESSAGE, context=payload)
                 continue
 
             # Karten valide?
-            cards = payload["cards"]
+            cards = [(card[0], CardSuit(card[1])) for card in payload["cards"]]
             if any(card not in deck for card in cards):
                 msg = "Mindestens eine Karte ist unbekannt"
                 logger.warning(f"Peer {self.name}: {msg}: {cards}")
@@ -597,6 +599,10 @@ class Peer(Player):
         elif event == "hand_cards_dealt":
             assert context.get("count") == len(self.priv.hand_cards)
             context = {"hand_cards": self.priv.hand_cards}
+
+        elif event == "player_schupfed":
+            if context.get("player_index") == self.priv.player_index:
+                context = {"given_schupf_cards": self.priv.given_schupf_cards}
 
         elif event == "schupf_cards_dealt":
             context = {"received_schupf_cards": self.priv.received_schupf_cards}

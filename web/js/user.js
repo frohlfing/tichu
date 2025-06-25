@@ -20,8 +20,14 @@ const User = (() => {
     //  * Initialisiert den Zustand, lädt Werte aus dem LocalStorage.
     //  */
     // function init() {
-    //     _playerName = localStorage.getItem("tichuPlayerName") || "";
-    //     _tableName = localStorage.getItem("tichuTableName") || "";
+    //     const urlParams = new URLSearchParams(window.location.search);
+    //     const paramPlayerName = urlParams.get('player_name');
+    //     const paramTableName = urlParams.get('table_name');
+    //     if (paramPlayerName && paramTableName) {
+    //         console.log('App: Login mit URL-Parametern:', paramPlayerName, paramTableName);
+    //         User.setPlayerName(paramPlayerName);
+    //         User.setTableName(paramTableName);
+    //     }
     // }
 
     /** @returns {string} Den lokal gespeicherten/eingegebenen Spielernamen. */

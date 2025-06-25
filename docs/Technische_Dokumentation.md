@@ -356,7 +356,7 @@ Benachrichtigung an alle Spieler
 | "hand_cards_dealt"       | `{count: int}` -> `{hand_cards: Cards}`                                                                                           | Handkarten wurden an die Spieler verteilt.                      |
 | "player_grand_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.       |
 | "player_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                   |
-| "player_schupfed"        | `{player_index: int}`                                                                                                             | Der Spieler hat drei Karten zum Tausch abgegeben.               |
+| "player_schupfed"        | `{player_index: int}` -> `{given_schupf_cards: [Card, Card, Card]}` (für rechten Gegner, Partner, linken Gegner)                  | Der Spieler hat drei Karten zum Tausch abgegeben.               |
 | "schupf_cards_dealt"     | `None` -> `{received_schupf_cards: [Card, Card, Card]}` (vom rechten Gegner, Partner, linken Gegner)                              | Die Tauschkarten wurden an die Spieler verteilt.                |
 | "player_passed"          | `{player_index: int}`                                                                                                             | Der Spieler hat gepasst.                                        |
 | "player_played"          | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat Karten ausgespielt.                             |
@@ -369,7 +369,7 @@ Benachrichtigung an alle Spieler
 | "game_over"              | `{game_score: (list, list)}`                                                                                                      | Die Runde ist vorbei und die Partie ist entschieden.            |
 
 "->" bedeutet, dass der Peer den vom Server gesendeten Kontext mit privaten Statusinformationen des Spielers anreichert, bevor er es an den Spieler weiterleitet.
-Bei "player_joined" ändert der Peer den Kontext nur, wenn es sich um den eigenen Spieler handelt.
+Bei "player_joined" und "player_schupfed" ändert der Peer den Kontext nur, wenn es sich um den eigenen Spieler handelt.
 
 ### 7.2.3. Fehlermeldungen
 
@@ -529,22 +529,20 @@ Mit dem Klick auf die Bombe holt man sich nur das Zugrecht, es wird nicht direkt
 
 ### 8.2 Module
 
-*   `ErrorCode`: Fehlercodes (definiert in `config.js`).
 *   `Config`: Konfigurationsvariablen (definiert in `config.js`).
 *   `Lib`: Enthält allgemeine Hilfsfunktionen.
+*   `State`: Datencontainer für den Spielzustand.  
+*   `User`: Datencontainer für die Benutzerdaten.    
 *   `EventBus`: Zentrale Nachrichtenvermittlung zwischen den Komponenten.
+*   `Network`: Verantwortlich für die WebSocket-Verbindung und Kommunikation mit dem Server.    
 *   `SoundManager`: Verwaltet das Laden und Abspielen von Soundeffekten.
-*   `State`: Datencontainer für den Spielzustand.
-*   `User`: Datencontainer für die Benutzerdaten.
-*   `Network`: Verantwortlich für die WebSocket-Verbindung und Kommunikation mit dem Server.
-*   `CardHandler`: Verantwortlich für die Interaktionslogik mit den Karten.
 *   `Modals`: Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
 *   `LoadingView`: Anzeige und Interaktion der Ladeanzeige. 
 *   `LoginView`: Anzeige und Interaktion des Login-Bildschirms. 
 *   `LobbyView`: Anzeige und Interaktion der Lobby. 
 *   `TableView`: Anzeige und Interaktion des Spieltisch-Bildschirms. 
 *   `ViewManager`: Schaltet zwischen den Views der Anwendung um.
-*   `AppController`: Orchestriert die Anwendung.
+*   `AppController`: Aktualisiert den Spielzustand und schaltet zwischen den Views um.
 
 `main.js` ist der Haupt-Einstiegspunkt der Tichu-Anwendung.
 
@@ -566,11 +564,34 @@ web/
 ```
 
 ### 8.4 Viewport
+                      
+Der Hauptcontainer (`#game-wrapper`) hat ein Seitenverhältnis von 9:16 (ein gängiges Smartphone-Hochformat), 
+der mit einer Ausgangsgröße von 1080x1920 in den Viewport des Browsers skaliert wird.
+Die HTML-Elemente werden pixelgenau positioniert.
 
-Die Ansicht wird für ein Viewport von 1080x1920 (Breite x Höhe) optimiert. 
-Das ist ein Seitenverhältnis von 9:16 (Hochformat); ein gängiges Smartphone-Hochformat.
+#### 8.4.1 Umschalten zwischen den Views
 
-Der Hauptcontainer (`#game-wrapper` passt sich durch Skalierung in den Viewport des Browsers ein.
+Init: 
+    Wenn SessionID vorhanden:
+        Network versucht automatisch eine Verbindung aufzubauen
+        -> Loading
+    sonst 
+        -> Login
+
+"loginView:login"-Event:
+    Network.open()
+    -> Loading
+        "network:open"-Event: 
+            Wenn State.isRunning:
+                -> Table
+            sonst 
+                -> Lobby
+        "network:close"-Event:    
+            -> Login
+
+"lobbyView:start"-Event:
+    Network.send('start_game')
+    -> Loading
 
 ### 8.5 Ressourcen
 

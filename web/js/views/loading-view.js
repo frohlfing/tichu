@@ -45,7 +45,7 @@ const LoadingView = (() => {
      * @returns {boolean}
      */
     function isVisible() {
-        return _viewContainer.classList.contains('active')
+        return _viewContainer.classList.contains('active');
     }
 
     return {

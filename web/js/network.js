@@ -53,7 +53,7 @@ const WSCloseCode = {
  *
  * @typedef {Object} ServerRequest
  * @property {string} request_id - Die UUID der Anfrage.
- * @property {string} action - Die Aktion der Anfrage.
+ * @property {string} action - Die angefragte Aktion.
  * @property {PublicState} public_state - Der öffentliche Spielzustand.
  * @property {PrivateState} private_state - Der private Spielzustand.
  */
@@ -123,16 +123,16 @@ const Network = (() => {
     function close() {
         _removeSessionId();
         console.log("Network: SessionID gelöscht.");
-        if (_websocket && _websocket.readyState !== WebSocket.CLOSED) {
-            console.log("Network: Schließe WebSocket-Verbindung clientseitig.");
+        if (_websocket && _websocket.readyState !== WebSocket.CLOSING && _websocket.readyState !== WebSocket.CLOSED) {
+            console.log("Network: Schließe WebSocket-Verbindung clientseitig.", _websocket.readyState);
             _websocket.close(WSCloseCode.OK, "Client hat Verbindung aktiv beendet");
         }
     }
 
     /**
-     * Gibt an, ob die WebSocket zum Senden und Empfangen von Nachrichten bereit ist.
+     * Gibt an, ob die WebSocket bereit zum Senden und Empfangen von Nachrichten ist.
      *
-     * @returns {boolean} True, wenn verbunden und offen, sonst false.
+     * @returns {boolean} True, wenn die Verbindung bereit zum Senden und Empfangen ist, sonst false.
      */
     function isReady() {
         return _websocket && _websocket.readyState === WebSocket.OPEN;
@@ -176,7 +176,7 @@ const Network = (() => {
      * @param {string} queryString - Die Abfragezeichenfolge der URL.
      */
     function _open(queryString) {
-        if (_websocket && _websocket.readyState !== WebSocket.CLOSED) {
+        if (_websocket && _websocket.readyState === WebSocket.OPEN) {
             console.warn('Network: WebSocket-Verbindung besteht bereits oder wird aufgebaut.');
             return;
         }

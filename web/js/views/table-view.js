@@ -8,7 +8,7 @@ const TableView = (() => {
     // --------------------------------------------------------------------------------------
     // DOM-Elemente
     // --------------------------------------------------------------------------------------
-    
+
     /**
      * Der Container des Spieltisch-Bildschirms.
      *
@@ -167,18 +167,19 @@ const TableView = (() => {
     // --------------------------------------------------------------------------------------
     // Öffentliche Funktionen
     // --------------------------------------------------------------------------------------
-    
+
     /**
      * Initialisiert den Spieltisch-Bildschirm.
      */
     function init() {
-        console.log("TableView: Initialisiere TableView (minimal)...");
+        console.log("TableView: Initialisiere TableView");
 
-        // Ereignishändler für den Event-Bus einrichten
+        // Netzwerk-Ereignisse
+        //EventBus.on("network:message", _handleNetworkMessage);
+
+        // Ereignishändler für die Dialoge einrichten
         EventBus.on("wishDialog:select", _handleWishDialogSelect);
         EventBus.on("dragonDialog:select", _handleDragonDialogSelect);
-        EventBus.on("roundOverDialog:confirm", _handleRoundOverDialogConfirm);
-        EventBus.on("gameOverDialog:confirm", _handleGameOverDialogConfirm);
         EventBus.on("exitDialog:select", _handleExitDialogSelect);
 
         // Ereignishändler für die Controls einrichten
@@ -196,7 +197,7 @@ const TableView = (() => {
     }
 
     /**
-     * Rendert den Spieltisch-Bildschirm.
+     * Rendert den Spieltisch-Bildschirm anhand des aktuellen Spielzustands.
      */
     function render() {
         _receivedSchupfCardsConfirmed = State.getReceivedSchupfCards() !== null
@@ -241,7 +242,107 @@ const TableView = (() => {
     }
 
     // --------------------------------------------------------------------------------------
-    // Ereignishändler für den Event-Bus
+    // Ereignishändler für Servernachrichten
+    // --------------------------------------------------------------------------------------
+
+    // /**
+    //  * Wird aufgerufen, wenn eine Netzwerknachricht empfangen wurde.
+    //  *
+    //  * @param {NetworkMessage} message - Die Nachricht vom Server.
+    //  */
+    // function _handleNetworkMessage(message) {
+    //     if (message.type === 'request') {
+    //         //_handleServerRequest(/** @type {ServerRequest} */ message.payload);
+    //     }
+    //     else if (message.type === 'notification') {
+    //         _handleServerNotification(/** @type {ServerNotification} */ message.payload);
+    //     }
+    // }
+    //
+    // /**
+    //  * Wird aufgerufen, wenn der Server eine Benachrichtigung gesendet hat.
+    //  *
+    //  * @param {ServerNotification} notification - Die Nachricht.
+    //  */
+    // function _handleServerNotification(notification) {
+    //     console.log(`App: Server Notification: '${notification.event}'`, notification.context);
+    //     const context = notification.context || {};
+    //     switch (notification.event) {
+    //         case "player_joined": // Ein Spieler ist beigetreten.
+    //         case "player_left": // Ein Spieler hat das Spiel verlassen; eine KI ist eingesprungen.
+    //             // Wenn der Benutzer beigetreten ist, wird diese View durch den App-Controller neu gerendert.
+    //             // Nur wenn ein Mitspieler beigetreten ist, wird player_index angegeben.
+    //             if (context.player_index) {
+    //                 _updatePlayerName(context.player_index);
+    //             }
+    //             break;
+    //         case "players_swapped": // Der Index zweier Spieler wurde getauscht.
+    //             break;  // Findet in der Lobby statt.
+    //         case "game_started": // Das Spiel wurde gestartet.
+    //             break;
+    //         case "round_started": // Eine neue Runde beginnt. Die Karten werden gemischt.
+    //             break;
+    //         case "hand_cards_dealt": // Handkarten wurden an die Spieler verteilt.
+    //             for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
+    //                 _updateHand(playerIndex);
+    //             }
+    //             break;
+    //         case "player_grand_announced": // Der Spieler hat ein großes Tichu angesagt oder abgelehnt.
+    //         case "player_announced": // Der Spieler hat ein einfaches Tichu angesagt.
+    //             _updateTichuIcon(context.player_index);
+    //             _updateTichuButton();
+    //             break;
+    //         case "player_schupfed": // Der Spieler hat drei Karten zum Tausch abgegeben.
+    //             _updateSchupfZone(context.player_index);
+    //             break;
+    //         case "schupf_cards_dealt": // Die Tauschkarten wurden an die Spieler verteilt.
+    //             _updateSchupfZone(State.getPlayerIndex());
+    //             for (let relativeIndex = 1; relativeIndex <= 3; relativeIndex++) {
+    //                 const playerIndex = Lib.getCanonicalPlayerIndex(relativeIndex);
+    //                 _updateHand(playerIndex);
+    //                 _updateSchupfZone(playerIndex);
+    //             }
+    //             break;
+    //         case "player_passed": // Der Spieler hat gepasst.
+    //             // {player_index: int}
+    //             break;
+    //         case "player_played": // Der Spieler hat Karten ausgespielt.
+    //             // {player_index: int, cards: Cards}
+    //             _updateHand(context.player_index)
+    //             _updateTrick();
+    //             // _updatePlayButton();
+    //             break;
+    //         case "player_bombed": // Der Spieler hat eine Bombe geworfen.
+    //             // {player_index: int, cards: Cards}
+    //             _updateBombIcon();
+    //             break;
+    //         case "wish_made": // Ein Kartenwert wurde sich gewünscht.
+    //         case "wish_fulfilled": // Der Wunsch wurde erfüllt.
+    //             _updateWishIcon();
+    //             break;
+    //         case "trick_taken": // Der Spieler hat den Stich kassiert.
+    //             // {player_index: int}
+    //             _updateTrick();
+    //             break;
+    //         case "player_turn_changed": // Der Spieler ist jetzt am Zug.
+    //             // {current_turn_index: int}
+    //             _updateCurrentPlayer();
+    //             _updatePassButton();
+    //             _updatePlayButton();
+    //             break;
+    //         case "round_over": // Die Runde ist vorbei und die Karten werden neu gemischt.
+    //             // {score_entry: (int, int), is_double_victory: bool}
+    //             break;
+    //         case "game_over": // Die Runde ist vorbei und die Partie ist entschieden.
+    //             // {game_score: (list, list)}
+    //             break;
+    //         default:
+    //             console.warn('App: Unbehandelte Server-Notification:', notification.event);
+    //     }
+    // }
+
+    // --------------------------------------------------------------------------------------
+    // Ereignishändler für die Dialoge
     // --------------------------------------------------------------------------------------
 
     /**
@@ -262,21 +363,6 @@ const TableView = (() => {
     function _handleDragonDialogSelect(value) {
         EventBus.emit("tableView:giveDragonAway", value);
         console.log("TableView: _handleDragonDialogSelect", value);
-    }
-
-    /**
-     * Ereignishändler für den RoundOver-Dialog.
-     */
-    function _handleRoundOverDialogConfirm() {
-        console.log("TableView: _handleRoundOverDialogConfirm");
-    }
-
-    /**
-     * Ereignishändler für den GameOver-Dialog.
-     */
-    function _handleGameOverDialogConfirm() {
-        EventBus.emit("tableView:gameOver");
-        console.log("TableView: _handleGameOverDialogConfirm");
     }
 
     /**
@@ -353,7 +439,6 @@ const TableView = (() => {
                 cardElement.classList.remove('selected');
             }
             _updatePlayButton();
-            //_playButton.disabled = _getSchupfCardsCount() !== 3;
         }
         else if (event.target.classList.contains('card')) {
             // es wurde auf eine Karte in der Schupfzone geklickt
@@ -383,7 +468,6 @@ const TableView = (() => {
             console.log("Karte zurückgelegt");
 
             _updatePlayButton();
-            //_playButton.disabled = _getSchupfCardsCount() !== 3;
         }
     }
 
@@ -481,8 +565,8 @@ const TableView = (() => {
      */
     function _updateScore() {
         const score = State.getTotalScore();
-        let team20 = score[0].toString().padStart(4, '0');
-        let team31 = score[1].toString().padStart(4, '0');
+        const team20 = score[0].toString().padStart(4, '0');
+        const team31 = score[1].toString().padStart(4, '0');
         _scoreDisplay.textContent = `${team20} : ${team31}`;
     }
 
@@ -668,7 +752,8 @@ const TableView = (() => {
      */
     function _updateSchupfZone(playerIndex) {
         const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
-        if (!_receivedSchupfCardsConfirmed && State.getCountHandCards() > 8) {
+        const cardCount = State.getCountHandCards(playerIndex);
+        if (!_receivedSchupfCardsConfirmed && cardCount > 8) {
             // Noch keine Tauschkarte aufgenommen und mehr als 8 Handkarten aufgenommen (Frage nach großes Tichu ist erfolgt).
 
             // Handelt es sich um den Benutzer, ausgewählte Karen zurücksetzen, denn beim Schupfen darf nicht mehr als eine Karte selektiert werden.
@@ -685,9 +770,9 @@ const TableView = (() => {
             _schupfZones[relativeIndex].classList.remove('hidden');
 
             // Falls der Spieler nur noch 11 Karten in der Hand hat, müssen die übrigen drei in der Schupfzone liegen.
-            if (State.getCountHandCards(playerIndex) === 11) {
-                const receivedCards = State.getReceivedSchupfCards();
+            if (cardCount === 11) {
                 _clearSchupfZone(playerIndex);
+                const receivedCards = State.getReceivedSchupfCards();
                 if (relativeIndex === 0 && receivedCards) {
                     // Der Tausch hat stattgefunden. Der Benutzer muss die erhaltenen Karten bestätigen.
                     _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
@@ -719,7 +804,8 @@ const TableView = (() => {
         if (announcement) {
             _tichuIcons.src = announcement === 2 ? "images/grand-tichu-icon.png" : "images/tichu-icon.png";
             _tichuIcons[relativeIndex].classList.remove('hidden');
-        } else {
+        }
+        else {
             _tichuIcons[relativeIndex].classList.add('hidden');
         }
     }
@@ -751,7 +837,7 @@ const TableView = (() => {
         }
     }
 
-     /**
+    /**
      * Aktualisiert das Bomben-Symbol.
      */
     function _updateBombIcon() {
@@ -761,7 +847,6 @@ const TableView = (() => {
         else {
             _bombIcon.classList.add('hidden');
         }
-        // todo Bomben-Symbol aktivieren / deaktivieren (anklickbar machen bzw. nicht)
     }
 
     /**
@@ -806,31 +891,33 @@ const TableView = (() => {
      * Aktualisiert den Play-Button.
      */
     function _updatePlayButton() {
-        if (!State.getReceivedSchupfCards() && State.getCountHandCards() > 8) {
+        const receivedSchupfCards = State.getReceivedSchupfCards();
+        const isCurrentPlayer = State.isCurrentPlayer();
+        if (!receivedSchupfCards && State.getCountHandCards() > 8) {
             // Der Benutzer muss drei Tauschkarten für die Mitspieler abgeben.
             _playButton.dataset.mode = "SCHUPF";
             _playButton.textContent = "Schupfen";
             _playButton.disabled = _getSchupfCardsCount() !== 3;
         }
-        else if (State.getReceivedSchupfCards() && !_receivedSchupfCardsConfirmed) {
+        else if (receivedSchupfCards && !_receivedSchupfCardsConfirmed) {
             // Der Benutzer muss die drei Tauschkarten der Mitspieler aufnehmen.
             _playButton.dataset.mode = "RECEIVE";
             _playButton.textContent = "Aufnehmen";
             _playButton.disabled = false;
         }
-        else if (State.isCurrentPlayer() && !_canPlay) {
+        else if (isCurrentPlayer && !_canPlay) {
             // Der Benutzer ist am Zug, hat aber keine passende Kombination auf der Hand.
             _playButton.dataset.mode = "PLAY";
             _playButton.textContent = "Kein Zug";
             _playButton.disabled = true;
         }
-        else if (State.isCurrentPlayer() && _getSelectedCardsCount() === 0) {
+        else if (isCurrentPlayer && _getSelectedCardsCount() === 0) {
             // Der Benutzer ist am Zug, hat mindestens eine passende Kombination, aber noch keine Karte ausgewählt.
             _playButton.dataset.mode = "AUTOSELECT";
             _playButton.textContent = "Auswählen"; // bei Klick wird die längste kleinstmögliche Kombination ausgewählt
             _playButton.disabled = false;
         }
-        else if (State.isCurrentPlayer()) {
+        else if (isCurrentPlayer) {
             // Der Benutzer ist am Zug, hat mindestens eine passende Kombination und mindestens eine Karte ausgewählt.
             _playButton.dataset.mode = "PLAY";
             _playButton.textContent = "Spielen";
@@ -966,7 +1053,7 @@ const TableView = (() => {
     function _testToggleTichu() {
         for (let i= 0; i <= 3; i++) {
             State.setAnnouncement(i, _tichuIcons[i].classList.contains('hidden') ? 1 : 0);
-            _updateTichuIcon(i)
+            _updateTichuIcon(i);
         }
     }
 
@@ -1053,7 +1140,7 @@ const TableView = (() => {
         }
         State.setTricks([trick]);
         State.setTrickOwnerIndex(3);
-        _updateTrick();
+        _updateTrick(trick);
     }
 
     function _testAddTurn() {
@@ -1066,12 +1153,12 @@ const TableView = (() => {
         tricks[tricks.length - 1].push(turn);
         State.setTricks(tricks);
         State.setTrickOwnerIndex(trickOwnerIndex);
-        _updateTrick();
+        _updateTrick(State.getLastTrick());
     }
 
     function _testRemoveTrick() {
         State.setTricks([]);
-        _updateTrick();
+        _updateTrick(State.getLastTrick());
     }
 
     function _testShowDragonDialog() {

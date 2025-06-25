@@ -29,19 +29,16 @@
             <form id="login-form">
                 <input id="login-player-name" type="text" title="" placeholder="Dein Name" required>
                 <input id="login-table-name" type="text" title="" placeholder="Tischname" required>
-                <button type="submit">Betreten</button>
+                <button id="login-submit-button" type="submit">Betreten</button>
             </form>
         </div>
 
         <!-- Lobby-Bildschirm -->
         <div id="lobby-screen" class="view">
-            <h2>Lobby: <span id="lobby-table-name"></span></h2>
+            <h2>Tisch: <span id="lobby-table-name"></span></h2>
             <div id="lobby-player-list-container">
                 <p>Spieler am Tisch:</p>
                 <ul id="lobby-player-list"></ul>
-            </div>
-            <div id="lobby-assignment-container" class="hidden">
-                <p>Spieler anordnen (Host):</p>
             </div>
             <div class="lobby-actions-bottom">
                 <button id="lobby-start-button" class="hidden">Spiel starten</button>

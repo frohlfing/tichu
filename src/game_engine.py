@@ -212,7 +212,10 @@ class GameEngine:
     # noinspection PyMethodMayBeStatic
     async def swap_players(self, index1: int, index2: int) -> bool:
         """
-        Stellt das Team zusammen.
+        Vertauscht die Position zweier Spieler.
+
+        Der Host darf nicht verschoben werden. Das Vertauschen ist nur vor Spielstart möglich.
+
         :param index1: Index des ersten Spielers
         :param index2: Index des zweiten Spielers
         :return: True, wenn die Zuordnung erfolgte, sonst False.
@@ -237,19 +240,26 @@ class GameEngine:
         self._players[index1], self._players[index2] = self._players[index2], self._players[index1]
         self._players[index1].priv = self._private_states[index1]
         self._players[index2].priv = self._private_states[index2]
+        # Da der Spielzustand bei Spielstart zurückgesetzt wird, müssen die Felder pub.count_hand_cards, pub.announcements und pub.points nicht gedreht werden.
+        # Es muss nur pub.player_names aktualisiert werden, denn die Spielernamen bleiben beim Reset unberührt.
+        self._public_state.player_names[index1] = self._players[index1].name
+        self._public_state.player_names[index2] = self._players[index2].name
         await self._broadcast("players_swapped", {"player_index_1": index1, "player_index_2": index2})
         return True
 
-    async def start_game(self):
+    async def start_game(self) -> bool:
         """
-        Startet den Hintergrund-Task `_run_game_loop`
+        Startet den Hintergrund-Task `_run_game_loop`.
+
+        :return: True, wenn eine neue Partie gestartet werden konnte, sonst False.
         """
         if self.game_loop_task and not self.game_loop_task.done():
             logger.warning(f"Tisch '{self.table_name}': Versuch, neue Partie zu starten, obwohl bereits eine läuft.")
-            return
+            return False
 
         logger.info(f"[{self.table_name}] Starte Hintergrund-Task für eine neue Partie.")
         self.game_loop_task = asyncio.create_task(self.run_game_loop(), name=f"Game Loop '{self.table_name}'")
+        return True
 
     # ------------------------------------------------------
     # Partie spielen
@@ -313,7 +323,7 @@ class GameEngine:
                 first = self._random.integer(0, 4)  # wählt zufällig eine Zahl zwischen 0 und 3
                 for n in (8, 14):
                     # Karten verteilen (deal out)
-                    for player_index in range(0, 4):
+                    for player_index in range(4):
                         offset = player_index * 14
                         privs[player_index].hand_cards = sorted(mixed_deck[offset:offset + n], reverse=True)  # absteigend sortiert!
                         pub.count_hand_cards[player_index] = n
@@ -322,7 +332,7 @@ class GameEngine:
 
                     # möchte ein Spieler ein Tichu ansagen?
                     # todo alle Spieler gleichzeitig ansprechen
-                    for i in range(0, 4):
+                    for i in range(4):
                         player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                         grand = n == 8  # großes Tichu?
                         if grand:
@@ -341,18 +351,20 @@ class GameEngine:
                 # jetzt müssen die Spieler schupfen
 
                 # a) Tauschkarten abgeben
-                # todo alle Spieler gleichzeitig ansprechen
-                for i in range(0, 4):  # Geber
-                    player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
-                    priv = privs[player_index]
-                    assert len(priv.hand_cards) == 14
-                    priv.given_schupf_cards = await self._players[player_index].schupf()
-                    assert len(priv.given_schupf_cards) == 3
-                    priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
-                    assert len(priv.hand_cards) == 11
-                    pub.count_hand_cards[player_index] = 11
-                    if clients_joined:
-                        await self._broadcast("player_schupfed", {"player_index": player_index})
+                if clients_joined:
+                    # Alle Spieler werden gleichzeitig zum Schupfen aufgefordert. Die Spieler werden sofort benachrichtigt, wenn jemand geschupft hat.
+                    await asyncio.gather(*[self._schupf_and_broadcast(player_index) for player_index in range(4)], return_exceptions=True)
+                else:
+                    # Alte Version: Alle Spieler der Reihe nach zum Schupfen auffordern
+                    # todo Fallunterscheidung zeitlich relevant?
+                    for player_index in range(4):  # Geber
+                        priv = privs[player_index]
+                        assert len(priv.hand_cards) == 14
+                        priv.given_schupf_cards = await self._players[player_index].schupf()
+                        assert len(priv.given_schupf_cards) == 3
+                        priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
+                        assert len(priv.hand_cards) == 11
+                        pub.count_hand_cards[player_index] = 11
 
                 # b) Tauscharten aufnehmen
                 # Karten-Index der abgegebenen Karte:
@@ -363,7 +375,7 @@ class GameEngine:
                 #   1| 3  -  1  2
                 #   2| 2  3  -  1
                 #   3| 1  2  3  -
-                for player_index in range(0, 4):  # Nehmer
+                for player_index in range(4):  # Nehmer
                     priv = privs[player_index]
                     priv.received_schupf_cards = (
                         privs[(player_index + 1) % 4].given_schupf_cards[2],
@@ -379,7 +391,7 @@ class GameEngine:
                         await self._broadcast("schupf_cards_dealt")
 
                 # Startspieler bekannt geben
-                for player_index in range(0, 4):
+                for player_index in range(4):
                     if CARD_MAH in privs[player_index].hand_cards:
                         assert pub.start_player_index == -1
                         pub.start_player_index = player_index
@@ -398,7 +410,7 @@ class GameEngine:
                     if ((pub.trick_owner_index == pub.current_turn_index and pub.trick_combination != FIGURE_DOG)  # der Stich kann kassiert werden
                         or (pub.count_hand_cards[pub.current_turn_index] > 0 and pub.trick_owner_index >= 0)):  # der Spieler könnte evtl. den Stich bedienen (kein Anspiel)
                         # todo alle Spieler gleichzeitig ansprechen
-                        for i in range(0, 4):
+                        for i in range(4):
                             player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                             if player_index != pub.current_turn_index and self._private_states[player_index].has_bomb:
                                 bomb = await self._players[player_index].bomb()
@@ -520,7 +532,7 @@ class GameEngine:
                                         pub.is_double_victory = True
                                 elif n == 1:
                                     pub.is_round_over = True
-                                    for player_index in range(0, 4):
+                                    for player_index in range(4):
                                         if pub.count_hand_cards[player_index] > 0:
                                             assert pub.loser_index == -1
                                             pub.loser_index = player_index
@@ -581,7 +593,7 @@ class GameEngine:
                                 pub.trick_counter += 1
 
                                 # Bonus für Tichu-Ansage
-                                for player_index in range(0, 4):
+                                for player_index in range(4):
                                     if pub.announcements[player_index]:
                                         if player_index == pub.winner_index:
                                             pub.points[player_index] += 100 * pub.announcements[player_index]
@@ -683,6 +695,22 @@ class GameEngine:
         for player in self._players:
             if isinstance(player, Peer):
                 await player.error(message, code, context)
+
+    async def _schupf_and_broadcast(self, player_index):
+        """
+        Fordert den Spieler auf zu schupfen und informiert danach jeden Spieler darüber.
+
+        :param player_index: Der Index des Spielers, der schupfen soll.
+        :return:
+        """
+        priv = self._private_states[player_index]
+        assert len(priv.hand_cards) == 14
+        priv.given_schupf_cards = await self._players[player_index].schupf()
+        assert len(priv.given_schupf_cards) == 3
+        priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
+        assert len(priv.hand_cards) == 11
+        self._public_state.count_hand_cards[player_index] = 11
+        await self._broadcast("player_schupfed", {"player_index": player_index})
 
     # ------------------------------------------------------
     # Eigenschaften

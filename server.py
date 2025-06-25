@@ -53,7 +53,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
         engine = factory.get_engine_by_session(session_id)
         peer = engine.get_peer_by_session(session_id) if engine else None
         if not peer or not await engine.rejoin_client(peer, websocket=ws):
-            error_message = "Query-Parameter 'session_id' fehlerhaft."
+            error_message = "Session unbekannt."
             logger.warning(f"Verbindung von {remote_addr} abgelehnt. {error_message}")
             await ws.close(code=WSCloseCode.POLICY_VIOLATION, message=error_message.encode('utf-8'))
             return ws
@@ -108,7 +108,8 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                             await peer.error("Die Spieler konnten nicht vertauscht werden", ErrorCode.INVALID_MESSAGE, context=payload)
 
                     elif msg_type == "start_game":
-                        await engine.start_game()
+                        if not await engine.start_game():
+                            await peer.error("Es konnte keine neue Partie gestartet werden. Es läuft bereits eine.", ErrorCode.INVALID_MESSAGE, context=payload)
 
                     elif msg_type == "announce":  # proaktive Tichu-Ansage vom Client
                         await peer.client_announce()
@@ -117,7 +118,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                         await peer.client_bomb(payload.get("cards"))
 
                     elif msg_type == "response":  # Antwort auf eine vorherige Anfrage
-                        await peer.client_response(payload.get("request_id"), payload.get("data", {}))
+                        await peer.client_response(payload.get("request_id"), payload.get("response_data", {}))
 
                     else:  # Nachrichtentyp unbekannt
                         logger.error(f"Message-Type '{msg_type}' nicht erwartet")

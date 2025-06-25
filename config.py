@@ -114,9 +114,9 @@ KICK_OUT_TIME = int(getenv("KICK_OUT_TIME", 15))
 Wartezeit nach einem Verbindungsabbruch bis zum Rauswurf in Sekunden.
 """
 
-DEFAULT_REQUEST_TIMEOUT = 0
+DEFAULT_REQUEST_TIMEOUT = 99999999
 """
-Maximale Wartezeit für Anfragen an den Client in Sekunden (0 == unbegrenzt).
+Maximale Wartezeit für Anfragen an den Client in Sekunden (None == unbegrenzt).
 """
 
 ARENA_WORKER = int(getenv("ARENA_WORKER", 1))
