@@ -1,7 +1,7 @@
 /**
  * Type-Alias für das Verzeichnis der Ereignishändler.
  *
- * @typedef {Object.<string, function[]>} EventHandlers
+ * @typedef {Object.<string, Array<Function>>} EventHandlers
  */
 
 /**
@@ -12,7 +12,7 @@
  * @property {any} data - Die zugehörigen Daten.
  */
 
-// @type {Object.<string, function[]>}
+// @type {Object.<string, Array<Function>>}
 
 /**
  * Zentrale Nachrichtenvermittlung zwischen den Komponenten.
@@ -36,7 +36,7 @@ const EventBus = (() => {
     /**
      * Die Warteschlange für auszulösende Ereignisse.
      *
-     * @type {EventQueueItem[]}
+     * @type {Array<EventQueueItem>}
      */
     const _eventQueue = [];
 

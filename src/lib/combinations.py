@@ -4,7 +4,7 @@ Dieses Modul definiert die Logik zur Erkennung und Verarbeitung von Kartenkombin
 
 __all__ = "CombinationType", "Combination",  \
     "FIGURE_PASS", "FIGURE_DOG", "FIGURE_MAH", "FIGURE_DRA", "FIGURE_PHO", \
-    "validate_figure", "stringify_figure", "stringify_type", "get_figure", \
+    "validate_combination", "stringify_combination", "stringify_type", "get_combination", \
     "build_combinations", "remove_combinations", \
     "build_action_space",
 
@@ -16,8 +16,10 @@ from typing import Tuple, List
 # Kartenkombinationen
 # -----------------------------------------------------------------------------
 
-# Enum für Kombinationstypen
 class CombinationType(enum.IntEnum):  # todo überall konsequent verwenden
+    """
+    Enum für Kombinationstypen.
+    """
     PASS = 0  # Passen
     SINGLE = 1  # Einzelkarte
     PAIR = 2  # Paar
@@ -27,10 +29,14 @@ class CombinationType(enum.IntEnum):  # todo überall konsequent verwenden
     STREET = 6  # Straße
     BOMB = 7  # Vierer-Bombe oder Farbbombe
 
-# Type-Alias für eine Kombination
-Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)  # todo überall konsequent verwenden
 
-# Sonderkarten einzeln ausgespielt (Typ, Länge, Rang)
+Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)  # todo überall konsequent verwenden
+"""
+Type-Alias für eine Kombination.
+"""
+
+
+# Sonderkarten einzeln ausgespielt  # todo entfernen
 FIGURE_PASS = (CombinationType.PASS, 0, 0)
 FIGURE_DOG = (CombinationType.SINGLE, 1, 0)
 FIGURE_MAH = (CombinationType.SINGLE, 1, 1)
@@ -38,9 +44,14 @@ FIGURE_DRA = (CombinationType.SINGLE, 1, 15)
 FIGURE_PHO = (CombinationType.SINGLE, 1, 16)
 
 
-# Ermittelt, ob Typ, Länge und Rang eine gültige Kartenkombination angibt
-def validate_figure(figure: tuple) -> bool:
-    t, m, r = figure
+def validate_combination(combination: Tuple[int, int, int]) -> bool:
+    """
+    Ermittelt, ob Typ, Länge und Rang eine gültige Kartenkombination angibt.
+
+    :param combination: Die zu prüfende Kombination.
+    :return: True, wenn die Kombination gültig ist.
+    """
+    t, m, r = combination
     if t == CombinationType.PASS:
         return m == 0 and r == 0
     if t == CombinationType.SINGLE:  # Einzelkarte
@@ -59,25 +70,28 @@ def validate_figure(figure: tuple) -> bool:
     return False
 
 
-# Wandelt das Label einer Kartenkombination in Typ, Länge und Rang um
-#def parse_figure(lb: str) -> tuple:
-#    return _figures[_figurelabels_index[lb]]
+def stringify_combination(combination: Combination) -> str:
+    """
+    Wandelt eine Kombination (Typ, Länge und Rang) in ein Label um.
 
-
-# Wandelt Typ, Länge und Rang einer Kombination in ein Label um
-def stringify_figure(combi: Combination) -> str:
-    t, n, v = combi
+    :param combination: Die Kombination.
+    :return: Label der Kombination.
+    """
+    t, n, v = combination
     if t in (CombinationType.STAIR, CombinationType.STREET, CombinationType.BOMB):
         return f"{t.name:s}{n:02}-{v:02}"
     else:
         return f"{t.name}-{v:02}"
 
 
-# Wandelt den Typ einer Kombination in ein Label um
-#
-# t: Typ der Kombination
-# m: Länge der Kombination (optional)
 def stringify_type(t: CombinationType, m: int = None) -> str:
+    """
+    Wandelt den Typ einer Kombination in ein Label um.
+
+    :param t: Typ der Kombination.
+    :param m: Länge der Kombination (optional).
+    :return:
+    """
     assert CombinationType.PASS <= t <= CombinationType.BOMB
     label = ["pass", "single", "pair", "triple", "stair", "fullhouse", "street", "bomb"][t]
     if m is not None and t in (CombinationType.STAIR, CombinationType.STREET, CombinationType.BOMB):
@@ -86,16 +100,20 @@ def stringify_type(t: CombinationType, m: int = None) -> str:
     return label
 
 
-# Ermittelt den Typ, Länge und Rang der gegebenen Kartenkombination.
-#
-# Es wird vorausgesetzt, dass cards eine gültige Kombination ist.
-# Parameter cards wird absteigend sortiert. Wenn shift_phoenix gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
-#
-# cards: Karten der Kombination, z.B. [(8,4),(8,2),(8,1)]
-# trick_value: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist)
-# shift_phoenix: Wenn True, wird der Phönix eingereiht (kostet etwas Zeit)
-# return: (Typ, Länge, Rang);
-def get_figure(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> Combination:
+def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> Combination:
+    """
+    Ermittelt die Kombination der gegebenen Karten.
+
+    Es wird vorausgesetzt, dass `cards` eine gültige Kombination ist.
+
+    Parameter `cards` wird absteigend sortiert (mutable Parameter).
+    Wenn `shift_phoenix` gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
+
+    :param cards: Karten der Kombination, z.B. [(8,4),(8,2),(8,1)].
+    :param trick_value: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist).
+    :param shift_phoenix: Wenn True, wird der Phönix eingereiht (kostet etwas Zeit).
+    :return: Die Kombination (Typ, Länge, Rang).
+    """
     n = len(cards)
     if n == 0:
         return FIGURE_PASS
@@ -184,11 +202,13 @@ def get_figure(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> C
     return t, n, v
 
 
-# Ermittelt die Kombinationsmöglichkeiten der Handkarten (die besten zu erst)
-#
-# hand: Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)]
-# return: [(Karten, (Typ, Länge, Rang)), ...]
-def build_combinations(hand: list[tuple]) -> List[Tuple[Cards, Combination]]:
+def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
+    """
+    Ermittelt die Kombinationsmöglichkeiten der Handkarten (die besten zuerst).
+
+    :param hand: Die Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)].
+    :return: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...].
+    """
     has_phoenix = CARD_PHO in hand
     arr = [[], [], [], [], [], [], [], []]  # pro Typ ein Array
     n = len(hand)
@@ -325,34 +345,38 @@ def build_combinations(hand: list[tuple]) -> List[Tuple[Cards, Combination]]:
     return result
 
 
-# Entfernt die Kombinationsmöglichkeiten, die aus mindestens einer der angegebenen Karten bestehen
-#
-# combis: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...]
-# cards: Karten, die entfernt werden sollen.
-# return: [(Karten, (Typ, Länge, Rang)), ...]
-def remove_combinations(combis: list[tuple], cards: list[tuple]):
+def remove_combinations(combis: List[Tuple[Cards, Combination]], cards: Cards):
+    """
+    Entfernt die Kombinationsmöglichkeiten, die aus mindestens einer der angegebenen Karten bestehen.
+
+    :param combis: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...]
+    :param cards: Karten, die entfernt werden sollen.
+    :return: [(Karten, (Typ, Länge, Rang)), ...]
+    """
     return [combi for combi in combis if not set(cards).intersection(combi[0])]
 
 
-# Ermittelt spielbare Kartenkombinationen
-#
-# combis: Kombinationsmöglichkeiten der Hand, also [(Karten, (Typ, Länge, Rang)), ...]
-# trick_figure: Typ, Länge, Rang des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
-# unfulfilled_wish: Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt)
-# return: ([], (0,0,0)) für Passen sofern möglich + mögliche Kombinationen aus combis
-def build_action_space(combis: List[Tuple[List[Card], Combination]], trick_figure: tuple, unfulfilled_wish: int) -> List[Tuple[List[Card], Combination]]:
-    assert 0 <= trick_figure[0] <= 7
-    assert 0 <= trick_figure[1] <= 14
-    assert 0 <= trick_figure[2] <= 15
+def build_action_space(combis: List[Tuple[List[Card], Combination]], trick_combination: tuple, unfulfilled_wish: int) -> List[Tuple[List[Card], Combination]]:
+    """
+    Ermittelt spielbare Kartenkombinationen.
+    
+    :param combis: Kombinationsmöglichkeiten der Hand, also [(Karten, (Typ, Länge, Rang)), ...]
+    :param trick_combination: Typ, Länge, Rang des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
+    :param unfulfilled_wish: Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt)
+    :return: ([], (0,0,0)) für Passen sofern möglich + mögliche Kombinationen aus combis
+    """
+    assert 0 <= trick_combination[0] <= 7
+    assert 0 <= trick_combination[1] <= 14
+    assert 0 <= trick_combination[2] <= 15
     result = []
-    if trick_figure not in (FIGURE_PASS, FIGURE_DOG):
+    if trick_combination not in (FIGURE_PASS, FIGURE_DOG):
         # Stich liegt und es ist kein Hund
         result.append(([], (CombinationType.PASS, 0, 0)))  # Passen ist eine Option
-        t, n, v = trick_figure
+        t, n, v = trick_combination
         for combi in combis:
             t2, n2, v2 = combi[1]
             if combi[1] == FIGURE_PHO:  # Phönix als Einzelkarte
-                if trick_figure == FIGURE_DRA:
+                if trick_combination == FIGURE_DRA:
                     continue  # Phönix auf Drache ist nicht erlaubt
                 v2 = v + 0.5 if v > 0 else 1.5
             if (t == CombinationType.BOMB and t2 == t and (n2 > n or (n2 == n and v2 > v))) or \

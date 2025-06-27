@@ -8,7 +8,7 @@ __all__ = "prob_of_higher_combi", "prob_of_higher_combi_or_bomb",
 import itertools
 import math
 from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, cards_to_vector, Cards
-from src.lib.combinations import stringify_figure, validate_figure, CombinationType
+from src.lib.combinations import stringify_combination, validate_combination, CombinationType, Combination
 from src.lib.prob.tables_hi import load_table_hi
 from time import time
 from timeit import timeit
@@ -154,19 +154,19 @@ def prob_of_any_4_bomb(cards: Cards, k: int) -> float:
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
-# figure: Typ, Länge und Rang der gegebenen Kombination
-def prob_of_higher_combi(cards: Cards, k: int, figure: tuple) -> float:
+# combination: Die Kombination (Typ, Länge und Rang)
+def prob_of_higher_combi(cards: Cards, k: int, combination: Combination) -> float:
     if k == 0:
         return 0.0
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
 
-    if figure == (1, 1, 0):  # Hund
+    if combination == (1, 1, 0):  # Hund
         return 1.0  # wenn der Hund gespielt wird, verliert man das Anspielrecht (also als ob man überstochen wird)
 
-    assert figure != (0, 0, 0) and validate_figure(figure)
-    t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
+    assert combination != (0, 0, 0) and validate_combination(combination)
+    t, m, r = combination  # Typ, Länge und Rang der gegebenen Kombination
 
     #debug = True
 
@@ -233,11 +233,11 @@ def prob_of_higher_combi(cards: Cards, k: int, figure: tuple) -> float:
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
-# figure: Typ, Länge und Rang der gegebenen Kombination
+# combination: Die gegebenen Kombination (Typ, Länge und Rang).
 # return: Wahrscheinlichkeit `p_high`
-def prob_of_higher_combi_or_bomb(cards: Cards, k: int, figure: tuple) -> tuple[float, float]:
-    p_combi = prob_of_higher_combi(cards, k, figure)  # Wahrscheinlichkeit einer höheren Kombination als die gegebene
-    t, m, r = figure
+def prob_of_higher_combi_or_bomb(cards: Cards, k: int, combination: Combination) -> tuple[float, float]:
+    p_combi = prob_of_higher_combi(cards, k, combination)  # Wahrscheinlichkeit einer höheren Kombination als die gegebene
+    t, m, r = combination
     if t == CombinationType.BOMB:
         if m == 4:  # 4er-Bombe
             p_color = prob_of_higher_color_bomb(cards, k)  # Wahrscheinlichkeit einer Farbbombe
@@ -267,12 +267,12 @@ def prob_of_higher_combi_or_bomb(cards: Cards, k: int, figure: tuple) -> tuple[f
 #
 # unplayed_cards: Ungespielte Karten
 # k: Anzahl Handkarten
-# figure: Typ, Länge, Rang der Kombination
+# combination: Die Kombination (Typ, Länge, Rang).
 # with_bombs: Wenn gesetzt, werden auch Möglichkeiten markiert, die die gegebene Kombination bomben können
-def possible_hands_hi(unplayed_cards: Cards, k: int, figure: tuple, with_bombs: bool) -> tuple[list, list]:
+def possible_hands_hi(unplayed_cards: Cards, k: int, combination: Combination, with_bombs: bool) -> tuple[list, list]:
     hands = list(itertools.combinations(unplayed_cards, k))  # die Länge der Liste entspricht math.comb(len(unplayed_cards), k)
     matches = []
-    t, m, r = figure  # type, length, rank
+    t, m, r = combination  # type, length, rank
     for hand in hands:
         b = False
         if t == CombinationType.SINGLE:  # Einzelkarte
@@ -360,14 +360,14 @@ def possible_hands_hi(unplayed_cards: Cards, k: int, figure: tuple, with_bombs: 
 
 
 # Ergebnisse untersuchen
-def inspect(cards, k, figure, verbose=True):  # pragma: no cover
+def inspect(cards, k, combination, verbose=True):  # pragma: no cover
     print(f"Kartenauswahl: {cards}")
     print(f"Anzahl Handkarten: {k}")
-    print(f"Kombination: {stringify_figure(figure)}")
+    print(f"Kombination: {stringify_combination(combination)}")
     print("Mögliche Handkarten:")
 
     time_start = time()
-    matches, hands = possible_hands_hi(parse_cards(cards), k, figure, with_bombs=True)
+    matches, hands = possible_hands_hi(parse_cards(cards), k, combination, with_bombs=True)
     if verbose:
         for match, sample in zip(matches, hands):
             print("  ", stringify_cards(sample), match)
@@ -378,7 +378,7 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
           f" ({(time() - time_start) * 1000:.6f} ms)")
 
     time_start = time()
-    p_min, p_max = prob_of_higher_combi_or_bomb(parse_cards(cards), k, figure)
+    p_min, p_max = prob_of_higher_combi_or_bomb(parse_cards(cards), k, combination)
     if p_min == p_max:
         print(f"Berechnet: p = {(total_expected * p_min):.0f}/{total_expected} = {p_min}"
               f" ({(time() - time_start) * 1000:.6f} ms (inkl. Daten laden))")
@@ -398,16 +398,16 @@ def inspect_combination():  # pragma: no cover
         #("Ph SB RB GZ BZ SZ R9 G9 S9 R8 G8 B4 Hu", 1, (1, 1, 0), 12, 13, "Hund, Test 167"),
 
     ]
-    for cards, k, figure, matches_expected, total_expected, msg in test:
+    for cards, k, combination, matches_expected, total_expected, msg in test:
         print(msg)
-        inspect(cards, k, figure, verbose=True)
+        inspect(cards, k, combination, verbose=True)
 
 
 def benchmark():  # pragma: no cover
     # Test auf Geschwindigkeit
 
     # Straße mit der Länge 5 (hat die meisten Muster, daher nehmen wir diese Länge)
-    # n = 14, k = 6, figure = (6, 5, 6)
+    # n = 14, k = 6, combination = (6, 5, 6)
     # Gezählt:   p = 288/3003 = 0.0959040959040959 (100.065470 ms)
     # Berechnet: p = 288/3003 = 0.0959040959040959 (498.227119 ms (inkl. Daten laden))
     for k_ in range(5, 10):

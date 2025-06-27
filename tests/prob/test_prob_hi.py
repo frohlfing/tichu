@@ -1,6 +1,6 @@
 import pytest
 from src.lib.cards import parse_cards
-from src.lib.combinations import stringify_figure, CombinationType
+from src.lib.combinations import stringify_combination, CombinationType
 # noinspection PyProtectedMember
 from src.lib.prob.prob_hi import possible_hands_hi, prob_of_higher_combi_or_bomb
 
@@ -460,7 +460,7 @@ def test_prob_of_higher_combi_or_bomb_raster(cards, k, combination):
         return
     matches, hands = possible_hands_hi(parse_cards(cards), k, combination, with_bombs=True)
     p_expected = sum(matches) / len(hands) if hands else 0.0
-    msg = f"{stringify_figure(combination)}"
+    msg = f"{stringify_combination(combination)}"
     # print(f'("{cards}", {k}, ({combination[0]}, {combination[1]}, {combination[2]}), {sum(matches)}, {len(hands)}, {p_expected}, "{msg}"),')
     p_actual_min, p_actual_max = prob_of_higher_combi_or_bomb(parse_cards(cards), k, combination)
     if p_actual_min == p_actual_max:

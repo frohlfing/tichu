@@ -11,7 +11,7 @@ __all__ = "Partition", \
 import config
 import math
 from src.lib.cards import Cards
-from src.lib.combinations import stringify_figure, remove_combinations, Combination
+from src.lib.combinations import stringify_combination, remove_combinations, Combination
 from typing import List, Tuple, Optional
 
 # todo Dokumentieren (reStructuredText)
@@ -105,7 +105,7 @@ def filter_playable_combinations(partition: Partition, action_space: List[Tuple[
 
 # Wandelt die Partition in ein Label um
 def stringify_partition(partition: Partition) -> str:
-    return " ".join([stringify_figure(combi[1]) for combi in partition])
+    return " ".join([stringify_combination(combi[1]) for combi in partition])
 
 
 # Schätzt, die Güte der gegebenen Partition.

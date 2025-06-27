@@ -40,7 +40,7 @@ const TableView = (() => {
     /**
      * Die Namen der Spieler.
      *
-     * @type {HTMLElement[]}
+     * @type {Array<HTMLElement>}
      */
     const _playerNames = [
         document.getElementById('player-name-bottom'),
@@ -52,7 +52,7 @@ const TableView = (() => {
     /**
      * Die Hände (Container für die Handkarten).
      *
-     * @type {HTMLElement[]}
+     * @type {Array<HTMLElement>}
      */
     const _hands = [
         document.getElementById('hand-bottom'),
@@ -64,7 +64,7 @@ const TableView = (() => {
     /**
      * Die Ablage-Zonen für die Tauschkarten.
      *
-     * @type {HTMLElement[]}
+     * @type {Array<HTMLElement>}
      */
     const _schupfZones = [
         document.getElementById('schupf-zone-bottom'),
@@ -76,7 +76,7 @@ const TableView = (() => {
     /**
      * Die Ablage-Zonen für den aktuellen Stich.
      *
-     * @type {HTMLElement[]}
+     * @type {Array<HTMLElement>}
      */
     const _trickZones = [
         document.getElementById('trick-zone-bottom'),
@@ -88,7 +88,7 @@ const TableView = (() => {
     /**
      * Die Symbole für eine Tichu-Ansage.
      *
-     * @type {HTMLElement[]}
+     * @type {Array<HTMLElement>}
      */
     const _tichuIcons = [
         document.getElementById('tichu-icon-bottom'),

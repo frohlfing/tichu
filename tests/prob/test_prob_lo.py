@@ -1,6 +1,6 @@
 import pytest
 from src.lib.cards import parse_cards
-from src.lib.combinations import stringify_figure, CombinationType
+from src.lib.combinations import stringify_combination, CombinationType
 # noinspection PyProtectedMember
 from src.lib.prob.prob_lo import possible_hands_lo, prob_of_lower_combi
 
@@ -315,7 +315,7 @@ def test_prob_of_lower_combi_raster(cards, k, combination):
         return
     matches, hands = possible_hands_lo(parse_cards(cards), k, combination)
     p_expected = sum(matches) / len(hands) if hands else 0.0
-    msg = f"{stringify_figure(combination)}"
+    msg = f"{stringify_combination(combination)}"
     # print(f'("{cards}", {k}, ({combination[0]}, {combination[1]}, {combination[2]}), {sum(matches)}, {len(hands)}, {p_expected}, "{msg}"),')
     actual = prob_of_lower_combi(parse_cards(cards), k, combination)
     assert pytest.approx(actual, abs=1e-15) == p_expected, msg

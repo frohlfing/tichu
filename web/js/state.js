@@ -10,13 +10,13 @@
 /**
  * Type-Alias für einen Stich (Liste von Spielzügen).
  *
- * @typedef {Turn[]} Trick
+ * @typedef {Array<Turn>} Trick
  */
 
 /**
  * Type-Alias für die Punktetabelle
  *
- * @typedef {[number[], number[]]} GameScore
+ * @typedef {[Array<number>, Array<number>]} GameScore
  */
 
 /**
@@ -25,21 +25,21 @@
  * @typedef {Object} PublicState
  * @property {string} table_name - Der Name des Tisches.
  * @property {number} host_index - Index des Clients, der Host ist (-1 = kein Client).
- * @property {string[]} player_names - Die eindeutigen Namen der 4 Spieler.
+ * @property {Array<string>} player_names - Die eindeutigen Namen der 4 Spieler.
  * @property {boolean} is_running - Gibt an, ob eine Partie gerade läuft.
  * @property {number} current_turn_index - Index des Spielers, der am Zug ist (-1 = Startspieler steht noch nicht fest).
  * @property {number} start_player_index - Index des Spielers mit Mahjong (-1 = steht noch nicht fest).
- * @property {number[]} count_hand_cards - Anzahl der Handkarten pro Spieler.
+ * @property {Array<number>} count_hand_cards - Anzahl der Handkarten pro Spieler.
  * @property {Cards} played_cards - Bereits gespielte Karten in der Runde.
- * @property {number[]} announcements - Angekündigtes Tichu pro Spieler (0 = keine Ansage, 1 = einfaches, 2 = großes).
+ * @property {Array<number>} announcements - Angekündigtes Tichu pro Spieler (0 = keine Ansage, 1 = einfaches, 2 = großes).
  * @property {number} wish_value - Gewünschter Kartenwert (2–14, 0 = kein Wunsch, negativ = erfüllt).
  * @property {number} dragon_recipient - Index des Spielers, der den Drachen geschenkt bekommen hat (-1 = noch niemand).
  * @property {number} trick_owner_index - Index des Spielers, der den Stich besitzt (-1 = leerer Stich).
  * @property {Cards} trick_cards - Karten der letzten Kombination im Stich.
  * @property {Combination} trick_combination - Typ, Länge und Wert des aktuellen Stichs ([0,0,0] = leerer Stich).
  * @property {number} trick_points - Punkte des aktuellen Stichs.
- * @property {Trick[]} tricks - Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen.
- * @property {number[]} points - Bisher kassierte Punkte in der aktuellen Runde pro Spieler.
+ * @property {Array<Trick>} tricks - Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen.
+ * @property {Array<number>} points - Bisher kassierte Punkte in der aktuellen Runde pro Spieler.
  * @property {number} winner_index - Index des ersten Spielers, der fertig wurde (-1 = Runde läuft).
  * @property {number} loser_index - Index des letzten Spielers (-1 = Runde läuft oder Doppelsieg).
  * @property {boolean} is_round_over - Gibt an, ob die Runde beendet ist.
@@ -84,7 +84,7 @@ const State = (() => {
         trick_cards: /** @type Cards */ [],
         trick_combination: /** @type Combination */ [0, 0, 0],
         trick_points: 0,
-        tricks: /** @type Trick[] */ [],
+        tricks: /** @type Array<Trick> */ [],
         points: [0, 0, 0, 0],
         winner_index: -1,
         loser_index: -1,
@@ -335,12 +335,12 @@ const State = (() => {
         _publicState.trick_points = points;
     }
     
-    /** @returns {Trick[]} Liste der Stiche der aktuellen Runde. */
+    /** @returns {Array<Trick>} Liste der Stiche der aktuellen Runde. */
     function getTricks(){
         return _publicState.tricks;
     }
 
-    /** @param {Trick[]} tricks - Liste der Stiche der aktuellen Runde. */
+    /** @param {Array<Trick>} tricks - Liste der Stiche der aktuellen Runde. */
     function setTricks(tricks) {
         _publicState.tricks = tricks;
     }

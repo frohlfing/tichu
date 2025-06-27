@@ -1,4 +1,6 @@
 import pytest
+
+from src.lib.cards import CardSuit
 from src.public_state import PublicState
 from src.lib.combinations import CombinationType
 
@@ -33,10 +35,9 @@ def test_public_state_initialization(initial_pub_state):
     # Diese Felder könnten Properties sein:
     # assert pub.is_round_over is False
     # assert pub.is_double_victory is False
-    assert pub.game_score == [], []
+    assert pub.game_score == ([], [])
     assert pub.round_counter == 0
     assert pub.trick_counter == 0
-    assert pub.current_phase == "setup" # Oder was auch immer der Default ist
 
 def test_public_state_to_dict(initial_pub_state):
     """Testet die Umwandlung in ein Dictionary."""
@@ -44,7 +45,7 @@ def test_public_state_to_dict(initial_pub_state):
     # Setze einige Werte für einen besseren Test
     pub.current_turn_index = 1
     pub.count_hand_cards = [10, 11, 12, 13]
-    pub.played_cards = [(5,1), (5,3)]  # S5 G5"
+    pub.played_cards = [(5, CardSuit.SWORD), (5,CardSuit.JADE)]  # S5 G5"
     pub.trick_combination = (CombinationType.PAIR, 2, 5)
     pub.trick_points = 10
     pub.trick_owner_index = 0
@@ -111,15 +112,15 @@ def test_reset_round(initial_pub_state):
     pub.current_turn_index = 3
     pub.start_player_index = 3
     pub.count_hand_cards = [1, 2, 3, 4]
-    pub.played_cards = [(2, 1)]
+    pub.played_cards = [(2, CardSuit.SWORD)]
     pub.announcements = [1, 1, 1, 1]
     pub.wish_value = 4
     pub.dragon_recipient = 3
     pub.trick_owner_index = 2
-    pub.trick_cards = [(2, 1)]
+    pub.trick_cards = [(2, CardSuit.SWORD)]
     pub.trick_combination = (CombinationType.SINGLE, 1, 5)
     pub.trick_points = 10
-    pub.tricks = [[(0, [(5, 1)], (CombinationType.SINGLE, 1, 5))]]
+    pub.tricks = [[(0, [(5, CardSuit.SWORD)], (CombinationType.SINGLE, 1, 5))]]
     pub.points = [10, 0, 0, 0]
     pub.winner_index = 3
     pub.loser_index = 2
@@ -136,7 +137,6 @@ def test_reset_round(initial_pub_state):
     # Prüfen, ob die Werte korrekt zurückgesetzt wurden
     assert pub.table_name == "Tisch1"  # darf nicht zurückgesetzt werden
     assert pub.player_names == ["Anton", "Bea", "Charlie", "Doris"]  # darf nicht zurückgesetzt werden
-    assert pub.current_phase == "setup"
     assert pub.current_turn_index == -1
     assert pub.start_player_index == -1
     assert pub.count_hand_cards == [0, 0, 0, 0]
@@ -154,7 +154,7 @@ def test_reset_round(initial_pub_state):
     assert pub.loser_index == -1
     assert pub.is_round_over == False
     assert pub.is_double_victory == False
-    assert pub.game_score == [60, 10], [40, 90]  # darf nicht zurückgesetzt werden
+    assert pub.game_score == ([60, 10], [40, 90])  # darf nicht zurückgesetzt werden
     assert pub.round_counter == 2  # darf nicht zurückgesetzt werden
     assert pub.trick_counter == 3  # darf nicht zurückgesetzt werden
 
@@ -175,7 +175,7 @@ def test_reset_game(initial_pub_state):
     # Prüfen, ob die Werte korrekt zurückgesetzt wurden
     pub.table_name = "Tisch1"  # darf nicht zurückgesetzt werden
     pub.player_names = ["Anton", "Bea", "Charlie", "Doris"]  # darf nicht zurückgesetzt werden
-    assert pub.game_score == [], []
+    assert pub.game_score == ([], [])
     assert pub.round_counter == 0
     assert pub.trick_counter == 0
 

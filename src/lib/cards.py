@@ -33,11 +33,10 @@ Card = Tuple[int, CardSuit]  # Wert, Farbe   # todo überall konsequent verwende
 Cards = List[Card]  # todo überall konsequent verwenden
 
 # Sonderkarten
-#   (Wert, Farbe)
-CARD_DOG = (0, 0)   # Dog
-CARD_MAH = (1, 0)   # Mahjong
-CARD_DRA = (15, 0)  # Phoenix
-CARD_PHO = (16, 0)  # Dragon
+CARD_DOG = (0, CardSuit.SPECIAL)   # Dog
+CARD_MAH = (1, CardSuit.SPECIAL)   # Mahjong
+CARD_DRA = (15, CardSuit.SPECIAL)  # Phoenix
+CARD_PHO = (16, CardSuit.SPECIAL)  # Dragon
 
 # Kartendeck (56 Karten)
 # Werte:  0 = Hund, 1 = Mahjong, 2 bis 10, 11 = Bube, 12 = Dame, 13 = König, 14 = As, 15 = Drache, 16 = Phönix
@@ -84,19 +83,19 @@ _card_labels = (
     "Ph",                    # Phönix
 )
 
-# Kartenwert → Punkte
+# Zuordnung von Kartenwert zu Punkten.
 _card_points = (
     0,    # Hund
     0,    # MahJong
     0,    # 2
     0,    # 3
     0,    # 4
-    5,    # 5      → 5 Punkte
+    5,    # 5 → 5 Punkte
     0,    # 6
     0,    # 7
     0,    # 8
     0,    # 9
-    10,   # Zehn   → 10 Punkte
+    10,   # Zehn → 10 Punkte
     0,    # Bube
     0,    # Dame
     10,   # Könige → 10 Punkte
@@ -190,8 +189,14 @@ def cards_to_vector(cards: Cards) -> list[int]:
     return h
 
 
-# Ermittelt, ob der gewünschte Kartenwert unter den Karten ist
 def is_wish_in(wish: int, cards: Cards) -> bool:
+    """
+    Ermittelt, ob der gewünschte Kartenwert unter den Karten ist.
+
+    :param wish: Der gewünschte Kartenwert.
+    :param cards: Die zu prüfenden Karten.
+    :return: True, wenn der Kartenwert unter den Karten ist.
+    """
     assert 2 <= wish <= 14
     for card in cards:
         if card[0] == wish:
@@ -199,19 +204,23 @@ def is_wish_in(wish: int, cards: Cards) -> bool:
     return False
 
 
-# Zählt die Punkte der Karten
-# cards: Karten, z.B. [(8,3),(2,4),(0,1)]
 def sum_card_points(cards: Cards) -> int:
+    """
+    Zählt die Punkte der übergebenen Karten.
+
+    :param cards: Die zu zählenden Karten.
+    :return: Die Punkte der Karten.
+    """
     return sum([_card_points[card[0]] for card in cards])
 
 
 def other_cards(cards: Cards) -> List[Card]:
     """
-    Listet die Karten auf, die nicht in cards vorkommen.
+    Listet die Karten auf, die nicht in der übergebenen Liste vorkommen.
 
     Die Reihenfolge entspricht dem Kartendeck (also aufsteigend).
 
     :param cards: Die Karten, aus denen die fehlenden Karten ermittelt werden.
-    :return: Die Karten, die nicht in cards vorkommen.
+    :return: Die Karten, die nicht in der übergebenen Liste vorkommen.
     """
     return [card for card in deck if card not in cards]

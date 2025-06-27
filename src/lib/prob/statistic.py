@@ -28,9 +28,9 @@ from typing import List, Tuple, Dict, Optional
 # hand: Eigene Handkarten
 # combis: Zu bewertende Kombinationen (gebildet aus den Handkarten) [(Karten, (Typ, Länge, Rang)), ...]
 # number_of_cards: Anzahl der Handkarten aller Spieler.
-# trick_figure: Typ, Länge, Rang des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
+# trick_combination: Kombination (Typ, Länge, Rang) des aktuellen Stichs ((0,0,0), falls kein Stich liegt).
 # unplayed_cards: Noch nicht gespielte Karten
-def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combination]], number_of_cards: List[int], trick_figure: Combination, unplayed_cards: Cards) -> Dict[Cards, Tuple[float, float, float, float, float, float]]:
+def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combination]], number_of_cards: List[int], trick_combination: Combination, unplayed_cards: Cards) -> Dict[Cards, Tuple[float, float, float, float, float, float]]:
     assert hand  # wir haben bereits bzw. noch Karten auf der Hand
     assert len(hand) == number_of_cards[player]
 
@@ -191,14 +191,14 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
 
     # Uns interessieren nur die Kombinationen der Mitspieler, die zu den eigenen Handkarten passen...
     statistic = {}
-    for cards, figure in combis:
-        t, n, v = figure
+    for cards, combination in combis:
+        t, n, v = combination
 
         if t == CombinationType.BOMB:
             # Anzahl Kombis der Mitspieler insgesamt, die hier betrachtet werden (das sind alle Kombis bis auf Hund)
             sum_combis = \
                 sum([sum(d[k][m]) for k in range(1, 7) for m in range(1, len(d[k])) if d[k][m] is not None]) \
-                + (0 if figure == FIGURE_DOG else sum_bombs)
+                + (0 if combination == FIGURE_DOG else sum_bombs)
 
             # lo = normale Kombis + kürzere Bomben + niederwertige Bomben gleicher Länge
             lo_opp = \
@@ -224,21 +224,21 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
 
         else:  # keine Bombe
             # Anzahl Kombis der Mitspieler, die betrachtet werden (Kombis gleicher Länge (aber kein Hund) plus Bomben)
-            sum_combis = sum(d[t][n][1:]) + (0 if figure == FIGURE_DOG else sum_bombs)
+            sum_combis = sum(d[t][n][1:]) + (0 if combination == FIGURE_DOG else sum_bombs)
 
             # niederwertige Kombis (ohne Hund) - wie viele Kombinationen gibt es, die ich mit combi stechen kann?
             a = 1
-            b = 15 if figure == FIGURE_PHO else v
-            w = sum(d[t][n][a:b]) + (d[t][n][16] if figure == FIGURE_DRA else 0)  # Anzahl niederwertiger Kombinationen
+            b = 15 if combination == FIGURE_PHO else v
+            w = sum(d[t][n][a:b]) + (d[t][n][16] if combination == FIGURE_DRA else 0)  # Anzahl niederwertiger Kombinationen
             lo_opp = (p[opp_right][n] + p[opp_left][n]) * w
             lo_par = p[partner][n] * w
 
             # höherwertige Kombis
-            a = trick_figure[2] + 1 if figure == FIGURE_PHO else v + 1
+            a = trick_combination[2] + 1 if combination == FIGURE_PHO else v + 1
             b = 16
-            w = sum(d[t][n][a:b]) + (d[t][n][16] if t == CombinationType.SINGLE and figure != FIGURE_DRA else 0)  # höherwertige (ohne Bomben)
-            hi_opp = (p[opp_right][n] + p[opp_left][n]) * w + (0 if figure == FIGURE_DOG else p_bomb_opp)
-            hi_par = p[partner][n] * w + (0 if figure == FIGURE_DOG else p_bomb_par)
+            w = sum(d[t][n][a:b]) + (d[t][n][16] if t == CombinationType.SINGLE and combination != FIGURE_DRA else 0)  # höherwertige (ohne Bomben)
+            hi_opp = (p[opp_right][n] + p[opp_left][n]) * w + (0 if combination == FIGURE_DOG else p_bomb_opp)
+            hi_par = p[partner][n] * w + (0 if combination == FIGURE_DOG else p_bomb_par)
 
             # gleichwertige Kombis
             w = d[t][n][v]  # Anzahl gleichwertige Kombinationen
@@ -247,7 +247,7 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
 
         # Beim Phönix wurden die spielbaren Kombinationen (außer Drache) doppelt gerechnet. Das liegt daran, dass der
         # Wert vom ausgelegten Stich abhängt.
-        w = sum_combis + (sum(d[t][n][(trick_figure[2] + 1):15]) if figure == FIGURE_PHO else 0)
+        w = sum_combis + (sum(d[t][n][(trick_combination[2] + 1):15]) if combination == FIGURE_PHO else 0)
         if w:
             # normalisieren
             lo_opp /= w
@@ -256,7 +256,7 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
             hi_par /= w
             eq_opp /= w
             eq_par /= w
-            # if figure == FIGURE_PHO:
+            # if combination == FIGURE_PHO:
             #     assert eq_opp == 0
             #     assert eq_par == 0
             #     w = lo_opp + lo_par + hi_opp + hi_par
@@ -295,9 +295,9 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
 # hand: Eigene Handkarten
 # combis: Zu bewertende Kombinationen (gebildet aus den Handkarten) [(Karten, (Typ, Länge, Rang)), ...]
 # number_of_cards: Anzahl der Handkarten aller Spieler.
-# trick_figure: Typ, Länge, Rang des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
+# trick_combination: Kombination (Typ, Länge, Rang) des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
 # unplayed_cards: Noch nicht gespielte Karten (inkl. eigene Handkarten)
-def calc_statistic2(player: int, hand: Cards, combis: List[Tuple[Cards, Combination]], number_of_cards: List[int], _trick_figure: Combination, unplayed_cards: Cards) -> Dict[Cards, Tuple[float, float, float, float]]:
+def calc_statistic2(player: int, hand: Cards, combis: List[Tuple[Cards, Combination]], number_of_cards: List[int], _trick_combination: Combination, unplayed_cards: Cards) -> Dict[Cards, Tuple[float, float, float, float]]:
     assert hand  # wir haben bereits bzw. noch Karten auf der Hand
     assert len(hand) == number_of_cards[player]
 
@@ -317,8 +317,8 @@ def calc_statistic2(player: int, hand: Cards, combis: List[Tuple[Cards, Combinat
 
     # Uns interessieren nur die Kombinationen der Mitspieler, die zu den eigenen Handkarten passen...
     statistic = {}
-    for cards, figure in combis:
-        _t, _n, _v = figure
+    for cards, combination in combis:
+        _t, _n, _v = combination
         p_lo = 0.0
         p_hi = 0.0
         # todo

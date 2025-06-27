@@ -33,11 +33,11 @@ import asyncio
 
 def benchmark_get_figure():
     cards = parse_cards('Ph R8 R9 BZ RB RD RK')
-    print(f'get_figure(): {timeit(lambda: get_figure(cards, 10, shift_phoenix=True), number=1000000):5.3f} µs per loop')
+    print(f'get_figure(): {timeit(lambda: get_combination(cards, 10, shift_phoenix=True), number=1000000):5.3f} µs per loop')
     # 2.970 µs per loop
 
     cards = parse_cards('Ph R8 R9 BZ RB RD RK')
-    print(f'get_figure(): {timeit(lambda: get_figure(cards, 10), number=1000000):5.3f} µs per loop')
+    print(f'get_figure(): {timeit(lambda: get_combination(cards, 10), number=1000000):5.3f} µs per loop')
     # 2.167 µs per loop
 
 #
@@ -161,7 +161,7 @@ def possible_hands_benchmark():
     for figure in [(CombinationType.SINGLE, 1, 8), (CombinationType.PAIR, 2, 8), (CombinationType.TRIPLE, 3, 8), (CombinationType.STAIR, 6, 8), (CombinationType.FULLHOUSE, 5, 8), (CombinationType.STREET, 6, 8), (CombinationType.BOMB, 4, 8), (CombinationType.BOMB, 6, 8)]:
         for k in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]:
             t = timeit(lambda: possible_hands_hi(cards, k, figure, with_bombs=True), number=number) * 1000 / number
-            print(f"possible_hands_hi, {stringify_figure(figure)}, {k}, {t:.6f} ms")
+            print(f"possible_hands_hi, {stringify_combination(figure)}, {k}, {t:.6f} ms")
 
 
 def prob_of_hand_benchmark():

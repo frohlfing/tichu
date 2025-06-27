@@ -527,24 +527,37 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
 
 Mit dem Klick auf die Bombe holt man sich nur das Zugrecht, es wird nicht direkt die Bombe geworfen. 
 
+#### 8.1.7 Request-Zyklus 
+
+*   Der Server sendet eine Anfrage oder eine Benachrichtigung an den Client.
+*   Diese wird per Ereignisbus an den App-Controller weitergereicht.
+*   Der App-Controller aktualisiert den Spielzustand und rendert danach die View.
+*   Die Render-Funktion liest den Status aus und aktualisiert die HTML-Elemente.
+*   Eine Benutzeraktion wird per Ereignisbus an den App-Controller weitergereicht.
+*   Der App-Controller sendet die Aktion an den Server.
+
 ### 8.2 Module
 
 *   `Config`: Konfigurationsvariablen (definiert in `config.js`).
 *   `Lib`: Enthält allgemeine Hilfsfunktionen.
-*   `State`: Datencontainer für den Spielzustand.  
+*   `State`: Datencontainer für den Spielzustand.
 *   `User`: Datencontainer für die Benutzerdaten.    
 *   `EventBus`: Zentrale Nachrichtenvermittlung zwischen den Komponenten.
 *   `Network`: Verantwortlich für die WebSocket-Verbindung und Kommunikation mit dem Server.    
 *   `SoundManager`: Verwaltet das Laden und Abspielen von Soundeffekten.
 *   `Modals`: Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
-*   `LoadingView`: Anzeige und Interaktion der Ladeanzeige. 
-*   `LoginView`: Anzeige und Interaktion des Login-Bildschirms. 
-*   `LobbyView`: Anzeige und Interaktion der Lobby. 
-*   `TableView`: Anzeige und Interaktion des Spieltisch-Bildschirms. 
+*   `LoadingView`: Ansicht und Interaktion der Ladeanzeige. 
+*   `LoginView`: Ansicht und Interaktion des Login-Bildschirms. 
+*   `LobbyView`: Ansicht und Interaktion der Lobby. 
+*   `TableView`: Ansicht und Interaktion des Spieltisch-Bildschirms. 
 *   `ViewManager`: Schaltet zwischen den Views der Anwendung um.
 *   `AppController`: Aktualisiert den Spielzustand und schaltet zwischen den Views um.
 
 `main.js` ist der Haupt-Einstiegspunkt der Tichu-Anwendung.
+
+Der Spielzustand wird über den App-Controller aktualisiert. 
+
+Die Ansichten lesen den Spielzustand und rendern den Bildschirm entsprechend.
 
 ### 8.3 Verzeichnisstruktur
 

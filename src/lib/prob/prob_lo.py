@@ -17,7 +17,7 @@ __all__ = "prob_of_lower_combi",
 import itertools
 import math
 from src.lib.cards import parse_cards, stringify_cards, ranks_to_vector, Cards
-from src.lib.combinations import stringify_figure, validate_figure, CombinationType
+from src.lib.combinations import stringify_combination, validate_combination, CombinationType, Combination
 from src.lib.prob.tables_lo import load_table_lo
 from time import time
 
@@ -44,20 +44,20 @@ from time import time
 #
 # cards: Verfügbare Karten
 # k: Anzahl der Handkarten
-# figure: Typ, Länge und Rang der gegebenen Kombination
+# combination: Die gegebenen Kombination (Typ, Länge und Rang).
 # return: Wahrscheinlichkeit `p_low`
-def prob_of_lower_combi(cards: Cards, k: int, figure: tuple) -> float:
+def prob_of_lower_combi(cards: Cards, k: int, combination: Combination) -> float:
     if k == 0:
         return 0.0
     n = len(cards)  # Gesamtanzahl der verfügbaren Karten
     assert k <= n <= 56
     assert 0 <= k <= 14
 
-    if figure == (1, 1, 0):  # Hund
+    if combination == (1, 1, 0):  # Hund
         return 0.0  # der Hund kann keine Karte stechen
 
-    assert figure != (0, 0, 0) and validate_figure(figure)
-    t, m, r = figure  # Typ, Länge und Rang der gegebenen Kombination
+    assert combination != (0, 0, 0) and validate_combination(combination)
+    t, m, r = combination  # Typ, Länge und Rang der gegebenen Kombination
 
     # eine Bombe kann jede Einzelkarte aus der Hand übernehmen, allein das reicht schon
     if t == CombinationType.BOMB:
@@ -131,11 +131,11 @@ def prob_of_lower_combi(cards: Cards, k: int, figure: tuple) -> float:
 #
 # unplayed_cards: Ungespielte Karten
 # k: Anzahl Handkarten
-# figure: Typ, Länge, Rang der Kombination
-def possible_hands_lo(unplayed_cards: Cards, k: int, figure: tuple) -> tuple[list, list]:
+# combination: Die Kombination (Typ, Länge, Rang).
+def possible_hands_lo(unplayed_cards: Cards, k: int, combination: Combination) -> tuple[list, list]:
     hands = list(itertools.combinations(unplayed_cards, k))  # die Länge der Liste entspricht math.comb(len(unplayed_cards), k)
     matches = []
-    t, m, r = figure  # type, length, rank
+    t, m, r = combination  # type, length, rank
     for hand in hands:
         b = False
         if t == CombinationType.SINGLE:  # Einzelkarte
@@ -200,14 +200,14 @@ def possible_hands_lo(unplayed_cards: Cards, k: int, figure: tuple) -> tuple[lis
 
 
 # Ergebnisse untersuchen
-def inspect(cards, k, figure, verbose=True):  # pragma: no cover
+def inspect(cards, k, combination, verbose=True):  # pragma: no cover
     print(f"Kartenauswahl: {cards}")
     print(f"Anzahl Handkarten: {k}")
-    print(f"Kombination: {stringify_figure(figure)}")
+    print(f"Kombination: {stringify_combination(combination)}")
     print("Mögliche Handkarten:")
 
     time_start = time()
-    matches, hands = possible_hands_lo(parse_cards(cards), k, figure)
+    matches, hands = possible_hands_lo(parse_cards(cards), k, combination)
     if verbose:
         for match, sample in zip(matches, hands):
             print("  ", stringify_cards(sample), match)
@@ -218,7 +218,7 @@ def inspect(cards, k, figure, verbose=True):  # pragma: no cover
           f" ({(time() - time_start) * 1000:.6f} ms)")
 
     time_start = time()
-    p_actual = prob_of_lower_combi(parse_cards(cards), k, figure)
+    p_actual = prob_of_lower_combi(parse_cards(cards), k, combination)
     print(f"Berechnet: p = {(total_expected * p_actual):.0f}/{total_expected} = {p_actual}"
           f" ({(time() - time_start) * 1000:.6f} ms (inkl. Daten laden))")
 
@@ -276,9 +276,9 @@ def inspect_combination():  # pragma: no cover
         ("RK GB BB SB RB BZ R2", 0, (7, 4, 10), 21, 21, "4er-Bombe"),
         #("BK BB BZ B9 B8 B7 B2", 5, (7, 7, 10), 21, 21, "Farbbombe"),
     ]
-    for cards, k, figure, matches_expected, total_expected, msg in test:
+    for cards, k, combination, matches_expected, total_expected, msg in test:
         print(msg)
-        inspect(cards, k, figure, verbose=True)
+        inspect(cards, k, combination, verbose=True)
 
 
 if __name__ == "__main__":  # pragma: no cover
