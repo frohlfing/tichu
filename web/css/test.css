@@ -1,0 +1,25 @@
+body {
+    font-family: monospace;
+    padding: 1em;
+    background: #111;
+    color: #ddd;
+}
+
+.summary {
+    color: white;
+    font-weight: bold;
+    display: inline-block;
+}
+
+#statusbar {
+    border-radius: 5px;
+    height: 5px;
+}
+
+#statusbar.pass {
+    background: linear-gradient(to right, #2ecc71, #138945);
+}
+
+#statusbar.fail {
+    background: linear-gradient(to right, #e74c3c, #b12c1e);
+}
