@@ -9,7 +9,7 @@ __all__ = "CombinationType", "Combination",  \
     "build_action_space",
 
 import enum
-from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in, Card, Cards
+from src.lib.cards import CARD_DOG, CARD_PHO, is_wish_in, Cards, CardSuit
 from typing import Tuple, List
 
 # -----------------------------------------------------------------------------
@@ -121,7 +121,7 @@ def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False)
     # Karten absteigend sortieren
     cards.sort(reverse=True)  # Der Phönix ist jetzt, falls vorhanden, die erste Karte von rechts!
 
-    # Type
+    # Typ ermitteln
     if n == 1:
         t = CombinationType.SINGLE
     elif n == 2:
@@ -139,7 +139,7 @@ def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False)
     else:
         t = CombinationType.STREET
 
-    # Rang
+    # Rang ermitteln
     if t == CombinationType.SINGLE:
         if cards[0] == CARD_PHO:
             assert 0 <= trick_value <= 15
@@ -166,11 +166,11 @@ def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False)
 
     # Phönix einsortieren
     if shift_phoenix and cards[0] == CARD_PHO:
-        if t == CombinationType.PAIR:  # Pärchen → Phönix ans Ende verschieben
+        if t == CombinationType.PAIR:  # Phönix ans Ende verschieben
             cards[0] = cards[1]; cards[1] = CARD_PHO
-        elif t == CombinationType.TRIPLE:  # Drilling → Phönix ans Ende verschieben
+        elif t == CombinationType.TRIPLE:  # Phönix ans Ende verschieben
             cards[0] = cards[1]; cards[1] = cards[2]; cards[2] = CARD_PHO
-        elif t == CombinationType.STAIR:  # Treppe → Phönix in die Lücke verschieben *11233
+        elif t == CombinationType.STAIR:  # Phönix in die Lücke verschieben *11233
             for i in range(1, n, 2):
                 if i + 1 == n or cards[i][0] != cards[i + 1][0]:
                     # Lücke gefunden
@@ -178,14 +178,14 @@ def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False)
                         cards[j] = cards[j + 1]
                     cards[i] = CARD_PHO
                     break
-        elif t == CombinationType.FULLHOUSE:  # Straße → Phönix ans Ende des Drillings bzw. Pärchens verschieben
+        elif t == CombinationType.FULLHOUSE:  # Phönix ans Ende des Drillings bzw. Pärchens verschieben
             if cards[1][0] == cards[2][0] == cards[3][0]:  # Drilling vorne komplett → Phönix ans Ende verschieben
                 cards[0] = cards[1]; cards[1] = cards[2]; cards[2] = cards[3]; cards[3] = cards[4]; cards[4] = CARD_PHO
             elif cards[2][0] == cards[3][0] == cards[4][0]:  # Drilling hinten komplett → Phönix an die 2. Stelle verschieben
                 cards[0] = cards[1]; cards[1] = CARD_PHO
             else:  # kein Drilling komplett → Phönix in die Mitte verschieben
                 cards[0] = cards[1]; cards[1] = cards[2]; cards[2] = CARD_PHO
-        elif t == CombinationType.STREET:  # Straße → Phönix in die Lücke verschieben
+        elif t == CombinationType.STREET:  # Phönix in die Lücke verschieben
             w = cards[1][0] + 1  # wir nehmen erstmal an, dass der Phönix vorn bleiben kann
             for i in range(2, n):
                 if w > cards[i][0] + i:
@@ -206,9 +206,15 @@ def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
     """
     Ermittelt die Kombinationsmöglichkeiten der Handkarten (die besten zuerst).
 
-    :param hand: Die Handkarten, absteigend sortiert, z.B. [(8,3),(2,4),(0,1)].
+    :param hand: Die Handkarten, müssen absteigend sortiert sein, z.B. [(8,3),(2,4),(0,1)]!
     :return: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...].
     """
+    # Handkarten für die Operationen absteigend sortieren
+    # todo Es wird vorausgesetzt, dass die Karten bereits absteigend sortiert sind.
+    #  Aber besser wäre es, wenn die Funktion dies sicherstellen würde. Relevant wegen Performance?
+    #  In JS wird dies gemacht.
+    # hand.sort(reverse=True)
+
     has_phoenix = CARD_PHO in hand
     arr = [[], [], [], [], [], [], [], []]  # pro Typ ein Array
     n = len(hand)
@@ -217,7 +223,7 @@ def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
     for i1 in range(0, n):
         card1 = hand[i1]
         arr[CombinationType.SINGLE].append([card1])
-        if card1[1] == 0:  # Sonderkarte?
+        if card1[1] == CardSuit.SPECIAL:
             continue
         if has_phoenix:
             arr[CombinationType.PAIR].append([card1, CARD_PHO])
@@ -236,11 +242,15 @@ def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
                     break
                 arr[CombinationType.TRIPLE].append([card1, card2, card3])
                 # 4er-Bomben suchen...
-                for i4 in range(i3 + 1, n):
-                    card4 = hand[i4]
+                #for i4 in range(i3 + 1, n):
+                #    card4 = hand[i4]
+                #    if card1[0] == card4[0]:
+                #        arr[CombinationType.BOMB].append([card1, card2, card3, card4])
+                #    break
+                if i3 + 1 < n:
+                    card4 = hand[i3 + 1]
                     if card1[0] == card4[0]:
                         arr[CombinationType.BOMB].append([card1, card2, card3, card4])
-                    break
 
     # Treppen
     temp = arr[CombinationType.PAIR].copy()
@@ -252,12 +262,13 @@ def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
             if pair[1] == CARD_PHO and CARD_PHO in temp[i]:
                 continue
             if v - 1 == pair[0][0]:
-                arr[CombinationType.STAIR].append(temp[i] + pair)
-                temp.append(temp[i] + pair)
+                new_stair = temp[i] + pair
+                arr[CombinationType.STAIR].append(new_stair)
+                temp.append(new_stair)
                 m += 1
         i += 1
 
-    # FullHouse
+    # Fullhouse
     for triple in arr[CombinationType.TRIPLE]:
         for pair in arr[CombinationType.PAIR]:
             if triple[0][0] == pair[0][0]:
@@ -272,10 +283,10 @@ def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
 
     # Straßen
     for i1 in range(0, n - 1):
-        if hand[i1][1] == 0 or (i1 > 0 and hand[i1 - 1][0] == hand[i1][0]):
+        if hand[i1][1] == CardSuit.SPECIAL or (i1 > 0 and hand[i1 - 1][0] == hand[i1][0]):
             continue  # Sonderkarte oder vorherige Karte gleichwertig
         v1 = hand[i1][0]
-        if v1 < (4 if has_phoenix else 5):  # if v1 < 5:
+        if v1 < (4 if has_phoenix else 5):
             break  # eine Straße hat mindestens den Rang 5
         temp = [[hand[i1]]]
         for i2 in range(i1 + 1, n):
@@ -330,7 +341,7 @@ def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
                     elif cards[k - 1][0] > 2:
                         arr[CombinationType.STREET].append(cards[0:k] + [CARD_PHO])
 
-    # Type, Rang und Länge der Kombinationen auflisten (zuerst die besten)
+    # Kombinationen auflisten (zuerst die besten)
     result = []
     for t in range(7, 0, -1):  # Typ t = 7 (BOMB) .. 1 (SINGLE)
         for cards in arr[t]:
@@ -349,27 +360,27 @@ def remove_combinations(combis: List[Tuple[Cards, Combination]], cards: Cards):
     """
     Entfernt die Kombinationsmöglichkeiten, die aus mindestens einer der angegebenen Karten bestehen.
 
-    :param combis: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...]
+    :param combis: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...].
     :param cards: Karten, die entfernt werden sollen.
-    :return: [(Karten, (Typ, Länge, Rang)), ...]
+    :return: Kombinationsmöglichkeiten ohne die gegebenen Karten.
     """
     return [combi for combi in combis if not set(cards).intersection(combi[0])]
 
 
-def build_action_space(combis: List[Tuple[List[Card], Combination]], trick_combination: tuple, unfulfilled_wish: int) -> List[Tuple[List[Card], Combination]]:
+def build_action_space(combis: List[Tuple[Cards, Combination]], trick_combination: tuple, unfulfilled_wish: int) -> List[Tuple[Cards, Combination]]:
     """
     Ermittelt spielbare Kartenkombinationen.
     
-    :param combis: Kombinationsmöglichkeiten der Hand, also [(Karten, (Typ, Länge, Rang)), ...]
-    :param trick_combination: Typ, Länge, Rang des aktuellen Stichs ((0,0,0), falls kein Stich liegt)
-    :param unfulfilled_wish: Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt)
-    :return: ([], (0,0,0)) für Passen sofern möglich + mögliche Kombinationen aus combis
+    :param combis: Kombinationsmöglichkeiten der Hand, ([(Karten, (Typ, Länge, Rang)), ...]).
+    :param trick_combination: Typ, Länge, Rang des aktuellen Stichs ((0,0,0) falls kein Stich liegt).
+    :param unfulfilled_wish: Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt).
+    :return: ([], (0,0,0)) für Passen sofern möglich + spielbare Kombinationsmöglichkeiten.
     """
     assert 0 <= trick_combination[0] <= 7
     assert 0 <= trick_combination[1] <= 14
     assert 0 <= trick_combination[2] <= 15
     result = []
-    if trick_combination not in (FIGURE_PASS, FIGURE_DOG):
+    if trick_combination not in (FIGURE_PASS, FIGURE_DOG):  # trickCombination[2] > 0  # Rang > 0?
         # Stich liegt und es ist kein Hund
         result.append(([], (CombinationType.PASS, 0, 0)))  # Passen ist eine Option
         t, n, v = trick_combination

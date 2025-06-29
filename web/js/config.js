@@ -4,6 +4,10 @@
  * Dieses Modul wird vom Server dynamisch generiert.
  */
 const Config = {
+    // Umgebung (development, production, staging)
+    // Auf dem Produktiv-System können keine Tests ausgeführt werden!
+    ENVIRONMENT: "development",
+
     // Maximale Wartezeit für Anfragen an den Client in Sekunden (0 == unbegrenzt)
     DEFAULT_REQUEST_TIMEOUT: 20,
     
