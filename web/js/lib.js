@@ -766,9 +766,9 @@ const Lib = (() => {
      */
     function canPlay(hand, trickCombination, unfulfilledWish) {
         const allCombis = buildCombinations(hand);
-        const actionSpace = buildActionSpace(allCombis, trickCombination, unfulfilledWish);
-        let n = actionSpace.length;
-        if (n > 0 && actionSpace[0][1][0] === CombinationType.PASS) {
+        const playableCombis = buildActionSpace(allCombis, trickCombination, unfulfilledWish);
+        let n = playableCombis.length;
+        if (n > 0 && playableCombis[0][1][0] === CombinationType.PASS) {
             n--;
         }
         return n > 0;
@@ -776,58 +776,47 @@ const Lib = (() => {
 
     // todo prüfen
     /**
-     * Wählt die längste kleinstmögliche Kombination, die gespielt werden kann, aus.
+     * Wählt die längste Kombination, die gespielt werden kann, aus.
+     *
+     * Bei gleichlangen Kombinationen wird die Kombination mit dem kleinsten Rang gewählt.
+     * Bomben bleiben wenn möglich unangetastet. Passen ist keine Option.
      *
      * @param {Cards} hand - Die Handkarten des Spielers.
      * @param {Combination} trickCombination - Die auf dem Tisch liegende Kombination.
      * @param {number} unfulfilledWish - Der Wert eines unerfüllten Wunsches (oder 0).
-     * @returns {[Cards, Combination] | null} - Die empfohlene Kombination oder null, wenn nur Passen möglich ist.
+     * @returns {[Cards, Combination]} - Die empfohlene Kombination.
      */
     function selectBestPlay(hand, trickCombination, unfulfilledWish) {
         const allCombis = buildCombinations(hand);
-        const actionSpace = buildActionSpace(allCombis, trickCombination, unfulfilledWish);
+        const playableCombis = buildActionSpace(allCombis, trickCombination, unfulfilledWish);
 
-        // Entferne die "Passen"-Option aus dem Aktionsraum, falls vorhanden.
-        const playableCombinations = actionSpace.filter(
-            combi => combi[1][0] !== CombinationType.PASS
-        );
-
-        if (playableCombinations.length === 0) {
-            return null; // Nur Passen ist möglich
-        }
-
-        // Sortiere die spielbaren Kombinationen, um die "schwächste" zu finden.
-        // Priorität:
-        // 1. Keine Bombe vor einer Bombe (Bomben sind wertvoll und werden geschont).
-        // 2. Niedrigster Rang.
-        // 3. Kürzeste Länge (als sekundärer Tie-Breaker, selten relevant).
-        playableCombinations.sort((a, b) => {
-            const combiA = a[1];
-            const combiB = b[1];
-
-            const isBombA = combiA[0] === CombinationType.BOMB;
-            const isBombB = combiB[0] === CombinationType.BOMB;
-
-            // Regel 1: Bomben werden zuletzt in Betracht gezogen
-            if (isBombA && !isBombB) {
-                return 1; // a (Bombe) kommt nach b
+        // alle Karten, die Teil einer Bombe sind
+        let bombCards = [];
+        allCombis.forEach(combi => {
+            if (combi[1][0] === CombinationType.BOMB) {
+                bombCards = bombCards.concat(combi[0]);
             }
-            if (!isBombA && isBombB) {
-                return -1; // a kommt vor b (Bombe)
-            }
-
-            // Regel 2: Sortiere nach Rang (aufsteigend)
-            const rankDiff = combiA[2] - combiB[2];
-            if (rankDiff !== 0) {
-                return rankDiff;
-            }
-
-            // Regel 3: Sortiere nach Länge (aufsteigend)
-            return combiA[1] - combiB[1];
         });
 
-        // Gib die erste (schwächste) spielbare Kombination zurück
-        return playableCombinations[0];
+        // Kombinationen entfernen, die eine Bombe zerreißen würden
+        const bestCombis = playableCombis.filter(combi => {
+            return combi[1][0] === CombinationType.BOMB || !hasIntersection(combi[0], bombCards);
+        });
+
+        // die restlichen Kombinationen sortieren (die "besten" zuerst).
+        // Priorität:
+        // 1: Normale Züge vor Bomben.
+        // 2: Längste Kombinationen zuerst.
+        // 3: Bei gleicher Länge: Niedrigster Rang zuerst.
+        bestCombis.sort((a, b) => {
+            const [t1, n1, r1] = a[1];
+            const [t2, n2, r2] = b[1];
+            const sortValue1 = ((t1 === CombinationType.BOMB || t1 === CombinationType.PASS) * 10000) + ((14 - n1) * 100) + r1;
+            const sortValue2 = ((t2 === CombinationType.BOMB || t2 === CombinationType.PASS) * 10000) + ((14 - n2) * 100) + r2;
+            return sortValue1 - sortValue2;
+        });
+
+        return bestCombis[0];
     }
 
     // todo prüfen

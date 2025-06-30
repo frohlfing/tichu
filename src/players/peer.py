@@ -448,7 +448,7 @@ class Peer(Player):
                 cards = None
                 continue
 
-        # Ist der Spiele am Zug? (stellt die Engine sicher) todo rausnehmen
+        # Ist der Spieler am Zug? (stellt die Engine sicher) todo rausnehmen
         assert self.pub.current_turn_index == self.priv.player_index
 
         return cards, combination
