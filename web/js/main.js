@@ -10,7 +10,7 @@
 function scaleGameWrapper() {
     const wrapper = document.getElementById('game-wrapper');
     if (!wrapper) {
-        console.error("MAIN: #game-wrapper nicht im DOM gefunden für Skalierung.");
+        console.error("Main: #game-wrapper nicht im DOM gefunden!");
         return;
     }
     const targetWidth = 1080;
@@ -21,7 +21,6 @@ function scaleGameWrapper() {
     const scaleY = windowHeight / targetHeight;
     const scale = Math.min(scaleX, scaleY); // Wählt den kleineren Skalierungsfaktor, um alles sichtbar zu halten
     wrapper.style.transform = `scale(${scale})`;
-    console.log(`MAIN: Game-Wrapper skaliert auf: ${scale.toFixed(3)} (Win: ${windowWidth}x${windowHeight})`);
 }
 
 /**
@@ -29,7 +28,6 @@ function scaleGameWrapper() {
  * aber bevor externe Ressourcen wie Bilder vollständig geladen sind.
  */
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("MAIN: DOM vollständig geladen und geparst.");
     // Skalierung initial aufrufen, falls der Wrapper schon im DOM ist
     // (wird aber auch von window.onload abgedeckt)
     AppController.init();
@@ -37,12 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.addEventListener('load', () => {
-    console.log("MAIN: Seite vollständig geladen (inkl. Ressourcen).");
     scaleGameWrapper(); // Erneut skalieren, falls sich Dimensionen durch späte Ladevorgänge geändert haben
 });
 
 window.addEventListener('resize', () => {
-    // console.log("MAIN: Fenstergröße geändert."); // Kann sehr oft feuern
     scaleGameWrapper();
 });
 
@@ -51,6 +47,5 @@ window.addEventListener('resize', () => {
  * Nützlich für Dinge, die erst nach dem Laden aller Assets passieren sollen.
  */
 window.onload = () => {
-    console.log("MAIN: Seite vollständig geladen (inkl. Ressourcen).");
     // Hier könnten z.B. Sounds vorgeladen werden, falls nicht schon in SoundManager.init()
 };

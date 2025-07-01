@@ -158,8 +158,6 @@ const TableView = (() => {
      * Initialisiert den Spieltisch-Bildschirm.
      */
     function init() {
-        console.log("TableView: Initialisiere TableView");
-
         // Netzwerk-Ereignisse
         //EventBus.on("network:message", _handleNetworkMessage);
 
@@ -251,7 +249,6 @@ const TableView = (() => {
     //  * @param {ServerNotification} notification - Die Nachricht.
     //  */
     // function _handleServerNotification(notification) {
-    //     console.log(`App: Server Notification: '${notification.event}'`, notification.context);
     //     const context = notification.context || {};
     //     switch (notification.event) {
     //         case "player_joined": // Ein Spieler ist beigetreten.
@@ -323,7 +320,7 @@ const TableView = (() => {
     //             // {game_score: (list, list)}
     //             break;
     //         default:
-    //             console.warn('App: Unbehandelte Server-Notification:', notification.event);
+    //             console.error('App: Unbehandelte Server-Notification:', notification.event);
     //     }
     // }
 
@@ -338,7 +335,6 @@ const TableView = (() => {
      */
     function _handleWishDialogSelect(value) {
         EventBus.emit("tableView:wish", value);
-        console.log("TableView: _handleWishDialogSelect", value);
     }
 
     /**
@@ -348,7 +344,6 @@ const TableView = (() => {
      */
     function _handleDragonDialogSelect(value) {
         EventBus.emit("tableView:giveDragonAway", value);
-        console.log("TableView: _handleDragonDialogSelect", value);
     }
 
     /**
@@ -360,7 +355,6 @@ const TableView = (() => {
         if (value) {
             EventBus.emit("tableView:exit");
         }
-        console.log("TableView: _handleExitDialogSelect");
     }
 
     // --------------------------------------------------------------------------------------
@@ -404,7 +398,6 @@ const TableView = (() => {
 
         SoundManager.playSound('buttonClick');
         const card = /** @type Card */ cardElement.dataset.card.split(",").map(value => parseInt(value, 10));
-        console.debug(`_handClick: Karte ${Lib.stringifyCard(card)} (${card})`);
         cardElement.classList.toggle('selected');
         _updatePlayButton();
     }
@@ -451,7 +444,6 @@ const TableView = (() => {
             else {
                 _hands[0].appendChild(cardElement);
             }
-            console.log("Karte zurückgelegt");
 
             _updatePlayButton();
         }
@@ -465,7 +457,6 @@ const TableView = (() => {
         _bombIcon.classList.add("disabled");
         SoundManager.playSound('buttonClick');
         EventBus.emit("tableView:bomb");
-        console.log("tableView: bomb");
     }
 
     /**
@@ -474,18 +465,15 @@ const TableView = (() => {
     function _handlePassButtonClick() {
         _passButton.disabled = true;
         SoundManager.playSound('buttonClick');
-        console.log("_handlePassButtonClick");
         switch (_passButton.dataset.mode) {
             case "NO_GRAND_TICHU": // Der Benutzer möchte kein großes Tichu ansagen.
                 EventBus.emit("tableView:grandTichu", false);
-                console.log("tableView: grandTichu", false);
                 break;
             case "PASS": // Der Benutzer möchte passen.
                 EventBus.emit("tableView:play", []);
-                console.log("tableView: pass");
                 break;
             default:
-                console.error(`PlayButton-Mode ${_passButton.dataset.mode} nicht gehandelt.`);
+                console.error(`TableView: PlayButton-Mode ${_passButton.dataset.mode} nicht gehandelt.`);
             break;
         }
     }
@@ -499,14 +487,12 @@ const TableView = (() => {
         switch (_tichuButton.dataset.mode) {
             case "GRAND_TICHU": // Der Benutzer möchte ein großes Tichu ansagen.
                 EventBus.emit("tableView:grandTichu", true);
-                console.log("tableView: grandTichu", true);
                 break;
             case "TICHU": // Der Benutzer möchte ein einfaches Tichu ansagen.
                 EventBus.emit("tableView:tichu");
-                console.log("tableView: tichu");
                 break;
             default:
-                console.error(`TichuButton-Mode ${_tichuButton.dataset.mode} nicht gehandelt.`);
+                console.error(`TableView: TichuButton-Mode ${_tichuButton.dataset.mode} nicht gehandelt.`);
             break;
         }
     }
@@ -520,7 +506,6 @@ const TableView = (() => {
         switch (_playButton.dataset.mode) {
             case "SCHUPF": // Der Benutzer möchte drei Tauschkarten für die Mitspieler abgeben.
                 EventBus.emit("tableView:schupf", _getSchupfCards());
-                console.log("tableView: schupf", _getSchupfCards());
                 break;
             case "RECEIVE": // Der Benutzer nimmt die drei Tauschkarten der Mitspieler auf.
                 _receivedSchupfCardsConfirmed = true;
@@ -535,10 +520,9 @@ const TableView = (() => {
                 break;
             case "PLAY": // Der Benutzer möchte die ausgewählten Karten spielen.
                 EventBus.emit("tableView:play", _getSelectedCards());
-                console.log("tableView: play", _getSelectedCards());
                 break;
             default:
-                console.error(`PlayButton-Mode ${_playButton.dataset.mode} nicht gehandelt.`);
+                console.error(`TableView: PlayButton-Mode ${_playButton.dataset.mode} nicht gehandelt.`);
             break;
         }
     }
@@ -604,7 +588,7 @@ const TableView = (() => {
      * @param {Cards} cards - Die Karten, die selektiert werden sollen.
      */
     function _selectCards(cards) {
-        _hands[0].querySelectorAll('.card.selected').forEach(cardElement => {
+        Array.from(_hands[0].children).forEach(cardElement => {
             const cardToFind = /** @type Card */ cardElement.dataset.card.split(",").map(value => parseInt(value, 10));
             if (Lib.includesCard(cardToFind, cards)) {
                 cardElement.classList.add('selected');
@@ -1077,7 +1061,6 @@ const TableView = (() => {
     }
 
     function _testGetSelectedCards() {
-        console.log(_getSelectedCards());
     }
 
     function _testClearSelectedCards() {
@@ -1129,7 +1112,6 @@ const TableView = (() => {
     }
 
     function _testGetSchupfCards() {
-        console.log(_getSchupfCards());
     }
 
     function _testUpdateTrick() {

@@ -20,7 +20,7 @@ const AppController = (() => {
      * Wird durch main() aufgerufen.
      */
     function init() {
-        console.log("App: Initialisiere AppController...");
+        console.debug("App.init()");
 
         //Config
         //Lib
@@ -63,7 +63,7 @@ const AppController = (() => {
         const paramPlayerName = urlParams.get('player_name');
         const paramTableName = urlParams.get('table_name');
         if (paramPlayerName && paramTableName) {
-            console.log('App: Login mit URL-Parametern:', paramPlayerName, paramTableName);
+            console.debug('URL-Parameter:', paramPlayerName, paramTableName);
             User.setPlayerName(paramPlayerName);
             User.setTableName(paramTableName);
         }
@@ -82,7 +82,7 @@ const AppController = (() => {
      * @param {Event} event - Das Event der WebSocket.
      */
     function _handleNetworkOpen(event) {
-        console.log("App: Netzwerkverbindung geöffnet.", event);
+        console.debug("App._handleNetworkOpen()", event);
         _renderView();
     }
 
@@ -92,7 +92,7 @@ const AppController = (() => {
      * @param {CloseEvent} event - Das CloseEvent der WebSocket (siehe https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent).
      */
     function _handleNetworkClose(event) {
-        console.log(`App: Netzwerkverbindung geschlossen. Code: ${event.code}, Grund: ${event.reason}, Wurde sauber geschlossen: ${event.wasClean}`);
+        console.debug("App._handleNetworkClose()", event.code, event.reason, event.wasClean);
         _renderView();
     }
 
@@ -102,7 +102,7 @@ const AppController = (() => {
      * @param {NetworkError} error - Der Netzwerkfehler.
      */
     function _handleNetworkError(error) {
-        console.error("App: Netzwerkfehler.", error);
+        console.debug("App._handleNetworkError()", error);
         _renderView(error.message);
         Modals.showErrorToast(`Fehler ${error.message}`);
     }
@@ -141,7 +141,7 @@ const AppController = (() => {
      * @param {ServerRequest} request - Die Serveranfrage.
      */
     function _handleServerRequest(request) {
-        console.log("App: Server Request empfangen:", request.request_id, request.action);
+        console.log("App._handleServerRequest()", request.request_id, request.action);
         _setRequest(request.request_id, request.action);
         State.setPublicState(request.public_state)
         State.setPrivateState(request.private_state)
@@ -170,7 +170,7 @@ const AppController = (() => {
      * @param {ServerNotification} notification - Die Nachricht.
      */
     function _handleServerNotification(notification) {
-        console.log(`App: Server Notification: '${notification.event}'`, notification.context);
+        console.debug("App._handleServerNotification()", notification.event, notification.context);
         const context = notification.context || {};
 
         // Spielzustand aktualisieren
@@ -285,7 +285,7 @@ const AppController = (() => {
                 Modals.showGameOverDialog(`${score20} : ${score31}`)
                 break;
             default:
-                console.warn('App: Unbehandelte Server-Notification:', notification.event);
+                console.error('App: Unbehandelte Server-Notification:', notification.event);
         }
 
         // Ansicht aktualisieren
@@ -298,7 +298,7 @@ const AppController = (() => {
      * @param {ServerError} error - Die Fehlermeldung.
      */
     function _handleServerError(error) {
-        console.error(`App: Server Fehler: ${error.message} (${error.code})`, error.context);
+        console.debug("App._handleServerError()", error.message, error.code, error.context);
         _renderView(error.message);
         Modals.showErrorToast(`Fehler ${error.message}`);
     }
@@ -376,7 +376,6 @@ const AppController = (() => {
      * Wird aufgerufen, wenn der Benutzer ein einfaches Tichu ansagen möchte.
      */
     function _handleTableViewTichu() {
-        console.log("app: Tichu");
         Network.send("announce");
     }
 
@@ -420,7 +419,6 @@ const AppController = (() => {
      * Wird aufgerufen, wenn der Benutzer eine Bombe ankündigen will.
      */
     function _handleTableViewBomb() {
-        console.log("app: Bomb");
         Network.send("bomb");
     }
 
@@ -464,7 +462,6 @@ const AppController = (() => {
      * Wird aufgerufen, wenn der Benutzer die Punktetabelle schließt und ein damit die Partie abgeschlossen ist.
      */
     function _handleTableViewGameOver() {
-        console.log("App: _handleTableViewGameOver");
         _renderView();
     }
 
@@ -472,7 +469,6 @@ const AppController = (() => {
      * Wird aufgerufen, wenn der Benutzer den Spieltisch verlassen möchte
      */
     function _handleTableViewExit() {
-        console.log("App: _handleTableViewExit");
         Network.send('leave');
         ViewManager.showLoadingView();
     }
@@ -503,10 +499,10 @@ const AppController = (() => {
             }
         }
 
-        if (_request.action === "wish") {
+        if (_request && _request.action === "wish") {
             Modals.showWishDialog();
         }
-        else if (_request.action === "give_dragon_away") {
+        else if (_request && _request.action === "give_dragon_away") {
             Modals.showDragonDialog();
         }
     }
@@ -524,7 +520,7 @@ const AppController = (() => {
         };
         localStorage.setItem('tichuRequestId', requestId);
         localStorage.setItem('tichuRequestAction', requestAction);
-
+        console.debug("App._setRequest()", requestId, requestAction);
     }
 
     /**
@@ -534,6 +530,7 @@ const AppController = (() => {
         _request = null;
         localStorage.removeItem('tichuRequestId');
         localStorage.removeItem('tichuRequestAction');
+        console.debug("App._removeRequest()");
     }
 
     return {

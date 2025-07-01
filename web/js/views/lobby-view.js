@@ -51,8 +51,6 @@ const LobbyView = (() => {
      * Rendert den Lobby-View basierend auf dem aktuellen Spielzustand.
      */
     function render() {
-        // console.log("LobbyView: Rendere LobbyView.");
-
         _tableName.textContent = State.getTableName();
         _playerList.innerHTML = '';
 
@@ -160,12 +158,10 @@ const LobbyView = (() => {
         // Der erste Spieler kann nicht verschoben werden.
         // Und Spieler können nicht an Position 0 geschoben werden.
         if (playerIndex2 < 1 || playerIndex2 > 3) {
-            console.log("LobbyView: Verschieben an diese Position nicht möglich.");
             return;
         }
 
         _disableButtons();
-        console.log("LobbyView: Sende neue Indezies zum Vertauschen", [playerIndex, playerIndex2]);
         EventBus.emit("lobbyView:swap", {playerIndex1: playerIndex, playerIndex2: playerIndex2});
     }
 

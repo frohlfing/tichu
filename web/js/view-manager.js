@@ -54,7 +54,6 @@ const ViewManager = (() => {
             if (_views.hasOwnProperty(name) && _views[name].isVisible()) {
                 _views[name].render();
                 _currentViewName = name;
-                console.debug(`ViewManager: Aktuelle View ist '${name}'.`);
                 break;
             }
         }
@@ -95,7 +94,6 @@ const ViewManager = (() => {
      */
     function _showView(viewName) {
         if (!_views.hasOwnProperty(viewName)) {
-            console.error(`ViewManager: View '${viewName}' nicht gefunden.`);
             return;
         }
 
@@ -115,7 +113,6 @@ const ViewManager = (() => {
         // Gewünschten View anzeigen
         _views[viewName].show();
         _currentViewName = viewName;
-        console.debug(`ViewManager: Zeige view '${viewName}'.`);
     }
 
     // /**

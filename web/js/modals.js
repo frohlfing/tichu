@@ -78,7 +78,6 @@ const Modals = (() => {
      * Initialisiert das Modals-Modul.
      */
     function init() {
-        console.log("Modals: Initialisiere modale Fenster...");
         // Ereignishändler einrichten
         _wishDialog.addEventListener('click', _handleWishDialogClick);
         _dragonDialog.addEventListener('click', _handleDragonDialogClick);
@@ -119,7 +118,6 @@ const Modals = (() => {
         _hideModal(_wishDialog);
         const value = parseInt(event.target.dataset.value, 10);
         EventBus.emit("wishDialog:select", value);
-        console.log(`Modals: _wishDialog: ${value}`);
     }
 
     /**
@@ -142,7 +140,6 @@ const Modals = (() => {
         _hideModal(_dragonDialog);
         const value = parseInt(event.target.dataset.value, 10);
         EventBus.emit("dragonDialog:select", value);
-        console.log(`Modals: _dragonDialog: ${value}`);
     }
 
     /**
@@ -167,7 +164,6 @@ const Modals = (() => {
         SoundManager.playSound('buttonClick');
         _hideModal(_roundOverDialog);
         EventBus.emit("roundOverDialog:click");
-        console.log("Modals: _roundOverDialog");
     }
 
     /**
@@ -192,7 +188,6 @@ const Modals = (() => {
         SoundManager.playSound('buttonClick');
         _hideModal(_gameOverDialog);
         EventBus.emit("gameOverDialog:click");
-        console.log("Modals: _gameOverDialog");
     }
 
     /**
@@ -215,7 +210,6 @@ const Modals = (() => {
         _hideModal(_exitDialog);
         const value = parseInt(event.target.dataset.value, 10);
         EventBus.emit("exitDialog:select", value);
-        console.log(`Modals: _exitDialog: ${value}`);
     }
 
     /**
@@ -254,7 +248,6 @@ const Modals = (() => {
             _toastTimeoutId = null;
         }
         _hideModal(_errorToast);
-        console.log("Modals: _handleErrorToastClick");
     }
 
     // --------------------------------------------------------------------------------------

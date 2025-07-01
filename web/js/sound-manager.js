@@ -68,11 +68,11 @@ const SoundManager = (() => {
         if (soundsEnabled && sounds[soundKey]) {
             sounds[soundKey].currentTime = 0;
             sounds[soundKey].play().catch(error => {
-                // console.warn(`Sound ${soundKey} konnte nicht abgespielt werden:`, error.message);
+                // console.error(`Sound ${soundKey} konnte nicht abgespielt werden:`, error.message);
             });
         }
         else if (soundsEnabled && !sounds[soundKey]) {
-            // console.warn(`SoundManager: Sound-Schlüssel '${soundKey}' nicht in soundFiles gefunden.`);
+            // console.error(`SoundManager: Sound-Schlüssel '${soundKey}' nicht in soundFiles gefunden.`);
         }
     }
 

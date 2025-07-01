@@ -122,9 +122,7 @@ const Network = (() => {
      */
     function close() {
         _removeSessionId();
-        console.log("Network: SessionID gelöscht.");
         if (_websocket && _websocket.readyState !== WebSocket.CLOSING && _websocket.readyState !== WebSocket.CLOSED) {
-            console.log("Network: Schließe WebSocket-Verbindung clientseitig.", _websocket.readyState);
             _websocket.close(WSCloseCode.OK, "Client hat Verbindung aktiv beendet");
         }
     }
@@ -198,10 +196,8 @@ const Network = (() => {
         };
 
         _websocket.onclose = (event) => {
-            console.log(`Network: WebSocket-Verbindung geschlossen: Code ${event.code}, Grund: '${event.reason}', Clean: ${event.wasClean}`);
             if ([WSCloseCode.OK, WSCloseCode.GOING_AWAY, WSCloseCode.POLICY_VIOLATION].includes(event.code)) {
                 _removeSessionId();
-                console.log("Network: SessionID gelöscht.");
             }
             EventBus.emit("network:close", event);
             if (_sessionId) {
@@ -224,9 +220,7 @@ const Network = (() => {
                 if (data.type === 'notification' && data.payload.event === 'player_joined' && data.payload.context.session_id !== undefined) {
                     /** @param {{payload: {context: {session_id: string}}}} data */
                     _setSessionId(data.payload.context.session_id);
-                    console.log("Network: SessionID gesetzt.", _sessionId);
                 }
-                console.log('Network: Nachricht vom Server:', data);
                 EventBus.emit("network:message", data);
             }
             catch (_e) {
@@ -244,6 +238,7 @@ const Network = (() => {
     function _setSessionId(sessionId) {
         _sessionId = sessionId;
         localStorage.setItem('tichuSessionId', sessionId);
+        console.debug("Network._setSessionId()", sessionId);
     }
 
     /**
@@ -252,6 +247,7 @@ const Network = (() => {
     function _removeSessionId() {
         _sessionId = null;
         localStorage.removeItem('tichuSessionId');
+        console.debug("Network._removeSessionId()");
     }
 
     // noinspection JSUnusedGlobalSymbols
