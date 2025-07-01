@@ -155,7 +155,7 @@ const Lib = (() => {
     }
 
     // --------------------------------------------------------------------------------------
-    // Karte (Python-Port)
+    // Karten (Python-Port von lib/cards.py)
     // --------------------------------------------------------------------------------------
 
     /**
@@ -238,8 +238,30 @@ const Lib = (() => {
      * @param {Card} card2
      * @returns {boolean}
      */
-    function areCardsEqual(card1, card2) {
+    function isCardEqual(card1, card2) {
         return card1[0] === card2[0] && card1[1] === card2[1];
+    }
+
+    /**
+     * Prüft, ob zwei Kartenstapel gleich sind.
+     *
+     * Es wird vorausgesetzt, dass beide Arrays absteigend sortiert sind.
+     *
+     * @param {Cards} cards1
+     * @param {Cards} cards2
+     * @returns {boolean}
+     */
+    function isCardsEqual(cards1, cards2) {
+        return cards1.length === cards2.length && cards1.every((card, i) => isCardEqual(card, cards2[i]));
+    }
+
+    /**
+     * Sortiert Karten absteigend.
+     *
+     * @param {Cards} cards Die Karten (mutable!).
+     */
+    function sortCards(cards) {
+        cards.sort((a, b) => b[0] !== a[0] ? b[0] - a[0] : b[1] - a[1]);
     }
 
     /**
@@ -250,7 +272,7 @@ const Lib = (() => {
      * @returns {boolean} True, wenn die Karte unter den gegebenen ist.
      */
     function includesCard(cardToFind, cards) {
-        return cards.some(card => areCardsEqual(card, cardToFind));
+        return cards.some(card => isCardEqual(card, cardToFind));
     }
 
     /**
@@ -350,18 +372,17 @@ const Lib = (() => {
     }
 
     // --------------------------------------------------------------------------------------
-    // Kombination (Python-Port)
+    // Kombinationen (Python-Port von lib/combinations.py)
     // --------------------------------------------------------------------------------------
 
     /**
      * Ermittelt die Kombination der gegebenen Karten.
      *
-     * Es wird vorausgesetzt, dass `cards` eine gültige Kombination ist.
+     * Es wird vorausgesetzt, dass `cards` eine gültige Kombination darstellt.
      *
-     * Parameter `cards` wird absteigend sortiert (mutable Parameter).
      * Wenn `shiftPhoenix` gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
      *
-     * @param {Cards} cards - Karten der Kombination.
+     * @param {Cards} cards - Karten der Kombination; werden absteigend sortiert (mutable!).
      * @param {number} trickValue - Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist).
      * @param {boolean} [shiftPhoenix] - Wenn True, wird der Phönix eingereiht.
      * @returns {Combination} Die Kombination (Typ, Länge, Rang).
@@ -373,7 +394,7 @@ const Lib = (() => {
         }
 
         // Karten absteigend sortieren
-        cards.sort((a, b) => b[0] - a[0]);
+        sortCards(cards);
 
         // Typ ermitteln
         let /** @type CombinationType */ t;
@@ -405,7 +426,7 @@ const Lib = (() => {
         // Rang ermitteln
         let /** @type number */ v;
         if (t === CombinationType.SINGLE) {
-            if (areCardsEqual(cards[0], CARD_PHO)) {
+            if (isCardEqual(cards[0], CARD_PHO)) {
                 v = trickValue ? trickValue : 1;  // ist um 0.5 größer als der Stich (wir runden ab, da egal)
             }
             else {
@@ -416,7 +437,7 @@ const Lib = (() => {
             v = cards[2][0]; // die 3. Karte gehört auf jeden Fall zum Drilling
         }
         else if (t === CombinationType.STREET || (t === CombinationType.BOMB && n > 4)) {
-            if (areCardsEqual(cards[0], CARD_PHO)) {
+            if (isCardEqual(cards[0], CARD_PHO)) {
                 if (cards[1][0] === 14) {
                     v = 14; // Phönix muss irgendwo anders eingereiht werden
                 }
@@ -439,7 +460,7 @@ const Lib = (() => {
             v = cards[1][0];
         }
 
-        if (shiftPhoenix && areCardsEqual(cards[0], CARD_PHO)) {
+        if (shiftPhoenix && isCardEqual(cards[0], CARD_PHO)) {
             switch (t) {
                 case CombinationType.PAIR: // Phönix ans Ende verschieben
                     [cards[0], cards[1]] = [cards[1], cards[0]];
@@ -486,7 +507,7 @@ const Lib = (() => {
                             break;
                         }
                     }
-                    if (areCardsEqual(cards[0], CARD_PHO) && cards[1][0] === 14) { // keine Lücke gefunden - aber wegen Ass muss Phönix ans Ende
+                    if (isCardEqual(cards[0], CARD_PHO) && cards[1][0] === 14) { // keine Lücke gefunden - aber wegen Ass muss Phönix ans Ende
                         const phoenix = cards.shift();
                         cards.push(phoenix);
                     }
@@ -500,12 +521,12 @@ const Lib = (() => {
     /**
      * Ermittelt die Kombinationsmöglichkeiten der Handkarten (die besten zuerst).
      *
-     * @param {Cards} hand - Die Handkarten (werden durch die Funktion absteigend sortiert, z.B. [(8,3),(2,4),(0,1)] -  mutable!).
+     * @param {Cards} hand - Die Handkarten; werden absteigend sortiert (mutable!).
      * @returns {Array<[Cards, Combination]>} Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...].
      */
     function buildCombinations(hand) {
-        // Handkarten für die Operationen absteigend sortieren
-        hand.sort((a, b) => b[0] - a[0]);
+        // Handkarten absteigend sortieren
+        sortCards(hand);
 
         const hasPhoenix = includesCard(CARD_PHO, hand);
         const arr = [[], [], [], [], [], [], [], []]; // pro Typ ein Array
@@ -576,7 +597,7 @@ const Lib = (() => {
                     // Ausnahmeregel: Der Drilling darf nicht vom gleichen Rang sein wie das Paar (wäre mit Phönix möglich).
                     continue;
                 }
-                if (areCardsEqual(triple[2], CARD_PHO) && triple[0][0] < pair[0][0]) {
+                if (isCardEqual(triple[2], CARD_PHO) && triple[0][0] < pair[0][0]) {
                     // Man würde immer den Phönix zum höherwertigen Pärchen sortieren.
                     continue;
                 }
@@ -597,7 +618,7 @@ const Lib = (() => {
             }
             let temp = [[hand[i1]]];
             for (let i2 = i1 + 1; i2 < n; i2++) {
-                if (areCardsEqual(hand[i2], CARD_DOG)) {
+                if (isCardEqual(hand[i2], CARD_DOG)) {
                     break; // Hund
                 }
                 const v2 = hand[i2][0];
@@ -636,7 +657,7 @@ const Lib = (() => {
             const m = temp[0].length;
             for (const cards of temp) {
                 for (let k = 4; k <= m; k++) {
-                    if (areCardsEqual(cards[k - 1], CARD_PHO)) {
+                    if (isCardEqual(cards[k - 1], CARD_PHO)) {
                         continue;
                     }
                     const availablePhoenix = hasPhoenix && !includesCard(CARD_PHO, cards.slice(0, k));
@@ -676,7 +697,7 @@ const Lib = (() => {
             for (const cards of arr[t]) {
                 // Rang ermitteln
                 let v;
-                if (t === CombinationType.STREET && areCardsEqual(cards[0], CARD_PHO)) {
+                if (t === CombinationType.STREET && isCardEqual(cards[0], CARD_PHO)) {
                     v = cards[1][0] + 1; // Phönix == Rang der zweiten Karte + 1
                 }
                 else {
@@ -753,73 +774,9 @@ const Lib = (() => {
     }
 
     // --------------------------------------------------------------------------------------
-    // Neue Funktionen
+    // Zusätzliche Funktionen
     // --------------------------------------------------------------------------------------
 
-    /**
-     * Prüft, ob der Spieler eine gültige Kombination (außer Passen) spielen kann.
-     *
-     * @param {Cards} hand - Die Handkarten des Spielers.
-     * @param {Combination} trickCombination - Die auf dem Tisch liegende Kombination.
-     * @param {number} unfulfilledWish - Der Wert eines unerfüllten Wunsches (oder 0).
-     * @returns {boolean} - True, wenn mindestens eine spielbare Kombination existiert, sonst False.
-     */
-    function canPlay(hand, trickCombination, unfulfilledWish) {
-        const allCombis = buildCombinations(hand);
-        const playableCombis = buildActionSpace(allCombis, trickCombination, unfulfilledWish);
-        let n = playableCombis.length;
-        if (n > 0 && playableCombis[0][1][0] === CombinationType.PASS) {
-            n--;
-        }
-        return n > 0;
-    }
-
-    // todo prüfen
-    /**
-     * Wählt die längste Kombination, die gespielt werden kann, aus.
-     *
-     * Bei gleichlangen Kombinationen wird die Kombination mit dem kleinsten Rang gewählt.
-     * Bomben bleiben wenn möglich unangetastet. Passen ist keine Option.
-     *
-     * @param {Cards} hand - Die Handkarten des Spielers.
-     * @param {Combination} trickCombination - Die auf dem Tisch liegende Kombination.
-     * @param {number} unfulfilledWish - Der Wert eines unerfüllten Wunsches (oder 0).
-     * @returns {[Cards, Combination]} - Die empfohlene Kombination.
-     */
-    function selectBestPlay(hand, trickCombination, unfulfilledWish) {
-        const allCombis = buildCombinations(hand);
-        const playableCombis = buildActionSpace(allCombis, trickCombination, unfulfilledWish);
-
-        // alle Karten, die Teil einer Bombe sind
-        let bombCards = [];
-        allCombis.forEach(combi => {
-            if (combi[1][0] === CombinationType.BOMB) {
-                bombCards = bombCards.concat(combi[0]);
-            }
-        });
-
-        // Kombinationen entfernen, die eine Bombe zerreißen würden
-        const bestCombis = playableCombis.filter(combi => {
-            return combi[1][0] === CombinationType.BOMB || !hasIntersection(combi[0], bombCards);
-        });
-
-        // die restlichen Kombinationen sortieren (die "besten" zuerst).
-        // Priorität:
-        // 1: Normale Züge vor Bomben.
-        // 2: Längste Kombinationen zuerst.
-        // 3: Bei gleicher Länge: Niedrigster Rang zuerst.
-        bestCombis.sort((a, b) => {
-            const [t1, n1, r1] = a[1];
-            const [t2, n2, r2] = b[1];
-            const sortValue1 = ((t1 === CombinationType.BOMB || t1 === CombinationType.PASS) * 10000) + ((14 - n1) * 100) + r1;
-            const sortValue2 = ((t2 === CombinationType.BOMB || t2 === CombinationType.PASS) * 10000) + ((14 - n2) * 100) + r2;
-            return sortValue1 - sortValue2;
-        });
-
-        return bestCombis[0];
-    }
-
-    // todo prüfen
     /**
      * Findet alle Bomben in einer Hand.
      *
@@ -834,16 +791,16 @@ const Lib = (() => {
         return allCombis.filter(combi => combi[1][0] === CombinationType.BOMB);
     }
 
-    // todo prüfen
     /**
-     * Findet alle Bomben, die im aktuelle spielbar sind.
+     * Findet alle Bomben, die aktuelle spielbar sind.
      *
-     * @param {Cards} hand - Die Handkarten des Spielers.
+     * @param {Cards} hand - Die Handkarten des Spielers (werden durch die Funktion absteigend sortiert - mutable!).
      * @param {Combination} trickCombination - Die auf dem Tisch liegende Kombination.
      * @returns {Array<[Cards, Combination]>} Ein Array aller spielbaren Bomben.
      */
     function getPlayableBombs(hand, trickCombination) {
-        const bombsInHand = findBombs(hand);
+        const allCombis = buildCombinations(hand);
+        const bombsInHand = allCombis.filter(combi => combi[1][0] === CombinationType.BOMB);
         if (bombsInHand.length === 0) {
             return [];
         }
@@ -857,7 +814,6 @@ const Lib = (() => {
         const [_trickType, trickLength, trickRank] = trickCombination;
         return bombsInHand.filter(bombCombi => {
             const [_bombType, bombLength, bombRank] = bombCombi[1];
-            // Höher ist: längere Bombe ODER gleiche Länge und höherer Rang.
             return bombLength > trickLength || (bombLength === trickLength && bombRank > trickRank);
         });
     }
@@ -866,11 +822,10 @@ const Lib = (() => {
     return {
         sum,
         getRelativePlayerIndex, getCanonicalPlayerIndex,
-        areCardsEqual, includesCard, hasIntersection,
+        isCardEqual, isCardsEqual, sortCards, includesCard, hasIntersection,
         parseCard, parseCards, stringifyCard, stringifyCards,
         isWishIn, sumCardPoints, otherCards,
         getCombination, buildCombinations, removeCombinations, buildActionSpace,
-        canPlay, selectBestPlay,
         findBombs, getPlayableBombs,
     };
 })();

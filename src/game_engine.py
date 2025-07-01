@@ -325,24 +325,25 @@ class GameEngine:
                     # Karten verteilen (deal out)
                     for player_index in range(4):
                         offset = player_index * 14
-                        privs[player_index].hand_cards = sorted(mixed_deck[offset:offset + n], reverse=True)  # absteigend sortiert!
+                        privs[player_index].hand_cards = mixed_deck[offset:offset + n]
                         pub.count_hand_cards[player_index] = n
                         if clients_joined:
                             await self._broadcast("hand_cards_dealt", {"count": n})
 
                     # möchte ein Spieler ein Tichu ansagen?
                     # todo alle Spieler gleichzeitig ansprechen
+                    #  Aber dabei Zusatzregel Doku 2.3 beachten: Wenn der Partner schon ein Tichu angesagt hat, kann der Spieler kein Tichu mehr ansagen
                     for i in range(4):
                         player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                         grand = n == 8  # großes Tichu?
                         if grand:
-                            announced = await self._players[player_index].announce_grand_tichu()
+                            announced = not pub.announcements[(player_index + 2) % 4] and await self._players[player_index].announce_grand_tichu()
                             if announced:
                                 pub.announcements[player_index] = 2  # Spieler hat ein großes Tichu angesagt
                             if clients_joined:
                                 await self._broadcast("player_grand_announced", {"player_index": player_index, "announced": announced})
                         else:
-                            announced = not pub.announcements[player_index] and await self._players[player_index].announce_tichu()
+                            announced = not pub.announcements[player_index] and not pub.announcements[(player_index + 2) % 4] and await self._players[player_index].announce_tichu()
                             if announced:
                                 pub.announcements[player_index] = 1  # Spieler hat ein einfaches Tichu angesagt
                                 if clients_joined:
@@ -384,7 +385,6 @@ class GameEngine:
                     )
                     assert not set(priv.received_schupf_cards).intersection(priv.hand_cards)  # darf keine Schnittmenge bilden
                     priv.hand_cards += priv.received_schupf_cards
-                    priv.hand_cards.sort(reverse=True)
                     assert len(priv.hand_cards) == 14
                     pub.count_hand_cards[player_index] = 14
                     if clients_joined:

@@ -104,18 +104,24 @@ Die detaillierten Spielregeln für Tichu sind hier zu finden:
 
 ### 2.3 Sonderfälle
 
-Diese Punkte stammen aus dem offiziellen Regelwerk.
+Diese Punkte stammen aus dem offiziellen Regelwerk:
 
 *   **Kein Vierling:** Es gibt kein Vierling, daher ist ein Drilling mit Phönix nicht möglich.
 *   **Full House Restriktion:** Ein Fullhouse darf nicht aus einer 4er-Bombe mit Phönix gebildet werden (Drilling und Pärchen dürfen nicht den gleichen Rang haben).
 *   **Wunscherfüllung:** Der Wunsch muss zwar erfüllt werden, wenn man am Zug ist (sofern möglich), aber nicht in dem Moment, wenn man eine Bombe wirft.
-*   **Phönix:**
-    *   **Phönix als Karte:** Der Kartenwert des Phönix ist 16 (höchster Wert im Spiel, liegt über dem Drachen).
-    *   **Phönix als Einzelkarte (Kombination):** Die Kombination "Phönix als Einzelkarte" hat den Rang 14.5 (schlägt das Ass, aber nicht den Drachen).
-    *   **Phönix im Stich:** Sticht der Phönix eine Einzelkarte, so ist sein Rang im Stich 0.5 höher die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
+*   **Phönix als Einzelkarte**: 
+    *   Vor dem Ausspielen ist der Rang 14.5 (schlägt das Ass, aber nicht den Drachen). 
+    *   Nach dem Ausspielen ist der Rang 0.5 höher die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
 
-* Darüber hinaus werden für dieses Projekt folgende Sonderregeln definiert:
-    *   Hat ein Spieler ein großes oder einfaches Tichu angesagt, kann der Partner kein Tichu mehr ansagen. Das vermeidet Fehlentscheidungen aufgrund Synchronisationsprobleme.
+Darüber hinaus werden für dieses Projekt folgende Zusatzregeln definiert:
+  
+* Hat ein Spieler ein großes oder einfaches Tichu angesagt, kann der Partner kein Tichu mehr ansagen. Das vermeidet Fehlentscheidungen aufgrund Synchronisationsprobleme.
+* Es MUSS ein Wunsch geäußert werden, nicht KANN!
+* Der Hund bleibt liegen und wird erst mit dem nachfolgenden Stich abgeräumt.
+* Um auch beim **Phönix als Einzelkarte** ganzzahlige Ränge zu haben, wird gerundet (macht praktisch keinen Unterschied):   
+    *   Vor dem Ausspielen ist der Rang 15 (schlägt das Ass, aber nicht den Drachen). 
+    *   Nach dem Ausspielen ist der Rang wie die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.
+
 
 ## 3. Systemarchitektur
 

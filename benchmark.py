@@ -44,20 +44,20 @@ def benchmark_get_figure():
 # Combinations
 #
 
-def benchmark_get_combinations():
+def benchmark_build_combinations():
     # Ergebnis in Tichu V1: 342 µs ± 10 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
     cards = parse_cards('Ph GK BD RB RZ R9 R8 R7 R6 B5 G4 G3 B2 Ma')
-    print(f'get_combinations(), {len(build_combinations(cards))} Kombinationen: {timeit(lambda: build_combinations(cards), number=1000):5.3f} ms per loop (in Tichu V1: 0.342 ms)')
+    print(f'build_combinations(), {len(build_combinations(cards))} Kombinationen: {timeit(lambda: build_combinations(cards), number=1000):5.3f} ms per loop (in Tichu V1: 0.342 ms)')
     # 0.334ms per loop
 
     # Ergebnis in Tichu V1: 8.02 ms ± 175 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
     cards = parse_cards('R5 R4 G4 B4 S4 R3 G3 B3 S3 R2 G2 B2 S2 Ph')  # 3 Bomben + Phönix
-    print(f'get_combinations(), {len(build_combinations(cards))} Kombinationen: {timeit(lambda: build_combinations(cards), number=1000):5.3f} ms per loop (in Tichu V1: 8.02 ms)')
+    print(f'build_combinations(), {len(build_combinations(cards))} Kombinationen: {timeit(lambda: build_combinations(cards), number=1000):5.3f} ms per loop (in Tichu V1: 8.02 ms)')
     # 4.766ms per loop
 
     # Ergebnis in Tichu V1: 3.01 ms ± 286 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
     cards = parse_cards('S6 R6 G6 B5 S5 R4 G4 B3 S3 R3 G2 B2 S2 Ph')
-    print(f'get_combinations(), {len(build_combinations(cards))} Kombinationen: {timeit(lambda: build_combinations(cards), number=1000):5.3f} ms per loop (in Tichu V1: 3.01 ms)')
+    print(f'build_combinations(), {len(build_combinations(cards))} Kombinationen: {timeit(lambda: build_combinations(cards), number=1000):5.3f} ms per loop (in Tichu V1: 3.01 ms)')
     # 2.228ms per loop
 
 
@@ -219,22 +219,7 @@ def build_unions1(subsets, k):
                     union_count[union] += 1
     return union_count
 
-def build_unions2(subsets, k):
-    union_count = Counter()
-    for i in range(len(subsets)):
-        for j in range(i + 1, len(subsets)):
-            union = frozenset(subsets[i]).union(subsets[j])
-            if len(union) <= k:
-                union_count[union] += 1
-    return union_count
 
-def test_unions():
-    number = 100
-    subset = [{7, 8, 9, 10, 11}, {0, 8, 9, 10, 11}, {0, 7, 9, 10, 11}, {0, 7, 8, 10, 11}, {0, 7, 8, 9, 11}, {0, 7, 8, 9, 10}, {8, 9, 10, 11, 12}, {0, 9, 10, 11, 12}, {0, 8, 10, 11, 12}, {0, 8, 9, 11, 12}, {0, 8, 9, 10, 12}, {9, 10, 11, 12, 13}, {0, 10, 11, 12, 13}, {0, 9, 11, 12, 13}, {0, 9, 10, 12, 13}, {0, 9, 10, 11, 13}, {10, 11, 12, 13, 14}, {0, 11, 12, 13, 14}, {0, 10, 12, 13, 14}, {0, 10, 11, 13, 14}, {0, 10, 11, 12, 14}]
-    t = timeit(lambda: build_unions1(subset, 6), number=number) * 1000 / number
-    print(f"combine_and_count1: {t:.6f} ms")
-    t = timeit(lambda: build_unions2(subset, 6), number=number) * 1000 / number
-    print(f"combine_and_count2: {t:.6f} ms")
 
 
 def validate_figure1(figure: tuple) -> bool:
@@ -314,7 +299,8 @@ def sync_vs_async_benchmark():
 
 
 if __name__ == '__main__':
-    sync_vs_async_benchmark()
+    benchmark_build_combinations()
+    #sync_vs_async_benchmark()
 
     #possible_hands_benchmark()
     #prob_of_hand_benchmark()

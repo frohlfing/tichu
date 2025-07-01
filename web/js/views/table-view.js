@@ -150,20 +150,6 @@ const TableView = (() => {
      */
     let _receivedSchupfCardsConfirmed = false;
 
-    /**
-     * Wird gesetzt, wenn der Benutzer eine passende Kombination auf der Hand hat.
-     *
-     * @type {boolean}
-     */
-    let _canPlay = false;
-
-    /**
-     * Wird gesetzt, wenn der Benutzer eine Bombe hat.
-     *
-     * @type {boolean}
-     */
-    let _hasBomb = true;
-
     // --------------------------------------------------------------------------------------
     // Öffentliche Funktionen
     // --------------------------------------------------------------------------------------
@@ -541,10 +527,11 @@ const TableView = (() => {
                 const playerIndex = State.getPlayerIndex();
                 _updateHand(playerIndex);
                 _updateSchupfZone(playerIndex);
+                _updatePlayButton();
                 break;
             case "AUTOSELECT": // Die längste kleinstmögliche Kombination auswählen.
-                // todo
-                console.log("tableView: autoselect");
+                _selectCards(State.getBestPlayableCombination()[0])
+                _updatePlayButton();
                 break;
             case "PLAY": // Der Benutzer möchte die ausgewählten Karten spielen.
                 EventBus.emit("tableView:play", _getSelectedCards());
@@ -608,6 +595,23 @@ const TableView = (() => {
     function _clearSelectedCards() {
         _hands[0].querySelectorAll('.card.selected').forEach(cardElement => {
             cardElement.classList.remove('selected');
+        });
+    }
+
+    /**
+     * Wählt die gegebenen Karten in der Hand aus.
+     *
+     * @param {Cards} cards - Die Karten, die selektiert werden sollen.
+     */
+    function _selectCards(cards) {
+        _hands[0].querySelectorAll('.card.selected').forEach(cardElement => {
+            const cardToFind = /** @type Card */ cardElement.dataset.card.split(",").map(value => parseInt(value, 10));
+            if (Lib.includesCard(cardToFind, cards)) {
+                cardElement.classList.add('selected');
+            }
+            else {
+                cardElement.classList.remove('selected');
+            }
         });
     }
 
@@ -841,7 +845,7 @@ const TableView = (() => {
      * Aktualisiert das Bomben-Symbol.
      */
     function _updateBombIcon() {
-        if (_hasBomb) {
+        if (State.hasBomb()) {
             _bombIcon.classList.remove('hidden');
         }
         else {
@@ -863,7 +867,7 @@ const TableView = (() => {
             // Der Benutzer ist am Zug.
             _passButton.dataset.mode = "PASS";
             _passButton.textContent = "Passen";
-            _passButton.disabled = State.getTrickCombination()[0] === CombinationType.PASS; // true, wenn Anspiel}
+            _passButton.disabled = State.getTrickCombination()[2] === 0; // Anspiel oder Hund?
         }
         else {
             _passButton.dataset.mode = "PASS";
@@ -905,7 +909,7 @@ const TableView = (() => {
             _playButton.textContent = "Aufnehmen";
             _playButton.disabled = false;
         }
-        else if (isCurrentPlayer && !_canPlay) {
+        else if (isCurrentPlayer && !State.canPlayCards()) {
             // Der Benutzer ist am Zug, hat aber keine passende Kombination auf der Hand.
             _playButton.dataset.mode = "PLAY";
             _playButton.textContent = "Kein Zug";
@@ -921,7 +925,7 @@ const TableView = (() => {
             // Der Benutzer ist am Zug, hat mindestens eine passende Kombination und mindestens eine Karte ausgewählt.
             _playButton.dataset.mode = "PLAY";
             _playButton.textContent = "Spielen";
-            _playButton.disabled = false; // todo true, wenn die ausgewählte Kombination nicht spielbar ist
+            _playButton.disabled = State.findPlayableCombination(_getSelectedCards()) === null;
         }
         else {
             // Karten werden ausgespielt, der Benutzer ist aber nicht am Zug.
@@ -1014,7 +1018,6 @@ const TableView = (() => {
         State.setAnnouncement(3, 2);
         State.setCurrentTurnIndex(_testCurrentTurnIndex);
         State.setWishValue(_testWishValue);
-        _hasBomb = true;
         render();
     }
 
@@ -1030,7 +1033,6 @@ const TableView = (() => {
         }
         State.setCurrentTurnIndex(-1);
         State.setWishValue(0);
-        _hasBomb = false;
         render();
     }
 
@@ -1046,7 +1048,6 @@ const TableView = (() => {
     }
 
     function _testToggleBomb() {
-        _hasBomb = !_hasBomb;
         _updateBombIcon();
     }
 
@@ -1060,7 +1061,6 @@ const TableView = (() => {
     function _testMoveTurn() {
         _testCurrentTurnIndex = (_testCurrentTurnIndex + 1) % 4;
         State.setCurrentTurnIndex(_testCurrentTurnIndex);
-        _canPlay = true;
         _updateCurrentPlayer();
     }
 

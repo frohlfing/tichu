@@ -231,13 +231,14 @@
         details.push(error.message);
         if (error.stack) {
             const stackLines = error.stack.split('\n');
-            const lastStackIndex = stackLines.findIndex(line => line.includes('test-runner.js')); // at assert (http://localhost:63342/tichu/web/js/test-runner.js:69:19)
-            const relevantLine = stackLines[lastStackIndex + 1] || ""; // at Object.fn (http://localhost:63342/tichu/web/js/tests.js:284:28)
+            // der letzte Stack-Eintrag is test-runner.js, wir wollen aber tests.js
+            const relevantLine = stackLines.findLast(line => line.includes('.js') && !line.includes('test-runner.js')); // at Object.fn (http://localhost:63342/tichu/web/js/tests.js:284:28)
+            //const relevantLine = stackLines[relevantIndex] || ""; // at Object.fn (http://localhost:63342/tichu/web/js/tests.js:284:28)
             const start = relevantLine.lastIndexOf('/');
             const end = relevantLine.lastIndexOf(')');
-            if (end > start) {
-                const location= relevantLine.slice(start + 1, end); // tests.js:284:28
-                const [file, line, _column] = location.split(':');
+            const location= relevantLine.slice(start + 1, end > start ? end : undefined); // tests.js:284:28
+            const [file, line, _column] = location.split(':');
+            if (file && line) {
                 details.push(`${file}, Zeile ${line}`);
             }
         }

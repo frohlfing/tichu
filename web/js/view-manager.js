@@ -118,23 +118,23 @@ const ViewManager = (() => {
         console.debug(`ViewManager: Zeige view '${viewName}'.`);
     }
 
-    /**
-     * Wird vom AppController aufgerufen, wenn sich der globale Spielzustand geändert hat.
-     * Stößt ein Neu-Rendern des aktuellen Views an.
-     */
-    function renderCurrentView() {
-        if (_currentViewName) {
-            _views[_currentViewName].render();
-        }
-    }
+    // /**
+    //  * Wird vom AppController aufgerufen, wenn sich der globale Spielzustand geändert hat.
+    //  * Stößt ein Neu-Rendern des aktuellen Views an.
+    //  */
+    // function renderCurrentView() {
+    //     if (_currentViewName) {
+    //         _views[_currentViewName].render();
+    //     }
+    // }
 
-    /**
-     * Gibt den Namen des aktuell aktiven Views zurück.
-     * @returns {string|null}
-     */
-    function getCurrentViewName() {
-        return _currentViewName;
-    }
+    // /**
+    //  * Gibt den Namen des aktuell aktiven Views zurück.
+    //  * @returns {string|null}
+    //  */
+    // function getCurrentViewName() {
+    //     return _currentViewName;
+    // }
 
     return {
         init,
@@ -142,7 +142,7 @@ const ViewManager = (() => {
         showLoginView,
         showLobbyView,
         showTableView,
-        renderCurrentView,
-        getCurrentViewName
+        //renderCurrentView,
+        //getCurrentViewName
     };
 })();

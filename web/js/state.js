@@ -107,6 +107,13 @@ const State = (() => {
         received_schupf_cards: null
     };
 
+    /**
+     * Cache für Kombinationsmöglichkeiten der Hand.
+     *
+     * @type {Array<[Cards, Combination]>}
+     */
+    let _combinationCache = [];
+
     // /**
     //  * Initialisiert den Spielzustand.
     //  *
@@ -143,7 +150,9 @@ const State = (() => {
      * @param {PrivateState} privateState - Der private Spielzustand.
      */
     function setPrivateState(privateState) {
+        if (_privateState.hand_cards)
         _privateState = privateState;
+        _combinationCache = [];
     }
 
     // öffentlicher Spielzustand
@@ -469,6 +478,7 @@ const State = (() => {
         if (_privateState.player_index) {
             _publicState.count_hand_cards[_privateState.player_index] = cards.length;
         }
+        _combinationCache = [];
     }
 
     /** @returns {[Card, Card, Card] | null} Die drei Karten (für rechten Gegner, Partner, linken Gegner), die der Benutzer weitergegeben hat. */
@@ -489,6 +499,100 @@ const State = (() => {
     /** @param {[Card, Card, Card] | null} cards - Die drei Karten (vom rechten Gegner, Partner, linken Gegner), die der Benutzer erhalten hat. */
     function setReceivedSchupfCards(cards) {
         _privateState.received_schupf_cards = cards;
+    }
+
+    /**
+     * @returns {Array<[Cards, Combination]>} Kombinationsmöglichkeiten der Hand (die besten zuerst).
+     */
+    function getCombinations() {
+        if (!_combinationCache.length && _privateState.hand_cards.length) {
+            _combinationCache = Lib.buildCombinations(_privateState.hand_cards);
+        }
+        return _combinationCache;
+    }
+
+    /**
+     * @returns {boolean} True, wenn der Benutzer Karten ausspielen kann.
+     */
+    function canPlayCards() {
+        const combis = getCombinations();
+        const playableCombis = Lib.buildActionSpace(combis, _publicState.trick_combination, _publicState.wish_value);
+        let n = playableCombis.length;
+        if (n > 0 && playableCombis[0][1][0] === CombinationType.PASS) {
+            n--;
+        }
+        return n > 0;
+    }
+
+    /**
+     * Wählt die "beste" Kombination, die gespielt werden kann, aus.
+     *
+     * Die Kombination wird nach folgender Heuristik ausgewählt:
+     * - Die beste Kombination ist die längste; bei gleichlangen Kombinationen die mit dem kleinsten Rang.
+     * - Aber:
+     *   - Bomben werden niemals zerrissen (eine Kombination, dessen Karten Teil einer Bombe sind, wird nicht betrachtet, es sei denn, sie ist selbst eine Bombe).
+     *   - Eine Bombe wird nur gespielt, wenn keine andere Kombination möglich ist. Passen ist die letzte Option.
+     *
+     * @returns {[Cards, Combination]} - Die empfohlene Kombination.
+     */
+    function getBestPlayableCombination() {
+        const combis = getCombinations();
+        const playableCombis = Lib.buildActionSpace(combis, _publicState.trick_combination, _publicState.wish_value);
+
+        // alle Karten, die Teil einer Bombe sind
+        let bombCards = [];
+        combis.forEach(combi => {
+            if (combi[1][0] === CombinationType.BOMB) {
+                bombCards = bombCards.concat(combi[0]);
+            }
+        });
+
+        // Kombinationen entfernen, die eine Bombe zerreißen würden
+        const bestCombis = playableCombis.filter(combi => {
+            return combi[1][0] === CombinationType.BOMB || !Lib.hasIntersection(combi[0], bombCards);
+        });
+
+        // die restlichen Kombinationen sortieren (die "besten" zuerst).
+        // Priorität:
+        // 1: Normale Züge vor Bomben.
+        // 2: Längste Kombinationen zuerst.
+        // 3: Bei gleicher Länge: Niedrigster Rang zuerst.
+        bestCombis.sort((a, b) => {
+            const [t1, n1, r1] = a[1];
+            const [t2, n2, r2] = b[1];
+            const sortValue1 = ((t1 === CombinationType.BOMB || t1 === CombinationType.PASS) * 10000) + ((14 - n1) * 100) + r1;
+            const sortValue2 = ((t2 === CombinationType.BOMB || t2 === CombinationType.PASS) * 10000) + ((14 - n2) * 100) + r2;
+            return sortValue1 - sortValue2;
+        });
+
+        return bestCombis[0];
+    }
+
+    /**
+     * Ermittelt die Kombination der gegebenen Karten, wenn sie spielbar sind.
+     *
+     * @param {Cards} cards - Die Karten, die ausgespielt werden sollen.
+     * @returns {[Cards, Combination]|null} - Kombination der Karten falls sie spielbar sind, sonst null.
+     */
+    function findPlayableCombination(cards) {
+        const combis = getCombinations();
+        const playableCombis = Lib.buildActionSpace(combis, _publicState.trick_combination, _publicState.wish_value);
+        for (let combi of playableCombis) {
+            if (Lib.isCardsEqual(cards, combi[0])) {
+                return combi;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @returns {boolean} True, wenn der Benutzer eine Bombe hat.
+     *
+     * @type {boolean}
+     */
+    function hasBomb(){
+        const combis = getCombinations();
+        return combis.length && combis[0][1][0] === CombinationType.BOMB;
     }
 
     // noinspection JSUnusedGlobalSymbols
@@ -528,5 +632,7 @@ const State = (() => {
         getHandCards, setHandCards,
         getGivenSchupfCards, setGivenSchupfCards,
         getReceivedSchupfCards, setReceivedSchupfCards,
+        getCombinations,
+        canPlayCards, getBestPlayableCombination, findPlayableCombination, hasBomb,
     };
 })();

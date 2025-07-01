@@ -104,12 +104,11 @@ def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False)
     """
     Ermittelt die Kombination der gegebenen Karten.
 
-    Es wird vorausgesetzt, dass `cards` eine gültige Kombination ist.
+    Es wird vorausgesetzt, dass `cards` eine gültige Kombination darstellt.
 
-    Parameter `cards` wird absteigend sortiert (mutable Parameter).
     Wenn `shift_phoenix` gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
 
-    :param cards: Karten der Kombination, z.B. [(8,4),(8,2),(8,1)].
+    :param cards: Karten der Kombination; werden absteigend sortiert (mutable!).
     :param trick_value: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist).
     :param shift_phoenix: Wenn True, wird der Phönix eingereiht (kostet etwas Zeit).
     :return: Die Kombination (Typ, Länge, Rang).
@@ -206,14 +205,11 @@ def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
     """
     Ermittelt die Kombinationsmöglichkeiten der Handkarten (die besten zuerst).
 
-    :param hand: Die Handkarten, müssen absteigend sortiert sein, z.B. [(8,3),(2,4),(0,1)]!
+    :param hand: Die Handkarten; werden absteigend sortiert (mutable!).
     :return: Kombinationsmöglichkeiten [(Karten, (Typ, Länge, Rang)), ...].
     """
-    # Handkarten für die Operationen absteigend sortieren
-    # todo Es wird vorausgesetzt, dass die Karten bereits absteigend sortiert sind.
-    #  Aber besser wäre es, wenn die Funktion dies sicherstellen würde. Relevant wegen Performance?
-    #  In JS wird dies gemacht.
-    # hand.sort(reverse=True)
+    # Handkarten absteigend sortieren
+    hand.sort(reverse=True)
 
     has_phoenix = CARD_PHO in hand
     arr = [[], [], [], [], [], [], [], []]  # pro Typ ein Array

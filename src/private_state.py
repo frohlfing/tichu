@@ -44,7 +44,7 @@ class PrivateState:
         """Setzt die Handkarten und leert den Cache."""
         # Karten absteigend sortieren
         self._hand_cards = value
-        #self._hand_cards.sort(reverse=True)  # todo hier ist eigentlich die einzige richtige Stelle zum Sortieren! Auswirkung auf Parameter value?
+        self._hand_cards.sort(reverse=True)
         self._combination_cache = []
         self._partition_cache = []
         self._partitions_aborted = True
@@ -104,5 +104,5 @@ class PrivateState:
     @property
     def has_bomb(self) -> bool:
         """True, wenn der Spieler eine Bombe hat"""
-        combi = self.combinations
-        return True if combi and combi[0][1][0] == CombinationType.BOMB else False
+        combis = self.combinations
+        return True if combis and combis[0][1][0] == CombinationType.BOMB else False

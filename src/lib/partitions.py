@@ -29,7 +29,7 @@ Partition = List[Tuple[Cards, Combination]]  # todo überall konsequent verwende
 # Da die offensichtlich guten Kombis zuerst aufgelistet sind, werden auch die offensichtlich besseren Partitionen zuerst gebildet.
 #
 # partitions: Diese Liste wird während der Berechnung gefüllt.
-# combis: Die möglichen Kombinationen der Handkarten
+# combis: Die möglichen Kombinationen der Handkarten (sortiert, die besten zuerst!)
 # counter: Anzahl Handkarten
 # maxlen: Maximale Anzahl Partitionen, die berechnet werden.
 # curr: Die aktuell noch unvollständige Partition, für die passende Kombinationen gesucht werden.
