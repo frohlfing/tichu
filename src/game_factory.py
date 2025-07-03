@@ -26,11 +26,11 @@ class GameFactory:
         Ruft die `cleanup`-Funktion aller GameEngine-Instanzen auf.
         """
         if self._engines:
-            logger.info(f"Bereinige {len(self._engines)} aktive Game-Engines...")
+            logger.info(f"[Factory] Bereinige {len(self._engines)} aktive Game-Engines...")
             # alle GameEngine-Instanzen bereinigen (parallel)
             await asyncio.gather(*[asyncio.create_task(e.cleanup()) for e in self._engines.values()], return_exceptions=True)
             self._engines.clear()
-            logger.info(f"Bereinigung der Game-Engines beendet.")
+            logger.info(f"[Factory] Bereinigung der Game-Engines beendet.")
 
     def get_or_create_engine(self, table_name: str) -> GameEngine:
         """
@@ -42,7 +42,7 @@ class GameFactory:
         :raises ValueError: Wenn Parameter nicht ok sind.
         """
         if table_name not in self._engines:
-            logger.debug(f"Erstelle Engine: '{table_name}'")
+            #logger.debug(f"[Factory] Erstelle Engine '{table_name}'")
             self._engines[table_name] = GameEngine(table_name)
         return self._engines[table_name]
 
@@ -53,15 +53,14 @@ class GameFactory:
         :param table_name: Der Name des zu entfernenden Tisches.
         """
         if table_name in self._engines:
-            logger.debug(f"Entferne Engine: '{table_name}'")
-            #del self._engines[table_name]
+            #logger.debug(f"[Factory] Entferne Engine '{table_name}'")
             game_engine = self._engines.pop(table_name)  # entfernt den Eintrag aus dem Dictionary
             try:
                 await game_engine.cleanup()
             except Exception as e:
-                logger.exception(f"Fehler während des Cleanups der Engine für Tisch '{table_name}': {e}")
+                logger.exception(f"[Factory] Unerwarteter Fehler. Tisch '{table_name}' konnte nicht aufgeräumt werden: {e}")
         else:
-            logger.warning(f"Versuch, nicht existierenden Tisch '{table_name}' zu entfernen.")
+            logger.warning(f"[Factory] Tisch nicht gefunden. Tisch '{table_name}' konnte nicht entfernt werden.")
 
     def get_engine_by_session(self, session: str) -> Optional[GameEngine]:
         """

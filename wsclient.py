@@ -64,13 +64,13 @@ async def receive_messages(ws: ClientWebSocketResponse):
     """ Lauscht kontinuierlich auf Nachrichten vom Server und gibt sie aus. """
     global last_request_id
 
-    logger.debug("Starte Empfangs-Task...")
+    logger.debug("[WSClient] Starte Empfangs-Task...")
 
     async for msg in ws:
         if msg.type == WSMsgType.TEXT:
             try:
                 data = json.loads(msg.data)
-                logger.debug(f"Empfangen: {json.dumps(data)}")
+                logger.debug(f"[WSClient] Empfangen: {json.dumps(data)}")
 
                 msg_type = data.get("type")
                 payload = data.get("payload", {})
@@ -115,11 +115,6 @@ async def receive_messages(ws: ClientWebSocketResponse):
                         save_session_id(None)
                         print(f"Session gelöscht")
 
-                elif msg_type == "pong":  # Antwort vom Server auf eine ping-Nachricht
-                    timestamp = payload.get("timestamp")
-                    print(f"--- PONG ---")
-                    print(f"  Timestamp: {timestamp}")
-
                 else:
                     # Fallback für unbekannte Nachrichtentypen vom Server
                     print(f"--- UNBEKANNTE NACHRICHT VOM SERVER ---")
@@ -127,20 +122,20 @@ async def receive_messages(ws: ClientWebSocketResponse):
                     print(f"  Payload: {json.dumps(payload)}")
 
             except json.JSONDecodeError:
-                logger.exception(f"Kein JSON empfangen: {msg.data}")
+                logger.exception(f"[WSClient] Kein JSON empfangen: {msg.data}")
 
             except Exception as e:
-                logger.exception(f"Fehler beim Verarbeiten der empfangenen Nachricht: {e}")
+                logger.exception(f"[WSClient] Fehler beim Verarbeiten der empfangenen Nachricht: {e}")
 
         elif msg.type == WSMsgType.CLOSED:
-            logger.debug("Verbindung vom Server geschlossen.")
+            logger.debug("[WSClient] Verbindung vom Server geschlossen.")
             break
 
         elif msg.type == WSMsgType.ERROR:
-            logger.error(f"WebSocket Fehler empfangen: {ws.exception()}")
+            logger.error(f"[WSClient] WebSocket-Fehler empfangen: {ws.exception()}")
             break
 
-    logger.debug("Empfangs-Task beendet.")
+    logger.debug("[WSClient] Empfangs-Task beendet.")
 
 
 async def main(args: argparse.Namespace):
@@ -155,7 +150,6 @@ async def main(args: argparse.Namespace):
     example_messages = [
         # Proaktive Nachrichten vom Spieler
         {"type": "leave"},
-        {"type": "ping", "payload": {"timestamp": "<timestamp>"}},
         {"type": "lobby_action", "payload": {"action": "assign_team", "data": [3,0,2,1]}},
         {"type": "lobby_action", "payload": {"action": "start_game"}},
         {"type": "announce"},
@@ -179,9 +173,9 @@ async def main(args: argparse.Namespace):
     async with ClientSession() as http:
         try:
             # mit der Websocket verbinden
-            logger.debug(f"Verbinde mit {url}...")
+            logger.debug(f"[WSClient] Verbinde mit {url}...")
             async with http.ws_connect(url) as ws:
-                logger.debug("Verbindung erfolgreich hergestellt!")
+                logger.debug("[WSClient] Verbindung erfolgreich hergestellt!")
 
                 receive_task = asyncio.create_task(receive_messages(ws))
 
@@ -219,9 +213,6 @@ async def main(args: argparse.Namespace):
                             if "payload" not in msg_to_send:
                                 msg_to_send["payload"] = {}
 
-                            elif msg_to_send.get("type") == "ping":
-                                msg_to_send["payload"]["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-
                             elif msg_to_send.get("type") == "response":
                                 if last_request_id:
                                     msg_to_send["payload"]["request_id"] = last_request_id
@@ -242,10 +233,10 @@ async def main(args: argparse.Namespace):
                     # WebSocket-Nachricht an den Server senden
                     if msg_to_send:
                         try:
-                            logger.debug(f"Sende: {json.dumps(msg_to_send)}")
+                            logger.debug(f"[WSClient] Sende: {json.dumps(msg_to_send)}")
                             await ws.send_json(msg_to_send)
                         except Exception as e:
-                            logger.exception(f"Fehler beim Senden: {e}")
+                            logger.exception(f"[WSClient] Fehler beim Senden: {e}")
                             if ws.closed:
                                 print("Verbindung ist geschlossen. Senden nicht möglich.")
                                 break  # Schleife verlassen, da keine Kommunikation mehr möglich
@@ -257,11 +248,11 @@ async def main(args: argparse.Namespace):
                         print("Warte auf Ende des Empfangs-Tasks...")
                         await asyncio.wait_for(receive_task, timeout=2.0)  # kurzer Timeout
                     except asyncio.CancelledError:
-                        logger.debug("Empfangs-Task erfolgreich abgebrochen.")
+                        logger.debug("[WSClient] Empfangs-Task erfolgreich abgebrochen.")
                     except asyncio.TimeoutError:
-                        logger.warning("Timeout beim Warten auf Abbruch des Empfangs-Tasks.")
+                        logger.warning("[WSClient] Timeout beim Warten auf Abbruch des Empfangs-Tasks.")
         except KeyboardInterrupt:  # Strg+C
-            logger.debug("KeyboardInterrupt")
+            logger.debug("[WSClient] KeyboardInterrupt")
         except (ClientConnectorError, ClientDisconnectedError) as e:
             print(f"Verbindungsfehler: {e}")
         except Exception as e:
@@ -286,11 +277,11 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--session_id", default=sid, help="Session-ID (Default: Letzte gespeicherte Session-ID)")
 
     # Main-Routine starten
-    logger.debug(f"Starte Tichu WebSocket-Client...")
+    logger.debug(f"[WSClient] Starte Tichu WebSocket-Client...")
     try:
         asyncio.run(main(parser.parse_args()), debug=config.DEBUG)
     except Exception as e_top:
-        logger.exception(f"Unerwarteter Fehler auf Top-Level: {e_top}")
+        logger.exception(f"[WSClient] Unerwarteter Fehler auf Top-Level: {e_top}")
         sys.exit(1)  # Beenden mit Fehlercode
     finally:
-        logger.debug("Test-Client beendet.")
+        logger.debug("[WSClient] Client beendet.")

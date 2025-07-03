@@ -1,6 +1,6 @@
 #login-screen {
     background-color: #2c3e50;
-    padding: 20px;
+    /*padding: 20px;*/
 }
 
 .login-background {
@@ -11,8 +11,8 @@
     height: 100%;
     background-image: url('../images/background.png');
     background-size: cover;
-    background-repeat: no-repeat;
     background-position: center;
+    background-repeat: no-repeat;
     opacity: 0.15;
     z-index: 0;
 }
@@ -35,14 +35,15 @@
 }
 
 #login-form input {
-    margin-bottom: 15px;
-    padding: 15px 20px;
     width: 100%;
+    padding: 15px 20px;
+    margin-bottom: 15px;
     border: 1px solid #4a6b82;
-    background-color: #3b5266cc;
+    font-family: 'Architect s Daughter', sans-serif;
+    font-size: 24px;
     color: #fff;
+    background-color: #3b5266cc;
     border-radius: 8px;
-    font-size: 1.1em;
 }
 
 #login-form input::placeholder {
@@ -50,17 +51,19 @@
 }
 
 #login-form button {
+    width: 100%;
     padding: 15px 30px;
-    background-color: #27ae60;
-    color: white;
+    /*margin-top: 10px;*/
     border: none;
     border-radius: 8px;
+    font-family: 'Architect s Daughter', sans-serif;
+    font-size: 24px;
+    color: white;
+    background-color: #5cb85c;
     cursor: pointer;
-    font-size: 1.3em;
-    transition: background-color 0.2s;
-    width: 100%;
 }
 
 #login-form button:hover {
-    background-color: #2ecc71;
+    /*background-color: #2ecc71;*/
+    filter: brightness(1.1);
 }

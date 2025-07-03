@@ -19,6 +19,7 @@
 
 ## Features:
 * Animationen
+* Sound
 * Offenes Spiel
 * Unit-Test vom Backend übernehmen
 * Abhängigkeiten der Module dokumentieren (was greift auf was zu?)

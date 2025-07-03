@@ -123,9 +123,6 @@ const AppController = (() => {
             case 'error':
                 _handleServerError(/** @type {ServerError} */ message.payload);
                 break;
-            case 'pong':
-                console.log('App: Pong vom Server empfangen:', message.payload.timestamp);
-                break;
             default:
                 console.error('App: Unbekannter Nachrichtentyp vom Server:', message.type);
         }
@@ -185,7 +182,7 @@ const AppController = (() => {
                 }
                 break;
             case "player_left": // Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.
-                State.setPlayerName(context.player_index, context.replaced_by_name);
+                State.setPlayerName(context.player_index, context.player_name);
                 State.setHostIndex(context.host_index);
                 break;
             case "players_swapped": // Der Index zweier Spieler wurde getauscht.
@@ -215,7 +212,7 @@ const AppController = (() => {
                 State.setCountHandCards(3, count);
                 break;
             case "player_grand_announced": // Der Spieler hat ein großes Tichu angesagt oder abgelehnt.
-                State.setAnnouncement(context.player_index, context.announced);
+                State.setAnnouncement(context.player_index, context.announced ? 2 : 0);
                 if (context.player_index === State.getPlayerIndex()) {
                     _removeRequest();
                 }

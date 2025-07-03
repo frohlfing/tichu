@@ -34,7 +34,7 @@
     3.  [Implementierung](#63-implementierung)
 
 7.  [Server-Betrieb (zweite Ausbaustufe)](#7-server-betrieb-zweite-ausbaustufe)
-    1.  [Query-Parameter der Websocket-URL](#71-query-parameter-der-websocket-url)
+    1.  [Query-Parameter der WebSocket-URL](#71-query-parameter-der-websocket-url)
     2.  [WebSocket-Nachrichten](#72websocket-nachrichten)
     3.  [Verantwortlichkeiten der Komponenten im Live-Betrieb](#73-aufgaben-der-komponenten-im-server-betrieb)
         
@@ -118,7 +118,7 @@ Darüber hinaus werden für dieses Projekt folgende Zusatzregeln definiert:
 * Hat ein Spieler ein großes oder einfaches Tichu angesagt, kann der Partner kein Tichu mehr ansagen. Das vermeidet Fehlentscheidungen aufgrund Synchronisationsprobleme.
 * Es MUSS ein Wunsch geäußert werden, nicht KANN!
 * Der Hund bleibt liegen und wird erst mit dem nachfolgenden Stich abgeräumt.
-* Um auch beim **Phönix als Einzelkarte** ganzzahlige Ränge zu haben, wird gerundet (macht praktisch keinen Unterschied):   
+* Um auch beim **Phönix als Einzelkarte** ganzzahlige Ränge zu haben, wird gerundet (ist für das Spiel egal):   
     *   Vor dem Ausspielen ist der Rang 15 (schlägt das Ass, aber nicht den Drachen). 
     *   Nach dem Ausspielen ist der Rang wie die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.
 
@@ -165,6 +165,8 @@ WebsocketHandler
 
 ## 4 Modulübersicht und Verzeichnisse
 
+TODO: Verzeichnisstruktur wie bei [8.3](#83-verzeichnisstruktur) abbilden
+
 ### 4.1 `src/`-Verzeichnis
 
 Quellcode für Packages
@@ -181,33 +183,42 @@ Quellcode für Packages
     * `src/common/` 
        *   `logger.py`: Konfiguration des Logging-Frameworks, inklusive farbiger Konsolenausgabe.
        *   `rand.py`: Benutzerdefinierte Zufallsgenerator-Klasse, optimiert für potenzielle Multiprocessing-Szenarien (verzögerte Initialisierung des Seeds pro Instanz).
-       *   `config.py`: (Implizit vorhanden) Konfigurationsvariablen für das Projekt (z.B. Loglevel, Arena-Einstellungen).
-       *   `errors.py`: Definition anwendungsspezifischer Exception-Klassen.
        *   `git_utils.py`: Hilfsfunktionen zur Interaktion mit Git (z.B. Ermittlung des aktuellen Tags/Version).
 
 *   Projektspezifische Bibliotheken
     * `src/lib/`
        *   `cards.py`: Definition von Karten, dem Deck, Punktwerten und Hilfsfunktionen zur Kartenmanipulation.
        *   `combinations.py`: Definition von Kombinationstypen, Logik zur Erkennung, Generierung und Validierung von Kartenkombinationen. Enthält auch Logik zur Erstellung des gültigen Aktionsraums.
-       *   `partitions.py`: (Falls vorhanden und relevant für Agenten) Logik zur Aufteilung von Handkarten in mögliche Sequenzen von Kombinationen.
-
+       *   `partitions.py`: Logik zur Aufteilung von Handkarten in mögliche Sequenzen von Kombinationen.
+       *   `errors.py`: Definition anwendungsspezifischer Exception-Klassen.
+      
 *   Spieler-Typen:
     * `src/players/`
        *   `player.py`: Abstrakte Basisklasse `Player` mit der Grundschnittstelle für alle Spieler.
        *   `agent.py`: Abstrakte Basisklasse `Agent`, erbt von `Player`, für KI-gesteuerte Spieler.
        *   `random_agent.py`: Konkrete Implementierung eines Agenten, der zufällige, gültige Züge macht.
-       *   `heuristic_agent.py`: (Implementiert oder Geplant) Agent, der auf Heuristiken basiert.
+       *   `heuristic_agent.py`: Agent, der auf Heuristiken basiert.
        *   `peer.py`: (Für Server-Betrieb) Klasse, die den serverseitigen Endpunkt der WebSocket-Verbindung zu einem verbundenen Client repräsentiert.
 
 ### 4.2 `tests/`-Verzeichnis
 
 Enthält Unit-Tests für die Module in `src/`, geschrieben mit `pytest`. 
 
-### 4.3 Start-Skripte
+### 4.3 `poc/`-Verzeichnis
 
-*   `main.py`: Dient als Haupteinstiegspunkt für den Start des Arena-Betriebs. Konfiguriert Agenten und startet die `Arena`.
+Enthält Proof-of-Concept-Skripte.
+
+### 4.4 Start-Skripte
+
+*   `main.py`: Konfiguriert Agenten und startet die `Arena`.
 *   `server.py`: Startet den Server für den Live-Betrieb. 
-*   `wsclient.py`: Startet einen interaktiven WebSocket-Client lediglich für Testzwecke. 
+*   `wsclient.py`: Startet einen interaktiven WebSocket-Client für Testzwecke.
+
+### 4.5 Konfiguration
+
+*   `config.py`: Konfigurationsvariablen für das Projekt (z.B. Loglevel, Arena-Einstellungen).
+*   `.env`: Umgebungsvariablen für sensible  oder serverabhängige Daten. Wird nicht im Git-Repo abgelegt.
+*   `.env.example`: Diese Datei wird im Git-Repo abgelegt und dient als Vorlage für die .env-Datei. 
 
 ## 5. Daten, Konstanten, Typen
 
@@ -234,14 +245,13 @@ Enthält Unit-Tests für die Module in `src/`, geschrieben mit `pytest`.
 TODO! 
 
 Die Phasen dürfen sich nicht überlappen.
-Es sollen hier auch die Bedingungen dokumentiert werden, wann welche Phase aktiv ist. 
+Es sollen hier auch die Bedingungen dokumentiert werden, wann welche Phase aktiv ist (in Abhängigkeit des Spielzustandes).
 
 (siehe hierzu [Ablauf einer Partie](#22-ablauf-einer-partie))
 
 Die Spielphasen des Servers unterscheiden sich von den Spielphasen des Clients. Beim Client laufen z.B. Animationen, Dialoge werden angezeigt, usw.
 
 Die Spielphasen des Servers werden nur bei der Validierung im Peer benötigt. 
- 
 
 ## 6. Arena-Betrieb (erste Ausbaustufe)
 
@@ -253,7 +263,7 @@ Der Arena-Betrieb (`arena.py` gestartet über `main.py`) dient dazu, KI-Agenten 
 *   Sammeln von Spieldaten für das Training von Machine-Learning-Agenten.
 *   Performance-Benchmarking.
 
-### 62. Agenten (KI-gesteuerter Spieler)
+### 6.2 Agenten (KI-gesteuerter Spieler)
 
 #### 6.2.1 Basisklassen
 
@@ -272,6 +282,10 @@ Der Arena-Betrieb (`arena.py` gestartet über `main.py`) dient dazu, KI-Agenten 
 Während ein **regelbasierter Agent** feste Regeln befolgt und ein **heuristischer Agent** zusätzlich Wahrscheinlichkeiten 
 einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
 
+#### 6.2.3 Zu treffende Entscheidungen
+
+TODO
+
 ### 6.3 Implementierung
 
 Die `Arena`-Klasse:
@@ -284,7 +298,7 @@ Die `Arena`-Klasse:
 
 (in Entwicklung)
 
-### 7.1 Query-Parameter der Websocket-URL
+### 7.1 Query-Parameter der WebSocket-URL
 
 Ein zentraler Server stellt eine WebSocket bereit. Beim initialen Verbindungsaufbau gibt der Spieler den gewünschten Tisch und seinen Namen über die Query-Parameter an:
 
@@ -300,12 +314,10 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 
 **Proaktive (d.h. unaufgeforderte) Nachrichten vom Client an den Server:**
 
-Der WebSocket-Handler empfängt diese Nachrichten und leitet sie an deb Peer weiter. 
-Ausnahme: Ein `ping` wird direkt vom WebSocket-Handler mit einem `pong` quittiert.
+Der WebSocket-Handler empfängt diese Nachrichten und leitet sie an deb Peer weiter.
 
 | Type             | Payload                                      | Beschreibung                                                                                                                 | Antwort vom Server (Type) | Antwort vom Server (Payload)                      |
 |------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|---------------------------|---------------------------------------------------|
-| `"ping"`         | `{timestamp: "ISO8601_string"}`              | Verbindungstest.                                                                                                             | `"pong"`                  | `{timestamp: ISO8601-str (aus der Ping-Anfrage)}` |
 | `"leave"`        |                                              | Der Spieler möchte den Tisch verlassen.                                                                                      | keine Antwort             |                                                   |
 | `"swap_players"` | `{player_index_1: int, player_index_2: int}` | Der Host möchte die Position zweier Spieler vertauschen (der Host darf nicht verschoben werden; nur vor Spielstart möglich). | keine Antwort             |                                                   |
 | `"start_game"`   |                                              | Der Host möchte das Spiel starten.                                                                                           | keine Antwort             |                                                   |
@@ -355,7 +367,7 @@ Benachrichtigung an alle Spieler
 | Notification Event       | Notification Context                                                                                                              | Beschreibung                                                    |
 |--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
 | "player_joined"          | `{player_index: int, player_name: str}` (->) `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Spieler spielt jetzt mit.                                   |
-| "player_left"            | `{player_index: int, replaced_by_name: str, host_index: int}`                                                                     | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen. |
+| "player_left"            | `{player_index: int, player_name: str, host_index: int}`                                                                          | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen. |
 | "players_swapped"        | `{player_index_1: int, player_index_2: int}`                                                                                      | Der Index zweier Spieler wurde getauscht.                       |
 | "game_started"           |                                                                                                                                   | Das Spiel wurde gestartet.                                      |
 | "round_started"          |                                                                                                                                   | Eine neue Runde beginnt. Die Karten werden gemischt.            |
@@ -437,7 +449,7 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
 *   Empfangt Nachrichten vom Client:
     *   Leitet reguläre Spielaktionen (Antworten auf Requests) an den zugehörigen Peer weiter.
     *   Leitet Interrupt-Anfragen (`"interrupt"`) direkt an die zuständige `GameEngine` weiter.
-    *   Verarbeitet Meta-Nachrichten (Join, Leave, Ping, Lobby-Aktionen).
+    *   Verarbeitet Meta-Nachrichten (Join, Leave, Lobby-Aktionen).
 
 #### 7.3.2 Game-Factory
 
@@ -579,6 +591,7 @@ web/
 ├── sounds/  # Audiodateien
 ├── vendor  # Drittanbieter-Assets
 ├── index.html  Startseite
+├── tests.html  Unittests
 │
 ```
 

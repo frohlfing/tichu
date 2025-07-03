@@ -61,17 +61,15 @@ const LobbyView = (() => {
         // Schleife über die relativen Sitzplätze (0=Benutzer, 1=Rechts, 2=Partner, 3=Links)
         for (let relativeIndex= 0; relativeIndex <= 3; relativeIndex++) {
             let canonicalIndex = Lib.getCanonicalPlayerIndex(relativeIndex);
-            let name = State.getPlayerName(canonicalIndex);
-
-            const li = document.createElement('li');
-
-            let displayName = name || `Spieler ${canonicalIndex + 1}`;
+            let displayName = State.getPlayerName(canonicalIndex);
             if (relativeIndex === 0) {
                 displayName += ' (Du)';
             }
             else if (canonicalIndex === State.getHostIndex()) {
                 displayName += ' (Host)';
             }
+
+            const li = document.createElement('li');
             const nameSpan = document.createElement('span');
             nameSpan.textContent = displayName;
             li.appendChild(nameSpan);

@@ -375,11 +375,11 @@ class HeuristicAgent(Agent):
         Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
-        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
+        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder False, wenn keine Bombe geworfen wird.
         """
         # todo Statistik verwenden (hier wird noch durch Zufall entschieden)
         if not self._random.choice([True, False], [1, 2]):  # einmal Ja, zweimal Nein
-            return None
+            return False
         combinations = [combi for combi in self.priv.combinations if combi[1][0] == CombinationType.BOMB]
         action_space = build_action_space(combinations, self.pub.trick_combination, self.pub.wish_value)
         return action_space[self._random.integer(0, len(action_space))]

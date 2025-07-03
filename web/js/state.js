@@ -528,7 +528,7 @@ const State = (() => {
      * Wählt die "beste" Kombination, die gespielt werden kann, aus.
      *
      * Die Kombination wird nach folgender Heuristik ausgewählt:
-     * - Die beste Kombination ist die längste; bei gleichlangen Kombinationen die mit dem kleinsten Rang.
+     * - Die beste Kombination ist die längste; bei gleichlangen Kombinationen die mit dem niedrigsten Rang.
      * - Aber:
      *   - Bomben werden niemals zerrissen (eine Kombination, dessen Karten Teil einer Bombe sind, wird nicht betrachtet, es sei denn, sie ist selbst eine Bombe).
      *   - Eine Bombe wird nur gespielt, wenn keine andere Kombination möglich ist. Passen ist die letzte Option.

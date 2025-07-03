@@ -1,26 +1,31 @@
 #lobby-screen {
     background-color: #34495e;
-    /*padding: 30px;*/
-    /*justify-content: flex-start;*/
-    /*overflow-y: auto;*/
-    /*flex-direction: column;*/
-    /*align-items: center;*/
+    /*padding: 20px;*/
 }
 
-#lobby-screen h2 {
+#lobby-screen .logo {
+    width: 60%;
+    max-width: 250px;
     margin-bottom: 20px;
-    text-align: center;
-    font-size: 1.8em;
+}
+
+#lobby-screen h1 {
+    margin-bottom: 30px;
+    font-size: clamp(3em, 12vmin, 5em);
+    color: #ecf0f1;
+    text-shadow: 2px 2px 4px #00000080;
+    z-index: 1;
 }
 
 #lobby-player-list-container {
     width: 600px;
     margin-bottom: 25px;
+    z-index: 1;
 }
 
 #lobby-player-list-container > p {
-    margin-bottom: 15px;
-    font-size: 1.1em;
+    margin-bottom: 30px;
+    font-size: 32px;
     text-align: center;
 }
 
@@ -30,26 +35,32 @@
 }
 
 #lobby-player-list li {
-    background-color: #2c3e50;
+    display: flex;
+    height: 90px;
     padding: 12px 18px;
     margin-bottom: 10px;
     border-radius: 6px;
-    list-style-type: none;
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    font-size: 1.1em;
+    justify-content: space-between;
+    list-style-type: none;
+    font-size: 24px;
+    background-color: #2c3e50;
+}
+
+#lobby-player-list li span {
+    max-width: 405px;
+    overflow: hidden;
 }
 
 .player-order-controls button {
     background: #4a6b82;
     border: none;
     color: #ecf0f1;
-    font-size: 1.2em;
-    padding: 6px 10px;
-    border-radius: 4px;
+    font-size: 24px;
+    padding: 16px 19px;
+    border-radius: 8px;
     cursor: pointer;
-    margin-left: 8px;
+    margin-left: 15px;
 }
 
 .player-order-controls button:hover {
@@ -70,27 +81,35 @@
     max-width: 350px;
     gap: 12px;
     margin-top: 20px;
+    z-index: 1;
 }
 
 .lobby-actions-bottom button {
-    padding: 14px 22px;
     width: 100%;
-    font-size: 1.2em;
+    padding: 15px 30px;
+    font-family: 'Architect s Daughter', sans-serif;
+    font-size: 24px;
+    color: white;
     border-radius: 8px;
+    background-color: #5a6670;
+    border: none;
+    cursor: pointer;
 }
 
 #lobby-start-button {
-    background-color: #f39c12;
+    background-color: #5cb85c;
 }
 
 #lobby-start-button:hover {
-    background-color: #e67e22;
+    /*background-color: #2ecc71;*/
+    filter: brightness(1.1);
 }
 
 #lobby-exit-button {
-    background-color: #e74c3c;
+    background-color: #c0392b;
 }
 
 #lobby-exit-button:hover {
-    background-color: #c0392b;
+    filter: brightness(1.1);
+    /*background-color: #e74c3c;*/
 }

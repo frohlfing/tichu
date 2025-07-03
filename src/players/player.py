@@ -3,7 +3,6 @@ Definiert die abstrakte Basisklasse `Player` für alle Spieler im Tichu-Spiel.
 """
 
 import asyncio
-from src.common.logger import logger
 from src.lib.cards import Card, Cards
 from src.lib.combinations import Combination
 from src.lib.errors import ErrorCode
@@ -36,13 +35,10 @@ class Player:
         if not name_stripped:
             raise ValueError("Spielername darf nicht leer sein.")
         self._name: str = name_stripped
-
         self._session_id: str = session_id if session_id else str(uuid4())
         self.pub: Optional[PublicState] = None  # wird von der GameEngine gesetzt
         self.priv: Optional[PrivateState] = None  # wird von der GameEngine gesetzt
         self.interrupt_event: Optional[asyncio.Event] = None  # wird von der GameEngine gesetzt
-
-        logger.debug(f"Player '{self._name}' (Session-ID: {self._session_id}) erstellt.")
 
     def __repr__(self) -> str:
         """
@@ -143,7 +139,7 @@ class Player:
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
-        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
+        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder False, wenn keine Bombe geworfen wird.
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'bomb' implementieren.")
 

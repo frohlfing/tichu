@@ -29,18 +29,17 @@
 }
 
 .dialog button {
-    padding: 10px 25px;
-    font-family: 'Architect s Daughter', sans-serif;
-    font-size: 32px;
-    border-radius: 8px;
-    background-color: #5cb85c;
-    color: white;
-    border: none;
-    cursor: pointer;
-    /*transition: background-color 0.2s;*/
     min-height: 80px;
     min-width: 160px;
+    padding: 10px 25px;
     margin: 0 20px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Architect s Daughter', sans-serif;
+    font-size: 32px;
+    background-color: #5cb85c;
+    color: white;
+    cursor: pointer;
 }
 
 .dialog button:hover {
