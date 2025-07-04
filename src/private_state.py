@@ -16,13 +16,13 @@ class PrivateState:
 
     Diese Klasse sammelt die Daten, die nur dem jeweiligen Spieler bekannt sind.
 
-    :ivar player_index: Der Index dieses Spielers am Tisch (zwischen 0 und 3).
+    :ivar player_index: Pflichtargument. Der Index dieses Spielers am Tisch (zwischen 0 und 3).
     :ivar _hand_cards: (property `hand_cards`) Die aktuellen Handkarten des Spielers (absteigend sortiert, z.B. [(8,3), (2,4), (0,1)].
     :ivar given_schupf_cards: Die drei Karten, die der Spieler zum Schupfen an den rechten Gegner, Partner und linken Gegner abgegeben hat.
     :ivar received_schupf_cards: Die drei Karten, die der Spieler beim Schupfen vom rechten Gegner, Partner und linken Gegner erhalten hat.
     """
     # --- Spielerinformationen ---
-    player_index: int = -1
+    player_index: int  # muss im Konstruktor angegeben werden
 
     # --- Information über die aktuelle Runde ---
     _hand_cards: Cards = field(default_factory=list)
@@ -33,6 +33,10 @@ class PrivateState:
     _combination_cache: List[Tuple[Cards, Combination]] = field(default_factory=list, repr=False)  # Nur intern verwendet, daher repr=False
     _partition_cache: List[Partition] = field(default_factory=list, repr=False)
     _partitions_aborted: bool = field(default=True, repr=False)
+
+    def __post_init__(self):
+        if not (0 <= self.player_index <= 3):
+            raise ValueError(f"player_index muss zwischen 0 und 3 liegen, nicht {self.player_index}")
 
     @property
     def hand_cards(self) -> Cards:

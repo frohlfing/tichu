@@ -3,7 +3,8 @@ import pytest
 from unittest.mock import create_autospec, patch
 from src.lib.combinations import CombinationType
 from src.private_state import PrivateState
-from src.lib.cards import parse_cards
+from src.lib.cards import parse_cards, CardSuit
+
 
 # Fixture für einen initialisierten PrivateState
 @pytest.fixture
@@ -62,12 +63,12 @@ def test_private_state_hand_cards_setter_clears_cache(initial_priv_state):
 def test_private_state_to_dict(initial_priv_state):
     """Testet die Umwandlung in ein Dictionary."""
     priv = initial_priv_state
-    priv.hand_cards = (14,1), (14,4), (14,3)  # "SA RA GA"
-    priv.given_schupf_cards = (2,1), (3,2), (4,3)  # S2 B3 G4
-    priv.received_schupf_cards = (5,4), (6,1), (7,2)  # R5 S6 B7
+    priv.hand_cards = [(14,1), (14,4), (14,3)]  # "SA RA GA"
+    priv.given_schupf_cards = (2, CardSuit.SWORD), (3, CardSuit.PAGODA), (4, CardSuit.JADE)  # S2 B3 G4
+    priv.received_schupf_cards = (5, CardSuit.STAR), (6, CardSuit.SWORD), (7, CardSuit.PAGODA)  # R5 S6 B7
     priv_dict = priv.to_dict()
     assert priv_dict["player_index"] == 1
-    assert priv_dict["hand_cards"] == ((14,1), (14,4), (14,3))
+    assert priv_dict["hand_cards"] == [(14,4), (14,3), (14,1)]
     assert priv_dict["given_schupf_cards"] == ((2,1), (3,2), (4,3))
     assert priv_dict["received_schupf_cards"] == ((5,4), (6,1), (7,2))
 

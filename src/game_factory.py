@@ -35,6 +35,7 @@ class GameFactory:
     def get_or_create_engine(self, table_name: str) -> GameEngine:
         """
         Gibt die GameEngine-Instanz für einen gegebenen Tischnamen zurück.
+
         Erstellt eine neue Engine, falls der Tisch noch nicht existiert.
 
         :param table_name: Der Name des Tisches.

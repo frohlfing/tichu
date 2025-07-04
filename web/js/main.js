@@ -1,4 +1,4 @@
-/**
+    /**
  * Haupt-Einstiegspunkt der Tichu-Anwendung.
  *
  * Initialisiert den AppController, sobald das DOM geladen ist.
@@ -21,6 +21,8 @@ function scaleGameWrapper() {
     const scaleY = windowHeight / targetHeight;
     const scale = Math.min(scaleX, scaleY); // Wählt den kleineren Skalierungsfaktor, um alles sichtbar zu halten
     wrapper.style.transform = `scale(${scale})`;
+    wrapper.top = (windowHeight - targetHeight) / 2;
+    wrapper.left = (windowHeight - targetWidth) / 2;
 }
 
 /**

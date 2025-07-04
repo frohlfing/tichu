@@ -23,9 +23,9 @@
  * Der öffentliche Spielzustand vom Server.
  *
  * @typedef {Object} PublicState
- * @property {string} table_name - Der Name des Tisches.
+ * @property {string} table_name - Pflichtargument. Der eindeutige Name des Tisches.
+ * @property {Array<string>} player_names - Pflichtargument. Die Namen der 4 Spieler.
  * @property {number} host_index - Index des Clients, der Host ist (-1 = kein Client).
- * @property {Array<string>} player_names - Die eindeutigen Namen der 4 Spieler.
  * @property {boolean} is_running - Gibt an, ob eine Partie gerade läuft.
  * @property {number} current_turn_index - Index des Spielers, der am Zug ist (-1 = Startspieler steht noch nicht fest).
  * @property {number} start_player_index - Index des Spielers mit Mahjong (-1 = steht noch nicht fest).
@@ -53,7 +53,7 @@
  * Der private Spielzustand vom Server.
  *
  * @typedef {Object} PrivateState
- * @property {number} player_index - Der Index des Benutzers am Tisch (zwischen 0 und 3).
+ * @property {number} player_index - Pflichtargument. Der Index des Benutzers am Tisch (zwischen 0 und 3).
  * @property {Cards} hand_cards - Die aktuellen Handkarten des Benutzers.
  * @property {[Card, Card, Card] | null} given_schupf_cards - Die drei Karten (für rechten Gegner, Partner, linken Gegner), die der Benutzer weitergegeben hat.
  * @property {[Card, Card, Card] | null} received_schupf_cards - Die drei Karten (vom rechten Gegner, Partner, linken Gegner), die der Benutzer erhalten hat.
@@ -69,9 +69,9 @@ const State = (() => {
      * @type {PublicState}
      */
     let _publicState = {
-        table_name: "",
+        table_name: "Table", // Pflichtargument
+        player_names: ["Player 1", "Player 2", "Player 3", "Player 4"], // Pflichtargument
         host_index: -1,
-        player_names: ["", "", "", ""],
         is_running: false,
         current_turn_index: -1,
         start_player_index: -1,
@@ -101,7 +101,7 @@ const State = (() => {
      * @type {PrivateState}
      */
     let _privateState = {
-        player_index: 0,
+        player_index: 0, // Pflichtargument
         hand_cards: [],
         given_schupf_cards: null,
         received_schupf_cards: null
@@ -150,16 +150,36 @@ const State = (() => {
      * @param {PrivateState} privateState - Der private Spielzustand.
      */
     function setPrivateState(privateState) {
-        if (_privateState.hand_cards)
+        if (!Lib.isCardsEqual(_privateState.hand_cards, privateState.hand_cards)) {
+             _combinationCache = [];
+        }
         _privateState = privateState;
-        _combinationCache = [];
     }
 
     // öffentlicher Spielzustand
 
-    /** @returns {string} Den Namen des aktuellen Tisches. */
+    /** @returns {string} Den eindeutige Namen des aktuellen Tisches. */
     function getTableName() {
         return _publicState.table_name;
+    }
+
+    /**
+     * @param {number|null} playerIndex - Der Index des Spielers. Wenn nicht angegeben, wird der Index des Benutzers genommen.
+     * @returns {string} Der Namen des Spielers.
+     */
+    function getPlayerName(playerIndex = null){
+        if (playerIndex == null) {
+           playerIndex = _privateState.player_index;
+        }
+        return _publicState.player_names[playerIndex];
+    }
+
+    /**
+     * @param {number} playerIndex - Der Index des Spielers.
+     * @param {string} name - Der neue Name des Spielers.
+     */
+    function setPlayerName(playerIndex, name) {
+        _publicState.player_names[playerIndex] = name;
     }
 
     /** @returns {number} Index des Clients, der Host ist (-1 = kein Client). */
@@ -174,26 +194,7 @@ const State = (() => {
 
     /** @returns {boolean} True, wenn der Benutzer der Host des Tisches ist, sonst false. */
     function isHost() {
-        return _privateState.player_index !== -1 && _publicState.host_index === _privateState.player_index;
-    }
-
-    /**
-     * @param {number|null} playerIndex - Der Index des Spielers. Wenn nicht angegeben, wird der Index des Benutzers genommen.
-     * @returns {string} Der Namen des Spielers.
-     */
-    function getPlayerName(playerIndex = null){
-        if (playerIndex == null) {
-           playerIndex = _privateState.player_index;
-        }
-        return playerIndex !== -1 ? _publicState.player_names[playerIndex] : "";
-    }
-
-    /**
-     * @param {number} playerIndex - Der Index des Spielers.
-     * @param {string} name - Der neue Name des Spielers.
-     */
-    function setPlayerName(playerIndex, name) {
-        _publicState.player_names[playerIndex] = name;
+        return _publicState.host_index === _privateState.player_index;
     }
     
     /** @returns {boolean} Gibt an, ob eine Partie gerade läuft. */
@@ -218,7 +219,7 @@ const State = (() => {
 
     /** @returns {boolean} Gibt an, ob der Benutzer am Zug ist. */
     function isCurrentPlayer() {  // todo umbenennen in "isTurn"
-        return _privateState.player_index !== -1 && _publicState.current_turn_index === _privateState.player_index;
+        return _publicState.current_turn_index === _privateState.player_index;
     }
 
     /** @returns {number} Der Index des Spielers mit Mahjong (-1 = steht noch nicht fest). */
@@ -233,13 +234,13 @@ const State = (() => {
     
     /**
      * @param {number|null} playerIndex - Der Index des Spielers. Wenn nicht angegeben, wird der Index des Benutzers genommen.
-     * @returns {number} Die Anzahl der Handkarten des Spielers. 
+     * @returns {number} Die Anzahl der Handkarten des Spielers.
      */
     function getCountHandCards(playerIndex = null){
         if (playerIndex == null) {
            playerIndex = _privateState.player_index;
         }
-        return playerIndex !== -1 ? _publicState.count_hand_cards[playerIndex] : 0;
+        return _publicState.count_hand_cards[playerIndex];
     }
 
     /**
@@ -273,7 +274,7 @@ const State = (() => {
         if (playerIndex == null) {
            playerIndex = _privateState.player_index;
         }
-        return playerIndex !== -1 ? _publicState.announcements[playerIndex] : 0;
+        return _publicState.announcements[playerIndex];
     }
 
     /**
@@ -367,7 +368,7 @@ const State = (() => {
         if (playerIndex == null) {
            playerIndex = _privateState.player_index;
         }
-        return playerIndex !== -1 ? _publicState.points[playerIndex] : 0;
+        return _publicState.points[playerIndex];
     }
 
     /**
@@ -474,11 +475,11 @@ const State = (() => {
 
     /** @param {Cards} cards - Die aktuellen Handkarten des Benutzers. */
     function setHandCards(cards) {
-        _privateState.hand_cards = cards;
-        if (_privateState.player_index) {
-            _publicState.count_hand_cards[_privateState.player_index] = cards.length;
+        if (!Lib.isCardsEqual(_privateState.hand_cards, cards)) {
+            _combinationCache = [];
         }
-        _combinationCache = [];
+        _privateState.hand_cards = cards;
+        _publicState.count_hand_cards[_privateState.player_index] = cards.length;
     }
 
     /** @returns {[Card, Card, Card] | null} Die drei Karten (für rechten Gegner, Partner, linken Gegner), die der Benutzer weitergegeben hat. */
@@ -602,8 +603,8 @@ const State = (() => {
 
         // öffentlicher Spielzustand
         getTableName,
-        getHostIndex, setHostIndex, isHost,
         getPlayerName, setPlayerName,
+        getHostIndex, setHostIndex, isHost,
         isRunning, setRunning,
         getCurrentTurnIndex, setCurrentTurnIndex, isCurrentPlayer,
         getStartPlayerIndex, setStartPlayerIndex,

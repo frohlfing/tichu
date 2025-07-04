@@ -13,7 +13,7 @@ from src.lib.combinations import CombinationType, FIGURE_PASS
 @pytest.fixture
 def public_state_fixture() -> PublicState:
     """Erstellt einen leeren PublicState für RandomAgent-Tests."""
-    return PublicState(player_names=["P0", "P1", "P2", "P3"])
+    return PublicState(table_name="test", player_names=["P0", "P1", "P2", "P3"])
 
 @pytest.fixture
 def private_state_fixture() -> PrivateState:
@@ -96,18 +96,19 @@ async def test_random_agent_play(random_agent_seeded):
     agent = random_agent_seeded # Seed für reproduzierbare Auswahl
 
     # Erstelle einen Beispiel-Action-Space
-    combi1_cards = parse_cards("S2 B2")
-    combi1_figure = (CombinationType.PAIR, 2, 2)
-    combi2_cards = parse_cards("S3")
-    combi2_figure = (CombinationType.SINGLE, 1, 3)
     action_space = [
         ([], FIGURE_PASS), # Passen
-        (combi1_cards, combi1_figure),
-        (combi2_cards, combi2_figure),
+        (parse_cards("B2 S2 G3 S3"), (CombinationType.STAIR, 4, 3)),
+        (parse_cards("B2 S2"), (CombinationType.PAIR, 2, 2)),
+        (parse_cards("G3 S3"), (CombinationType.PAIR, 2, 3)),
+        (parse_cards("S3"), (CombinationType.SINGLE, 1, 3)),
+        (parse_cards("G3"), (CombinationType.SINGLE, 1, 3)),
+        (parse_cards("B2"), (CombinationType.SINGLE, 1, 2)),
+        (parse_cards("S2"), (CombinationType.SINGLE, 1, 2)),
     ]
 
     # Setze Beispiel-Handkarten (obwohl Agent sie nicht prüft)
-    agent.priv.hand_cards = parse_cards("S2 B2 S3 G3")
+    agent.priv.hand_cards = parse_cards("B2 S2 G3 S3")
 
     # Rufe play auf
     chosen_action = await agent.play()
@@ -178,7 +179,7 @@ def agent(pub, priv):
 
 @pytest.fixture
 def pub():
-    return PublicState()
+    return PublicState(table_name="Test", player_names=["A", "B", "C", "D"])
 
 @pytest.fixture
 def priv():

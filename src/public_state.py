@@ -23,9 +23,9 @@ class PublicState:
 
     Diese Klasse sammelt alle Daten, die den Spielverlauf und den Zustand beschreiben, soweit sie für alle Teilnehmer sichtbar sind.
 
-    :ivar table_name: Der Name des Tisches.
+    :ivar table_name: Pflichtargument. Der eindeutige Name des Tisches.
+    :ivar player_names: Pflichtargument. Die Namen der 4 Spieler.
     :ivar host_index: Index des Clients, der Host des Tisches ist (-1 == kein Client am Tisch)
-    :ivar player_names: Die eindeutigen Namen der 4 Spieler (Spieler mit gleichen Namen werden durchnummeriert).
     :ivar is_running: # Gibt an, ob eine Partie gerade läuft.
     :ivar current_turn_index: Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest; es wurde noch nicht geschupft).
@@ -49,9 +49,9 @@ class PublicState:
     :ivar trick_counter: Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie (nur für statistische Zwecke).
     """
     # --- Tisch- und Spielerinformationen ---
-    table_name: str = ""
+    table_name: str  # muss im Konstruktor angegeben werden
+    player_names: List[str]  # muss im Konstruktor angegeben werden
     host_index: int = -1
-    player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
 
     # --- Information über die aktuelle Runde ---
     is_running: bool = False
@@ -89,6 +89,12 @@ class PublicState:
     #  5) trick_counter = ??  # kann aus tricks ermittelt werden
     #  6) trick_owner_index, trick_cards, trick_combination bilden den letzten Eintrag aus tricks, der nicht Passen ist.
 
+    def __post_init__(self):
+        if not self.table_name.strip():
+            raise ValueError("table_name darf nicht leer sein.")
+        if len(self.player_names) != 4 or any(not name.strip() for name in self.player_names):
+            raise ValueError(f"`player_names` muss 4 Namen auflisten.")
+
     def reset_round(self):
         """Status für eine neue Runde zurücksetzen."""
         self.current_turn_index = -1
@@ -124,8 +130,8 @@ class PublicState:
         """
         return {
             "table_name": self.table_name,
-            "host_index": self.host_index,
             "player_names": self.player_names,
+            "host_index": self.host_index,
             "is_running": self.is_running,
             "current_turn_index": self.current_turn_index,
             "start_player_index": self.start_player_index,

@@ -316,7 +316,7 @@ def test_build_combinations_counts():
 @pytest.mark.parametrize("hand, expected_cards, expected_labels", [
     (
         "BD GD RD BZ RZ",
-        ("BD GD RD BZ RZ", "BD GD RD", "BD GD", "BD RD", "GD RD", "BZ RZ", "BD", "GD", "RD", "BZ", "RZ"),
+        ("RD GD BD RZ BZ", "RD GD BD", "RD GD", "RD BD", "GD BD", "RZ BZ", "RD", "GD", "BD", "RZ", "BZ"),
         ("FULLHOUSE-12", "TRIPLE-12", "PAIR-12", "PAIR-12", "PAIR-12", "PAIR-10", "SINGLE-12", "SINGLE-12", "SINGLE-12", "SINGLE-10", "SINGLE-10")
     ),(
         "Ph G9 B8 B7 R6 R4 Hu",

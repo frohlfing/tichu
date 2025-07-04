@@ -138,7 +138,7 @@ const AppController = (() => {
      * @param {ServerRequest} request - Die Serveranfrage.
      */
     function _handleServerRequest(request) {
-        console.log("App._handleServerRequest()", request.request_id, request.action);
+        console.log("App._handleServerRequest()", request.request_id, request.action, request);
         _setRequest(request.request_id, request.action);
         State.setPublicState(request.public_state)
         State.setPrivateState(request.private_state)
@@ -246,7 +246,8 @@ const AppController = (() => {
                 // State.setTricks() todo addTrick()
                 if (context.player_index === State.getPlayerIndex()) {
                     _removeRequest();
-                    // todo Karten von der Hand nehmen.
+                    let cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.cards));
+                    State.setHandCards(cards);
                 }
                 else {
                     State.setCountHandCards(context.player_index, State.getCountHandCards() - context.cards.length);

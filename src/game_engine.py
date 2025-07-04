@@ -426,26 +426,25 @@ class GameEngine:
                         assert pub.trick_combination != FIGURE_PASS
                         if pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
                             # Stich verschenken
-                            opponent = await self._players[pub.current_turn_index].give_dragon_away()
-                            assert opponent in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
+                            recipient = await self._players[pub.current_turn_index].give_dragon_away()
+                            assert recipient in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
                             assert CARD_DRA in pub.played_cards
                             assert pub.dragon_recipient == -1
-                            pub.dragon_recipient = opponent
-                            pub.points[opponent] += pub.trick_points
-                            assert -25 <= pub.points[opponent] <= 125
-                            if clients_joined:
-                                await self._broadcast("trick_taken", {"player_index": opponent})
+                            pub.dragon_recipient = recipient
                         else:
                             # Stich selbst kassieren
-                            pub.points[pub.trick_owner_index] += pub.trick_points
-                            assert -25 <= pub.points[pub.trick_owner_index] <= 125
-                            if clients_joined:
-                                await self._broadcast("trick_taken", {"player_index": pub.trick_owner_index})
+                            recipient = pub.trick_owner_index
+                        # Punkte im Stich dem Spieler gut schreiben
+                        pub.points[recipient] += pub.trick_points
+                        assert -25 <= pub.points[recipient] <= 125
                         # Stich zurücksetzen
                         pub.trick_owner_index = -1
+                        pub.trick_cards = []
                         pub.trick_combination = (CombinationType.PASS, 0, 0)
                         pub.trick_points = 0
                         pub.trick_counter += 1
+                        if clients_joined:
+                            await self._broadcast("trick_taken", {"player_index": recipient})
 
                     # hat der Spieler noch Karten?
                     if pub.count_hand_cards[pub.current_turn_index] > 0:
@@ -460,6 +459,7 @@ class GameEngine:
                                     pub.announcements[pub.current_turn_index] = 1
                                     if clients_joined:
                                         await self._broadcast("player_announced", {"player_index": pub.current_turn_index})
+                            # Spieler fragen, welche Karten er spielen will
                             cards, combination = await self._players[pub.current_turn_index].play()
 
                         assert combination[1] <= pub.count_hand_cards[pub.current_turn_index] <= 14
@@ -487,6 +487,7 @@ class GameEngine:
 
                             # Stich aktualisieren
                             pub.trick_owner_index = pub.current_turn_index
+                            pub.trick_cards = cards
                             if combination == FIGURE_PHO:
                                 assert pub.trick_combination == FIGURE_PASS or pub.trick_combination[0] == CombinationType.SINGLE
                                 assert pub.trick_combination != FIGURE_DRA  # Phönix auf Drachen geht nicht
@@ -542,67 +543,27 @@ class GameEngine:
                                 # Runde ist vorbei; letzten Stich abräumen
                                 assert pub.trick_combination != FIGURE_PASS
                                 assert pub.trick_owner_index == pub.current_turn_index
-                                if pub.is_double_victory:
-                                    # Doppelsieg! Die Karten müssen nicht gezählt werden.
-                                    assert pub.is_round_over
-                                    assert 0 <= pub.winner_index <= 3
-                                    assert sum(1 for n in pub.count_hand_cards if n > 0) == 2
-                                    pub.points = [0, 0, 0, 0]
-                                    pub.points[pub.winner_index] = 200
+                                if pub.trick_combination == FIGURE_DRA and not pub.is_double_victory:  # Drache kassiert? Muss verschenkt werden, wenn kein Doppelsieg!
+                                    # Stich verschenken
+                                    recipient = await self._players[pub.current_turn_index].give_dragon_away()
+                                    assert recipient in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
+                                    assert CARD_DRA in pub.played_cards
+                                    assert pub.dragon_recipient == -1
+                                    pub.dragon_recipient = recipient
                                 else:
-                                    # Punkte im Stich zählen
-                                    if pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
-                                        # Stich verschenken
-                                        opponent = await self._players[pub.current_turn_index].give_dragon_away()
-                                        assert opponent in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
-                                        assert CARD_DRA in pub.played_cards
-                                        assert pub.dragon_recipient == -1
-                                        pub.dragon_recipient = opponent
-                                        pub.points[opponent] += pub.trick_points
-                                        assert -25 <= pub.points[opponent] <= 125
-                                        if clients_joined:
-                                            await self._broadcast("trick_taken", {"player_index": opponent})
-                                    else:
-                                        # Stich selbst kassieren
-                                        pub.points[pub.trick_owner_index] += pub.trick_points
-                                        assert -25 <= pub.points[pub.trick_owner_index] <= 125
-                                        if clients_joined:
-                                            await self._broadcast("trick_taken", {"player_index": pub.trick_owner_index})
-
-                                    # Endwertung der Runde:
-                                    # a) Der letzte Spieler gibt seine Handkarten an das gegnerische Team.
-                                    assert 0 <= pub.loser_index <= 3
-                                    leftover_points = 100 - sum_card_points(pub.played_cards)
-                                    assert leftover_points == sum_card_points(other_cards(pub.played_cards))
-                                    pub.points[(pub.loser_index + 1) % 4] += leftover_points
-                                    # b) Der letzte Spieler übergibt seine Stiche an den Spieler, der zuerst fertig wurde.
-                                    assert pub.winner_index >= 0
-                                    pub.points[pub.winner_index] += pub.points[pub.loser_index]
-                                    pub.points[pub.loser_index] = 0
-                                    assert sum(pub.points) == 100, pub.points
-                                    assert -25 <= pub.points[0] <= 125
-                                    assert -25 <= pub.points[1] <= 125
-                                    assert -25 <= pub.points[2] <= 125
-                                    assert -25 <= pub.points[3] <= 125
-
+                                    # Stich selbst kassieren
+                                    recipient = pub.trick_owner_index
+                                # Punkte im Stich dem Spieler gut schreiben
+                                pub.points[recipient] += pub.trick_points
+                                assert -25 <= pub.points[recipient] <= 125
                                 # Stich zurücksetzen
                                 pub.trick_owner_index = -1
+                                pub.trick_cards = []
                                 pub.trick_combination = (CombinationType.PASS, 0, 0)
                                 pub.trick_points = 0
                                 pub.trick_counter += 1
-
-                                # Bonus für Tichu-Ansage
-                                for player_index in range(4):
-                                    if pub.announcements[player_index]:
-                                        if player_index == pub.winner_index:
-                                            pub.points[player_index] += 100 * pub.announcements[player_index]
-                                        else:
-                                            pub.points[player_index] -= 100 * pub.announcements[player_index]
-
-                                # Ergebnis der Runde in die Punktetabelle der Partie eintragen
-                                pub.game_score[0].append(pub.points[2] + pub.points[0])
-                                pub.game_score[1].append(pub.points[3] + pub.points[1])
-                                pub.round_counter += 1
+                                if clients_joined:
+                                    await self._broadcast("trick_taken", {"player_index": recipient})
                                 break  # while not pub.is_round_over
 
                             # falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden
@@ -628,6 +589,43 @@ class GameEngine:
                         await self._broadcast("player_turn_changed", {"current_turn_index": pub.current_turn_index})
 
                 # Runde ist beendet
+                # Endwertung der Runde
+                if pub.is_double_victory:
+                    # Doppelsieg! Das Gewinnerteam kriegt 200 Punkte. Die Gegner nichts.
+                    assert pub.is_round_over
+                    assert sum(1 for n in pub.count_hand_cards if n > 0) == 2
+                    assert 0 <= pub.winner_index <= 3
+                    pub.points = [0, 0, 0, 0]
+                    pub.points[pub.winner_index] = 200
+                else:
+                    # a) Der letzte Spieler gibt seine Handkarten an das gegnerische Team.
+                    assert 0 <= pub.loser_index <= 3
+                    leftover_points = 100 - sum_card_points(pub.played_cards)
+                    assert leftover_points == sum_card_points(other_cards(pub.played_cards))
+                    pub.points[(pub.loser_index + 1) % 4] += leftover_points
+                    # b) Der letzte Spieler übergibt seine Stiche an den Spieler, der zuerst fertig wurde.
+                    assert pub.winner_index >= 0
+                    pub.points[pub.winner_index] += pub.points[pub.loser_index]
+                    pub.points[pub.loser_index] = 0
+                    assert sum(pub.points) == 100, pub.points
+                    assert -25 <= pub.points[0] <= 125
+                    assert -25 <= pub.points[1] <= 125
+                    assert -25 <= pub.points[2] <= 125
+                    assert -25 <= pub.points[3] <= 125
+
+                # Bonus für Tichu-Ansage
+                for player_index in range(4):
+                    if pub.announcements[player_index]:
+                        if player_index == pub.winner_index:
+                            pub.points[player_index] += 100 * pub.announcements[player_index]
+                        else:
+                            pub.points[player_index] -= 100 * pub.announcements[player_index]
+
+                # Ergebnis der Runde in die Punktetabelle der Partie eintragen
+                pub.game_score[0].append(pub.points[2] + pub.points[0])
+                pub.game_score[1].append(pub.points[3] + pub.points[1])
+                pub.round_counter += 1
+
                 if break_time:
                     await asyncio.sleep(break_time)
                 if clients_joined:
@@ -637,9 +635,9 @@ class GameEngine:
             # Partie ist beendet
             score20, score31 = pub.total_score
             logger.info(f"[{self.table_name}] Partie beendet. Endstand: Team 20: {score20}, Team 31: {score31}")
+            pub.is_running = False
             if clients_joined:
                 await self._broadcast("game_over", {"game_score": pub.game_score})
-            pub.is_running = False
             return pub
 
         except asyncio.CancelledError:
