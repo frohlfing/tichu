@@ -267,7 +267,7 @@ class GameEngine:
     # ------------------------------------------------------
 
     # noinspection PyUnusedLocal
-    async def run_game_loop(self, break_time = 5) -> Optional[PublicState]:
+    async def run_game_loop(self, break_time = 1) -> Optional[PublicState]:
         """
         Steuert den Spielablauf einer Partie.
 
@@ -354,7 +354,7 @@ class GameEngine:
                 # a) Tauschkarten abgeben
                 if clients_joined:
                     # Alle Spieler werden gleichzeitig zum Schupfen aufgefordert. Die Spieler werden sofort benachrichtigt, wenn jemand geschupft hat.
-                    await asyncio.gather(*[self._schupf_and_broadcast(player_index) for player_index in range(4)], return_exceptions=True)
+                    await asyncio.gather(*[self._schupf_and_broadcast(player_index, clients_joined) for player_index in range(4)], return_exceptions=True)
                 else:
                     # Alte Version: Alle Spieler der Reihe nach zum Schupfen auffordern
                     # todo Fallunterscheidung zeitlich relevant?
@@ -423,28 +423,7 @@ class GameEngine:
 
                     # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
                     if not bomb and pub.trick_owner_index == pub.current_turn_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt liegen
-                        assert pub.trick_combination != FIGURE_PASS
-                        if pub.trick_combination == FIGURE_DRA:  # Drache kassiert? Muss verschenkt werden!
-                            # Stich verschenken
-                            recipient = await self._players[pub.current_turn_index].give_dragon_away()
-                            assert recipient in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
-                            assert CARD_DRA in pub.played_cards
-                            assert pub.dragon_recipient == -1
-                            pub.dragon_recipient = recipient
-                        else:
-                            # Stich selbst kassieren
-                            recipient = pub.trick_owner_index
-                        # Punkte im Stich dem Spieler gut schreiben
-                        pub.points[recipient] += pub.trick_points
-                        assert -25 <= pub.points[recipient] <= 125
-                        # Stich zurücksetzen
-                        pub.trick_owner_index = -1
-                        pub.trick_cards = []
-                        pub.trick_combination = (CombinationType.PASS, 0, 0)
-                        pub.trick_points = 0
-                        pub.trick_counter += 1
-                        if clients_joined:
-                            await self._broadcast("trick_taken", {"player_index": recipient})
+                        await self._take_trick(clients_joined)
 
                     # hat der Spieler noch Karten?
                     if pub.count_hand_cards[pub.current_turn_index] > 0:
@@ -540,30 +519,8 @@ class GameEngine:
 
                             # Runde vorbei?
                             if pub.is_round_over:
-                                # Runde ist vorbei; letzten Stich abräumen
-                                assert pub.trick_combination != FIGURE_PASS
-                                assert pub.trick_owner_index == pub.current_turn_index
-                                if pub.trick_combination == FIGURE_DRA and not pub.is_double_victory:  # Drache kassiert? Muss verschenkt werden, wenn kein Doppelsieg!
-                                    # Stich verschenken
-                                    recipient = await self._players[pub.current_turn_index].give_dragon_away()
-                                    assert recipient in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
-                                    assert CARD_DRA in pub.played_cards
-                                    assert pub.dragon_recipient == -1
-                                    pub.dragon_recipient = recipient
-                                else:
-                                    # Stich selbst kassieren
-                                    recipient = pub.trick_owner_index
-                                # Punkte im Stich dem Spieler gut schreiben
-                                pub.points[recipient] += pub.trick_points
-                                assert -25 <= pub.points[recipient] <= 125
-                                # Stich zurücksetzen
-                                pub.trick_owner_index = -1
-                                pub.trick_cards = []
-                                pub.trick_combination = (CombinationType.PASS, 0, 0)
-                                pub.trick_points = 0
-                                pub.trick_counter += 1
-                                if clients_joined:
-                                    await self._broadcast("trick_taken", {"player_index": recipient})
+                                # Runde ist vorbei; letzten Stich abräumen und die Schleife für Kartenausspielen beenden
+                                await self._take_trick(clients_joined)
                                 break  # while not pub.is_round_over
 
                             # falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden
@@ -589,6 +546,7 @@ class GameEngine:
                         await self._broadcast("player_turn_changed", {"current_turn_index": pub.current_turn_index})
 
                 # Runde ist beendet
+
                 # Endwertung der Runde
                 if pub.is_double_victory:
                     # Doppelsieg! Das Gewinnerteam kriegt 200 Punkte. Die Gegner nichts.
@@ -693,12 +651,12 @@ class GameEngine:
             if isinstance(player, Peer):
                 await player.error(message, code, context)
 
-    async def _schupf_and_broadcast(self, player_index):
+    async def _schupf_and_broadcast(self, player_index, clients_joined: bool):
         """
         Fordert den Spieler auf zu schupfen und informiert danach jeden Spieler darüber.
 
         :param player_index: Der Index des Spielers, der schupfen soll.
-        :return:
+        :param clients_joined: True, wenn Clients im Spiel sind.
         """
         priv = self._private_states[player_index]
         assert len(priv.hand_cards) == 14
@@ -707,7 +665,41 @@ class GameEngine:
         priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
         assert len(priv.hand_cards) == 11
         self._public_state.count_hand_cards[player_index] = 11
-        await self._broadcast("player_schupfed", {"player_index": player_index})
+        if clients_joined:
+            await self._broadcast("player_schupfed", {"player_index": player_index})
+
+    async def _take_trick(self, clients_joined: bool):
+        """
+        Räumt den Stich ab.
+
+        :param clients_joined: True, wenn Clients im Spiel sind.
+        """
+        pub = self._public_state
+        assert pub.trick_combination != FIGURE_PASS
+        assert pub.trick_owner_index == pub.current_turn_index
+        if pub.trick_combination == FIGURE_DRA and not pub.is_double_victory:  # Drache kassiert? Muss verschenkt werden, wenn kein Doppelsieg!
+            # Stich verschenken
+            recipient = await self._players[pub.current_turn_index].give_dragon_away()
+            assert recipient in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))
+            assert CARD_DRA in pub.played_cards
+            assert pub.dragon_recipient == -1
+            pub.dragon_recipient = recipient
+        else:
+            # Stich selbst kassieren
+            recipient = pub.trick_owner_index
+
+        # Punkte im Stich dem Spieler gut schreiben
+        pub.points[recipient] += pub.trick_points
+        assert -25 <= pub.points[recipient] <= 125
+
+        # Stich zurücksetzen
+        pub.trick_owner_index = -1
+        pub.trick_cards = []
+        pub.trick_combination = (CombinationType.PASS, 0, 0)
+        pub.trick_points = 0
+        pub.trick_counter += 1
+        if clients_joined:
+            await self._broadcast("trick_taken", {"player_index": recipient})
 
     # ------------------------------------------------------
     # Eigenschaften
