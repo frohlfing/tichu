@@ -144,11 +144,12 @@ const Modals = (() => {
 
     /**
      * Zeigt den RoundOver-Dialog an.
-     *
-     * @param {string} text - Ergebnistext
      */
-    function showRoundOverDialog(text) {
-        _roundOverText.textContent = text;
+    function showRoundOverDialog() {
+        const entry = State.getLastScoreEntry();
+        const entry20 = entry[0].toString().padStart(4, '0');
+        const entry31 = entry[1].toString().padStart(4, '0');
+        _roundOverText.textContent = `${entry20} : ${entry31}`;
         _showModal(_roundOverDialog);
     }
 
@@ -168,11 +169,12 @@ const Modals = (() => {
 
     /**
      * Zeigt den GameOver-Dialog an.
-     *
-     * @param {string} text - Ergebnistext
      */
     function showGameOverDialog(text) {
-        _gameOverText.textContent = text;
+        const total = State.getTotalScore();
+        const total20 = total[0].toString().padStart(4, '0');
+        const total31 = total[1].toString().padStart(4, '0');
+        _gameOverText.textContent = `${total20} : ${total31}`;
         _showModal(_gameOverDialog);
     }
 

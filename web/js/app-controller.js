@@ -48,10 +48,12 @@ const AppController = (() => {
         EventBus.on("tableView:schupf", _handleTableViewSchupf);
         EventBus.on("tableView:play", _handleTableViewPlay);
         EventBus.on("tableView:bomb", _handleTableViewBomb);
-        EventBus.on("tableView:wish", _handleTableViewWish);
-        EventBus.on("tableView:giveDragonAway", _handleTableViewGiveDragonAway);
         EventBus.on("tableView:gameOver", _handleTableViewGameOver);
         EventBus.on("tableView:exit", _handleTableViewExit);
+
+        // Ereignishändler für Dialoge einrichten
+        EventBus.on("wishDialog:select", _handleWishDialogSelect);
+        EventBus.on("dragonDialog:select", _handleDragonDialogSelect);
 
         Network.init();
         SoundManager.init();
@@ -140,6 +142,7 @@ const AppController = (() => {
     function _handleServerRequest(request) {
         console.log("App._handleServerRequest()", request.request_id, request.action, request);
         _setRequest(request.request_id, request.action);
+        // todo prüfen, ob Status synchron ist. Wenn immer ja, können wir es später hier rauswerfen und statt dessen bei einem Fehler mitliefern.
         State.setPublicState(request.public_state)
         State.setPrivateState(request.private_state)
         // switch (request.action) {
@@ -185,31 +188,21 @@ const AppController = (() => {
                 State.setPlayerName(context.player_index, context.player_name);
                 State.setHostIndex(context.host_index);
                 break;
-            case "players_swapped": // Der Index zweier Spieler wurde getauscht.
-                const name1 = State.getPlayerName(context.player_index_1);
-                const name2 = State.getPlayerName(context.player_index_2);
-                State.setPlayerName(context.player_index_1, name2);
-                State.setPlayerName(context.player_index_2, name1);
-                if (State.getPlayerIndex() === context.player_index_1) {
-                    State.setPlayerIndex(context.player_index_2);
-                }
-                else if (State.getPlayerIndex() === context.player_index_2) {
-                    State.setPlayerIndex(context.player_index_1);
-                }
+            case "players_swapped": // Die Position zweier Spieler wurde getauscht.
+                State.swapPlayerNames(context.player_index_1, context.player_index_2);
                 break;
             case "game_started": // Das Spiel wurde gestartet.
                 State.setRunning(true);
-                State.resetGameScore();
+                State.resetGame();
                 break;
             case "round_started": // Eine neue Runde beginnt. Die Karten werden gemischt.
-                // todo State zurücksetzen
+                State.resetRound();
                 break;
             case "hand_cards_dealt": // Handkarten wurden an die Spieler verteilt.
-                State.setHostIndex(context.hand_cards);
-                const count = context.hand_cards;
-                State.setCountHandCards(1, count);
-                State.setCountHandCards(2, count);
-                State.setCountHandCards(3, count);
+                State.setHandCards(context.hand_cards);
+                for (let playerIndex = 1; playerIndex <= 3; playerIndex++) {
+                    State.setCountHandCards(playerIndex, context.hand_cards.length);
+                }
                 break;
             case "player_grand_announced": // Der Spieler hat ein großes Tichu angesagt oder abgelehnt.
                 State.setAnnouncement(context.player_index, context.announced ? 2 : 0);
@@ -222,6 +215,9 @@ const AppController = (() => {
                 break;
             case "player_schupfed": // Der Spieler hat drei Karten zum Tausch abgegeben.
                 if (context.given_schupf_cards) { // Der Benutzer hat geschupft.
+                    // todo ist es robuster, die übrigen Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben)
+                    const cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.given_schupf_cards));
+                    State.setHandCards(cards);
                     State.setGivenSchupfCards(context.given_schupf_cards);
                     _removeRequest();
                 }
@@ -231,27 +227,46 @@ const AppController = (() => {
                 break;
             case "schupf_cards_dealt": // Die Tauschkarten wurden an die Spieler verteilt.
                 State.setReceivedSchupfCards(context.received_schupf_cards);
+                // todo ist es robuster, die übrigen Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben, es sei denn, es ist konstant)
+                const cards = State.getHandCards().concat(context.received_schupf_cards);
+                Lib.sortCards(cards)
+                State.setHandCards(cards);
+                for (let playerIndex = 1; playerIndex <= 3; playerIndex++) {
+                    State.setCountHandCards(playerIndex, 14);
+                }
                 break;
             case "player_passed": // Der Spieler hat gepasst.
-                // {player_index: int}
                 if (context.player_index === State.getPlayerIndex()) {
                     _removeRequest();
                 }
                 break;
             case "player_played": // Der Spieler hat Karten ausgespielt.
             case "player_bombed": // Der Spieler hat eine Bombe geworfen.
-                // {player_index: int, cards: Cards}
-                State.setTrickOwnerIndex(context.player_index);
-                State.setTrickCards(context.cards);
-                // State.setTricks() todo addTrick()
-                if (context.player_index === State.getPlayerIndex()) {
-                    _removeRequest();
-                    let cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.cards));
+                if (context.turn[0] === State.getPlayerIndex()) {
+                    // todo ist es robuster, die übrigen Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben, es sei denn, es ist konstant)
+                    let cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.turn[1]));
                     State.setHandCards(cards);
+                    _removeRequest();
                 }
                 else {
-                    State.setCountHandCards(context.player_index, State.getCountHandCards() - context.cards.length);
+                    // todo ist es robuster, die Anzahl der Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben, es sei denn, es ist konstant)
+                    State.setCountHandCards(context.turn[0], State.getCountHandCards() - context.turn[1].length);
                 }
+                // todo Ausnahme bei played_cards? Wird nicht komplett übergeben (weil für Regelwerk nicht wichtig).
+                State.setPlayedCards(State.getPlayedCards().concat(context.turn[1]));
+                // todo Ausnahme bei tricks? Liste der Spielzüge wird nicht übergeben (ist für das Regelwerk unwichtig).
+                // todo eine Funktion State.addTurn() bereitstellen
+                if (State.getTrickOwnerIndex() === -1) { // neuer Stich?
+                    State.addTrick([context.turn]);
+                }
+                else {
+                    State.getLastTrick().push(context.turn);
+                }
+                State.setTrickOwnerIndex(context.turn[0]);
+                State.setTrickCards(context.turn[1]);
+                State.setTrickCombination(context.turn[2]);
+                State.setTrickPoints(context.trick_points);
+                State.setWinnerIndex(context.winner_index);
                 break;
             case "wish_made": // Ein Kartenwert wurde sich gewünscht.
                 State.setWishValue(context.wish_value);
@@ -260,27 +275,39 @@ const AppController = (() => {
                 }
                 break;
             case "wish_fulfilled": // Der Wunsch wurde erfüllt.
+                // todo Wert übergeben
                 State.setWishValue(-State.getWishValue());
                 break;
             case "trick_taken": // Der Spieler hat den Stich kassiert.
-                // {player_index: int}
-                // State.setTricks() todo addTrick()
-                if (State.isCurrentPlayer()) {
+                State.setTrickOwnerIndex(-1);
+                State.setTrickCards([]);
+                State.setTrickCombination( /** @type Combination */[CombinationType.PASS, 0, 0]);
+                State.setTrickPoints(0);
+                State.setTrickCounter(State.getTrickCounter() + 1);  // todo wird nicht übergeben, da unwichtig
+                State.setPoints(context.player_index, context.points);
+                State.setDragonRecipient(context.dragon_recipient);
+                if (State.isCurrentPlayer() && _request && _request.action === "give_dragon_away") {
                     _removeRequest();
                 }
                 break;
             case "player_turn_changed": // Der Spieler ist jetzt am Zug.
                 State.setCurrentTurnIndex(context.current_turn_index);
+                State.setStartPlayerIndex(context.start_player_index);
                 break;
             case "round_over": // Die Runde ist vorbei und die Karten werden neu gemischt.
-                const entry20 = context.score_entry[0].toString().padStart(4, '0');
-                const entry31 = context.score_entry[1].toString().padStart(4, '0');
-                Modals.showRoundOverDialog(`${entry20} : ${entry31}`)
+                for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
+                    State.setPoints(playerIndex, context.points[playerIndex]);
+                }
+                State.setLoserIndex(context.loser_index);
+                State.setDoubleVictory(context.is_double_victory);
+                // todo GameScore sollte besser übergeben werden
+                State.addGameScoreEntry([context.points[2] + context.points[0], context.points[3] + context.points[1]])
+                State.setRoundCounter(State.getRoundCounter() + 1); // todo wird nicht übergeben, da unwichtig
+                Modals.showRoundOverDialog()
                 break;
             case "game_over": // Die Runde ist vorbei und die Partie ist entschieden.
-                const score20 = Lib.sum(context.game_score[0]).toString().padStart(4, '0');
-                const score31 = Lib.sum(context.game_score[1]).toString().padStart(4, '0');
-                Modals.showGameOverDialog(`${score20} : ${score31}`)
+                State.setRunning(false);
+                Modals.showGameOverDialog()
                 break;
             default:
                 console.error('App: Unbehandelte Server-Notification:', notification.event);
@@ -421,42 +448,6 @@ const AppController = (() => {
     }
 
     /**
-     * Wird aufgerufen, wenn der Benutzer sich einen Kartenwert wünschen möchte.
-     *
-     * @param wishValue - Der gewünschte Kartenwert.
-     */
-    function _handleTableViewWish(wishValue) {
-        if (!_request || _request.action  !== "wish") {
-            Modals.showErrorToast("Keine Anfrage für Wünschen erhalten.");
-            return
-        }
-        Network.send("response", {
-            request_id: _request.id,
-            response_data: {
-                wish_value: wishValue
-            }
-        });
-    }
-
-    /**
-     * Wird aufgerufen, wenn der Benutzer den Gegner ausgewählt hat, der den Drachen geschenkt bekommen soll.
-     *
-     * @param {number} dragonRecipient - Der Index des Spielers, der den Drachen bekommt (kanonisch).
-     */
-    function _handleTableViewGiveDragonAway(dragonRecipient) {
-        if (!_request || _request.action  !== "give_dragon_away") {
-            Modals.showErrorToast("Keine Anfrage für Wünschen erhalten.");
-            return
-        }
-        Network.send("response", {
-            request_id: _request.id,
-            response_data: {
-                dragon_recipient: dragonRecipient
-            }
-        });
-    }
-
-    /**
      * Wird aufgerufen, wenn der Benutzer die Punktetabelle schließt und ein damit die Partie abgeschlossen ist.
      */
     function _handleTableViewGameOver() {
@@ -469,6 +460,47 @@ const AppController = (() => {
     function _handleTableViewExit() {
         Network.send('leave');
         ViewManager.showLoadingView();
+    }
+
+    // --------------------------------------------------------------------------------------
+    // Ereignishändler für die Dialoge
+    // --------------------------------------------------------------------------------------
+
+    /**
+     * Ereignishändler für den Wish-Dialog.
+     *
+     * @param {number} value - Der gewählte Kartenwert (2 bis 14).
+     */
+    function _handleWishDialogSelect(value) {
+        if (!_request || _request.action  !== "wish") {
+            Modals.showErrorToast("Keine Anfrage für Wünschen erhalten.");
+            return
+        }
+        Network.send("response", {
+            request_id: _request.id,
+            response_data: {
+                wish_value: value
+            }
+        });
+    }
+
+    /**
+     * Ereignishändler für den Dragon-Dialog.
+     *
+     * @param {number} value - Der gewählte Gegner (1 == rechts, 3 == links).
+     */
+    function _handleDragonDialogSelect(value) {
+        if (!_request || _request.action  !== "give_dragon_away") {
+            Modals.showErrorToast("Keine Anfrage für Wünschen erhalten.");
+            return
+        }
+        const dragonRecipient = Lib.getCanonicalPlayerIndex(value);
+        Network.send("response", {
+            request_id: _request.id,
+            response_data: {
+                dragon_recipient: dragonRecipient
+            }
+        });
     }
 
     // --------------------------------------------------------------------------------------

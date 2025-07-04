@@ -387,8 +387,8 @@ class GameEngine:
                     priv.hand_cards += priv.received_schupf_cards
                     assert len(priv.hand_cards) == 14
                     pub.count_hand_cards[player_index] = 14
-                    if clients_joined:
-                        await self._broadcast("schupf_cards_dealt")
+                if clients_joined:
+                    await self._broadcast("schupf_cards_dealt")  # wird nur einmal gesendet!
 
                 # Startspieler bekannt geben
                 for player_index in range(4):
@@ -398,7 +398,7 @@ class GameEngine:
                         pub.current_turn_index = player_index
                         break
                 if clients_joined:
-                    await self._broadcast("player_turn_changed", {"current_turn_index": pub.current_turn_index})
+                    await self._broadcast("player_turn_changed", {"current_turn_index": pub.current_turn_index, "start_player_index": pub.start_player_index})
 
                 # los geht's - das eigentliche Spiel kann beginnen...
                 assert 0 <= pub.current_turn_index <= 3
@@ -481,13 +481,18 @@ class GameEngine:
                             # Gespielte Karten merken
                             assert not set(cards).intersection(pub.played_cards)  # darf keine Schnittmenge bilden
                             pub.played_cards += cards
-                            if bomb:
-                                if clients_joined:
-                                    await self._broadcast("player_bombed", {"player_index": pub.current_turn_index, "cards": cards})
-                                bomb = None
-                            else:
-                                if clients_joined:
-                                    await self._broadcast("player_played", {"player_index": pub.current_turn_index, "cards": cards})
+
+                            # ist der erste Spieler fertig?
+                            if pub.count_hand_cards[pub.current_turn_index] == 0:
+                                n = pub.count_active_players
+                                assert 1 <= n <= 3
+                                if n == 3:
+                                    assert pub.winner_index == -1
+                                    pub.winner_index = pub.current_turn_index
+
+                            if clients_joined:
+                                await self._broadcast("player_bombed" if bomb else "player_played", {"turn": [pub.current_turn_index, pub.trick_cards, pub.trick_combination], "trick_points": pub.trick_points, "winner_index": pub.winner_index})
+                            bomb = None
 
                             # Wunsch erfüllt?
                             assert pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
@@ -501,10 +506,7 @@ class GameEngine:
                             if pub.count_hand_cards[pub.current_turn_index] == 0:
                                 n = pub.count_active_players
                                 assert 1 <= n <= 3
-                                if n == 3:
-                                    assert pub.winner_index == -1
-                                    pub.winner_index = pub.current_turn_index
-                                elif n == 2:
+                                if n == 2:
                                     assert 0 <= pub.winner_index <= 3
                                     if (pub.current_turn_index + 2) % 4 == pub.winner_index:  # Doppelsieg?
                                         pub.is_round_over = True
@@ -587,8 +589,7 @@ class GameEngine:
                 if break_time:
                     await asyncio.sleep(break_time)
                 if clients_joined:
-                    score_entry = pub.game_score[0][-1], pub.game_score[1][-1]
-                    await self._broadcast("round_over", {"score_entry": score_entry, "is_double_victory": pub.is_double_victory})
+                    await self._broadcast("round_over", {"points": pub.points, "loser_index": pub.loser_index, "is_double_victory": pub.is_double_victory})
 
             # Partie ist beendet
             score20, score31 = pub.total_score
@@ -699,7 +700,7 @@ class GameEngine:
         pub.trick_points = 0
         pub.trick_counter += 1
         if clients_joined:
-            await self._broadcast("trick_taken", {"player_index": recipient})
+            await self._broadcast("trick_taken", {"player_index": recipient, "points": pub.points[recipient], "dragon_recipient": pub.dragon_recipient})
 
     # ------------------------------------------------------
     # Eigenschaften

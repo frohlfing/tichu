@@ -161,9 +161,7 @@ const TableView = (() => {
         // Netzwerk-Ereignisse
         //EventBus.on("network:message", _handleNetworkMessage);
 
-        // Ereignishändler für die Dialoge einrichten
-        EventBus.on("wishDialog:select", _handleWishDialogSelect);
-        EventBus.on("dragonDialog:select", _handleDragonDialogSelect);
+        // Ereignishändler für Dialoge einrichten
         EventBus.on("exitDialog:select", _handleExitDialogSelect);
 
         // Ereignishändler für die Controls einrichten
@@ -324,24 +322,6 @@ const TableView = (() => {
     // --------------------------------------------------------------------------------------
     // Ereignishändler für die Dialoge
     // --------------------------------------------------------------------------------------
-
-    /**
-     * Ereignishändler für den Wish-Dialog.
-     *
-     * @param {number} value - Der gewählte Kartenwert (2 bis 14).
-     */
-    function _handleWishDialogSelect(value) {
-        EventBus.emit("tableView:wish", value);
-    }
-
-    /**
-     * Ereignishändler für den Dragon-Dialog.
-     *
-     * @param {number} value - Der gewählte Gegner (1 == rechts, 3 == links).
-     */
-    function _handleDragonDialogSelect(value) {
-        EventBus.emit("tableView:giveDragonAway", value);
-    }
 
     /**
      * Ereignishändler für den Exit-Dialog.
@@ -667,6 +647,10 @@ const TableView = (() => {
         // ausgespielte Karten entfernen
         for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
             _trickZones[relativeIndex].replaceChildren();
+        }
+
+        if (State.getTrickOwnerIndex() === -1) {
+            return; // kein offener Stich
         }
 
         // Spielzüge anzeigen

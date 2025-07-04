@@ -105,7 +105,7 @@ class PublicState:
         self.wish_value = 0
         self.dragon_recipient = -1
         self.trick_owner_index = -1
-        self.trick_cards = []  # todo wird vermutlich überhaupt nicht aktualisiert
+        self.trick_cards = []
         self.trick_combination = (CombinationType.PASS, 0, 0)
         self.trick_points = 0
         self.tricks = []

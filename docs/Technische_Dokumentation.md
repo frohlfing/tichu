@@ -374,20 +374,20 @@ Benachrichtigung an alle Spieler
 | "hand_cards_dealt"       | `{count: int}` -> `{hand_cards: Cards}`                                                                                           | Handkarten wurden an die Spieler verteilt.                      |
 | "player_grand_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.       |
 | "player_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                   |
-| "player_schupfed"        | `{player_index: int}` -> `{given_schupf_cards: [Card, Card, Card]}` (für rechten Gegner, Partner, linken Gegner)                  | Der Spieler hat drei Karten zum Tausch abgegeben.               |
+| "player_schupfed"        | `{player_index: int}` (->) `{given_schupf_cards: [Card, Card, Card]}` (für rechten Gegner, Partner, linken Gegner)                | Der Spieler hat drei Karten zum Tausch abgegeben.               |
 | "schupf_cards_dealt"     | `None` -> `{received_schupf_cards: [Card, Card, Card]}` (vom rechten Gegner, Partner, linken Gegner)                              | Die Tauschkarten wurden an die Spieler verteilt.                |
 | "player_passed"          | `{player_index: int}`                                                                                                             | Der Spieler hat gepasst.                                        |
-| "player_played"          | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat Karten ausgespielt.                             |
-| "player_bombed"          | `{player_index: int, cards: Cards}`                                                                                               | Der Spieler hat eine Bombe geworfen.                            |
+| "player_played"          | `{turn: Turn, trick_points: int, winner_index: int}` (Turn = [player_index, cards, combination])                                  | Der Spieler hat Karten ausgespielt.                             |
+| "player_bombed"          | `{turn: Turn, trick_points: int, winner_index: int}` (Turn = [player_index, cards, combination])                                  | Der Spieler hat eine Bombe geworfen.                            |
 | "wish_made"              | `{wish_value: int}`                                                                                                               | Ein Kartenwert wurde sich gewünscht.                            |
 | "wish_fulfilled"         |                                                                                                                                   | Der Wunsch wurde erfüllt.                                       |
-| "trick_taken"            | `{player_index: int}`                                                                                                             | Der Spieler hat den Stich kassiert.                             |
-| "player_turn_changed"    | `{current_turn_index: int}`                                                                                                       | Der Spieler ist jetzt am Zug.                                   |
-| "round_over"             | `{score20: int, score31: int, is_double_victory: bool}`                                                                           | Die Runde ist vorbei und die Karten werden neu gemischt.        |
+| "trick_taken"            | `{player_index: int, points: int, dragon_recipient: int}`                                                                         | Der Spieler hat den Stich kassiert.                             |
+| "player_turn_changed"    | `{current_turn_index: int, start_player_index: int}`                                                                              | Der Spieler ist jetzt am Zug.                                   |
+| "round_over"             | `{points: (int, int, int, int), loser_index: int, is_double_victory: bool)}`                                                      | Die Runde ist vorbei und die Karten werden neu gemischt.        |
 | "game_over"              | `{game_score: (list, list)}`                                                                                                      | Die Runde ist vorbei und die Partie ist entschieden.            |
 
 "->" bedeutet, dass der Peer den vom Server gesendeten Kontext mit privaten Statusinformationen des Spielers anreichert, bevor er es an den Spieler weiterleitet.
-Bei "player_joined" und "player_schupfed" ändert der Peer den Kontext nur, wenn es sich um den eigenen Spieler handelt.
+Bei "player_joined" und "player_schupfed" wird auch für Mitspieler aufgerufen, dann ändert der Peer den Kontext nicht.
 
 ### 7.2.3. Fehlermeldungen
 

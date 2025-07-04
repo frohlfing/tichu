@@ -11,11 +11,9 @@
 # Frontend
 
 ## Bugs:
-* Beim Client-Reload geht requestId serverseitig verloren.
 * Zurückgenommene Schupfkarten werden nicht richtig einsortiert.
-* Stich wird visuell nicht abgeräumt.
+* Wenn Mitspieler schupft, wird beim Spieler die Schupfzone geleert.
 * Tichu-Button nicht disable, obwohl Karten gespielt.
-* Nach Rundenende wird etwas gewartet, und dann >> Peer Frank: Räume Warte-Tasks für 'play' auf. (peer, line 271)
 
 ## Features:
 * Animationen

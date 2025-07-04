@@ -156,6 +156,44 @@ const State = (() => {
         _privateState = privateState;
     }
 
+    /**
+     * Setzt den Spielzustand für eine neue Runde zurück.
+     */
+    function resetRound() {
+        // öffentlicher Spielzustand
+        _publicState.current_turn_index = -1;
+        _publicState.start_player_index = -1;
+        _publicState.count_hand_cards = [0, 0, 0, 0];
+        _publicState.played_cards = /** @type Cards */ [];
+        _publicState.announcements = [0, 0, 0, 0];
+        _publicState.wish_value = 0;
+        _publicState.dragon_recipient = -1;
+        _publicState.trick_owner_index = -1;
+        _publicState.trick_cards = /** @type Cards */ [];
+        _publicState.trick_combination = /** @type Combination */ [0, 0, 0];
+        _publicState.trick_points = 0;
+        _publicState.tricks = /** @type Array<Trick> */ [];
+        _publicState.points = [0, 0, 0, 0];
+        _publicState.winner_index = -1;
+        _publicState.loser_index = -1;
+        _publicState.is_round_over = false;
+        _publicState.is_double_victory = false;
+        // privater Spielzustand
+        _privateState.hand_cards = [];
+        _privateState.given_schupf_cards = null;
+        _privateState.received_schupf_cards = null;
+    }
+
+    /**
+     * Setzt den Spielzustand für eine neue Partie zurück.
+     */
+    function resetGame() {
+        resetRound();
+        _publicState.game_score = /** @type GameScore */ [[], []];
+        _publicState.round_counter = 0;
+        _publicState.trick_counter = 0;
+    }
+    
     // öffentlicher Spielzustand
 
     /** @returns {string} Den eindeutige Namen des aktuellen Tisches. */
@@ -180,6 +218,24 @@ const State = (() => {
      */
     function setPlayerName(playerIndex, name) {
         _publicState.player_names[playerIndex] = name;
+    }
+
+    /**
+     * Vertauscht die Position der beiden Spieler.
+     *
+     * @param {number} playerIndex1 - Der Index des ersten Spielers.
+     * @param {number} playerIndex2 - Der Index des zweiten Spielers.
+     */
+    function swapPlayerNames(playerIndex1, playerIndex2) {
+        const name1 = _publicState.player_names[playerIndex1];
+        _publicState.player_names[playerIndex1] = _publicState.player_names[playerIndex2];
+        _publicState.player_names[playerIndex2] = name1;
+        if (_privateState.player_index === playerIndex1) {
+            _privateState.player_index = playerIndex2;
+        }
+        else if (_privateState.player_index === playerIndex2) {
+            _privateState.player_index = playerIndex1;
+        }
     }
 
     /** @returns {number} Index des Clients, der Host ist (-1 = kein Client). */
@@ -361,6 +417,15 @@ const State = (() => {
     }
 
     /**
+     * Fügt einen neuen Stich zur Liste hinzu.
+     *
+     * @param {Trick} trick Der neue Stich.
+     */
+    function addTrick(trick) {
+        _publicState.tricks.push(trick);
+    }
+
+    /**
      * @param {number|null} playerIndex - Der Index des Spielers. Wenn nicht angegeben, wird der Index des Benutzers genommen.
      * @returns {number} Bisher kassierte Punkte des Spielers in der aktuellen Runde.
      */
@@ -425,11 +490,17 @@ const State = (() => {
     }
 
     /**
-     * @param {[number, number]} score - Ergebnis einer Partie (Punkte für Team 20 und für Team 31).
+     * @param {[number, number]} score - Ergebnis der letzten Runde (Punkte für Team 20 und für Team 31).
      */
     function addGameScoreEntry(score) {
         _publicState.game_score[0].push(score[0]);
         _publicState.game_score[1].push(score[1]);
+    }
+
+    /** @returns {[number, number]} Ergebnis der letzten Runde. */
+    function getLastScoreEntry(){
+        const n = _publicState.game_score[0].length;
+        return n ? [_publicState.game_score[0][n - 1], _publicState.game_score[1][n - 1]] : [0, 0];
     }
 
     /**
@@ -449,6 +520,26 @@ const State = (() => {
     function isGameOver(){
         const score = getTotalScore();
         return score[0] >= 1000 || score[1] >= 1000;
+    }
+
+    /** @returns {number} Anzahl der abgeschlossenen Runden der Partie. */
+    function getRoundCounter(){
+        return _publicState.round_counter;
+    }
+
+    /** @param {number} value - Anzahl der abgeschlossenen Runden der Partie. */
+    function setRoundCounter(value) {
+        _publicState.round_counter = value;
+    }
+
+    /** @returns {number} Anzahl der abgeräumten Stiche insgesamt über alle Runden. */
+    function getTrickCounter(){
+        return _publicState.trick_counter;
+    }
+
+    /** @param {number} value - Anzahl der abgeräumten Stiche insgesamt über alle Runden. */
+    function setTrickCounter(value) {
+        _publicState.trick_counter = value;
     }
 
     // /** @returns {boolean} Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing"). */
@@ -600,10 +691,11 @@ const State = (() => {
     return {
         setPublicState,
         setPrivateState,
+        resetRound, resetGame,
 
         // öffentlicher Spielzustand
         getTableName,
-        getPlayerName, setPlayerName,
+        getPlayerName, setPlayerName, swapPlayerNames,
         getHostIndex, setHostIndex, isHost,
         isRunning, setRunning,
         getCurrentTurnIndex, setCurrentTurnIndex, isCurrentPlayer,
@@ -617,13 +709,15 @@ const State = (() => {
         getTrickCards, setTrickCards,
         getTrickCombination, setTrickCombination,
         getTrickPoints, setTrickPoints,
-        getTricks, setTricks, getLastTrick,
+        getTricks, setTricks, getLastTrick, addTrick,
         getPoints, setPoints,
         getWinnerIndex, setWinnerIndex,
         getLoserIndex, setLoserIndex,
         isRoundOver, setRoundOver,
         isDoubleVictory, setDoubleVictory,
-        getGameScore, addGameScoreEntry, resetGameScore,
+        getGameScore, addGameScoreEntry, getLastScoreEntry, resetGameScore,
+        getRoundCounter, setRoundCounter,
+        getTrickCounter, setTrickCounter,
         getTotalScore,
         isGameOver,
         //getPhase,
