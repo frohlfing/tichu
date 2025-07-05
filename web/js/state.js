@@ -150,10 +150,8 @@ const State = (() => {
      * @param {PrivateState} privateState - Der private Spielzustand.
      */
     function setPrivateState(privateState) {
-        if (!Lib.isCardsEqual(_privateState.hand_cards, privateState.hand_cards)) {
-             _combinationCache = [];
-        }
         _privateState = privateState;
+        _combinationCache = [];
     }
 
     /**
@@ -566,11 +564,9 @@ const State = (() => {
 
     /** @param {Cards} cards - Die aktuellen Handkarten des Benutzers. */
     function setHandCards(cards) {
-        if (!Lib.isCardsEqual(_privateState.hand_cards, cards)) {
-            _combinationCache = [];
-        }
         _privateState.hand_cards = cards;
         _publicState.count_hand_cards[_privateState.player_index] = cards.length;
+        _combinationCache = [];
     }
 
     /** @returns {[Card, Card, Card] | null} Die drei Karten (für rechten Gegner, Partner, linken Gegner), die der Benutzer weitergegeben hat. */
@@ -663,15 +659,14 @@ const State = (() => {
     /**
      * Ermittelt die Kombination der gegebenen Karten, wenn sie spielbar sind.
      *
-     * @param {Cards} cards - Die Karten, die ausgespielt werden sollen.
+     * @param {Cards} cards - Die Karten.
      * @returns {[Cards, Combination]|null} - Kombination der Karten falls sie spielbar sind, sonst null.
      */
     function findPlayableCombination(cards) {
-        const combis = getCombinations();
-        const playableCombis = Lib.buildActionSpace(combis, _publicState.trick_combination, _publicState.wish_value);
-        for (let combi of playableCombis) {
-            if (Lib.isCardsEqual(cards, combi[0])) {
-                return combi;
+        const actionSpace = Lib.buildActionSpace(getCombinations(), _publicState.trick_combination, _publicState.wish_value);
+        for (let playableCombination of actionSpace) {
+            if (Lib.isCardsEqual(cards, playableCombination[0])) {
+                return playableCombination;
             }
         }
         return null;

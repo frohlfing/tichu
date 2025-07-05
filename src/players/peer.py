@@ -10,7 +10,7 @@ from aiohttp.web import WebSocketResponse
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import Card, Cards, stringify_cards, deck, CARD_MAH, CardSuit
-from src.lib.combinations import Combination, build_action_space, CombinationType, FIGURE_DRA
+from src.lib.combinations import Combination, build_action_space, CombinationType, FIGURE_DRA, get_combination
 # noinspection PyUnresolvedReferences
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError, ErrorCode
 from src.players.player import Player
@@ -134,7 +134,7 @@ class Peer(Player):
 
         todo Der Client kündigt die Bombe nur an. Welche Bombe es ist, wird explizit gefragt, sobald er am Zug ist.
 
-        :param cards: Die Karten, aus denen die Bombe gebildet wurde.
+        :param cards: Die Karten, aus denen die Bombe gebildet wurde. Werden absteigend sortiert (mutable!).
         """
         # Parameter ok?
         if not isinstance(cards, list):
@@ -151,7 +151,7 @@ class Peer(Player):
             return
 
         # Sind die Karten unterschiedlich?
-        if len(set(cards)) != len(cards):  # todo testen!
+        if len(set(cards)) != len(cards):
             msg = "Mindestens zwei Karten sind identisch"
             logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
             await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": cards})
@@ -166,10 +166,10 @@ class Peer(Player):
 
         # Kombination der Bombe ermitteln. Ist sie spielbar?
         combination = None
-        possible_combinations = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-        for cards_, combi in possible_combinations:
-            if combi[0] == CombinationType.BOMB and cards == cards_:
-                combination = combi
+        action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
+        for playable_cards, playable_combination in action_space:
+            if playable_combination[0] == CombinationType.BOMB and set(cards) == set(playable_cards):
+                combination = playable_combination
                 break
         if combination is None:
             msg = "Die Karten bilden keine spielbare Bombe"
@@ -464,7 +464,7 @@ class Peer(Player):
                 continue
 
             # Sind die Karten unterschiedlich?
-            if len(set(cards)) != len(cards):  # todo testen!
+            if len(set(cards)) != len(cards):
                 msg = "Mindestens zwei Karten sind identisch"
                 logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
                 await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": cards})
@@ -480,11 +480,12 @@ class Peer(Player):
                 continue
 
             # Kombination ermitteln. Ist sie spielbar?
-            possible_combinations = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-            for cards_, combi in possible_combinations:
-                if cards == cards_:
-                    combination = combi
+            action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
+            for playable_cards, playable_combination in action_space:
+                if set(cards) == set(playable_cards):
+                    combination = playable_combination
                     break
+
             if combination is None:
                 msg = "Die Karten bilden keine spielbare Kombination"
                 logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
@@ -529,10 +530,10 @@ class Peer(Player):
 
         # Ist die Kombination noch spielbar?
         combination = None
-        possible_combinations = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-        for cards_, combi in possible_combinations:
-            if combi[0] == CombinationType.BOMB and cards == cards_:
-                combination = combi
+        action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
+        for playable_cards, playable_combination in action_space:
+            if playable_combination[0] == CombinationType.BOMB and set(cards) == set(playable_cards):
+                combination = playable_combination
                 break
         if combination is None:
             msg = "Die Karten bilden keine spielbare Bombe"

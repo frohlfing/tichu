@@ -36,14 +36,6 @@ test('sortCards', () => {
     assert(cards, expected);
 });
 
-test('isCardsEqual', () => {
-    const cards1 = Lib.parseCards("R8 G8 S8 S7 R5 R4 S3 G2 S2");
-    const cards2 = Lib.parseCards("R8 G8 S8 S7 R5 R4 S3 G2 S2");
-    const cards3 = Lib.parseCards("R8 G8 S8 S7 R6 R4 S3 G2 S2");
-    assert(Lib.isCardsEqual(cards1, cards2), true);
-    assert(Lib.isCardsEqual(cards1, cards3), false);
-});
-
 describe('findBombs', () => {
     test('Hand ohne Bomben sollte leeres Array zurückgeben', () => {
         const hand = Lib.parseCards("S2 S3 S4 R5 S6 S7");

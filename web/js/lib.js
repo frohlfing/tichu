@@ -247,12 +247,19 @@ const Lib = (() => {
      *
      * Es wird vorausgesetzt, dass beide Arrays absteigend sortiert sind.
      *
-     * @param {Cards} cards1
-     * @param {Cards} cards2
-     * @returns {boolean}
+     * @param {Cards} cards1 - Der erste Kartenstapel.
+     * @param {Cards} cards2 - Der zweite Kartenstapel.
+     * @returns {boolean} True, wenn die Kartenstapel gleich sind, sonst false.
      */
     function isCardsEqual(cards1, cards2) {
-        return cards1.length === cards2.length && cards1.every((card, i) => isCardEqual(card, cards2[i]));
+        if (cards1.length !== cards2.length) {
+            return false;
+        }
+        cards1 = [...cards1] // Kopie anlegen, damit die Sortierung die Parameter nicht ändert
+        cards2 = [...cards2]
+        sortCards(cards1)
+        sortCards(cards2)
+        return cards1.every((card, i) => isCardEqual(card, cards2[i]));
     }
 
     /**
@@ -265,18 +272,18 @@ const Lib = (() => {
     }
 
     /**
-     * Prüft, ob eine Karte in einem Array von Karten enthalten ist.
+     * Prüft, ob eine bestimmte Karte in einem Kartenstapel enthalten ist.
      *
      * @param {Card} cardToFind - Die gesuchte Karte.
-     * @param {Cards} cards - Die gegebenen Karten.
-     * @returns {boolean} True, wenn die Karte unter den gegebenen ist.
+     * @param {Cards} cards - Der Kartenstapel.
+     * @returns {boolean} True, wenn die Karte im Kartenstapel ist.
      */
     function includesCard(cardToFind, cards) {
         return cards.some(card => isCardEqual(card, cardToFind));
     }
 
     /**
-     * Ermittelt, ob sich die beiden Karten-Arrays überschneiden.
+     * Ermittelt, ob sich die beiden Kartenstapel überschneiden.
      *
      * @param {Cards} cards1 - Das erste Karten-Array.
      * @param {Cards} cards2 - Das zweite Karten-Array.
@@ -374,6 +381,17 @@ const Lib = (() => {
     // --------------------------------------------------------------------------------------
     // Kombinationen (Python-Port von lib/combinations.py)
     // --------------------------------------------------------------------------------------
+
+    /**
+     * Prüft, ob zwei Kombinationen gleich sind.
+     *
+     * @param {Combination} combi1 - Die erste Kombination.
+     * @param {Combination} combi2 - Die zweite Kombination
+     * @returns {boolean} True, wenn die Kartenstapel gleich sind.
+     */
+    function isCombinationEqual(combi1, combi2) {
+        return combi1[0] === combi2[0] && combi1[1] === combi2[1] && combi1[2] === combi2[2];
+    }
 
     /**
      * Ermittelt die Kombination der gegebenen Karten.
@@ -825,6 +843,7 @@ const Lib = (() => {
         isCardEqual, isCardsEqual, sortCards, includesCard, hasIntersection,
         parseCard, parseCards, stringifyCard, stringifyCards,
         isWishIn, sumCardPoints, otherCards,
+        isCombinationEqual,
         getCombination, buildCombinations, removeCombinations, buildActionSpace,
         findBombs, getPlayableBombs,
     };
