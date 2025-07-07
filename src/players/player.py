@@ -68,7 +68,7 @@ class Player:
         """
         Die Engine fragt den Spieler, ob er ein großes Tichu ansagen möchte.
 
-        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein großes Tichu ansagen darf.
+        Die Engine ruft diese Methode direkt nach dem Austeilen der ersten 8 Karten auf.
         Die Bedingung ist::
             self.pub.announcements[self.priv.player_index] == 0 and
             self.pub.start_player_index == -1 and

@@ -10,7 +10,7 @@ from aiohttp.web import WebSocketResponse
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import Card, Cards, stringify_cards, deck, CARD_MAH, CardSuit
-from src.lib.combinations import Combination, build_action_space, CombinationType, FIGURE_DRA, get_combination
+from src.lib.combinations import Combination, build_action_space, CombinationType, FIGURE_DRA
 # noinspection PyUnresolvedReferences
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError, ErrorCode
 from src.players.player import Player
@@ -202,11 +202,12 @@ class Peer(Player):
         future.set_result(response_data)
         logger.debug(f"[{self._name}] Antwort an wartende Methode übergeben; Request-ID {request_id}.")
 
-    async def _ask(self, action: str, interruptable: bool = False) -> dict | None:
+    async def _ask(self, action: str, context: Optional[dict] = None, interruptable: bool = False) -> dict | None:
         """
         Sendet eine Anfrage an den Client und wartet auf dessen Antwort.
 
         :param action: Aktion (z.B. "play", "schupf"), die der Spieler ausführen soll.
+        :param context: (Optional) Zusätzliche Informationen zum Ereignis.
         :param interruptable: (Optional) Wenn True, kann die Anfrage durch ein Interrupt abgebrochen werden.
         :return: Die Antwort des Clients (`response_data`), oder None nach Kick-Out.
         :raises asyncio.CancelledError: Bei Shutdown.
@@ -229,8 +230,7 @@ class Peer(Player):
             "payload": {
                 "request_id": request_id,
                 "action": action,
-                "public_state": self.pub.to_dict(),
-                "private_state": self.priv.to_dict(),
+                "context": context if context else {},
             }
         }
         try:
@@ -379,7 +379,7 @@ class Peer(Player):
         """
         cards: Optional[Tuple[Card, Card, Card]] = None
         while cards is None:
-            response_data = await self._ask("schupf", interruptable=True)
+            response_data = await self._ask("schupf", {"hand_cards": self.priv.hand_cards}, interruptable=True)
 
             # Fallback bei Verbindungsabbruch
             if response_data is None:
@@ -439,7 +439,11 @@ class Peer(Player):
         cards = None
         combination = None
         while combination is None:
-            response_data = await self._ask("play", interruptable=True)
+            response_data = await self._ask("play", {
+                "hand_cards": self.priv.hand_cards,
+                "trick_combination": self.pub.trick_combination,
+                "wish_value": self.pub.wish_value,
+            }, interruptable=True)
 
             # Fallback bei Verbindungsabbruch
             if response_data is None:
@@ -650,19 +654,27 @@ class Peer(Player):
                 context = {
                     "session_id": self._session_id,
                     "public_state": self.pub.to_dict(),
-                    "private_state": self.priv.to_dict()
+                    "private_state": self.priv.to_dict(),
                 }
 
         elif event == "hand_cards_dealt":
-            assert context.get("count") == len(self.priv.hand_cards)
-            context = {"hand_cards": self.priv.hand_cards}
+            if context.get("player_index") == self.priv.player_index:
+                assert context.get("count") == len(self.priv.hand_cards)
+                context = {
+                    "hand_cards": self.priv.hand_cards,
+                }
 
         elif event == "player_schupfed":
             if context.get("player_index") == self.priv.player_index:
-                context = {"given_schupf_cards": self.priv.given_schupf_cards}
+                context = {
+                    "given_schupf_cards": self.priv.given_schupf_cards,
+                }
 
-        elif event == "schupf_cards_dealt":
-            context = {"received_schupf_cards": self.priv.received_schupf_cards}
+        elif event == "start_playing":
+            context = {
+                "start_player_index": self.pub.start_player_index,
+                "received_schupf_cards": self.priv.received_schupf_cards,
+            }
 
         notification_message = {
             "type": "notification",

@@ -23,7 +23,7 @@ const SoundManager = (() => {
         player_grand_announced_0: 'sounds/announce0.ogg', player_grand_announced_1: 'sounds/announce1.ogg', player_grand_announced_2: 'sounds/announce2.ogg', player_grand_announced_3: 'sounds/announce3.ogg',
         player_announced_0: 'sounds/announce0.ogg', player_announced_1: 'sounds/announce1.ogg', player_announced_2: 'sounds/announce2.ogg', player_announced_3: 'sounds/announce3.ogg',
         player_schupfed_0: 'sounds/schupf0.ogg', player_schupfed_1: 'sounds/schupf1.ogg', player_schupfed_2: 'sounds/schupf2.ogg', player_schupfed_3: 'sounds/schupf3.ogg',
-        schupf_cards_dealt: 'sounds/dealout.ogg',
+        start_playing: 'sounds/dealout.ogg',
         player_passed_0: 'sounds/pass0.ogg', player_passed_1: 'sounds/pass1.ogg', player_passed_2: 'sounds/pass2.ogg', player_passed_3: 'sounds/pass3.ogg',
         player_played_0: 'sounds/play0.ogg', player_played_1: 'sounds/play1.ogg', player_played_2: 'sounds/play2.ogg', player_played_3: 'sounds/play3.ogg',
         player_bombed_0: 'sounds/bomb0.ogg', player_bombed_1: 'sounds/bomb1.ogg', player_bombed_2: 'sounds/bomb2.ogg', player_bombed_3: 'sounds/bomb3.ogg',

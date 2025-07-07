@@ -316,78 +316,75 @@ Alle Nachrichten sind JSON-Objekte mit einem `type`-Feld und optional einem `pay
 
 Der WebSocket-Handler empfängt diese Nachrichten und leitet sie an deb Peer weiter.
 
-| Type             | Payload                                      | Beschreibung                                                                                                                 | Antwort vom Server (Type) | Antwort vom Server (Payload)                      |
-|------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|---------------------------|---------------------------------------------------|
-| `"leave"`        |                                              | Der Spieler möchte den Tisch verlassen.                                                                                      | keine Antwort             |                                                   |
-| `"swap_players"` | `{player_index_1: int, player_index_2: int}` | Der Host möchte die Position zweier Spieler vertauschen (der Host darf nicht verschoben werden; nur vor Spielstart möglich). | keine Antwort             |                                                   |
-| `"start_game"`   |                                              | Der Host möchte das Spiel starten.                                                                                           | keine Antwort             |                                                   |
-| `"announce"`     |                                              | Der Spieler möchte Tichu ansagen.                                                                                            | keine Antwort             |                                                   |
-| `"bomb"`         | `{cards: Cards}`                             | Der Spieler möchte eine Bombe ankündigen.                                                                                    | keine Antwort             |                                                   |
+| Type             | Payload                                      | Beschreibung                                                                                                                 | 
+|------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `"leave"`        |                                              | Der Spieler möchte den Tisch verlassen.                                                                                      |
+| `"swap_players"` | `{player_index_1: int, player_index_2: int}` | Der Host möchte die Position zweier Spieler vertauschen (der Host darf nicht verschoben werden; nur vor Spielstart möglich). |
+| `"start_game"`   |                                              | Der Host möchte das Spiel starten.                                                                                           |
+| `"announce"`     |                                              | Der Spieler möchte Tichu ansagen.                                                                                            |
+| `"bomb"`         | `{cards: Cards}`                             | Der Spieler möchte eine Bombe zünden.                                                                                        |
 
 **Proaktive Nachrichten vom Server an den Client:**
 
 Die Engine sendet diese Nachrichten über den Peer an den Client. Bei der `request`-Nachricht wartet der Peer auf die `response`-Nachricht des Clients.
 Erhält er sie, liefert der Peer die Daten als Antwort an die Engine aus. 
 
-| Type                        | Payload                                                                                           | Beschreibung                                                                                                | Antwort vom Spieler (Type) | Antwort vom Spieler (Payload)                                        |
-|-----------------------------|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------------------------|----------------------------------------------------------------------|
-| `"request"`  (s. 7.2.1)     | `{request_id: uuid, action: str, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Server fordert den Spieler auf, eine Entscheidung zu treffen.                                           | `"response"`               | `{request_id: uuid (aus der Request-Nachrich), response_data: dict}` | 
-| `"notification"` (s. 7.2.2) | `{event: str, context: dict (optional)}`                                                          | Broadcast an alle Spieler über ein Spielereignis.                                                           | keine Antwort              |                                                                      |
-| `"error"` (s. 7.2.3)        | `{message: str, code: int, context: dict (optional)`                                              | Informiert den Spieler über einen Fehler.                                                                   | keine Antwort              |                                                                      |
+| Type                        | Payload                                                     | Beschreibung                                                     | Antwort vom Client (Type) | Antwort vom Client (Payload)                                         |
+|-----------------------------|-------------------------------------------------------------|------------------------------------------------------------------|---------------------------|----------------------------------------------------------------------|
+| `"request"`  (s. 7.2.1)     | `{request_id: uuid, action: str, context: dict (optional)}` | Der Server fordert den Client auf, eine Entscheidung zu treffen. | `"response"`              | `{request_id: uuid (aus der Request-Nachrich), response_data: dict}` | 
+| `"notification"` (s. 7.2.2) | `{event: str, context: dict (optional)}`                    | Broadcast an alle Clients über ein Spielereignis.                | keine Antwort             |                                                                      |
+| `"error"` (s. 7.2.3)        | `{message: str, code: int, context: dict (optional)`        | Informiert den Client über einen Fehler.                         | keine Antwort             |                                                                      |
 
-**Anmerkung zur `request`-Nachricht:**
-*   Der aktuelle Spielzustand sollte dem Spieler eigentlich bekannt sein, sofern er keine Nachrichten verpasst und entsprechend den Zustand angepasst hat.
-    Sollte dies (warum auch immer) mal nicht der Fall sein, würde der Spieler, der sich auf seinen intern gespeicherten Zustand verlässt, u.U. eine ungültige Antwort liefern. 
-    Eine Fehlerroutine müsste dann den intern gespeicherten Spielzustand mit dem aktuellen abgleichen. Wir vermeiden dieses Synchronisationsproblem ganz einfach, indem wir bei 
-    jeder Anfrage stets den aktuellen Zustand mitsenden, so dass der Spieler sich abgleichen kann, bevor er antwortet. 
-*   Keine der definierten Aktionen erfordert einen Kontext (ergänzende Informationen). Daher fällt `context` aus dem Payload raus. 
-  
 #### 7.2.1 Request-/Response-Nachrichten
 
-| Request Action (vom Server) | Response Data (vom Client)                                                              | Beschreibung                                                                                                                                       |
-|-----------------------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| "announce_grand_tichu"      | `{announced: bool}`                                                                     | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                                                                     |
-| "schupf"                    | `{given_schupf_cards: [Card, Card, Card]}` (für rechten Gegner, Partner, linken Gegner) | Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden.                                         |
-| "play"                      | `{cards: Cards}` (`{cards: []}` für passen)                                             | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.                                          |
-| "bomb"                      | `{cards: Cards}` (`{cards: []}` für passen)                                             | Der Spieler kann eine Bombe werfen. Wenn der Client zuvor eine Bombe angekündigt hat, muss er eine Bombe auswählen. Ansonsten kann er auch passen. |
-| "wish"                      | `{wish_value: int}`                                                                     | Der Spieler muss sich einen Kartenwert wünschen.                                                                                                   |
-| "give_dragon_away"          | `{dragon_recipient: int}`                                                               | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                                                               |
+Der Request Context enthält die Daten, die für die Entscheidung benötigt werden. So kann der Client eine Antwort liefern, selbst wenn er keine Daten zwischenspeichern würde.
 
-Akzeptiert die Engine die Client-Antwort, sendet sie eine entsprechende [Notification-Nachricht](#722-notification-nachrichten) an alle Spieler.
+| Request Action (vom Server) | Request Context (vom Server)                                           | Response Data (vom Client)                   | Beschreibung                                                                                                                                            |
+|-----------------------------|------------------------------------------------------------------------|----------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| "announce_grand_tichu"      |                                                                        | `{announced: bool}`                          | Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.                                                                                          |
+| "schupf"                    | `{hand_cards: Cards}`                                                  | `{given_schupf_cards: [Card, Card, Card]}`   | Der Spieler muss drei Karten zum Tausch abgeben (für rechten Gegner, Partner, linken Gegner). Diese Aktion kann durch ein Interrupt abgebrochen werden. |
+| "play"                      | `{hand_cards: Cards, trick_combination: Combination, wish_value: int}` | `{cards: Cards}` (`{cards: []}` für passen)  | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.                                               |
+| "wish"                      |                                                                        | `{wish_value: int}`                          | Der Spieler muss sich einen Kartenwert wünschen.                                                                                                        |
+| "give_dragon_away"          |                                                                        | `{dragon_recipient: int}`                    | Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.                                                                                    |
+
+!!! **TODO** !!!! Derzeit wird statt Request Context der vollständige Spielzustand übermittelt. 
+
+Akzeptiert die Engine die Client-Antwort, sendet sie eine entsprechende [Notification-Nachricht](#722-notification-nachrichten) an alle Clients.
 Andernfalls sendet die Engine eine Fehlermeldung über den Peer an den Client.
 
-**Anmerkung:**
-Die Anfragen des Servers, ob der Spieler ein einfaches Tichu ansagen möchte, oder ob er eine Bombe werfen will, leitet der Peer nicht an den Client weiter, 
+**Anmerkung bzgl. Tichu-Ansage und zur Bombe:**
+Die Anfragen des Servers, ob der Spieler ein einfaches Tichu ansagen möchte, oder ob er eine Bombe zünden will, leitet der Peer nicht an den Client weiter, 
 denn diese Entscheidungen trifft der Client proaktiv (im Gegensatz zur KI, die immer explizit gefragt wird).
 
 #### 7.2.2 Notification-Nachrichten
 
-Benachrichtigung an alle Spieler
+Benachrichtigung an alle Spieler.
 
-| Notification Event       | Notification Context                                                                                                              | Beschreibung                                                    |
-|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
-| "player_joined"          | `{player_index: int, player_name: str}` (->) `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Spieler spielt jetzt mit.                                   |
-| "player_left"            | `{player_index: int, player_name: str, host_index: int}`                                                                          | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen. |
-| "players_swapped"        | `{player_index_1: int, player_index_2: int}`                                                                                      | Der Index zweier Spieler wurde getauscht.                       |
-| "game_started"           |                                                                                                                                   | Das Spiel wurde gestartet.                                      |
-| "round_started"          |                                                                                                                                   | Eine neue Runde beginnt. Die Karten werden gemischt.            |
-| "hand_cards_dealt"       | `{count: int}` -> `{hand_cards: Cards}`                                                                                           | Handkarten wurden an die Spieler verteilt.                      |
-| "player_grand_announced" | `{player_index: int, announced: bool}`                                                                                            | Der Spieler hat ein großes Tichu angesagt oder abgelehnt.       |
-| "player_announced"       | `{player_index: int}`                                                                                                             | Der Spieler hat ein einfaches Tichu angesagt.                   |
-| "player_schupfed"        | `{player_index: int}` (->) `{given_schupf_cards: [Card, Card, Card]}` (für rechten Gegner, Partner, linken Gegner)                | Der Spieler hat drei Karten zum Tausch abgegeben.               |
-| "schupf_cards_dealt"     | `None` -> `{received_schupf_cards: [Card, Card, Card]}` (vom rechten Gegner, Partner, linken Gegner)                              | Die Tauschkarten wurden an die Spieler verteilt.                |
-| "player_passed"          | `{player_index: int}`                                                                                                             | Der Spieler hat gepasst.                                        |
-| "player_played"          | `{turn: Turn, trick_points: int, winner_index: int}` (Turn = [player_index, cards, combination])                                  | Der Spieler hat Karten ausgespielt.                             |
-| "player_bombed"          | `{turn: Turn, trick_points: int, winner_index: int}` (Turn = [player_index, cards, combination])                                  | Der Spieler hat eine Bombe geworfen.                            |
-| "wish_made"              | `{wish_value: int}`                                                                                                               | Ein Kartenwert wurde sich gewünscht.                            |
-| "wish_fulfilled"         |                                                                                                                                   | Der Wunsch wurde erfüllt.                                       |
-| "trick_taken"            | `{player_index: int, points: int, dragon_recipient: int}`                                                                         | Der Spieler hat den Stich kassiert.                             |
-| "player_turn_changed"    | `{current_turn_index: int, start_player_index: int}`                                                                              | Der Spieler ist jetzt am Zug.                                   |
-| "round_over"             | `{points: (int, int, int, int), loser_index: int, is_double_victory: bool)}`                                                      | Die Runde ist vorbei und die Karten werden neu gemischt.        |
-| "game_over"              | `{game_score: (list, list)}`                                                                                                      | Die Runde ist vorbei und die Partie ist entschieden.            |
+Der Notification Context enthält die Daten, die sich mit dem Ereignis geändert haben, sofern der Client diese nicht selbst trivial herleiten kann.
+ 
+| Notification Event    | Notification Context (ergänzende Informationen)                                                                                   | Beschreibung                                                                                                                            |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| "player_joined"       | `{player_index: int, player_name: str}` (->) `{session_id: uuid, public_state: PublicStateDict, private_state: PrivateStateDict}` | Der Spieler spielt jetzt mit.                                                                                                           |
+| "player_left"         | `{player_index: int, player_name: str, host_index: int}`                                                                          | Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.                                                                         |
+| "players_swapped"     | `{player_index_1: int, player_index_2: int}`                                                                                      | Der Index zweier Spieler wurde getauscht.                                                                                               |
+| "game_started"        |                                                                                                                                   | Das Spiel wurde gestartet.                                                                                                              |
+| "round_started"       |                                                                                                                                   | Eine neue Runde beginnt. Die Karten werden gemischt.                                                                                    |
+| "hand_cards_dealt"    | `{player_index: int, count: int}` (->) `{hand_cards: Cards}`                                                                      | Handkarten wurden an die Spieler verteilt.                                                                                              |
+| "player_announced"    | `{player_index: int, grand: bool}`                                                                                                | Der Spieler hat ein Tichu angesagt.                                                                                                     |
+| "player_schupfed"     | `{player_index: int}` (->) `{given_schupf_cards: [Card, Card, Card]}`                                                             | Der Spieler hat drei Karten zum Tausch abgegeben (für rechten Gegner, Partner, linken Gegner).                                          |
+| "start_playing"       | `{start_player_index: int}` -> `{start_player_index: int, received_schupf_cards: [Card, Card, Card]}}`                            | Die Tauschkarten wurden an die Spieler verteilt (vom rechten Gegner, Partner, linken Gegner). Die Karten können nun ausgespielt werden. |
+| "player_passed"       | `{player_index: int}`                                                                                                             | Der Spieler hat gepasst.                                                                                                                |
+| "player_played"       | `{turn: Turn, trick_points: int, winner_index: int}`                                                                              | Der Spieler hat Karten ausgespielt. Turn = [player_index, cards, combination])                                                          |
+| "player_bombed"       | `{turn: Turn, trick_points: int, winner_index: int}`                                                                              | Der Spieler hat eine Bombe geworfen.                                                                                                    |
+| "wish_made"           | `{wish_value: int}`                                                                                                               | Ein Kartenwert wurde sich gewünscht.                                                                                                    |
+| "wish_fulfilled"      |                                                                                                                                   | Der Wunsch wurde erfüllt.                                                                                                               |
+| "trick_taken"         | `{player_index: int, points: int, dragon_recipient: int}`                                                                         | Der Spieler hat den Stich kassiert.                                                                                                     |
+| "player_turn_changed" | `{current_turn_index: int}`                                                                                                       | Der Spieler ist jetzt am Zug.                                                                                                           |
+| "round_over"          | `{points: (int, int, int, int), loser_index: int, is_double_victory: bool)}`                                                      | Die Runde ist vorbei und die Karten werden neu gemischt.                                                                                |
+| "game_over"           | `{game_score: (list, list)}`                                                                                                      | Die Runde ist vorbei und die Partie ist entschieden.                                                                                    |
 
-"->" bedeutet, dass der Peer den vom Server gesendeten Kontext mit privaten Statusinformationen des Spielers anreichert, bevor er es an den Spieler weiterleitet.
-Bei "player_joined" und "player_schupfed" wird auch für Mitspieler aufgerufen, dann ändert der Peer den Kontext nicht.
+* "->" bedeutet, dass der Peer den vom Server gesendeten Kontext mit privaten Statusinformationen anreichert, bevor er es an den Client weiterleitet.
+* "(->)" bedeutet, dass der Kontext nur angereichert wird, wenn sich das Ereignis auf den eigenen Spieler bezieht. 
 
 ### 7.2.3. Fehlermeldungen
 

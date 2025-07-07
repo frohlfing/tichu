@@ -54,8 +54,7 @@ const WSCloseCode = {
  * @typedef {Object} ServerRequest
  * @property {string} request_id - Die UUID der Anfrage.
  * @property {string} action - Die angefragte Aktion.
- * @property {PublicState} public_state - Der öffentliche Spielzustand.
- * @property {PrivateState} private_state - Der private Spielzustand.
+ * @property {Object<string, any>} [context] - Zusätzliche Informationen (optional).
  */
 
 /**

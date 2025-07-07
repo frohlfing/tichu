@@ -50,7 +50,7 @@ class GameEngine:
             self._default_agents: List[Agent] = [RandomAgent(name=f"RandomAgent_{i + 1}") for i in range(4)]
 
         # aktuelle Spielerliste
-        self._players: List[Player] = list(self._default_agents)  # die Liste ist eine Kopie, die Einträge nicht!
+        self._players: List[Player] = list(self._default_agents)  # die Liste ist eine Kopie, die Einträge nicht! #todo ist vermutlich ein Problem, wenn die Spieler vertauscht werden
 
         # aktueller Spielzustand
         self._public_state = PublicState(
@@ -69,6 +69,10 @@ class GameEngine:
 
         # Zufallsgenerator, geeignet für Multiprocessing
         self._random = Random(seed)
+
+        # Kopie des sortierten Standarddecks
+        self._mixed_deck = list(deck)
+        self._random.shuffle(self._mixed_deck)  # es wird jede Runde neu gemischt, aber initial einmal mehr schadet nicht
 
         # jedem Spieler eine Referenz auf den Spielzustand und auf das Interrupt-Event geben
         # (Mutable - Änderungen sind durch Player möglich, aber nicht vorgesehen)
@@ -288,9 +292,6 @@ class GameEngine:
         # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
         clients_joined = any(isinstance(player, Peer) for player in self._players)
 
-        # Kopie des sortierten Standarddecks - wird jede Runde neu durchgemischt
-        mixed_deck = list(deck)
-
         logger.info(f"[{self.table_name}] Starte neue Partie...")
         try:
             # Spielzustand vollständig zurücksetzen
@@ -317,47 +318,34 @@ class GameEngine:
                     await self._broadcast("round_started")
 
                 # Karten mischen
-                self._random.shuffle(mixed_deck)
+                self._random.shuffle(self._mixed_deck)
 
-                # Karten aufnehmen, erst 8 dann alle
-                first = self._random.integer(0, 4)  # wählt zufällig eine Zahl zwischen 0 und 3
-                for n in (8, 14):
-                    # Karten verteilen (deal out)
-                    for player_index in range(4):
-                        offset = player_index * 14
-                        privs[player_index].hand_cards = mixed_deck[offset:offset + n]
-                        pub.count_hand_cards[player_index] = n
-                    if clients_joined:
-                        await self._broadcast("hand_cards_dealt", {"count": n})
-
-                    # möchte ein Spieler ein Tichu ansagen?
-                    # todo alle Spieler gleichzeitig ansprechen
-                    #  Aber dabei Zusatzregel Doku 2.3 beachten: Wenn der Partner schon ein Tichu angesagt hat, kann der Spieler kein Tichu mehr ansagen
-                    for i in range(4):
-                        player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
-                        grand = n == 8  # großes Tichu?
-                        if grand:
-                            announced = not pub.announcements[(player_index + 2) % 4] and await self._players[player_index].announce_grand_tichu()
-                            if announced:
-                                pub.announcements[player_index] = 2  # Spieler hat ein großes Tichu angesagt
-                            if clients_joined:
-                                await self._broadcast("player_grand_announced", {"player_index": player_index, "announced": announced})
-                        else:
-                            announced = not pub.announcements[player_index] and not pub.announcements[(player_index + 2) % 4] and await self._players[player_index].announce_tichu()
-                            if announced:
-                                pub.announcements[player_index] = 1  # Spieler hat ein einfaches Tichu angesagt
-                                if clients_joined:
-                                    await self._broadcast("player_announced", {"player_index": player_index})
-
-                # jetzt müssen die Spieler schupfen
-
-                # a) Tauschkarten abgeben
+                # Karten verteilen
                 if clients_joined:
-                    # Alle Spieler werden gleichzeitig zum Schupfen aufgefordert. Die Spieler werden sofort benachrichtigt, wenn jemand geschupft hat.
-                    await asyncio.gather(*[self._schupf_and_broadcast(player_index, clients_joined) for player_index in range(4)], return_exceptions=True)
+                    # Alle Spieler erhalten gleichzeitig die ersten 8 Karten. Sobald sie ein großes Tichu angesagt oder abgelehnt haben, erhalten sie die restlichen Karten und können Tauschkarten abgeben.
+                    await asyncio.gather(*[self._deal_out(player_index, clients_joined) for player_index in range(4)], return_exceptions=True)
                 else:
-                    # Alte Version: Alle Spieler der Reihe nach zum Schupfen auffordern
+                    # Alte Version: Alles der Reihe nach (8 Karten verteilen, Frage nach Tichu, restliche Karten verteilen, Tauschkarten abgeben)
                     # todo Fallunterscheidung zeitlich relevant?
+
+                    # Karten aufnehmen, erst 8 dann alle
+                    first = self._random.integer(0, 4)  # zufällige eine Zahl zwischen 0 und 3
+                    for n in (8, 14):
+                        # Karten verteilen (deal out)
+                        for player_index in range(4):
+                            offset = player_index * 14
+                            privs[player_index].hand_cards = self._mixed_deck[offset:offset + n]
+                            pub.count_hand_cards[player_index] = n
+                        # möchte ein Spieler ein Tichu ansagen?
+                        for i in range(4):
+                            player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
+                            if not pub.announcements[player_index]: # and not pub.announcements[(player_index + 2) % 4]:  # Zusatzregel Doku 2.3: Wenn der Partner schon ein Tichu angesagt hat, kann der Spieler kein Tichu mehr ansagen
+                                grand = n == 8  # großes Tichu?
+                                announced = await self._players[player_index].announce_grand_tichu() if grand else await self._players[player_index].announce_tichu()
+                                if announced:
+                                    pub.announcements[player_index] = 2 if grand else 1
+
+                    # jetzt müssen die Spieler schupfen (Tauschkarten abgeben)
                     for player_index in range(4):  # Geber
                         priv = privs[player_index]
                         assert len(priv.hand_cards) == 14
@@ -367,7 +355,7 @@ class GameEngine:
                         assert len(priv.hand_cards) == 11
                         pub.count_hand_cards[player_index] = 11
 
-                # b) Tauscharten aufnehmen
+                # Tauscharten aufnehmen
                 # Karten-Index der abgegebenen Karte:
                 # Ge-| Nehmer
                 # ber| 0  1  2  3
@@ -387,8 +375,6 @@ class GameEngine:
                     priv.hand_cards += priv.received_schupf_cards
                     assert len(priv.hand_cards) == 14
                     pub.count_hand_cards[player_index] = 14
-                if clients_joined:
-                    await self._broadcast("schupf_cards_dealt")  # wird nur einmal gesendet!
 
                 # Startspieler bekannt geben
                 for player_index in range(4):
@@ -397,8 +383,9 @@ class GameEngine:
                         pub.start_player_index = player_index
                         pub.current_turn_index = player_index
                         break
+
                 if clients_joined:
-                    await self._broadcast("player_turn_changed", {"current_turn_index": pub.current_turn_index, "start_player_index": pub.start_player_index})
+                    await self._broadcast("start_playing", {"start_player_index": pub.start_player_index})  # wird nur einmal gesendet!
 
                 # los geht's - das eigentliche Spiel kann beginnen...
                 assert 0 <= pub.current_turn_index <= 3
@@ -409,7 +396,7 @@ class GameEngine:
                     # jeden Mitspieler fragen, ob er eine Bombe werfen will
                     bomb: Optional[Tuple[Cards, Combination]] = None
                     if pub.trick_combination[2] > 0 and (pub.trick_owner_index == pub.current_turn_index or pub.count_hand_cards[pub.current_turn_index] > 0):
-                        # todo alle Spieler gleichzeitig ansprechen
+                        first = self._random.integer(0, 4)  # zufällige Zahl zwischen 0 und 3
                         for i in range(4):
                             player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
                             if player_index != pub.current_turn_index and self._private_states[player_index].has_bomb:
@@ -437,7 +424,7 @@ class GameEngine:
                                     # Spieler hat Tichu angesagt
                                     pub.announcements[pub.current_turn_index] = 1
                                     if clients_joined:
-                                        await self._broadcast("player_announced", {"player_index": pub.current_turn_index})
+                                        await self._broadcast("player_announced", {"player_index": pub.current_turn_index, "grand": False})
                             # Spieler fragen, welche Karten er spielen will
                             cards, combination = await self._players[pub.current_turn_index].play()
 
@@ -652,16 +639,47 @@ class GameEngine:
             if isinstance(player, Peer):
                 await player.error(message, code, context)
 
-    async def _schupf_and_broadcast(self, player_index, clients_joined: bool):
+    async def _deal_out(self, player_index, clients_joined: bool):
         """
-        Fordert den Spieler auf zu schupfen und informiert danach jeden Spieler darüber.
+        a) Teilt die ersten 8 Karten an den gegebenen Spieler aus,
+        b) fragt den Spieler, ob er ein großes Tichu ansagen möchte,
+        c) teilt danach die restlichen Karten an den gegebenen Spieler aus und
+        d) fordert als Letztes den Spieler auf zu schupfen.
 
-        :param player_index: Der Index des Spielers, der schupfen soll.
+        Die Spieler werden über jedes Ereignis unmittelbar benachrichtigt.
+
+        :param player_index: Der Index des Spielers, der die Karten bekommt.
         :param clients_joined: True, wenn Clients im Spiel sind.
         """
+        pub = self._public_state
         priv = self._private_states[player_index]
+        player = self._players[player_index]
+
+        # Karten aufnehmen, erst 8 dann alle
+        for n in (8, 14):
+            # Karten verteilen (deal out)
+            offset = player_index * 14
+            priv.hand_cards = self._mixed_deck[offset:offset + n]
+            pub.count_hand_cards[player_index] = n
+            if clients_joined:
+                await self._broadcast("hand_cards_dealt", {"player_index": player_index, "count": n})
+            # möchte ein Spieler ein Tichu ansagen?
+            if not pub.announcements[player_index]:
+                grand = n == 8  # großes Tichu?
+                announced = await player.announce_grand_tichu() if grand else await player.announce_tichu()
+                # if announced and pub.announcements[(player_index + 2) % 4]:
+                #     # Zusatzregel Doku 2.3: Wenn der Partner schon ein Tichu angesagt hat, kann der Spieler kein Tichu mehr ansagen.
+                #     if isinstance(player, Peer):
+                #         await player.error("Tichu abgelehnt", ErrorCode.INVALID_ANNOUNCE)
+                #     announced = False
+                if announced:
+                    pub.announcements[player_index] = 2 if grand else 1
+                    if clients_joined:
+                        await self._broadcast("player_announced", {"player_index": player_index, "grand": grand})
+
+        # jetzt muss der Spieler schupfen (Tauschkarten abgeben)
         assert len(priv.hand_cards) == 14
-        priv.given_schupf_cards = await self._players[player_index].schupf()
+        priv.given_schupf_cards = await player.schupf()
         assert len(priv.given_schupf_cards) == 3
         priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
         assert len(priv.hand_cards) == 11

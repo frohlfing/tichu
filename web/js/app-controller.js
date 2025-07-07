@@ -141,26 +141,30 @@ const AppController = (() => {
      */
     function _handleServerRequest(request) {
         console.log("App._handleServerRequest()", request.request_id, request.action, request);
+        const context = request.context || {};
         _setRequest(request.request_id, request.action);
-        // todo prüfen, ob Status synchron ist. Wenn immer ja, können wir es später hier rauswerfen und statt dessen bei einem Fehler mitliefern.
-        State.setPublicState(request.public_state)
-        State.setPrivateState(request.private_state)
-        // switch (request.action) {
-        //     case 'announce_grand_tichu': // Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.
-        //         break;
-        //     case 'schupf': // Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden.
-        //         break;
-        //     case 'play': // Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.
-        //         break;
-        //     case 'bomb': // Der Spieler kann eine Bombe werfen. Wenn der Client zuvor eine Bombe angekündigt hat, muss er eine Bombe auswählen. Ansonsten kann er auch passen.
-        //         break;
-        //     case 'wish': // Der Spieler muss sich einen Kartenwert wünschen.
-        //         break;
-        //     case 'give_dragon_away': // Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.
-        //         break;
-        //     default:
-        //         console.warn('App: Unbehandelte Server-Request:', request.action);
-        // }
+        //State.setPublicState(request.public_state);
+        //State.setPrivateState(request.private_state);
+        switch (request.action) {
+            case 'announce_grand_tichu': // Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.
+                break;
+            case 'schupf': // Der Spieler muss drei Karten zum Tausch abgeben. Diese Aktion kann durch ein Interrupt abgebrochen werden.
+                State.setHandCards(context.hand_cards);
+                break;
+            case 'play': // Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden.
+                State.setHandCards(context.hand_cards);
+                State.setTrickCombination(context.trick_combination);
+                State.setWishValue(context.wish_value);
+                break;
+            case 'bomb': // Der Spieler kann eine Bombe werfen. Wenn der Client zuvor eine Bombe angekündigt hat, muss er eine Bombe auswählen. Ansonsten kann er auch passen.
+                break;
+            case 'wish': // Der Spieler muss sich einen Kartenwert wünschen.
+                break;
+            case 'give_dragon_away': // Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.
+                break;
+            default:
+                console.warn('App: Unbehandelte Server-Request:', request.action);
+        }
         _renderView();
     }
 
@@ -202,44 +206,44 @@ const AppController = (() => {
                 State.resetRound();
                 break;
             case "hand_cards_dealt": // Handkarten wurden an die Spieler verteilt.
-                State.setHandCards(context.hand_cards);
-                for (let playerIndex = 1; playerIndex <= 3; playerIndex++) {
-                    State.setCountHandCards(playerIndex, context.hand_cards.length);
+                if (context.hand_cards) { // Der Benutzer hat Karten bekommen.
+                    State.setHandCards(context.hand_cards);
+                }
+                else { // Ein Mitspieler hat Karten bekommen.
+                    State.setCountHandCards(context.player_index, context.count);
                 }
                 break;
-            case "player_grand_announced": // Der Spieler hat ein großes Tichu angesagt oder abgelehnt.
-                State.setAnnouncement(context.player_index, context.announced ? 2 : 0);
-                if (context.player_index === State.getPlayerIndex()) {
-                    _removeRequest();
+            case "player_announced": // Der Spieler hat ein Tichu angesagt.
+                State.setAnnouncement(context.player_index, context.grand ? 2 : 1);
+                if (context.grand) {
+                    if (context.player_index === State.getPlayerIndex()) {
+                        _removeRequest();
+                    }
                 }
-                // TODO serverseitig wird gewartet, bis alle Spieler geantwortet haben, erst dann erhalten alle die restlichen Karten.
-                //  So ändern, das der Spieler sofort die restlichen Karten bekommt und mit dem Schupfen anfangen kann.
-                State.setCountHandCards(State.getPlayerIndex(), 13); // TODO 13 Karten, weil dann kann er kein Tichu ansagen. Pfusch! Rausnehmen!!!
-                break;
-            case "player_announced": // Der Spieler hat ein einfaches Tichu angesagt.
-                State.setAnnouncement(context.player_index, 1);
                 break;
             case "player_schupfed": // Der Spieler hat drei Karten zum Tausch abgegeben.
                 if (context.given_schupf_cards) { // Der Benutzer hat geschupft.
-                    // TODO ist es robuster, die übrigen Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben)
+                    // todo Handkarten besser übergeben?
                     const cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.given_schupf_cards));
                     State.setHandCards(cards);
                     State.setGivenSchupfCards(context.given_schupf_cards);
                     _removeRequest();
                 }
-                else {
+                else { // Ein Mitspieler hat geschupft.
                     State.setCountHandCards(context.player_index, 11);
                 }
                 break;
-            case "schupf_cards_dealt": // Die Tauschkarten wurden an die Spieler verteilt.
+            case "start_playing": // Die Karten können nun ausgespielt werden.
                 State.setReceivedSchupfCards(context.received_schupf_cards);
-                // todo ist es robuster, die übrigen Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben, es sei denn, es ist konstant)
+                // todo Handkarten besser übergeben?
                 const cards = State.getHandCards().concat(context.received_schupf_cards);
                 Lib.sortCards(cards)
                 State.setHandCards(cards);
                 for (let playerIndex = 1; playerIndex <= 3; playerIndex++) {
                     State.setCountHandCards(playerIndex, 14);
                 }
+                State.setStartPlayerIndex(context.start_player_index);
+                State.setCurrentTurnIndex(context.start_player_index);
                 break;
             case "player_passed": // Der Spieler hat gepasst.
                 if (context.player_index === State.getPlayerIndex()) {
@@ -249,18 +253,16 @@ const AppController = (() => {
             case "player_played": // Der Spieler hat Karten ausgespielt.
             case "player_bombed": // Der Spieler hat eine Bombe geworfen.
                 if (context.turn[0] === State.getPlayerIndex()) {
-                    // todo ist es robuster, die übrigen Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben, es sei denn, es ist konstant)
+                    // todo Handkarten besser übergeben?
                     let cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.turn[1]));
                     State.setHandCards(cards);
                     _removeRequest();
                 }
                 else {
-                    // todo ist es robuster, die Anzahl der Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben, es sei denn, es ist konstant)
+                    // todo Anzahl Handkarten besser übergeben?
                     State.setCountHandCards(context.turn[0], State.getCountHandCards() - context.turn[1].length);
                 }
-                // todo Ausnahme bei played_cards? Wird nicht komplett übergeben (weil für Regelwerk nicht wichtig).
                 State.setPlayedCards(State.getPlayedCards().concat(context.turn[1]));
-                // todo Ausnahme bei tricks? Liste der Spielzüge wird nicht übergeben (ist für das Regelwerk unwichtig).
                 // todo eine Funktion State.addTurn() bereitstellen
                 if (State.getTrickOwnerIndex() === -1) { // neuer Stich?
                     State.addTrick([context.turn]);
@@ -281,7 +283,7 @@ const AppController = (() => {
                 }
                 break;
             case "wish_fulfilled": // Der Wunsch wurde erfüllt.
-                // todo Wert übergeben
+                // todo wish_value besser übergeben?
                 State.setWishValue(-State.getWishValue());
                 break;
             case "trick_taken": // Der Spieler hat den Stich kassiert.
@@ -289,7 +291,7 @@ const AppController = (() => {
                 State.setTrickCards([]);
                 State.setTrickCombination( /** @type Combination */[CombinationType.PASS, 0, 0]);
                 State.setTrickPoints(0);
-                State.setTrickCounter(State.getTrickCounter() + 1);  // todo wird nicht übergeben, da unwichtig
+                State.setTrickCounter(State.getTrickCounter() + 1); // todo raus damit, ist unwichtig.
                 State.setPoints(context.player_index, context.points);
                 State.setDragonRecipient(context.dragon_recipient);
                 if (State.isCurrentPlayer() && _request && _request.action === "give_dragon_away") {
@@ -298,7 +300,6 @@ const AppController = (() => {
                 break;
             case "player_turn_changed": // Der Spieler ist jetzt am Zug.
                 State.setCurrentTurnIndex(context.current_turn_index);
-                State.setStartPlayerIndex(context.start_player_index);
                 break;
             case "round_over": // Die Runde ist vorbei und die Karten werden neu gemischt.
                 for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
@@ -306,9 +307,9 @@ const AppController = (() => {
                 }
                 State.setLoserIndex(context.loser_index);
                 State.setDoubleVictory(context.is_double_victory);
-                // todo GameScore sollte besser übergeben werden
+                // todo TotalScore sollte ebenfalls oder statt GameScore übergeben werden (sonst würde ein Fehleintrag nicht korrigiert werden)
                 State.addGameScoreEntry([context.points[2] + context.points[0], context.points[3] + context.points[1]])
-                State.setRoundCounter(State.getRoundCounter() + 1); // todo wird nicht übergeben, da unwichtig
+                State.setRoundCounter(State.getRoundCounter() + 1); // todo raus damit, ist unwichtig.
                 Modals.showRoundOverDialog()
                 break;
             case "game_over": // Die Runde ist vorbei und die Partie ist entschieden.

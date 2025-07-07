@@ -583,15 +583,15 @@ const TableView = (() => {
      */
     function _updateSchupfZoneAndHand(playerIndex) {
         const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
-        if (State.getCountHandCards() <= 8) {
-            // Es wurden noch nicht alle Karten ausgeteilt. Schupfzone ausblenden.
+        if (State.getCountHandCards(playerIndex) <= 8) {
+            // Es wurden noch nicht alle Karten ausgeteilt oder die Karten werden bereits ausgespielt. Schupfzone ausblenden.
             _clearSchupfZone(playerIndex);
             _schupfZones[relativeIndex].classList.add('hidden');
         }
         else {
-            // Alle Karten wurden verteilt.
+            // Alle Handkarten wurden ausgeteilt.
             if (!State.getReceivedSchupfCards()) {
-                // Der Benutzer hat noch keine Tauschkarten bekommen. Schupfzone einblenden.
+                // Die Tauschkarten wurden noch nicht verteilt. Schupfzone einblenden.
                 _schupfZones[relativeIndex].classList.remove('hidden');
                 if (relativeIndex === 0) {
                     if (!State.getGivenSchupfCards()) {
