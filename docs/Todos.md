@@ -11,8 +11,6 @@
 # Frontend
 
 ## Bugs:
-* Zurückgenommene Schupfkarten werden nicht richtig einsortiert.
-* Wenn Mitspieler schupft, wird beim Spieler die Schupfzone geleert.
 * Tichu-Button nicht disable, obwohl Karten gespielt.
 
 ## Features:

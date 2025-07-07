@@ -143,13 +143,6 @@ const TableView = (() => {
     // Interne Variablen
     // --------------------------------------------------------------------------------------
 
-    /**
-     * Wird gesetzt, wenn der Benutzer die drei Tauschkarten der Mitspieler aufgenommen hat.
-     *
-     * @type {boolean}
-     */
-    let _receivedSchupfCardsConfirmed = false;
-
     // --------------------------------------------------------------------------------------
     // Öffentliche Funktionen
     // --------------------------------------------------------------------------------------
@@ -179,12 +172,10 @@ const TableView = (() => {
      * Rendert den Spieltisch-Bildschirm anhand des aktuellen Spielzustands.
      */
     function render() {
-        _receivedSchupfCardsConfirmed = State.getReceivedSchupfCards() !== null
         _updateScore();
-        for (let playerIndex= 0; playerIndex <= 3; playerIndex++) {
+        for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
             _updatePlayerName(playerIndex);
-            _updateHand(playerIndex);
-            _updateSchupfZone(playerIndex);
+            _updateSchupfZoneAndHand(playerIndex);
             _updateTichuIcon(playerIndex);
         }
         _updateTrick();
@@ -219,105 +210,6 @@ const TableView = (() => {
     function isVisible() {
         return _viewContainer.classList.contains('active');
     }
-
-    // --------------------------------------------------------------------------------------
-    // Ereignishändler für Servernachrichten
-    // --------------------------------------------------------------------------------------
-
-    // /**
-    //  * Wird aufgerufen, wenn eine Netzwerknachricht empfangen wurde.
-    //  *
-    //  * @param {NetworkMessage} message - Die Nachricht vom Server.
-    //  */
-    // function _handleNetworkMessage(message) {
-    //     if (message.type === 'request') {
-    //         //_handleServerRequest(/** @type {ServerRequest} */ message.payload);
-    //     }
-    //     else if (message.type === 'notification') {
-    //         _handleServerNotification(/** @type {ServerNotification} */ message.payload);
-    //     }
-    // }
-    //
-    // /**
-    //  * Wird aufgerufen, wenn der Server eine Benachrichtigung gesendet hat.
-    //  *
-    //  * @param {ServerNotification} notification - Die Nachricht.
-    //  */
-    // function _handleServerNotification(notification) {
-    //     const context = notification.context || {};
-    //     switch (notification.event) {
-    //         case "player_joined": // Ein Spieler ist beigetreten.
-    //         case "player_left": // Ein Spieler hat das Spiel verlassen; eine KI ist eingesprungen.
-    //             // Wenn der Benutzer beigetreten ist, wird diese View durch den App-Controller neu gerendert.
-    //             // Nur wenn ein Mitspieler beigetreten ist, wird player_index angegeben.
-    //             if (context.player_index) {
-    //                 _updatePlayerName(context.player_index);
-    //             }
-    //             break;
-    //         case "players_swapped": // Der Index zweier Spieler wurde getauscht.
-    //             break;  // Findet in der Lobby statt.
-    //         case "game_started": // Das Spiel wurde gestartet.
-    //             break;
-    //         case "round_started": // Eine neue Runde beginnt. Die Karten werden gemischt.
-    //             break;
-    //         case "hand_cards_dealt": // Handkarten wurden an die Spieler verteilt.
-    //             for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
-    //                 _updateHand(playerIndex);
-    //             }
-    //             break;
-    //         case "player_grand_announced": // Der Spieler hat ein großes Tichu angesagt oder abgelehnt.
-    //         case "player_announced": // Der Spieler hat ein einfaches Tichu angesagt.
-    //             _updateTichuIcon(context.player_index);
-    //             _updateTichuButton();
-    //             break;
-    //         case "player_schupfed": // Der Spieler hat drei Karten zum Tausch abgegeben.
-    //             _updateSchupfZone(context.player_index);
-    //             break;
-    //         case "schupf_cards_dealt": // Die Tauschkarten wurden an die Spieler verteilt.
-    //             _updateSchupfZone(State.getPlayerIndex());
-    //             for (let relativeIndex = 1; relativeIndex <= 3; relativeIndex++) {
-    //                 const playerIndex = Lib.getCanonicalPlayerIndex(relativeIndex);
-    //                 _updateHand(playerIndex);
-    //                 _updateSchupfZone(playerIndex);
-    //             }
-    //             break;
-    //         case "player_passed": // Der Spieler hat gepasst.
-    //             // {player_index: int}
-    //             break;
-    //         case "player_played": // Der Spieler hat Karten ausgespielt.
-    //             // {player_index: int, cards: Cards}
-    //             _updateHand(context.player_index)
-    //             _updateTrick();
-    //             // _updatePlayButton();
-    //             break;
-    //         case "player_bombed": // Der Spieler hat eine Bombe geworfen.
-    //             // {player_index: int, cards: Cards}
-    //             _updateBombIcon();
-    //             break;
-    //         case "wish_made": // Ein Kartenwert wurde sich gewünscht.
-    //         case "wish_fulfilled": // Der Wunsch wurde erfüllt.
-    //             _updateWishIcon();
-    //             break;
-    //         case "trick_taken": // Der Spieler hat den Stich kassiert.
-    //             // {player_index: int}
-    //             _updateTrick();
-    //             break;
-    //         case "player_turn_changed": // Der Spieler ist jetzt am Zug.
-    //             // {current_turn_index: int}
-    //             _updateCurrentPlayer();
-    //             _updatePassButton();
-    //             _updatePlayButton();
-    //             break;
-    //         case "round_over": // Die Runde ist vorbei und die Karten werden neu gemischt.
-    //             // {score_entry: (int, int), is_double_victory: bool}
-    //             break;
-    //         case "game_over": // Die Runde ist vorbei und die Partie ist entschieden.
-    //             // {game_score: (list, list)}
-    //             break;
-    //         default:
-    //             console.error('App: Unbehandelte Server-Notification:', notification.event);
-    //     }
-    // }
 
     // --------------------------------------------------------------------------------------
     // Ereignishändler für die Dialoge
@@ -368,13 +260,12 @@ const TableView = (() => {
 
         // Wenn die Schupfzone sichtbar ist, darf maximal nur eine Karte selektiert werden.
         if (!_schupfZones[0].classList.contains('hidden') && !cardElement.classList.contains("selected")) {
-            if (_getSelectedCardsCount() > 0) {
+            if (_getCountSelectedCards() > 0) {
                 return;
             }
         }
 
         SoundManager.playSound('buttonClick');
-        const card = /** @type Card */ cardElement.dataset.card.split(",").map(value => parseInt(value, 10));
         cardElement.classList.toggle('selected');
         _updatePlayButton();
     }
@@ -405,11 +296,11 @@ const TableView = (() => {
             const cardElements = _hands[0].children;
             //const cardElements = Array.from(_hands[0].children);
             let referenceElement = null;
-            for (const el of cardElements) {  // die Karten in der Hand sind aufsteigend sortiert
+            for (const el of cardElements) {  // die Karten in der Hand sind absteigend sortiert (werden aber von rechts nach links aufgeblättert)
                 const [v, c] = /** @type Card */ el.dataset.card.split(",").map(value => parseInt(value, 10));
-                if (value < v || (value === v && color < c)) {
-                    referenceElement = el;
-                    break; // nächstgrößere Handkarte gefunden
+                if (v < value || (value === v && c < color)) {
+                    referenceElement = el; // die erste Karte in der Hand, die kleiner ist als die einzufügende Karte
+                    break;
                 }
             }
 
@@ -451,7 +342,7 @@ const TableView = (() => {
                 break;
             default:
                 console.error(`TableView: PlayButton-Mode ${_passButton.dataset.mode} nicht gehandelt.`);
-            break;
+                break;
         }
     }
 
@@ -470,7 +361,7 @@ const TableView = (() => {
                 break;
             default:
                 console.error(`TableView: TichuButton-Mode ${_tichuButton.dataset.mode} nicht gehandelt.`);
-            break;
+                break;
         }
     }
 
@@ -482,13 +373,11 @@ const TableView = (() => {
         SoundManager.playSound('buttonClick');
         switch (_playButton.dataset.mode) {
             case "SCHUPF": // Der Benutzer möchte drei Tauschkarten für die Mitspieler abgeben.
-                EventBus.emit("tableView:schupf", _getSchupfCards());
+                EventBus.emit("tableView:schupf", _getHandCardsInSchupfZone());
                 break;
             case "RECEIVE": // Der Benutzer nimmt die drei Tauschkarten der Mitspieler auf.
-                _receivedSchupfCardsConfirmed = true;
-                const playerIndex = State.getPlayerIndex();
-                _updateHand(playerIndex);
-                _updateSchupfZone(playerIndex);
+                State.confirmReceivedSchupfCards();
+                _updateSchupfZoneAndHand(State.getPlayerIndex());
                 _updatePlayButton();
                 break;
             case "AUTOSELECT": // Die längste kleinstmögliche Kombination auswählen.
@@ -500,7 +389,7 @@ const TableView = (() => {
                 break;
             default:
                 console.error(`TableView: PlayButton-Mode ${_playButton.dataset.mode} nicht gehandelt.`);
-            break;
+                break;
         }
     }
 
@@ -546,7 +435,7 @@ const TableView = (() => {
      *
      * @returns {number}
      */
-    function _getSelectedCardsCount() {
+    function _getCountSelectedCards() {
         return _hands[0].querySelectorAll('.card.selected').length;
     }
 
@@ -582,7 +471,7 @@ const TableView = (() => {
      * @param {Card|null} card - Wert und Farbe der Karte. Wenn null, wird die Rückseite angezeigt.
      * @returns {HTMLDivElement}
      */
-    function _createCardElement(card= null) {
+    function _createCardElement(card = null) {
         const cardElement = document.createElement('div');
         cardElement.className = 'card';
         if (card) {
@@ -593,35 +482,6 @@ const TableView = (() => {
             cardElement.classList.add('back-site');
         }
         return cardElement;
-    }
-
-    /**
-     * Aktualisiert die Hand des angegebenen Spielers.
-     *
-     * @param {number} playerIndex - Der Index des Spielers.
-     */
-    function _updateHand(playerIndex) {
-        const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
-
-        // Handkarten entfernen
-        _hands[relativeIndex].replaceChildren();
-
-        // wenn der Benutzer selbst keine Karten mehr hat, kann er in die Hände der Mitspieler sehen
-        // todo Diese Feature ist serverseitig noch nicht umgesetzt. Es gibt noch keine Variable im State, um die Karten der Mitspieler zu speichern.
-        //const revealed = State.getCountHandCards() === 0;  // Karten aufgedeckt
-
-        // Handkarten neu generieren
-        if (relativeIndex === 0) {
-            State.getHandCards().forEach(card => {
-                _hands[relativeIndex].appendChild(_createCardElement(card));
-            });
-        }
-        else {
-            const cardCount = State.getCountHandCards(playerIndex);
-            for (let k = 0; k < cardCount; k++) {
-                _hands[relativeIndex].appendChild(_createCardElement());
-            }
-        }
     }
 
     /**
@@ -675,30 +535,31 @@ const TableView = (() => {
     }
 
     /**
-     * Gibt die drei Karten zurück, die sich aktuell mit der Vorderseite in der Schupfzone des Benutzers befinden.
+     * Gibt die Handkarten des Benutzers zurück, die in der Schupfzone dargestellt sind.
      *
-     * Wenn nicht drei Karten mit der Vorderseite zu sehen sind, wird ein leeres Array zurückgegeben.
+     * Wenn Karten in der Schupfzone offen liegen, wurden sie entweder noch nicht geschupft oder gerade entgegengenommen.
+     * In beiden Fällen zählen sie zu den Handkarten.
      *
-     * @returns {Cards}
+     * @returns {Cards} Karten in der Schupfzone (bei drei Karten: für bzw. vom rechten Gegner, Partner, linken Gegner).
      */
-    function _getSchupfCards() {
-        if (_getSchupfCardsCount() !== 3) {
-            return []
-        }
+    function _getHandCardsInSchupfZone() {
         let cards = [];
         const cardElements = _schupfZones[0].querySelectorAll('.schupf-subzone .card:not(.back-site)');
-        cardElements.forEach(cardElement => {
+        cardElements.forEach(cardElement => { // linker Gegner, Partner, rechter Gegner
             cards.push(cardElement.dataset.card.split(",").map(value => parseInt(value, 10)));
         });
-        return cards;
+        return cards.reverse(); // Reihenfolge umdrehen!
     }
 
     /**
-     * Ermittelt die Anzahl der Karten, die mit der Vorderseite in der Schupfzone des Benutzers liegen.
+     * Ermittelt die Anzahl der Handkarten des Benutzers, die in der Schupfzone dargestellt sind.
+     *
+     * Wenn Karten in der Schupfzone offen liegen, wurden sie entweder noch nicht geschupft oder gerade entgegengenommen.
+     * In beiden Fällen zählen sie zu den Handkarten.
      *
      * @returns {number}
      */
-    function _getSchupfCardsCount() {
+    function _getCountHandCardsInSchupfZone() {
         return _schupfZones[0].querySelectorAll('.schupf-subzone .card:not(.back-site)').length;
     }
 
@@ -709,56 +570,122 @@ const TableView = (() => {
      */
     function _clearSchupfZone(playerIndex) {
         const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
-        _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone .card').forEach(cardElement => {
+        const cardElements = _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone .card');
+        cardElements.forEach(cardElement => {
             cardElement.remove();
         });
     }
 
     /**
-     * Aktualisiert die Schupfzone des angegebenen Spielers.
+     * Aktualisiert die Schupfzone und die Hand des angegebenen Spielers.
      *
      * @param {number} playerIndex - Der Index des Spielers.
      */
-    function _updateSchupfZone(playerIndex) {
+    function _updateSchupfZoneAndHand(playerIndex) {
         const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
-        const cardCount = State.getCountHandCards(playerIndex);
-        if (!_receivedSchupfCardsConfirmed && cardCount > 8) {
-            // Noch keine Tauschkarte aufgenommen und mehr als 8 Handkarten aufgenommen (Frage nach großes Tichu ist erfolgt).
+        if (State.getCountHandCards() <= 8) {
+            // Es wurden noch nicht alle Karten ausgeteilt. Schupfzone ausblenden.
+            _clearSchupfZone(playerIndex);
+            _schupfZones[relativeIndex].classList.add('hidden');
+        }
+        else {
+            // Alle Karten wurden verteilt.
+            if (!State.getReceivedSchupfCards()) {
+                // Der Benutzer hat noch keine Tauschkarten bekommen. Schupfzone einblenden.
+                _schupfZones[relativeIndex].classList.remove('hidden');
+                if (relativeIndex === 0) {
+                    if (!State.getGivenSchupfCards()) {
+                        // Der Benutzer wählt Karten aus, die er schupfen möchte.
 
-            // Handelt es sich um den Benutzer, ausgewählte Karen zurücksetzen, denn beim Schupfen darf nicht mehr als eine Karte selektiert werden.
-            if (relativeIndex === 0 && _getSelectedCardsCount() > 1) {
-                _clearSelectedCards();
-            }
+                        // Sicherstellen, dass alle offenen Karten in der Schupfzone zu den Handkarten gehören.
+                        const schupfCards = _getHandCardsInSchupfZone();
+                        const hand = State.getHandCards();
+                        if (schupfCards.some(card => !Lib.includesCard(card, hand))) {
+                            _clearSchupfZone(playerIndex);
+                        }
 
-            // Wenn alle Karten noch auf der Hand abgebildet sind, Schupfzone leeren.
-            if (_hands[relativeIndex].children.length === 14) {
-               _clearSchupfZone(playerIndex);  // todo in welchem Fall ist das notwendig?
-            }
+                        // Verdeckte Karten entfernen
+                        const backSideCardElements = _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone .card.back-site');
+                        backSideCardElements.forEach(cardElement => {
+                            cardElement.remove();
+                        });
 
-            // Schupfzone einblenden
-            _schupfZones[relativeIndex].classList.remove('hidden');
-
-            // Falls der Spieler nur noch 11 Karten in der Hand hat, müssen die übrigen drei in der Schupfzone liegen.
-            if (cardCount === 11) {
-                _clearSchupfZone(playerIndex);
-                const receivedCards = State.getReceivedSchupfCards();
-                if (relativeIndex === 0 && receivedCards) {
-                    // Der Tausch hat stattgefunden. Der Benutzer muss die erhaltenen Karten bestätigen.
-                    _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
-                        subzoneElement.appendChild(_createCardElement(receivedCards[i]));
-                    });
+                        // Sicherstellen, dass maximal eine Handkarte selektiert ist.
+                        if (_getCountSelectedCards() > 1) {
+                            _clearSelectedCards();
+                        }
+                    }
+                    else {
+                        // Der Benutzer hat geschupft. Drei verdeckte Karten in seiner Schupfzone anzeigen.
+                        _clearSchupfZone(playerIndex);
+                        _schupfZones[0].querySelectorAll('.schupf-subzone').forEach(subzoneElement => {
+                            subzoneElement.appendChild(_createCardElement());
+                        });
+                    }
                 }
                 else {
-                    // Drei verdeckte Karten zeigen.
-                    _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone').forEach(subzoneElement => {
-                        subzoneElement.appendChild(_createCardElement());
-                    });
+                    // Wenn der Mitspieler 11 Handkarten hat, drei verdeckte Karten anzeigen, sonst keine.
+                    _clearSchupfZone(playerIndex);
+                    if (State.getCountHandCards(playerIndex) === 11) {
+                        _schupfZones[relativeIndex].querySelectorAll('.schupf-subzone').forEach(subzoneElement => {
+                            subzoneElement.appendChild(_createCardElement());
+                        });
+                    }
+                }
+            }
+            else {
+                // Der Benutzer hat Tauschkarten bekommen.
+                if (relativeIndex === 0) {
+                    if (!State.isConfirmedReceivedSchupfCards()) {
+                        // Der Benutzer hat die erhaltenen Tauschkarten noch nicht bestätigt. Diese anzeigen.
+                        _schupfZones[0].classList.remove('hidden');
+                        _clearSchupfZone(playerIndex);
+                        const receivedCards = State.getReceivedSchupfCards().toReversed(); // linker Gegner, Partner, rechter Gegner
+                        _schupfZones[0].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
+                            subzoneElement.appendChild(_createCardElement(receivedCards[i]));
+                        });
+                    }
+                    else {
+                        // Schupfzone des Benutzers ausblenden
+                        _clearSchupfZone(playerIndex);
+                        _schupfZones[0].classList.add('hidden');
+                    }
+                }
+                else {
+                    // Schupfzone des Mitspielers ausblenden
+                    _clearSchupfZone(playerIndex);
+                    _schupfZones[relativeIndex].classList.add('hidden');
                 }
             }
         }
+
+        // Handkarten außerhalb der Schupfzone aktualisieren.
+        if (relativeIndex === 0) {
+            // Handkarten des Benutzers, die nicht in der Schupfzone sind, ermitteln, und anzeigen
+            let handCards = State.getHandCards();
+            const schupfCards = _getHandCardsInSchupfZone();
+            if (schupfCards.length) {
+                handCards = handCards.filter(card => !Lib.includesCard(card, schupfCards));
+            }
+            const selectedCards = _getSelectedCards()
+            _hands[relativeIndex].replaceChildren(); // Handkarten entfernen
+            handCards.forEach(card => {
+                const cardElement = _createCardElement(card);
+                if (Lib.includesCard(card, selectedCards)) {
+                    cardElement.classList.add('selected');
+                }
+                _hands[relativeIndex].appendChild(cardElement);
+            });
+        }
         else {
-            // Schupfzone ausblenden
-            _schupfZones[relativeIndex].classList.add('hidden');
+            // Die Anzahl der Handkarten des Mitspielers mit der Rückseite anzeigen
+            const cardCount = State.getCountHandCards(playerIndex);
+            if (cardCount !== _hands[relativeIndex].children.length) {
+                _hands[relativeIndex].replaceChildren(); // Handkarten entfernen
+                for (let k = 0; k < cardCount; k++) {
+                    _hands[relativeIndex].appendChild(_createCardElement());
+                }
+            }
         }
     }
 
@@ -826,9 +753,9 @@ const TableView = (() => {
             // Der Benutzer kann ein großes Tichu ansagen.
             _passButton.dataset.mode = "NO_GRAND_TICHU";
             _passButton.textContent = "Weiter";
-            _passButton.disabled = false;
+            _passButton.disabled = State.getAnnouncement() > 0;
         }
-        else if (_receivedSchupfCardsConfirmed && State.isCurrentPlayer()) {
+        else if (State.isConfirmedReceivedSchupfCards() && State.isCurrentPlayer()) {
             // Der Benutzer ist am Zug.
             _passButton.dataset.mode = "PASS";
             _passButton.textContent = "Passen";
@@ -848,12 +775,18 @@ const TableView = (() => {
         if (!State.getReceivedSchupfCards() && State.getCountHandCards() === 8) {
             _tichuButton.dataset.mode = "GRAND_TICHU";
             _tichuButton.textContent = "Großes Tichu";
+            _tichuButton.disabled = State.getAnnouncement() > 0;
+        }
+        else if (State.getCountHandCards() === 14) {
+            _tichuButton.dataset.mode = "TICHU";
+            _tichuButton.textContent = "Tichu";
+            _tichuButton.disabled = State.getAnnouncement() > 0;
         }
         else {
             _tichuButton.dataset.mode = "TICHU";
             _tichuButton.textContent = "Tichu";
+            _tichuButton.disabled = true;
         }
-        _tichuButton.disabled = State.getAnnouncement() > 0;
     }
 
     /**
@@ -866,9 +799,9 @@ const TableView = (() => {
             // Der Benutzer muss drei Tauschkarten für die Mitspieler abgeben.
             _playButton.dataset.mode = "SCHUPF";
             _playButton.textContent = "Schupfen";
-            _playButton.disabled = _getSchupfCardsCount() !== 3;
+            _playButton.disabled = _getCountHandCardsInSchupfZone() !== 3;
         }
-        else if (receivedSchupfCards && !_receivedSchupfCardsConfirmed) {
+        else if (receivedSchupfCards && !State.isConfirmedReceivedSchupfCards()) {
             // Der Benutzer muss die drei Tauschkarten der Mitspieler aufnehmen.
             _playButton.dataset.mode = "RECEIVE";
             _playButton.textContent = "Aufnehmen";
@@ -880,7 +813,7 @@ const TableView = (() => {
             _playButton.textContent = "Kein Zug";
             _playButton.disabled = true;
         }
-        else if (isCurrentPlayer && _getSelectedCardsCount() === 0) {
+        else if (isCurrentPlayer && _getCountSelectedCards() === 0) {
             // Der Benutzer ist am Zug, hat mindestens eine passende Kombination, aber noch keine Karte ausgewählt.
             _playButton.dataset.mode = "AUTOSELECT";
             _playButton.textContent = "Auswählen"; // bei Klick wird die längste kleinstmögliche Kombination ausgewählt
@@ -893,7 +826,6 @@ const TableView = (() => {
             _playButton.disabled = State.findPlayableCombination(_getSelectedCards()) === null;
         }
         else {
-            // Karten werden ausgespielt, der Benutzer ist aber nicht am Zug.
             _playButton.dataset.mode = "PLAY";
             _playButton.textContent = "Spielen";
             _playButton.disabled = true;

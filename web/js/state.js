@@ -114,6 +114,13 @@ const State = (() => {
      */
     let _combinationCache = [];
 
+    /**
+     * Gibt an, ob der Benutzer die drei Tauschkarten der Mitspieler gesehen und aufgenommen hat.
+     *
+     * @type {boolean}
+     */
+    let _receivedSchupfCardsConfirmed = false;
+
     // /**
     //  * Initialisiert den Spielzustand.
     //  *
@@ -152,6 +159,9 @@ const State = (() => {
     function setPrivateState(privateState) {
         _privateState = privateState;
         _combinationCache = [];
+        if (!_privateState.received_schupf_cards) {
+            _receivedSchupfCardsConfirmed = false;
+        }
     }
 
     /**
@@ -180,6 +190,7 @@ const State = (() => {
         _privateState.hand_cards = [];
         _privateState.given_schupf_cards = null;
         _privateState.received_schupf_cards = null;
+        _receivedSchupfCardsConfirmed = false;
     }
 
     /**
@@ -589,6 +600,16 @@ const State = (() => {
         _privateState.received_schupf_cards = cards;
     }
 
+    /** @returns {boolean} Gibt an, der Benutzer die erhaltenen Tauschkarten gesehen und aufgenommen hat. */
+    function isConfirmedReceivedSchupfCards() {
+        return _receivedSchupfCardsConfirmed;
+    }
+
+    /** Bestätigt, dass der Benutzer die erhaltenen Tauschkarten aufgenommen hat. */
+    function confirmReceivedSchupfCards(cards) {
+        _receivedSchupfCardsConfirmed = true;
+    }
+
     /**
      * @returns {Array<[Cards, Combination]>} Kombinationsmöglichkeiten der Hand (die besten zuerst).
      */
@@ -722,6 +743,7 @@ const State = (() => {
         getHandCards, setHandCards,
         getGivenSchupfCards, setGivenSchupfCards,
         getReceivedSchupfCards, setReceivedSchupfCards,
+        isConfirmedReceivedSchupfCards, confirmReceivedSchupfCards,
         getCombinations,
         canPlayCards, getBestPlayableCombination, findPlayableCombination, hasBomb,
     };

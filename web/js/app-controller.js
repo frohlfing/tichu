@@ -179,6 +179,9 @@ const AppController = (() => {
                 if (context.public_state && context.private_state) { // Der Benutzer ist beigetreten.
                     State.setPublicState(context.public_state);
                     State.setPrivateState(context.private_state);
+                    if (State.getReceivedSchupfCards()) {
+                        State.confirmReceivedSchupfCards()
+                    }
                 }
                 else { // Ein Mitspieler ist beigetreten.
                     State.setPlayerName(context.player_index, context.player_name);
@@ -209,13 +212,16 @@ const AppController = (() => {
                 if (context.player_index === State.getPlayerIndex()) {
                     _removeRequest();
                 }
+                // TODO serverseitig wird gewartet, bis alle Spieler geantwortet haben, erst dann erhalten alle die restlichen Karten.
+                //  So ändern, das der Spieler sofort die restlichen Karten bekommt und mit dem Schupfen anfangen kann.
+                State.setCountHandCards(State.getPlayerIndex(), 13); // TODO 13 Karten, weil dann kann er kein Tichu ansagen. Pfusch! Rausnehmen!!!
                 break;
             case "player_announced": // Der Spieler hat ein einfaches Tichu angesagt.
                 State.setAnnouncement(context.player_index, 1);
                 break;
             case "player_schupfed": // Der Spieler hat drei Karten zum Tausch abgegeben.
                 if (context.given_schupf_cards) { // Der Benutzer hat geschupft.
-                    // todo ist es robuster, die übrigen Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben)
+                    // TODO ist es robuster, die übrigen Handkarten zu übergeben? (nach dem Motto: alles was sich ändert, wir übergeben)
                     const cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.given_schupf_cards));
                     State.setHandCards(cards);
                     State.setGivenSchupfCards(context.given_schupf_cards);
