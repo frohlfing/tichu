@@ -319,12 +319,16 @@ const TableView = (() => {
 
     /**
      * Ereignishändler für das Bomben-Icon.
+     *
+     * Das Icon ist nur anklickbar, wenn eine spielbare Bombe ausgewählt werden kann.
      */
     function _handleBombIconClick() {
-        // Der Benutzer möchte eine Bombe ankündigen.
-        _bombIcon.classList.add("disabled");
+        if (_bombIcon.classList.contains("disabled")) {
+            return;
+        }
         SoundManager.playSound('buttonClick');
-        EventBus.emit("tableView:bomb");
+        _selectCards(State.getBestPlayableBomb()[0])
+        _updatePlayButton();
     }
 
     /**
@@ -380,12 +384,15 @@ const TableView = (() => {
                 _updateSchupfZoneAndHand(State.getPlayerIndex());
                 _updatePlayButton();
                 break;
-            case "AUTOSELECT": // Die längste kleinstmögliche Kombination auswählen.
+            case "AUTOSELECT": // Die längste rangniedrigste Kombination auswählen.
                 _selectCards(State.getBestPlayableCombination()[0])
                 _updatePlayButton();
                 break;
             case "PLAY": // Der Benutzer möchte die ausgewählten Karten spielen.
                 EventBus.emit("tableView:play", _getSelectedCards());
+                break;
+            case "BOMB": // Der Benutzer möchte außerhalb seines regulären Zuges die ausgewählte Bombe spielen.
+                EventBus.emit("tableView:bomb", _getSelectedCards());
                 break;
             default:
                 console.error(`TableView: PlayButton-Mode ${_playButton.dataset.mode} nicht gehandelt.`);
@@ -739,6 +746,12 @@ const TableView = (() => {
     function _updateBombIcon() {
         if (State.hasBomb()) {
             _bombIcon.classList.remove('hidden');
+            if (State.canPlayBomb()) {
+                _bombIcon.classList.remove("disabled");
+            }
+            else {
+                _bombIcon.classList.add("disabled");
+            }
         }
         else {
             _bombIcon.classList.add('hidden');
@@ -755,16 +768,10 @@ const TableView = (() => {
             _passButton.textContent = "Weiter";
             _passButton.disabled = State.getAnnouncement() > 0;
         }
-        else if (State.isConfirmedReceivedSchupfCards() && State.isCurrentPlayer()) {
-            // Der Benutzer ist am Zug.
-            _passButton.dataset.mode = "PASS";
-            _passButton.textContent = "Passen";
-            _passButton.disabled = State.getTrickCombination()[2] === 0; // Anspiel oder Hund?
-        }
         else {
             _passButton.dataset.mode = "PASS";
             _passButton.textContent = "Passen";
-            _passButton.disabled = true;
+            _passButton.disabled = !State.isConfirmedReceivedSchupfCards() || !State.isCurrentPlayer() || State.getTrickCombination()[2] === 0; // Nicht am Zug oder Anspiel
         }
     }
 
@@ -777,15 +784,10 @@ const TableView = (() => {
             _tichuButton.textContent = "Großes Tichu";
             _tichuButton.disabled = State.getAnnouncement() > 0;
         }
-        else if (State.getCountHandCards() === 14) {
+        else  {
             _tichuButton.dataset.mode = "TICHU";
             _tichuButton.textContent = "Tichu";
-            _tichuButton.disabled = State.getAnnouncement() > 0;
-        }
-        else {
-            _tichuButton.dataset.mode = "TICHU";
-            _tichuButton.textContent = "Tichu";
-            _tichuButton.disabled = true;
+            _tichuButton.disabled = State.getCountHandCards() < 14 || State.getAnnouncement() > 0;
         }
     }
 
@@ -807,6 +809,12 @@ const TableView = (() => {
             _playButton.textContent = "Aufnehmen";
             _playButton.disabled = false;
         }
+        else if (!isCurrentPlayer && State.isPlayableBomb(_getSelectedCards())) {
+            // Der Benutzer hat außerhalb seines regulären Zuges eine spielbare Bombe ausgewählt.
+            _playButton.dataset.mode = "BOMB";
+            _playButton.textContent = "Bomben";
+            _playButton.disabled = false;
+        }
         else if (isCurrentPlayer && !State.canPlayCards()) {
             // Der Benutzer ist am Zug, hat aber keine passende Kombination auf der Hand.
             _playButton.dataset.mode = "PLAY";
@@ -819,16 +827,10 @@ const TableView = (() => {
             _playButton.textContent = "Auswählen"; // bei Klick wird die längste kleinstmögliche Kombination ausgewählt
             _playButton.disabled = false;
         }
-        else if (isCurrentPlayer) {
-            // Der Benutzer ist am Zug, hat mindestens eine passende Kombination und mindestens eine Karte ausgewählt.
-            _playButton.dataset.mode = "PLAY";
-            _playButton.textContent = "Spielen";
-            _playButton.disabled = State.findPlayableCombination(_getSelectedCards()) === null;
-        }
         else {
             _playButton.dataset.mode = "PLAY";
             _playButton.textContent = "Spielen";
-            _playButton.disabled = true;
+            _playButton.disabled = !isCurrentPlayer || !State.isPlayableCombination(_getSelectedCards()); // nicht am Zug oder keine Spielbare Kombination ausgewählt
         }
     }
 

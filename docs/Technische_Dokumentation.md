@@ -91,7 +91,7 @@ Die detaillierten Spielregeln für Tichu sind hier zu finden:
 6.  **Schupfen:** Die Spieler müssen nun drei Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler). Falls während dessen jemand ein Tichu ansagt, nehmen alle Spieler ihre Karten zurück und geben erneut eine Tauschkarte ab. 
 7.  **Tauschkarte aufnehmen:** Sobald alle Spieler die Karten zum Tauschen abgegeben haben, werden diese an die adressierten Spieler verteilt.
 8.  **Karten ausspielen:**
-    *   Ab jetzt kann der Spieler jederzeit eine Bombe ankündigen (sofern er eine besitzt und den Stich überstechen kann). Wer eine Bombe ankündigt, erhält sofort das Zugrecht und muss dann eine Bombe werfen. 
+    *   Ab jetzt kann der Spieler jederzeit (auch wenn er nicht am Zug ist) eine Bombe werfen - es sei denn, ein Mitspieler hat das Anspielrecht. Wer eine Bombe wirft, erhält sofort das Zugrecht. 
     *   Der Spieler mit dem MahJong muss als Erstes eine Kartenkombination ablegen.
     *   Wird der MahJong gespielt, muss der Spieler, der den Mahjong ausgelegt hat, ein Kartenwert wünschen. Dieser Wunsch muss erfüllt werden, sobald die Regeln es zulassen.
     *   Wird der Hund gespielt, bekommt der Partner das Zugrecht.
@@ -108,19 +108,23 @@ Diese Punkte stammen aus dem offiziellen Regelwerk:
 
 *   **Kein Vierling:** Es gibt kein Vierling, daher ist ein Drilling mit Phönix nicht möglich.
 *   **Full House Restriktion:** Ein Fullhouse darf nicht aus einer 4er-Bombe mit Phönix gebildet werden (Drilling und Pärchen dürfen nicht den gleichen Rang haben).
-*   **Wunscherfüllung:** Der Wunsch muss zwar erfüllt werden, wenn man am Zug ist (sofern möglich), aber nicht in dem Moment, wenn man eine Bombe wirft.
+*   **Wunscherfüllung:** Der Wunsch muss zwar erfüllt werden, wenn man am Zug ist (sofern möglich), aber nicht in dem Moment, wenn man eine Bombe wirft. 
 *   **Phönix als Einzelkarte**: 
     *   Vor dem Ausspielen ist der Rang 14.5 (schlägt das Ass, aber nicht den Drachen). 
     *   Nach dem Ausspielen ist der Rang 0.5 höher die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
 
 Darüber hinaus werden für dieses Projekt folgende Zusatzregeln definiert:
   
-* Hat ein Spieler ein großes oder einfaches Tichu angesagt, kann der Partner kein Tichu mehr ansagen. Das vermeidet Fehlentscheidungen aufgrund Synchronisationsprobleme.
 * Es MUSS ein Wunsch geäußert werden, nicht KANN!
 * Der Hund bleibt liegen und wird erst mit dem nachfolgenden Stich abgeräumt.
 * Um auch beim **Phönix als Einzelkarte** ganzzahlige Ränge zu haben, wird gerundet (ist für das Spiel egal):   
     *   Vor dem Ausspielen ist der Rang 15 (schlägt das Ass, aber nicht den Drachen). 
     *   Nach dem Ausspielen ist der Rang wie die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.
+
+Zu überlegen ist, ob folgende Zusatzregeln sinnvoll sind:
+
+* Hat ein Spieler ein Tichu angesagt, kann der Partner kein Tichu mehr ansagen.
+* Es KANN ein Wunsch geäußert werden, nicht MUSS!
 
 
 ## 3. Systemarchitektur
@@ -322,7 +326,7 @@ Der WebSocket-Handler empfängt diese Nachrichten und leitet sie an deb Peer wei
 | `"swap_players"` | `{player_index_1: int, player_index_2: int}` | Der Host möchte die Position zweier Spieler vertauschen (der Host darf nicht verschoben werden; nur vor Spielstart möglich). |
 | `"start_game"`   |                                              | Der Host möchte das Spiel starten.                                                                                           |
 | `"announce"`     |                                              | Der Spieler möchte Tichu ansagen.                                                                                            |
-| `"bomb"`         | `{cards: Cards}`                             | Der Spieler möchte eine Bombe zünden.                                                                                        |
+| `"bomb"`         | `{cards: Cards}`                             | Der Spieler möchte außerhalb seines regulären Zuges eine Bombe werfen.                                                       |
 
 **Proaktive Nachrichten vom Server an den Client:**
 
@@ -353,7 +357,7 @@ Akzeptiert die Engine die Client-Antwort, sendet sie eine entsprechende [Notific
 Andernfalls sendet die Engine eine Fehlermeldung über den Peer an den Client.
 
 **Anmerkung bzgl. Tichu-Ansage und zur Bombe:**
-Die Anfragen des Servers, ob der Spieler ein einfaches Tichu ansagen möchte, oder ob er eine Bombe zünden will, leitet der Peer nicht an den Client weiter, 
+Die Anfragen des Servers, ob der Spieler ein einfaches Tichu ansagen möchte, oder ob er eine Bombe werfen will, leitet der Peer nicht an den Client weiter, 
 denn diese Entscheidungen trifft der Client proaktiv (im Gegensatz zur KI, die immer explizit gefragt wird).
 
 #### 7.2.2 Notification-Nachrichten
@@ -375,7 +379,7 @@ Der Notification Context enthält die Daten, die sich mit dem Ereignis geändert
 | "start_playing"       | `{start_player_index: int}` -> `{start_player_index: int, received_schupf_cards: [Card, Card, Card]}}`                            | Die Tauschkarten wurden an die Spieler verteilt (vom rechten Gegner, Partner, linken Gegner). Die Karten können nun ausgespielt werden. |
 | "player_passed"       | `{player_index: int}`                                                                                                             | Der Spieler hat gepasst.                                                                                                                |
 | "player_played"       | `{turn: Turn, trick_points: int, winner_index: int}`                                                                              | Der Spieler hat Karten ausgespielt. Turn = [player_index, cards, combination])                                                          |
-| "player_bombed"       | `{turn: Turn, trick_points: int, winner_index: int}`                                                                              | Der Spieler hat eine Bombe geworfen.                                                                                                    |
+| "player_bombed"       | `{turn: Turn, trick_points: int, winner_index: int}`                                                                              | Der Spieler hat außerhalb seines regulären Zuges eine Bombe geworfen.                                                                   |
 | "wish_made"           | `{wish_value: int}`                                                                                                               | Ein Kartenwert wurde sich gewünscht.                                                                                                    |
 | "wish_fulfilled"      |                                                                                                                                   | Der Wunsch wurde erfüllt.                                                                                                               |
 | "trick_taken"         | `{player_index: int, points: int, dragon_recipient: int}`                                                                         | Der Spieler hat den Stich kassiert.                                                                                                     |
@@ -540,7 +544,7 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
 
 #### 8.1.6 Bombe
 
-Mit dem Klick auf die Bombe holt man sich nur das Zugrecht, es wird nicht direkt die Bombe geworfen. 
+Mit dem Klick auf die Bombe werden Handkarten für eine Bombe ausgewählt (aber noch nicht geworfen). 
 
 #### 8.1.7 Request-Zyklus 
 

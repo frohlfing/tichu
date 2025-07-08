@@ -44,7 +44,7 @@ class Peer(Player):
         self._new_websocket_event = asyncio.Event()
         self._pending_requests: Dict[str, asyncio.Future] = {}  # die noch vom Client unbeantworteten Anfragen
         self._pending_announce: Optional[bool] = None  # die noch vom Server abzuholende Tichu-Ansage
-        self._pending_bomb: Optional[Cards] = None  # die noch vom Server abzuholende Bombe todo in Type Optional[bool] ändern
+        self._pending_bomb: Optional[Cards] = None  # die noch vom Server abzuholende Bombe
 
     async def cleanup(self):
         """
@@ -130,20 +130,19 @@ class Peer(Player):
 
     async def client_bomb(self, cards: Cards):
         """
-        Der WebSocket-Handler ruft diese Funktion auf, wenn der Client außerhalb seines regulären Zuges eine Bombe geworfen hat.
-
-        todo Der Client kündigt die Bombe nur an. Welche Bombe es ist, wird explizit gefragt, sobald er am Zug ist.
+        Der WebSocket-Handler ruft diese Funktion auf, wenn der Client proaktiv (also außerhalb seines regulären Zuges) eine Bombe geworfen hat.
 
         :param cards: Die Karten, aus denen die Bombe gebildet wurde. Werden absteigend sortiert (mutable!).
         """
-        # Parameter ok?
+        # Ist der Parameter eine Liste?
         if not isinstance(cards, list):
-            msg = "Ungültige Parameter für \"bomb\""
+            msg = "Ungültiger Parameter für 'bomb'"
             logger.warning(f"[{self._name}] {msg}: {cards}")
             await self.error(msg, ErrorCode.INVALID_MESSAGE, context={"cards": cards})
             return
 
         # Karten valide?
+        cards = [(card[0], CardSuit(card[1])) for card in cards]
         if any(card not in deck for card in cards):
             msg = "Mindestens eine Karte ist unbekannt"
             logger.warning(f"[{self._name}] {msg}: {cards}")
@@ -177,7 +176,7 @@ class Peer(Player):
             await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": cards})
             return
 
-        self._pending_bomb = cards  # todo nur True zuweisen
+        self._pending_bomb = cards
         self.interrupt_event.set()
 
     async def client_response(self, request_id: str, response_data: dict):
@@ -288,6 +287,8 @@ class Peer(Player):
         except ClientDisconnectedError:
             logger.info(f"[{self._name}] Verbindungsabbruch. Warten auf Antwort '{action}' abgebrochen.")
             return None
+        except PlayerInterruptError as e:
+            raise e
         except Exception as e:
             logger.exception(f"[{self._name}] Unerwarteter Fehler. Wartens auf Antwort '{action}' abgebrochen: {e}")
             return None
@@ -324,12 +325,13 @@ class Peer(Player):
                 logger.debug(f"[{self._name}] Fallback-Antwort")
                 return False
 
-            # Ist der Payload ok?
+            # Hat die Antwort die erwartete Struktur?
             if not isinstance(response_data.get("announced"), bool):
                 msg = "Ungültige Antwort für Anfrage 'announce_grand_tichu'"
                 logger.warning(f"[{self._name}] {msg}: {response_data}")
                 await self.error(msg, ErrorCode.INVALID_MESSAGE, context=response_data)
                 continue
+
             # Antwort übernehmen
             announced = response_data["announced"]
 
@@ -387,7 +389,7 @@ class Peer(Player):
                 logger.debug(f"[{self._name}] Fallback-Antwort")
                 return self.priv.hand_cards[-1], self.priv.hand_cards[-3], self.priv.hand_cards[-2]
 
-            # Ist der Payload ok?
+            # Hat die Antwort die erwartete Struktur?
             if not isinstance(response_data.get("given_schupf_cards"), list) or len(response_data.get("given_schupf_cards")) != 3:
                 msg = "Ungültige Antwort für Anfrage 'schupf'"
                 logger.warning(f"[{self._name}] {msg}: {response_data}")
@@ -452,7 +454,7 @@ class Peer(Player):
                 action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
                 return action_space[-1]
 
-            # Ist der Payload ok?
+            # Hat die Antwort die erwartete Struktur?
             if not isinstance(response_data.get("cards"), list):
                 msg = "Ungültige Antwort für Anfrage 'play'"
                 logger.warning(f"[{self._name}] {msg}: {response_data}")
@@ -502,7 +504,7 @@ class Peer(Player):
 
         return cards, combination
 
-    async def bomb(self) -> Tuple[Cards, Combination] | False:
+    async def bomb(self) -> Optional[Tuple[Cards, Combination]]:
         """
         Die Engine fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
 
@@ -511,15 +513,12 @@ class Peer(Player):
 
         Da der Client proaktiv (also ungefragt) eine Bombe wirft, wird die Frage nicht an den Client
         weitergeleitet, sondern es wird im Puffer geschaut, ob ein Bombenwurf vorliegt.
-        todo Nein, das ist falsch! Richtig ist:
-        Da der Client proaktiv (also ungefragt) eine Bombe ankündigt, wird die Frage nur an den Client
-        weitergeleitet, wenn er zuvor die Bombe angekündigt hat.
 
-        :return: Die Bombe (Karten, (Typ, Länge, Rang)) oder False, wenn keine Bombe geworfen wurde.
+        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
         """
         # Liegt ein Bombenwurf vor?
         if not self._pending_bomb:
-            return False
+            return None
 
         # Bombe aus dem Puffer nehmen
         cards = self._pending_bomb
@@ -530,7 +529,7 @@ class Peer(Player):
             msg = "Mindestens eine Karte ist keine Handkarte"
             logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
             await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": cards})
-            return False
+            return None
 
         # Ist die Kombination noch spielbar?
         combination = None
@@ -543,7 +542,7 @@ class Peer(Player):
             msg = "Die Karten bilden keine spielbare Bombe"
             logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
             await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": cards})
-            return False
+            return None
 
         return cards, combination
 
@@ -566,7 +565,7 @@ class Peer(Player):
                 logger.debug(f"[{self._name}] Fallback-Antwort")
                 return self.priv.given_schupf_cards[0][0]
 
-            # Ist der Payload ok?
+            # Hat die Antwort die erwartete Struktur?
             if not isinstance(response_data.get("wish_value"), int):
                 msg = "Ungültige Antwort für Anfrage 'wish'"
                 logger.warning(f"[{self._name}] {msg}: {response_data}")
@@ -608,7 +607,7 @@ class Peer(Player):
                 logger.debug(f"[{self._name}] Fallback-Antwort")
                 return self.priv.opponent_right_index if self.pub.count_hand_cards[self.priv.opponent_right_index] > self.pub.count_hand_cards[self.priv.opponent_left_index] else self.priv.opponent_left_index
 
-            # Ist der Payload ok?
+            # Hat die Antwort die erwartete Struktur?
             if not isinstance(response_data.get("dragon_recipient"), int):
                 msg = "Ungültige Antwort für Anfrage 'give_dragon_away'"
                 logger.warning(f"[{self._name}] {msg}: {response_data}")

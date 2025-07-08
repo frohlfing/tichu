@@ -363,7 +363,7 @@ def remove_combinations(combis: List[Tuple[Cards, Combination]], cards: Cards):
     return [combi for combi in combis if not set(cards).intersection(combi[0])]
 
 
-def build_action_space(combis: List[Tuple[Cards, Combination]], trick_combination: tuple, unfulfilled_wish: int) -> List[Tuple[Cards, Combination]]:
+def build_action_space(combis: List[Tuple[Cards, Combination]], trick_combination: tuple, unfulfilled_wish: int) -> List[Tuple[Cards, Combination]]:  # todo unfulfilled_wish umbenennen in wish_value
     """
     Ermittelt spielbare Kartenkombinationen.
     

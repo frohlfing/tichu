@@ -139,7 +139,7 @@ class Player:
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
-        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder False, wenn keine Bombe geworfen wird.
+        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'bomb' implementieren.")
 

@@ -156,8 +156,6 @@ const AppController = (() => {
                 State.setTrickCombination(context.trick_combination);
                 State.setWishValue(context.wish_value);
                 break;
-            case 'bomb': // Der Spieler kann eine Bombe werfen. Wenn der Client zuvor eine Bombe angekündigt hat, muss er eine Bombe auswählen. Ansonsten kann er auch passen.
-                break;
             case 'wish': // Der Spieler muss sich einen Kartenwert wünschen.
                 break;
             case 'give_dragon_away': // Der Spieler muss den Gegner benennen, der den Drachen bekommen soll.
@@ -251,7 +249,8 @@ const AppController = (() => {
                 }
                 break;
             case "player_played": // Der Spieler hat Karten ausgespielt.
-            case "player_bombed": // Der Spieler hat eine Bombe geworfen.
+            case "player_bombed": // Der Spieler hat außerhalb seines regulären Zuges eine Bombe geworfen.
+                State.setCurrentTurnIndex(context.turn[0]); // hat sich bei einer Bombe geändert
                 if (context.turn[0] === State.getPlayerIndex()) {
                     // todo Handkarten besser übergeben?
                     let cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.turn[1]));
@@ -299,7 +298,7 @@ const AppController = (() => {
                 }
                 break;
             case "player_turn_changed": // Der Spieler ist jetzt am Zug.
-                State.setCurrentTurnIndex(context.current_turn_index);
+                State.setCurrentTurnIndex(context.setCurrentTurnIndex);
                 break;
             case "round_over": // Die Runde ist vorbei und die Karten werden neu gemischt.
                 for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
@@ -448,10 +447,12 @@ const AppController = (() => {
     }
 
     /**
-     * Wird aufgerufen, wenn der Benutzer eine Bombe ankündigen will.
+     * Wird aufgerufen, wenn der Benutzer außerhalb seines regulären Zuges eine Bombe werfen will.
+     *
+     * @param {Cards} cards - Die Karten, die der Benutzer spielen möchte.
      */
-    function _handleTableViewBomb() {
-        Network.send("bomb");
+    function _handleTableViewBomb(cards) {
+        Network.send("bomb", {cards: cards});
     }
 
     /**
