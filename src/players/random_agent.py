@@ -59,10 +59,11 @@ class RandomAgent(Agent):
 
         :return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner.
         """
-        hand = list(self.priv.hand_cards)
-        a = hand.pop(self._random.integer(0, 14))
-        b = hand.pop(self._random.integer(0, 13))
-        c = hand.pop(self._random.integer(0, 12))
+        # hand = list(self.priv.hand_cards)
+        # a = hand.pop(self._random.integer(0, 14))
+        # b = hand.pop(self._random.integer(0, 13))
+        # c = hand.pop(self._random.integer(0, 12))
+        a, b, c = self._random.sample(self.priv.hand_cards, 3)
         return a, b, c
 
     async def play(self) -> Tuple[Cards, Combination]:
@@ -77,7 +78,8 @@ class RandomAgent(Agent):
         """
         # mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle)
         action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-        return action_space[self._random.integer(0, len(action_space))]
+        #return action_space[self._random.integer(0, len(action_space))]
+        return self._random.choice(action_space)
 
     async def bomb(self) -> Optional[Tuple[Cards, Combination]]:
         """
@@ -92,7 +94,8 @@ class RandomAgent(Agent):
             return None
         combinations = [combi for combi in self.priv.combinations if combi[1][0] == CombinationType.BOMB]
         action_space = build_action_space(combinations, self.pub.trick_combination, self.pub.wish_value)
-        return action_space[self._random.integer(0, len(action_space))]
+        #return action_space[self._random.integer(0, len(action_space))]
+        return self._random.choice(action_space)
 
     async def wish(self) -> int:
         """
@@ -103,7 +106,8 @@ class RandomAgent(Agent):
 
         :return: Der gewünschte Kartenwert (2-14).
         """
-        return self._random.choice([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+        #return self._random.choice([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+        return self._random.integer(2, 15)
 
     async def give_dragon_away(self) -> int:
         """
@@ -114,4 +118,5 @@ class RandomAgent(Agent):
 
         :return: Der Index (0-3) des Gegners, der den Stich erhält.
         """
-        return self.priv.opponent_right_index if self._random.boolean() else self.priv.opponent_left_index
+        #return self.priv.opponent_right_index if self._random.boolean() else self.priv.opponent_left_index
+        return self._random.choice([self.priv.opponent_right_index, self.priv.opponent_left_index])

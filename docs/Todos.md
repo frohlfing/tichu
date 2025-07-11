@@ -12,6 +12,7 @@
 
 ## Bugs:
 * Tichu-Button nicht disable, obwohl Karten gespielt.
+* Score-Anzeige bei negativen Punkten
 
 ## Features:
 * Animationen

@@ -1,5 +1,3 @@
-/* css/table-view.css */
-
 /* --- Spieltisch-Bildschirm (umfasst die Top-Bar, den grünen Spieltisch und die Bottom-Controls) --- */
 
 #table-screen {
@@ -236,10 +234,6 @@
     z-index: 14;
 }
 
-
-
-
-
 /* Table Area -> Spieler-Bereich -> Spieler-Info */
 
 .player-info {
@@ -420,73 +414,4 @@
     font-weight: bold;
     color: #111;
     text-shadow: 0 0 3px #fff;
-}
-
-/* --- Visuelle Effekte & Animationen --- */
-
-#hand-bottom .card.playing,
-.trick-zone .card.just-played {
-    transition: transform 0.4s ease-out, opacity 0.4s ease-out;
-    /* transform: scale(1.05); Beim Spielen leicht vergrößern/anheben */
-}
-
-.card.flying {
-    position: fixed; /* Wichtig: fixed für Animation relativ zum Viewport, nicht zum skalierten Wrapper */
-    transition: all 0.6s cubic-bezier(0.25, 0.75, 0.5, 1);
-    z-index: 200;
-    /* Die Start left/top Werte müssen von JS gesetzt werden, basierend auf der *Viewport*-Position der Karte */
-    /* Und die Ziel left/top Werte ebenfalls relativ zum *Viewport* */
-}
-
-.bomb-effect-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    font-size: 100px;
-    color: red;
-    font-weight: bold;
-    text-shadow: 3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000;
-    opacity: 1;
-    z-index: 200;
-    animation: bombExplode 0.8s ease-out forwards;
-    pointer-events: none;
-    transform: translate(-50%, -50%) scale(1);
-}
-
-.played-bomb-text {
-    font-size: 30px;
-    font-weight: bold;
-    padding: 10px;
-    background-color: rgba(0, 0, 0, 0.6);
-    border-radius: 5px;
-}
-
-@keyframes bombExplode {
-    0% {
-        transform: translate(-50%, -50%) scale(0.5);
-        opacity: 0.5;
-    }
-    70% {
-        transform: translate(-50%, -50%) scale(1.5);
-        opacity: 1;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(1.2);
-        opacity: 0;
-    }
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-        opacity: 0.7;
-    }
-    50% {
-        transform: scale(1.15);
-        opacity: 1;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 0.7;
-    }
 }

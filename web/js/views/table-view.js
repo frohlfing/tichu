@@ -234,17 +234,51 @@ const TableView = (() => {
      * Ereignishändler für den "Beenden"-Button.
      */
     function _handleExitButtonClick() {
-        SoundManager.playSound('buttonClick');
-        Modals.showExitDialog();
+        testShowSchupfZones();
+        // SoundManager.playSound('buttonClick');
+        // Modals.showExitDialog();
     }
 
     /**
      * Ereignishändler für den "Optionen"-Button.
      */
     function _handleSettingsButtonClick() {
-        SoundManager.playSound('buttonClick');
-        Modals.showErrorToast("Einstellungen sind noch nicht implementiert.");
+        //animateDealSchupfCards()
+        Animations.testFlyAnimation();
+        // SoundManager.playSound('buttonClick');
+        // Modals.showErrorToast("Einstellungen sind noch nicht implementiert.");
     }
+
+
+    // ------------------------------------------------------------------------------------------------------
+
+    function testShowSchupfZones() {
+        State.resetRound();
+        State.setGivenSchupfCards(/** @type Cards */ [[4,1], [5,1], [14,3]]);
+        let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
+        cards.length = 11;
+        State.setHandCards(cards);
+        for (let i = 0; i <= 3; i++) {
+            State.setCountHandCards(i, 11);
+            _updateSchupfZoneAndHand(i);
+        }
+        _updatePlayButton();
+    }
+
+    function animateDealSchupfCards() {
+         State.setReceivedSchupfCards(/** @type Cards */ [[3,1], [2,1], [10,3]]);
+        //const toElement = document.getElementById('schupf-zone-bottom');
+        const toElement = document.getElementById('hand-bottom');
+        for (let relativeIndex = 1; relativeIndex <= 1; relativeIndex++) {
+            //const fromElement = document.getElementById(`schupf-zone-${['bottom', 'right', 'top', 'left'][relativeIndex]}`);
+            const fromElement = document.getElementById(`hand-${['bottom', 'right', 'top', 'left'][relativeIndex]}`);
+            const card = State.getReceivedSchupfCards()[relativeIndex];
+            if (card) {
+                Animations.flyCards([card], fromElement, toElement, { rotate: relativeIndex !== 2, targetSize: '120px' });
+            }
+        }
+    }
+    // ------------------------------------------------------------------------------------------------------
 
     /**
      * Ereignishändler für das Anklicken der eigenen Hand.
@@ -258,10 +292,10 @@ const TableView = (() => {
 
         const cardElement = event.target;
 
-        // Wenn die Schupfzone sichtbar ist, darf maximal nur eine Karte selektiert werden.
+        // Beim Schupfen darf maximal nur eine Karte selektiert werden.
         if (!_schupfZones[0].classList.contains('hidden') && !cardElement.classList.contains("selected")) {
-            if (_getCountSelectedCards() > 0) {
-                return;
+            if (_getCountSelectedCards() > 0 || State.getReceivedSchupfCards()) {
+                return; // es ist bereits eine Karte selektiert oder die Tauschkarten wurden bereits verteilt und müssen nur noch bestätigt werden
             }
         }
 
@@ -382,6 +416,7 @@ const TableView = (() => {
             case "RECEIVE": // Der Benutzer nimmt die drei Tauschkarten der Mitspieler auf.
                 State.confirmReceivedSchupfCards();
                 _updateSchupfZoneAndHand(State.getPlayerIndex());
+                _updatePassButton();
                 _updatePlayButton();
                 break;
             case "AUTOSELECT": // Die längste rangniedrigste Kombination auswählen.
@@ -409,9 +444,7 @@ const TableView = (() => {
      */
     function _updateScore() {
         const score = State.getTotalScore();
-        const team20 = score[0].toString().padStart(4, '0');
-        const team31 = score[1].toString().padStart(4, '0');
-        _scoreDisplay.textContent = `${team20} : ${team31}`;
+        _scoreDisplay.textContent = Lib.formatScore(score);
     }
 
     /**
@@ -651,6 +684,7 @@ const TableView = (() => {
                         _schupfZones[0].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
                             subzoneElement.appendChild(_createCardElement(receivedCards[i]));
                         });
+                        _clearSelectedCards();
                     }
                     else {
                         // Schupfzone des Benutzers ausblenden
@@ -849,5 +883,7 @@ const TableView = (() => {
         show,
         hide,
         isVisible,
+        testShowSchupfZones,
+        animateDealSchupfCards,
     };
 })();

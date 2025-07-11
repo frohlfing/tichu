@@ -34,6 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // (wird aber auch von window.onload abgedeckt)
     AppController.init();
     scaleGameWrapper(); // Initial skalieren
+
+    // Bot aktivieren, falls gewünscht
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('bot') === 'true') {
+        Bot.setEnabled(true);
+    }
 });
 
 window.addEventListener('load', () => {

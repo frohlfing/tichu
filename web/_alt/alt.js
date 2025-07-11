@@ -190,9 +190,6 @@
         Modals.showErrorToast("Schupfkarten 'aufgenommen' (Hand neu gemischt).");
     }
 
-
-
-
     function _testThrowBombEffect() {
         const bombTextEl = document.createElement('div');
         bombTextEl.className = 'bomb-effect-text';
@@ -203,8 +200,6 @@
             if (bombTextEl.parentNode) bombTextEl.parentNode.removeChild(bombTextEl);
         }, 800); // Dauer der Animation
     }
-
-
 
     function _testRevealOpponentCards(relativeIdx) {
         const handContainer = document.getElementById(`player-${relativeIdx}-hand`);

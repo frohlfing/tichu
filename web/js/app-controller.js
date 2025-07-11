@@ -10,8 +10,8 @@ const AppController = (() => {
      * @property {string} action - Angefragte Aktion.
      */
     let _request = {
-        id:  localStorage.getItem("tichuRequestId"),
-        action:  localStorage.getItem("tichuRequestAction")
+        id: localStorage.getItem("tichuRequestId"),
+        action: localStorage.getItem("tichuRequestAction")
     };
 
     /**
@@ -63,10 +63,13 @@ const AppController = (() => {
         // QueryString der URL auswerten
         const urlParams = new URLSearchParams(window.location.search);
         const paramPlayerName = urlParams.get('player_name');
-        const paramTableName = urlParams.get('table_name');
-        if (paramPlayerName && paramTableName) {
-            console.debug('URL-Parameter:', paramPlayerName, paramTableName);
+        if (paramPlayerName) {
+            console.debug('paramPlayerName:', paramPlayerName);
             User.setPlayerName(paramPlayerName);
+        }
+        const paramTableName = urlParams.get('table_name');
+        if (paramTableName) {
+            console.debug('paramTableName:', paramTableName);
             User.setTableName(paramTableName);
         }
 
@@ -143,8 +146,6 @@ const AppController = (() => {
         console.log("App._handleServerRequest()", request.request_id, request.action, request);
         const context = request.context || {};
         _setRequest(request.request_id, request.action);
-        //State.setPublicState(request.public_state);
-        //State.setPrivateState(request.private_state);
         switch (request.action) {
             case 'announce_grand_tichu': // Der Spieler wird gefragt, ob er ein großes Tichu ansagen will.
                 break;
@@ -172,7 +173,7 @@ const AppController = (() => {
      * @param {ServerNotification} notification - Die Nachricht.
      */
     function _handleServerNotification(notification) {
-        console.debug("App._handleServerNotification()", notification.event, notification.context);
+        console.debug("App._handleServerNotification()", notification.event, notification.context, State.getCountHandCards(0), State.getCountHandCards(1), State.getCountHandCards(2), State.getCountHandCards(3));
         const context = notification.context || {};
 
         // Spielzustand aktualisieren
@@ -237,8 +238,8 @@ const AppController = (() => {
                 const cards = State.getHandCards().concat(context.received_schupf_cards);
                 Lib.sortCards(cards)
                 State.setHandCards(cards);
-                for (let playerIndex = 1; playerIndex <= 3; playerIndex++) {
-                    State.setCountHandCards(playerIndex, 14);
+                for (let relativeIndex = 1; relativeIndex <= 3; relativeIndex++) {
+                    State.setCountHandCards(Lib.getCanonicalPlayerIndex(relativeIndex), 14);
                 }
                 State.setStartPlayerIndex(context.start_player_index);
                 State.setCurrentTurnIndex(context.start_player_index);
@@ -250,7 +251,9 @@ const AppController = (() => {
                 break;
             case "player_played": // Der Spieler hat Karten ausgespielt.
             case "player_bombed": // Der Spieler hat außerhalb seines regulären Zuges eine Bombe geworfen.
-                State.setCurrentTurnIndex(context.turn[0]); // hat sich bei einer Bombe geändert
+                if (notification.event === "player_bombed") {
+                    State.setCurrentTurnIndex(context.turn[0]);
+                }
                 if (context.turn[0] === State.getPlayerIndex()) {
                     // todo Handkarten besser übergeben?
                     let cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.turn[1]));
@@ -259,7 +262,7 @@ const AppController = (() => {
                 }
                 else {
                     // todo Anzahl Handkarten besser übergeben?
-                    State.setCountHandCards(context.turn[0], State.getCountHandCards() - context.turn[1].length);
+                    State.setCountHandCards(context.turn[0], State.getCountHandCards(context.turn[0]) - context.turn[1].length);
                 }
                 State.setPlayedCards(State.getPlayedCards().concat(context.turn[1]));
                 // todo eine Funktion State.addTurn() bereitstellen
@@ -298,7 +301,7 @@ const AppController = (() => {
                 }
                 break;
             case "player_turn_changed": // Der Spieler ist jetzt am Zug.
-                State.setCurrentTurnIndex(context.setCurrentTurnIndex);
+                State.setCurrentTurnIndex(context.current_turn_index);
                 break;
             case "round_over": // Die Runde ist vorbei und die Karten werden neu gemischt.
                 for (let playerIndex = 0; playerIndex <= 3; playerIndex++) {
@@ -495,7 +498,7 @@ const AppController = (() => {
     /**
      * Ereignishändler für den Dragon-Dialog.
      *
-     * @param {number} value - Der gewählte Gegner (1 == rechts, 3 == links).
+     * @param {number} value - Der zum Benutzer relative Index des gewählten Gegners (1 == rechts, 3 == links).
      */
     function _handleDragonDialogSelect(value) {
         if (!_request || _request.action  !== "give_dragon_away") {
@@ -519,9 +522,16 @@ const AppController = (() => {
      * Rendert die View.
      */
     function _renderView() {
+        console.debug("Render", State.getCountHandCards(0), State.getCountHandCards(1), State.getCountHandCards(2), State.getCountHandCards(3))
         if (Network.isReady()) {
             if (State.isRunning()) {
                 ViewManager.showTableView();
+                if (_request && _request.action === "wish") {
+                    Modals.showWishDialog();
+                }
+                else if (_request && _request.action === "give_dragon_away") {
+                    Modals.showDragonDialog();
+                }
             }
             else {
                 ViewManager.showLobbyView();
@@ -535,13 +545,6 @@ const AppController = (() => {
             else {
                 ViewManager.showLoginView();
             }
-        }
-
-        if (_request && _request.action === "wish") {
-            Modals.showWishDialog();
-        }
-        else if (_request && _request.action === "give_dragon_away") {
-            Modals.showDragonDialog();
         }
     }
 

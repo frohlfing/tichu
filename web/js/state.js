@@ -318,6 +318,12 @@ const State = (() => {
      * @param {number} count - Die Anzahl der Handkarten des angebenden Spielers.
      */
     function setCountHandCards(playerIndex, count) {
+        if (count < 0) {
+            console.log("Verdampt")
+            console.debug(_publicState)
+            console.debug(_privateState)
+        }
+        console.debug("setCountHandCards", playerIndex, count)
         _publicState.count_hand_cards[playerIndex] = count;
     }
     
@@ -575,6 +581,7 @@ const State = (() => {
 
     /** @param {Cards} cards - Die aktuellen Handkarten des Benutzers. */
     function setHandCards(cards) {
+        console.debug("setHandCards", _privateState.player_index, cards.length)
         _privateState.hand_cards = cards;
         _publicState.count_hand_cards[_privateState.player_index] = cards.length;
         _combinationCache = [];
@@ -621,10 +628,19 @@ const State = (() => {
     }
 
     /**
+     * Ermittelt die spielbaren Kombinationen.
+     *
+     * @returns {Array<[Cards, Combination]>} ([], (0,0,0)) für Passen sofern möglich + spielbare Kombinationsmöglichkeiten.
+     */
+    function getActionSpace() {
+        return Lib.buildActionSpace(getCombinations(), _publicState.trick_combination, _publicState.wish_value);
+    }
+
+    /**
      * @returns {boolean} True, wenn der Benutzer Karten ausspielen kann.
      */
     function canPlayCards() {
-        const actionSpace = Lib.buildActionSpace(getCombinations(), _publicState.trick_combination, _publicState.wish_value);
+        const actionSpace = getActionSpace();
         return actionSpace.some(combi => combi[1][0] !== CombinationType.PASS);
     }
 
@@ -640,23 +656,22 @@ const State = (() => {
      * @returns {[Cards, Combination]} - Die empfohlene Kombination.
      */
     function getBestPlayableCombination() {
-        const combis = getCombinations();
-        const actionSpace = Lib.buildActionSpace(combis, _publicState.trick_combination, _publicState.wish_value);
-
         // alle Karten, die Teil einer Bombe sind
         let bombCards = [];
+        const combis = getCombinations();
         combis.forEach(combi => {
             if (combi[1][0] === CombinationType.BOMB) {
                 bombCards = bombCards.concat(combi[0]);
             }
         });
 
-        // Kombinationen entfernen, die eine Bombe zerreißen würden
+        // Aus den spielbaren Kombinationen diejenigen entfernen, die eine Bombe zerreißen würden.
+        const actionSpace = getActionSpace();
         const bestCombis = actionSpace.filter(combi => {
             return combi[1][0] === CombinationType.BOMB || !Lib.hasIntersection(combi[0], bombCards);
         });
 
-        // die restlichen Kombinationen sortieren (die "besten" zuerst).
+        // Die restlichen Kombinationen sortieren (die "besten" zuerst).
         // Priorität:
         // 1: Normale Züge vor Bomben.
         // 2: Längste Kombinationen zuerst.
@@ -679,7 +694,7 @@ const State = (() => {
      * @returns {boolean} - True, wenn die Karten spielbar sind, sonst false.
      */
     function isPlayableCombination(cards) {
-        const actionSpace = Lib.buildActionSpace(getCombinations(), _publicState.trick_combination, _publicState.wish_value);
+        const actionSpace = getActionSpace();
         return actionSpace.some(combi => Lib.isCardsEqual(cards, combi[0]))
     }
 
@@ -703,7 +718,7 @@ const State = (() => {
         if (_publicState.trick_combination[0] !== CombinationType.BOMB) {
             return true; // im Stich liegt keine Bombe, jede Bombe kann geworfen werden
         }
-        const actionSpace = Lib.buildActionSpace(getCombinations(), _publicState.trick_combination, _publicState.wish_value);
+        const actionSpace = getActionSpace();
         return actionSpace.some(combi => combi[1][0] === CombinationType.BOMB);
     }
 
@@ -716,7 +731,7 @@ const State = (() => {
      * @returns {[Cards, Combination]} - Die empfohlene Kombination.
      */
     function getBestPlayableBomb() {
-        const actionSpace = Lib.buildActionSpace(getCombinations(), _publicState.trick_combination, _publicState.wish_value);
+        const actionSpace = getActionSpace();
         const bombs = actionSpace.filter(combi => {
             return combi[1][0] === CombinationType.BOMB;
         });
@@ -742,7 +757,7 @@ const State = (() => {
         if (!cards.length || !hasBomb() || (_publicState.current_turn_index !== _privateState.player_index && _publicState.trick_combination[2] === 0)) {
             return false; // der Benutzer hat keine Bombe oder ein Mitspieler hat das Anspielrecht
         }
-        const actionSpace = Lib.buildActionSpace(getCombinations(), _publicState.trick_combination, _publicState.wish_value);
+        const actionSpace = getActionSpace();
         return actionSpace.some(combi => combi[1][0] === CombinationType.BOMB && Lib.isCardsEqual(cards, combi[0]))
     }
 
@@ -787,7 +802,7 @@ const State = (() => {
         getGivenSchupfCards, setGivenSchupfCards,
         getReceivedSchupfCards, setReceivedSchupfCards,
         isConfirmedReceivedSchupfCards, confirmReceivedSchupfCards,
-        getCombinations,
+        getCombinations, getActionSpace,
         canPlayCards, getBestPlayableCombination, isPlayableCombination,
         hasBomb, canPlayBomb, getBestPlayableBomb, isPlayableBomb,
     };

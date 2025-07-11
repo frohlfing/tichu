@@ -3,6 +3,8 @@
  *
  * Jede View enthält mindestens die folgenden Funktionen.
  *
+ * todo show() und hide() aus der View rausnehmen. Dies sollte nur der View-Manager machen dürfen.
+ *
  * @typedef {Object} View
  * @property {function} init - Initialisiert die View.
  * @property {function} render - Rendert die View.
@@ -25,7 +27,7 @@ const ViewManager = (() => {
     /**
      * Referenzen zu den Views.
      *
-     * @property {View} loading - Die Ladeanzeige.
+     * @property {LoadingView} loading - Die Ladeanzeige.
      * @property {LoginView} login - Der Login-Bildschirm.
      * @property {LobbyView} lobby - Der Lobby-Bildschirm.
      * @property {TableView} table - Der Spieltisch-Bildschirm.
@@ -49,6 +51,12 @@ const ViewManager = (() => {
         _views.table = TableView;
         _views.table.init();
 
+        // for (const name in _views) {
+        //     if (_views.hasOwnProperty(name)) {
+        //         _views[name].init();
+        //     }
+        // }
+
         // Aktuelle View rendern
         for (const name in _views) {
             if (_views.hasOwnProperty(name) && _views[name].isVisible()) {
@@ -57,6 +65,16 @@ const ViewManager = (() => {
                 break;
             }
         }
+    }
+
+    /**
+     * Gibt die gewünschte View zurück.
+     *
+     * @param {string} viewName - Name der View ("loading", "login", "lobby" oder "table").
+     * @returns {View} Die View.
+     */
+    function getViewByName(viewName) {
+        return _views[viewName];
     }
 
     /**
@@ -100,46 +118,29 @@ const ViewManager = (() => {
         if (_currentViewName === viewName && _views[viewName].isVisible()) {
             // Die View ist bereits aktiv, aber wir rendern trotzdem (es könnten sich Daten geändert haben).
             _views[viewName].render();
-            return;
         }
-
-        // Alle Views ausblenden
-        for (const name in _views) {
-            if (_views.hasOwnProperty(name)) {
-                _views[name].hide();
+        else {
+            // Alle Views ausblenden
+            for (const name in _views) {
+                if (_views.hasOwnProperty(name)) {
+                    _views[name].hide();
+                }
             }
+
+            // Gewünschten View anzeigen
+            _views[viewName].show();
+            _currentViewName = viewName;
         }
 
-        // Gewünschten View anzeigen
-        _views[viewName].show();
-        _currentViewName = viewName;
+        EventBus.emit("view:rendered", {viewName: viewName});
     }
-
-    // /**
-    //  * Wird vom AppController aufgerufen, wenn sich der globale Spielzustand geändert hat.
-    //  * Stößt ein Neu-Rendern des aktuellen Views an.
-    //  */
-    // function renderCurrentView() {
-    //     if (_currentViewName) {
-    //         _views[_currentViewName].render();
-    //     }
-    // }
-
-    // /**
-    //  * Gibt den Namen des aktuell aktiven Views zurück.
-    //  * @returns {string|null}
-    //  */
-    // function getCurrentViewName() {
-    //     return _currentViewName;
-    // }
 
     return {
         init,
+        getViewByName,
         showLoadingView,
         showLoginView,
         showLobbyView,
         showTableView,
-        //renderCurrentView,
-        //getCurrentViewName
     };
 })();

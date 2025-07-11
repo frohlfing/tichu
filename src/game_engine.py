@@ -4,11 +4,12 @@ Definiert die Spiellogik.
 
 import asyncio
 from aiohttp.web_ws import WebSocketResponse
+from coverage.debug import simplify
 
 import config
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH, Cards, CardSuit
+from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH, Cards, CardSuit, stringify_cards
 from src.lib.combinations import CombinationType, FIGURE_DRA, FIGURE_DOG, FIGURE_PASS, FIGURE_PHO, FIGURE_MAH, Combination
 from src.lib.errors import ErrorCode, PlayerInterruptError
 from src.players.agent import Agent
@@ -321,12 +322,12 @@ class GameEngine:
 
                 # Karten mischen
                 self._random.shuffle(self._mixed_deck)
-                self._mixed_deck = [(card[0], CardSuit(card[1])) for card in [
-                    (2, 1), (2, 2), (2, 3), (2, 4), (5, 2), (8, 4), (3, 4), (6, 4), (3, 1), (14, 4), (8, 1), (7, 1),  (7, 3), (3, 3),
-                    (10, 2), (11, 3), (6, 1), (11, 4), (9, 1), (13, 1), (3, 2), (6, 3), (9, 2), (12, 4), (12, 2), (4, 3), (5, 1), (4, 2),
-                    (0, 0), (13, 3), (1, 0), (9, 4), (5, 4), (10, 3), (8, 3), (10, 1), (14, 1), (9, 3), (7, 4), (8, 2), (13, 4), (10, 4),
-                    (12, 3), (4, 4), (11, 1), (5, 3), (6, 2), (12, 1), (13, 2), (4, 1), (7, 2), (14, 3), (2, 4), (2, 2), (15, 0), (16, 0),
-                ]]
+                # self._mixed_deck = [(card[0], CardSuit(card[1])) for card in [
+                #     (2, 1), (2, 2), (2, 3), (2, 4), (5, 2), (8, 4), (3, 4), (6, 4), (3, 1), (14, 4), (8, 1), (7, 1),  (7, 3), (3, 3),
+                #     (10, 2), (11, 3), (6, 1), (11, 4), (9, 1), (13, 1), (3, 2), (6, 3), (9, 2), (12, 4), (12, 2), (4, 3), (5, 1), (4, 2),
+                #     (0, 0), (13, 3), (1, 0), (9, 4), (5, 4), (10, 3), (8, 3), (10, 1), (14, 1), (9, 3), (7, 4), (8, 2), (13, 4), (10, 4),
+                #     (12, 3), (4, 4), (11, 1), (5, 3), (6, 2), (12, 1), (13, 2), (4, 1), (7, 2), (14, 3), (14, 2), (11, 2), (15, 0), (16, 0),
+                # ]]
 
                 # Karten verteilen
                 if clients_joined:
@@ -363,6 +364,11 @@ class GameEngine:
                         assert len(priv.hand_cards) == 11
                         pub.count_hand_cards[player_index] = 11
 
+                for player_index in range(4):
+                    logger.debug(f"[{self.table_name}] Handkarten Spieler {player_index}: {stringify_cards(privs[player_index].hand_cards)}")
+                for player_index in range(4):
+                    logger.debug(f"[{self.table_name}] Tauschkarten Spieler {player_index}: {stringify_cards(privs[player_index].given_schupf_cards)}")
+
                 # Tauscharten aufnehmen
                 # Karten-Index der abgegebenen Karte:
                 # Ge-| Nehmer
@@ -394,6 +400,11 @@ class GameEngine:
 
                 if clients_joined:
                     await self._broadcast("start_playing", {"start_player_index": pub.start_player_index})  # wird nur einmal gesendet!
+
+                for player_index in range(4):
+                    logger.debug(f"[{self.table_name}] Handkarten Spieler {player_index}: {stringify_cards(privs[player_index].hand_cards)}")
+                check_deck = sorted(privs[0].hand_cards + privs[1].hand_cards + privs[2].hand_cards + privs[3].hand_cards)
+                assert check_deck == list(deck), f"{stringify_cards(check_deck)} != {stringify_cards(deck)}"
 
                 # los geht's - das eigentliche Spiel kann beginnen...
                 assert 0 <= pub.current_turn_index <= 3
@@ -437,12 +448,16 @@ class GameEngine:
                             try:
                                 cards, combination = await self._players[pub.current_turn_index].play()
                             except PlayerInterruptError as e:
-                                # Ein Client hat eine Bombe geworfen. Wir wiederholen den aktuellen Schleifendurchlauf nochmal,
+                                # Ein Client hat eine Bombe geworfen. Wir wiederholen den aktuellen Schleifendurchlauf,
                                 # so dass nochmal gefragt wird, ob ein Spieler eine Bombe werfen will und lassen sie dann hochgehen.
-                                continue  # while not pub.is_round_over:
+                                continue  # while not pub.is_round_over
 
                         assert combination[1] <= pub.count_hand_cards[pub.current_turn_index] <= 14
                         assert combination[1] == len(cards)
+                        if cards:
+                            logger.debug(f"[{self.table_name}] Spieler {pub.current_turn_index} spielt {stringify_cards(cards)}")
+                        else:
+                            logger.debug(f"[{self.table_name}] Spieler {pub.current_turn_index} passt")
 
                         # Entscheidung des Spielers festhalten
                         assert pub.current_turn_index != -1
@@ -479,7 +494,7 @@ class GameEngine:
                             assert -25 <= pub.trick_points <= 125
 
                             # Gespielte Karten merken
-                            assert not set(cards).intersection(pub.played_cards)  # darf keine Schnittmenge bilden
+                            assert not set(cards).intersection(pub.played_cards), f"cards: {stringify_cards(cards)},  played_cards: {stringify_cards(pub.played_cards)}"  # darf keine Schnittmenge bilden
                             pub.played_cards += cards
 
                             # ist der erste Spieler fertig?
@@ -610,7 +625,7 @@ class GameEngine:
                 pass
 
         except Exception as e:
-            msg = f"[{self.table_name}] Kritischer Fehler im Spiel-Loop: {e}"
+            msg = f"[{self.table_name}] Unerwarteter Fehler im Spiel-Loop: {e}"
             logger.exception(msg)
             # noinspection PyBroadException
             try:

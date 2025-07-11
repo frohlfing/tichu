@@ -115,7 +115,7 @@ const FIGURE_PHO = /** @type Combination */ [CombinationType.SINGLE, 1, 16];
 const Lib = (() => {
 
     // --------------------------------------------------------------------------------------
-    // Allgemeine mathematische Funktionen
+    // Allgemeine Funktionen
     // --------------------------------------------------------------------------------------
 
     /**
@@ -125,7 +125,21 @@ const Lib = (() => {
      * @returns {number} Die Summe der Zahlen im Array.
      */
     function sum(arr) {
-        return arr.reduce((acc, num) => acc + num, 0);
+        return arr.reduce((acc, value) => acc + value, 0);
+    }
+
+    /**
+     * Formatiert den Punktestand
+     *
+     * Die Punktzahl eines Teams wird als vierstellige Zahl mir führenden Nullen angezeigt und mit Doppelpunkt von der gegnerischen getrennt.
+     *
+     * @param {[number, number]} score Punktestand für Team 20 und Team 31.
+     * @returns {string} Punktestand als String, z.B. "0440 : 0300".
+     */
+    function formatScore(score) {
+        const points20 = (score[0] < 0 ? '-' : '') + Math.abs(score[0]).toString().padStart(4, '0');
+        const points31 = (score[0] < 0 ? '-' : '') + Math.abs(score[1]).toString().padStart(4, '0');
+        return `${points20} : ${points31}`;
     }
 
     // --------------------------------------------------------------------------------------
@@ -838,7 +852,7 @@ const Lib = (() => {
 
     // noinspection JSUnusedGlobalSymbols
     return {
-        sum,
+        sum, formatScore,
         getRelativePlayerIndex, getCanonicalPlayerIndex,
         isCardEqual, isCardsEqual, sortCards, includesCard, hasIntersection,
         parseCard, parseCards, stringifyCard, stringifyCards,

@@ -111,7 +111,7 @@ Gewünschte Gewinnquote WIN / (WIN + LOST).
 Wenn erreicht, bricht die Arena den Wettkampf ab (sofern early_stopping gesetzt ist).
 """
 
-AGENT_THINKING_TIME = _to_array(getenv("AGENT_THINKING_TIME", [0.5, 3.0]), lambda item: float(item))
+AGENT_THINKING_TIME = _to_array(getenv("AGENT_THINKING_TIME", [0.5, 2.5]), lambda item: float(item))
 """
 Denkzeit des Agenten (von/bis) in Sekunden.
 """
