@@ -104,6 +104,7 @@ const Animations = (() => {
         // Event-Listener für das Ende der Transition
         cardElement.addEventListener('transitionend', () => {
             if (typeof callback === 'function') {
+                cardElement.remove();
                 callback();
             }
         }, { once: true });

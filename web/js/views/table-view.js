@@ -681,6 +681,7 @@ const TableView = (() => {
                         //     _schupfZones[i].classList.remove('hidden'); // für die Dauer der Animation die Schupfzonen der Mitspieler anzeigen
                         // }
                         EventBus.pause();
+                        // todo darf nur einmal aufgerufen werden
                         Animations.schupf(() => {
                             // for (let i = 1; i <= 3; i++) {
                             //     _schupfZones[i].classList.add('hidden'); // nach der Animation die Schupfzone des Mitspielers ausblenden
