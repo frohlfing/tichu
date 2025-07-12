@@ -5,12 +5,12 @@
  */
 
 /**
- * Skaliert den #game-wrapper, um das 1080x1920 Seitenverhältnis beizubehalten und ihn in den verfügbaren Browser-Viewport einzupassen.
+ * Skaliert den Wrapper, um das 1080x1920 Seitenverhältnis beizubehalten und ihn in den verfügbaren Browser-Viewport einzupassen.
  */
-function scaleGameWrapper() {
-    const wrapper = document.getElementById('game-wrapper');
+function scaleWrapper() {
+    const wrapper = document.getElementById('wrapper');
     if (!wrapper) {
-        console.error("Main: #game-wrapper nicht im DOM gefunden!");
+        console.error("Main: #wrapper nicht im DOM gefunden!");
         return;
     }
     const targetWidth = 1080;
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Skalierung initial aufrufen, falls der Wrapper schon im DOM ist
     // (wird aber auch von window.onload abgedeckt)
     AppController.init();
-    scaleGameWrapper(); // Initial skalieren
+    scaleWrapper(); // Initial skalieren
 
     // Bot aktivieren, falls gewünscht
     const urlParams = new URLSearchParams(window.location.search);
@@ -43,11 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.addEventListener('load', () => {
-    scaleGameWrapper(); // Erneut skalieren, falls sich Dimensionen durch späte Ladevorgänge geändert haben
+    scaleWrapper(); // Erneut skalieren, falls sich Dimensionen durch späte Ladevorgänge geändert haben
 });
 
 window.addEventListener('resize', () => {
-    scaleGameWrapper();
+    scaleWrapper();
 });
 
 /**

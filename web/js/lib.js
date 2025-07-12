@@ -142,6 +142,16 @@ const Lib = (() => {
         return `${points20} : ${points31}`;
     }
 
+    /**
+     * Ermittelt den aktuellen Skalierungsfaktor des Wrappers.
+     *
+     * @returns {number} - Skalierungsfaktor.
+     */
+    function getWrapperScale() {
+        const wrapper = document.getElementById('wrapper');
+        return wrapper.offsetWidth ? wrapper.getBoundingClientRect().width / wrapper.offsetWidth : 1;
+    }
+
     // --------------------------------------------------------------------------------------
     // Kanonischer Index / Relativer Index
     // --------------------------------------------------------------------------------------
@@ -852,7 +862,7 @@ const Lib = (() => {
 
     // noinspection JSUnusedGlobalSymbols
     return {
-        sum, formatScore,
+        sum, formatScore, getWrapperScale,
         getRelativePlayerIndex, getCanonicalPlayerIndex,
         isCardEqual, isCardsEqual, sortCards, includesCard, hasIntersection,
         parseCard, parseCards, stringifyCard, stringifyCards,

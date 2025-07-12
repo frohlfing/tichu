@@ -4,158 +4,117 @@
 const Animations = (() => {
 
     /**
-     * Lässt einen Kartenstapel von einem Start- zu einem Endelement fliegen.
+     * Der Hauptcontainer, der mit einer Ausgangsgröße von 1080x1920 in den Viewport des Browsers skaliert wird.
      *
-     * @param {Cards} cardsData - Die Daten der Karten, die fliegen sollen (für die Bildanzeige).
-     * @param {HTMLElement} fromElement - Das DOM-Element, von dem die Animation startet.
-     * @param {HTMLElement} toElement - Das DOM-Element, bei dem die Animation endet.
-     * @param {object} [options] - Zusätzliche Optionen.
-     * @param {number} [options.stagger=50] - Zeitlicher Versatz zwischen den Karten in ms für einen Kaskadeneffekt.
-     * @param {boolean} [options.rotate=false] - Ob die Karte während des Flugs um 90 Grad gedreht werden soll.
-     * @param {string} [options.targetWidth='5em'] - Die Zielbreite der Karte.
-     * @param {string} [options.targetHeight='7em'] - Die Zielhöhe der Karte.
-     * @param {number} [options.duration=600] - Dauer der Animation in ms.
+     * @type {HTMLElement}
      */
-    function flyCards(cardsData, fromElement, toElement, options = {}) {
-        const {
-            stagger = 50,
-            rotate = false,
-            targetWidth = '120px',
-            targetHeight = '180px',
-            duration = 600
-        } = options;
+    const _wrapper = document.getElementById('wrapper');
 
-        const gameWrapper = document.getElementById('game-wrapper');
-        if (!gameWrapper || !fromElement || !toElement) {
-            console.error("flyCards: Start- oder Endelement oder Wrapper nicht gefunden.");
-            return;
-        }
+    /**
+     * Die Ablage-Zonen für die Tauschkarten.
+     *
+     * @type {Array<HTMLElement>}
+     */
+    const _schupfZones = [
+        document.getElementById('schupf-zone-bottom'),
+        document.getElementById('schupf-zone-right'),
+        document.getElementById('schupf-zone-top'),
+        document.getElementById('schupf-zone-left'),
+    ];
 
-        const wrapperRect = gameWrapper.getBoundingClientRect();
-        const startRect = fromElement.getBoundingClientRect();
-        const endRect = toElement.getBoundingClientRect();
-
-        cardsData.forEach((card, index) => {
-            setTimeout(() => {
-                const flyingCard = document.createElement('div');
-                flyingCard.className = 'card flying-card';
-                flyingCard.style.backgroundImage = `url('images/cards/${Lib.stringifyCard(card)}.png')`;
-
-                // Setze die Transition-Dauer
-                flyingCard.style.transition = `transform ${duration}ms ease-in-out, width ${duration}ms ease-in-out, height ${duration}ms ease-in-out`;
-
-                // Startposition relativ zum Wrapper berechnen (zentriert im Start-Element)
-                const startX = startRect.left - wrapperRect.left + (startRect.width / 2);
-                const startY = startRect.top - wrapperRect.top + (startRect.height / 2);
-                flyingCard.style.left = `${startX}px`;
-                flyingCard.style.top = `${startY}px`;
-
-                // Setze auch die Startgröße, um einen sauberen Übergang zu gewährleisten
-                flyingCard.style.width = `${startRect.width}px`;
-                flyingCard.style.height = `${startRect.height}px`;
-
-                // Füge die Karte zum Wrapper hinzu, um die Skalierung zu erben
-                gameWrapper.appendChild(flyingCard);
-
-                // Nächsten Frame abwarten, um sicherzustellen, dass die Transition getriggert wird
-                requestAnimationFrame(() => {
-                    // Zielposition relativ zum Wrapper berechnen (zentriert im Ziel-Element)
-                    const endX = endRect.left - wrapperRect.left + (endRect.width / 2);
-                    const endY = endRect.top - wrapperRect.top + (endRect.height / 2);
-
-                    const rotation = rotate ? 'rotate(90deg)' : 'rotate(0deg)';
-                    flyingCard.style.width = targetWidth;
-                    flyingCard.style.height = targetHeight;
-                    // Transformation relativ zur Startposition innerhalb des Wrappers
-                    //flyingCard.style.transform = `translate(${endX - startX}px, ${endY - startY}px) ${rotation}`;
-                });
-
-                // Element nach der Animation aufräumen
-                setTimeout(() => {
-                    //flyingCard.remove();
-                }, duration + 50); // Ein kleiner Puffer nach der Animation
-
-            }, index * stagger);
-        });
-    }
-
-
-    // PoC-Code zum Testen in der Konsole
-    function testFlyAnimation() {
-        console.log("Starte Test-Animation...");
-
-        // 1. Hole die DOM-Elemente
-        const cardToAnimate = document.querySelector('#schupf-zone-top .schupf-subzone:nth-child(2) .card');
-        const toContainer = document.querySelector('#schupf-zone-bottom .schupf-subzone:nth-child(2)');
-        const gameWrapper = document.getElementById('game-wrapper');
-
-        if (!cardToAnimate || !toContainer || !gameWrapper) {
-            console.error("Konnte Start-, Ziel- oder Wrapper-Container nicht finden.");
-            return;
-        }
-
-        // 2. Erstelle die fliegende Kopie
-        const flyingCard = cardToAnimate; //.cloneNode(true);
-        flyingCard.classList.add('flying-card'); // Füge die Animations-Styling-Klasse hinzu
-        //flyingCard.style.transition = 'all 800ms ease-in-out'; // "all" für einfache Fehlersuche
-        //flyingCard.style.transformOrigin = 'center center'; // Oft stabiler für Skalierung und Rotation
-
-        // 3. Berechne Start- und Endpositionen RELATIV ZUM WRAPPER
-        //const wrapperRect = gameWrapper.getBoundingClientRect();
-        const startRect = cardToAnimate.getBoundingClientRect();
-        const endRect = toContainer.getBoundingClientRect();
-
-        // // Startposition der fliegenden Karte (obere linke Ecke)
-        // const startX = startRect.left - wrapperRect.left;
-        // const startY = startRect.top - wrapperRect.top;
-        //
-        // // Zielposition der fliegenden Karte (zentriert im Zielcontainer)
-        // const endX = (endRect.left - wrapperRect.left) + (endRect.width / 2) - (startRect.width / 2);
-        // const endY = (endRect.top - wrapperRect.top) + (endRect.height / 2) - (startRect.height / 2);
-
-        // Startposition der fliegenden Karte (obere linke Ecke)
-        const startX = startRect.left;
-        const startY = startRect.top;
-
-        // Zielposition der fliegenden Karte (zentriert im Zielcontainer)
-        const endX = endRect.left; // + (endRect.width / 2) - (startRect.width / 2);
-        const endY = endRect.top; // + (endRect.height / 2) - (startRect.height / 2);
-
-
-        // 4. Initialisiere die fliegende Karte
-        // Setze die absolute Position und die Größe der Karte
-        flyingCard.style.left = `${startX}px`;
-        flyingCard.style.top = `${startY}px`;
-        flyingCard.style.width = `${startRect.width}px`;
-        flyingCard.style.height = `${startRect.height}px`;
-        flyingCard.style.transform = 'scale(1) rotate(0deg)'; // Expliziter Start-Transform
-
-        // Füge die fliegende Karte zum Wrapper hinzu
-        gameWrapper.appendChild(flyingCard);
-
-        // 5. Starte die Animation im nächsten Frame
-        requestAnimationFrame(() => {
-            // Berechne die Skalierung, damit die Karte in den Zielcontainer passt
-            const scaleX = endRect.width / startRect.width;
-            const scaleY = endRect.height / startRect.height;
-            const scale = Math.min(scaleX, scaleY); // Nimm die kleinere Skalierung, um das Seitenverhältnis zu wahren
-
-            // Setze die Transformation für die Endposition
-            // Wir verwenden transform für ALLES: Position, Skalierung, Rotation
-            flyingCard.style.transform = `translate(${endX - startX}px, ${endY - startY}px) scale(${scale}) rotate(0deg)`;
-        });
-
-        // 6. Räume nach der Animation auf
-        setTimeout(() => {
-            console.log("Animation beendet, räume auf.");
-            flyingCard.remove();
-            // Optional: Entferne auch die temporäre Testkarte
-            if (cardToAnimate.parentElement === fromContainer) {
-               // fromContainer.innerHTML = ''; // Sicherster Weg, alle Kinder zu entfernen
+    /**
+     * Tauscht die Schupfkarten aller Spieler untereinander aus.
+     *
+     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation.
+     */
+    function schupf(callback) {
+        let completed = 0;
+        for (let fromRelativeIndex=0; fromRelativeIndex <= 3; fromRelativeIndex++) {
+            for (let toRelativeIndex=0; toRelativeIndex <= 3; toRelativeIndex++) {
+                if (fromRelativeIndex !== toRelativeIndex) {
+                    _schupfCard(fromRelativeIndex, toRelativeIndex, () => {
+                        completed++;
+                        if (completed === 12 && typeof callback === 'function') {
+                            callback();
+                        }
+                    });
+                }
             }
-        }, 900); // Etwas länger als die Animationsdauer
+        }
+
+        // setTimeout(() => {
+        //     console.log("Animation beendet, räume auf.");
+        // }, 2000); // etwas länger als die Animationsdauer (die Dauer ist in der CSS-Klasse .flying-card definiert)
     }
 
+    /**
+     * Verschiebt eine Schupfkarte von einem Spieler zum anderen.
+     *
+     * @param {number} fromRelativeIndex - Relativer Index des Spielers, der die Tauschkarte abgibt.
+     * @param {number} toRelativeIndex - Relativer Index des Spielers, der die Tauschkarte bekommt.
+     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
+     */
+    function _schupfCard(fromRelativeIndex, toRelativeIndex, callback) {
+        // DOM-Element, das die Tauschkarte zeigt
+        const cardElement = _schupfZones[fromRelativeIndex].querySelector(`.schupf-subzone:nth-child(${(4 + fromRelativeIndex - toRelativeIndex) % 4}) .card`);
+        if (!cardElement) {
+            // Schupf-Subzone ist leer
+            if (typeof callback === 'function') {
+                callback();
+            }
+            return;
+        }
+
+        // Container, in der die Tauschkarte abgelegt werden soll
+        const targetContainer = _schupfZones[toRelativeIndex].querySelector(`.schupf-subzone:nth-child(${(4 + toRelativeIndex - fromRelativeIndex) % 4})`);
+
+        // Position und aktuellen Skalierungsfaktor des Wrappers
+        const wrapperRect = _wrapper.getBoundingClientRect(); // die Werte von getBoundingClientRect() sind skaliert!
+        const wrapperScale = _wrapper.offsetWidth ? wrapperRect.width / _wrapper.offsetWidth : 1;
+
+        // Startposition (relativ zum Wrapper)
+        const startRect = cardElement.getBoundingClientRect();
+        const startOffset = fromRelativeIndex === 1 || fromRelativeIndex === 3 ? 30 : 0; // 30 = (Kartenhöhe - Kartenbreite) / 2, entsteht durch die Drehung um 90 Grad um den Kartenmittelpunkt
+        const startX = (startRect.left - wrapperRect.left) / wrapperScale + startOffset;
+        const startY = (startRect.top - wrapperRect.top) / wrapperScale - startOffset;
+        const startDeg = [0, -90, 180, 90][fromRelativeIndex];
+
+        // Endpositionen (relativ zum Wrapper)
+        const endRect = targetContainer.getBoundingClientRect();
+        const endOffset = toRelativeIndex === 1 || toRelativeIndex === 3 ? 30 : 0; // 30 = (Kartenhöhe - Kartenbreite) / 2, entsteht durch die Drehung um 90 Grad um den Kartenmittelpunkt
+        const endX = (endRect.left - wrapperRect.left) / wrapperScale + endOffset;
+        const endY = (endRect.top - wrapperRect.top) / wrapperScale - endOffset;
+        const endDeg = [0, -90, 180, 90][toRelativeIndex];
+
+        // Die Karte direkt in den Hauptcontainer legen, damit sie über allem fliegen kann.
+        cardElement.classList.add('flying-card');
+        cardElement.style.left = `${startX}px`;
+        cardElement.style.top = `${startY}px`;
+        cardElement.style.transform = `rotate(${startDeg}deg)`;
+        _wrapper.appendChild(cardElement);
+
+        let diffDeg = endDeg - startDeg;
+        if (diffDeg === 270) {
+            diffDeg = -90
+        }
+        else if (diffDeg === -270) {
+            diffDeg = 90
+        }
+
+        // Event-Listener für das Ende der Transition
+        cardElement.addEventListener('transitionend', () => {
+            if (typeof callback === 'function') {
+                callback();
+            }
+        }, { once: true });
+
+        // Animation im nächsten Frame starten
+        //const startTime = document.timeline.currentTime;
+        requestAnimationFrame(_timestamp => { // rAF sagt dem Browser: "Bevor du den nächsten Frame zeichnest, führe diese Funktion aus."
+            //const elapsed = timestamp - startTime;
+            cardElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
+        });
+    }
 
     /**
      * Wendet einen Kartenstapel (dreht ihn von Vorder- zu Rückseite oder umgekehrt).
@@ -194,10 +153,10 @@ const Animations = (() => {
      */
     function animateBomb() {
         // 1. Screen-Shake-Effekt
-        const gameWrapper = document.getElementById('game-wrapper');
-        gameWrapper.classList.add('screen-shake-effect');
-        gameWrapper.addEventListener('animationend', () => {
-            gameWrapper.classList.remove('screen-shake-effect');
+        const wrapper = document.getElementById('wrapper');
+        wrapper.classList.add('screen-shake-effect');
+        wrapper.addEventListener('animationend', () => {
+            wrapper.classList.remove('screen-shake-effect');
         }, { once: true });
 
         // 2. "BOMBE!"-Text-Effekt
@@ -243,12 +202,11 @@ const Animations = (() => {
 
     // noinspection JSUnusedGlobalSymbols
     return {
-        flyCards,
+        schupf,
         flipCard,
         removeCards,
         animateBomb,
         pulseElement,
         animateScoreUpdate,
-        testFlyAnimation,
     };
 })();

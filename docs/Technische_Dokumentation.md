@@ -598,7 +598,7 @@ web/
 
 ### 8.4 Viewport
                       
-Der Hauptcontainer (`#game-wrapper`) hat ein Seitenverhältnis von 9:16 (ein gängiges Smartphone-Hochformat), 
+Der Hauptcontainer (`#wrapper`) hat ein Seitenverhältnis von 9:16 (ein gängiges Smartphone-Hochformat), 
 der mit einer Ausgangsgröße von 1080x1920 in den Viewport des Browsers skaliert wird.
 Die HTML-Elemente werden pixelgenau positioniert.
 

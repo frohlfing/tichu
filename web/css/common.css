@@ -24,7 +24,7 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
-#game-wrapper {
+#wrapper {
     width: 1080px;
     height: 1920px;
     transform-origin: center center;

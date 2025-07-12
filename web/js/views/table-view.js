@@ -9,6 +9,13 @@ const TableView = (() => {
     // DOM-Elemente
     // --------------------------------------------------------------------------------------
 
+    // /**
+    //  * Der Hauptcontainer, der mit einer Ausgangsgröße von 1080x1920 in den Viewport des Browsers skaliert wird.
+    //  *
+    //  * @type {HTMLElement}
+    //  */
+    // const _wrapper = document.getElementById('wrapper');
+
     /**
      * Der Container des Spieltisch-Bildschirms.
      *
@@ -243,8 +250,10 @@ const TableView = (() => {
      * Ereignishändler für den "Optionen"-Button.
      */
     function _handleSettingsButtonClick() {
-        //animateDealSchupfCards()
-        Animations.testFlyAnimation();
+        Animations.schupf(() => {
+            console.log("Animation beendet");
+        });
+
         // SoundManager.playSound('buttonClick');
         // Modals.showErrorToast("Einstellungen sind noch nicht implementiert.");
     }
@@ -265,19 +274,6 @@ const TableView = (() => {
         _updatePlayButton();
     }
 
-    function animateDealSchupfCards() {
-         State.setReceivedSchupfCards(/** @type Cards */ [[3,1], [2,1], [10,3]]);
-        //const toElement = document.getElementById('schupf-zone-bottom');
-        const toElement = document.getElementById('hand-bottom');
-        for (let relativeIndex = 1; relativeIndex <= 1; relativeIndex++) {
-            //const fromElement = document.getElementById(`schupf-zone-${['bottom', 'right', 'top', 'left'][relativeIndex]}`);
-            const fromElement = document.getElementById(`hand-${['bottom', 'right', 'top', 'left'][relativeIndex]}`);
-            const card = State.getReceivedSchupfCards()[relativeIndex];
-            if (card) {
-                Animations.flyCards([card], fromElement, toElement, { rotate: relativeIndex !== 2, targetSize: '120px' });
-            }
-        }
-    }
     // ------------------------------------------------------------------------------------------------------
 
     /**
@@ -677,14 +673,26 @@ const TableView = (() => {
                 // Der Benutzer hat Tauschkarten bekommen.
                 if (relativeIndex === 0) {
                     if (!State.isConfirmedReceivedSchupfCards()) {
-                        // Der Benutzer hat die erhaltenen Tauschkarten noch nicht bestätigt. Diese anzeigen.
-                        _schupfZones[0].classList.remove('hidden');
-                        _clearSchupfZone(playerIndex);
-                        const receivedCards = State.getReceivedSchupfCards().toReversed(); // linker Gegner, Partner, rechter Gegner
-                        _schupfZones[0].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
-                            subzoneElement.appendChild(_createCardElement(receivedCards[i]));
-                        });
+                        // Der Benutzer hat die erhaltenen Tauschkarten noch nicht bestätigt.
+                        // Wir starten die Animation, in der die Karten unter den Spielern ausgetauscht werden.
                         _clearSelectedCards();
+                        _schupfZones[0].classList.remove('hidden');
+                        for (let i = 1; i <= 3; i++) {
+                            _schupfZones[i].classList.remove('hidden'); // für die Dauer der Animation die Schupfzonen der Mitspieler anzeigen
+                            _trickZones[i].classList.add('hidden');  // und Spielzüge ausblenden
+                        }
+                        Animations.schupf(() => {
+                            for (let i = 1; i <= 3; i++) {
+                                _schupfZones[i].classList.add('hidden'); // nach der Animation die Schupfzone des Mitspielers ausblenden
+                                _trickZones[i].classList.remove('hidden');  // und den Spielzug des Mitspielers anzeigen
+                            }
+                            // Tauschkarten anzeigen
+                            _clearSchupfZone(playerIndex);
+                            const receivedCards = State.getReceivedSchupfCards().toReversed(); // linker Gegner, Partner, rechter Gegner
+                            _schupfZones[0].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
+                                subzoneElement.appendChild(_createCardElement(receivedCards[i]));
+                            });
+                        });
                     }
                     else {
                         // Schupfzone des Benutzers ausblenden
@@ -883,7 +891,5 @@ const TableView = (() => {
         show,
         hide,
         isVisible,
-        testShowSchupfZones,
-        animateDealSchupfCards,
     };
 })();
