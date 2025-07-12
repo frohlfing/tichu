@@ -17,8 +17,7 @@
 /**
  * Zentrale Nachrichtenvermittlung zwischen den Komponenten.
  *
- * Anwendungsbeispiel:
- *
+ * @example Anwendungsbeispiel
  * EventBus.on('user:login', (data) => {
  *   console.log(`User logged in: ${data.name}`);
  * });

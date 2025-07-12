@@ -250,9 +250,11 @@ const TableView = (() => {
      * Ereignishändler für den "Optionen"-Button.
      */
     function _handleSettingsButtonClick() {
-        Animations.schupf(() => {
+        console.log("Starte Animation...");
+        Animations.schupf().then(() => {
             console.log("Animation beendet");
         });
+        console.log("...und mache weiter");
 
         // SoundManager.playSound('buttonClick');
         // Modals.showErrorToast("Einstellungen sind noch nicht implementiert.");
@@ -677,15 +679,14 @@ const TableView = (() => {
                         // Wir starten die Animation, in der die Karten unter den Spielern ausgetauscht werden.
                         _clearSelectedCards();
                         _schupfZones[0].classList.remove('hidden');
-                        for (let i = 1; i <= 3; i++) {
-                            _schupfZones[i].classList.remove('hidden'); // für die Dauer der Animation die Schupfzonen der Mitspieler anzeigen
-                            _trickZones[i].classList.add('hidden');  // und Spielzüge ausblenden
-                        }
+                        // for (let i = 1; i <= 3; i++) {
+                        //     _schupfZones[i].classList.remove('hidden'); // für die Dauer der Animation die Schupfzonen der Mitspieler anzeigen
+                        // }
+                        // todo Animations.schupf muss hier blockieren also z.B. mit await Animations.schupf()
                         Animations.schupf(() => {
-                            for (let i = 1; i <= 3; i++) {
-                                _schupfZones[i].classList.add('hidden'); // nach der Animation die Schupfzone des Mitspielers ausblenden
-                                _trickZones[i].classList.remove('hidden');  // und den Spielzug des Mitspielers anzeigen
-                            }
+                            // for (let i = 1; i <= 3; i++) {
+                            //     _schupfZones[i].classList.add('hidden'); // nach der Animation die Schupfzone des Mitspielers ausblenden
+                            // }
                             // Tauschkarten anzeigen
                             _clearSchupfZone(playerIndex);
                             const receivedCards = State.getReceivedSchupfCards().toReversed(); // linker Gegner, Partner, rechter Gegner

@@ -25,26 +25,31 @@ const Animations = (() => {
     /**
      * Tauscht die Schupfkarten aller Spieler untereinander aus.
      *
-     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation.
+     * @example Nicht blockierender Aufruf
+     * schupf().then(() => log.info("Animation beendet");
+     *
+     * @example Blockierender Aufruf
+     * await schupf(); // blockiert, bis die Animation beendet ist
+     * log.info("Animation beendet");
+     *
+     * @returns {Promise}
      */
-    function schupf(callback) {
-        let completed = 0;
-        for (let fromRelativeIndex=0; fromRelativeIndex <= 3; fromRelativeIndex++) {
-            for (let toRelativeIndex=0; toRelativeIndex <= 3; toRelativeIndex++) {
-                if (fromRelativeIndex !== toRelativeIndex) {
-                    _schupfCard(fromRelativeIndex, toRelativeIndex, () => {
-                        completed++;
-                        if (completed === 12 && typeof callback === 'function') {
-                            callback();
-                        }
-                    });
+    async function schupf() {
+        return new Promise(resolve => {
+            let completed = 0;
+            for (let fromRelativeIndex = 0; fromRelativeIndex <= 3; fromRelativeIndex++) {
+                for (let toRelativeIndex = 0; toRelativeIndex <= 3; toRelativeIndex++) {
+                    if (fromRelativeIndex !== toRelativeIndex) {
+                        _schupfCard(fromRelativeIndex, toRelativeIndex, () => {
+                            completed++;
+                            if (completed === 12) {
+                                resolve();
+                            }
+                        });
+                    }
                 }
             }
-        }
-
-        // setTimeout(() => {
-        //     console.log("Animation beendet, räume auf.");
-        // }, 2000); // etwas länger als die Animationsdauer (die Dauer ist in der CSS-Klasse .flying-card definiert)
+        });
     }
 
     /**
