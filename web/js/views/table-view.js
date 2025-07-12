@@ -250,11 +250,9 @@ const TableView = (() => {
      * Ereignishändler für den "Optionen"-Button.
      */
     function _handleSettingsButtonClick() {
-        console.log("Starte Animation...");
-        Animations.schupf().then(() => {
+        Animations.schupf(() => {
             console.log("Animation beendet");
         });
-        console.log("...und mache weiter");
 
         // SoundManager.playSound('buttonClick');
         // Modals.showErrorToast("Einstellungen sind noch nicht implementiert.");
@@ -682,7 +680,7 @@ const TableView = (() => {
                         // for (let i = 1; i <= 3; i++) {
                         //     _schupfZones[i].classList.remove('hidden'); // für die Dauer der Animation die Schupfzonen der Mitspieler anzeigen
                         // }
-                        // todo Animations.schupf muss hier blockieren also z.B. mit await Animations.schupf()
+                        EventBus.pause();
                         Animations.schupf(() => {
                             // for (let i = 1; i <= 3; i++) {
                             //     _schupfZones[i].classList.add('hidden'); // nach der Animation die Schupfzone des Mitspielers ausblenden
@@ -693,6 +691,7 @@ const TableView = (() => {
                             _schupfZones[0].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
                                 subzoneElement.appendChild(_createCardElement(receivedCards[i]));
                             });
+                            EventBus.resume();
                         });
                     }
                     else {

@@ -319,7 +319,7 @@ const State = (() => {
      */
     function setCountHandCards(playerIndex, count) {
         if (count < 0) {
-            console.log("Verdampt")
+            console.log("MIST!")
             console.debug(_publicState)
             console.debug(_privateState)
         }

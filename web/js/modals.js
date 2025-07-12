@@ -168,7 +168,7 @@ const Modals = (() => {
     /**
      * Zeigt den GameOver-Dialog an.
      */
-    function showGameOverDialog(text) {
+    function showGameOverDialog() {
         const total = State.getTotalScore();
         _gameOverText.textContent = Lib.formatScore(total);
         _showModal(_gameOverDialog);

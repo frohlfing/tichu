@@ -12,8 +12,6 @@
  * @property {any} data - Die zugehörigen Daten.
  */
 
-// @type {Object.<string, Array<Function>>}
-
 /**
  * Zentrale Nachrichtenvermittlung zwischen den Komponenten.
  *
@@ -47,18 +45,24 @@ const EventBus = (() => {
     let _isProcessing = false;
 
     /**
+     * Flag, das gesetzt ist, wenn die Ereigniswarteschlange pausiert.
+     *
+     * @type {boolean}
+     */
+    let _isPaused = false;
+
+    /**
      * Registriert einen Ereignishändler.
      *
      * Doppelte Registrierung derselben Funktion wird verhindert.
      *
      * @param {string} event – Das Ereignis, für das der Ereignishändler registriert werden soll.
-     * @param {function} handler - Der Ereignishändler.
+     * @param {Function} handler - Der Ereignishändler.
      */
     function on(event, handler) {
         if (!_handlers[event]) {
             _handlers[event] = [];
         }
-
         if (!_handlers[event].includes(handler)) {
             _handlers[event].push(handler);
         }
@@ -68,7 +72,7 @@ const EventBus = (() => {
      * Entfernt einen registrierten Ereignishändler.
      *
      * @param {string} event - Das Ereignis, für das der Ereignishändler registriert wurde.
-     * @param {function} handler - Der Ereignishändler.
+     * @param {Function} handler - Der Ereignishändler.
      */
     function off(event, handler) {
         if (_handlers[event]) {
@@ -79,12 +83,12 @@ const EventBus = (() => {
     /**
      * Verarbeitet die Event-Queue.
      *
-     * Nimmt das nächste Event aus der Queue und ruft dessen Handler auf.
+     * Nimmt das nächste Event aus der Queue und führt dessen Handler aus.
      * Plant sich selbst neu, solange Events in der Queue sind.
      * Die Handler werden synchron und blockierend innerhalb eines Events ausgeführt.
      */
     function _processQueue() {
-        if (_eventQueue.length === 0) {
+        if (_isPaused || _eventQueue.length === 0) {
             _isProcessing = false;
             return;
         }
@@ -92,6 +96,7 @@ const EventBus = (() => {
         // nächstes Ereignis aus der Queue holen (FIFO)
         const item = _eventQueue.shift();
 
+        // alle Handler für dieses Event sequenziell ausführen
         if (_handlers[item.event]) {
             _handlers[item.event].forEach(handler => {
                 try {
@@ -124,7 +129,7 @@ const EventBus = (() => {
      * @param {any} data - Die Daten, die an die Handler übergeben werden.
      */
     function emit(event, data = null) {
-        if (!_handlers[event]) {
+        if (!_handlers[event] || _handlers[event].length === 0) {
             return;
         }
 
@@ -138,10 +143,41 @@ const EventBus = (() => {
         }
     }
 
+    /**
+     * Pausiert die Verarbeitung der Event-Queue.
+     * Neue Events werden weiterhin zur Queue hinzugefügt, aber nicht verarbeitet.
+     */
+    function pause() {
+        console.log("EventBus: Pausiert.");
+        _isPaused = true;
+    }
+
+    /**
+     * Setzt die Verarbeitung der Event-Queue fort.
+     */
+    function resume() {
+        if (!_isPaused) {
+            return;
+        }
+
+        console.log("EventBus: Fortgesetzt.");
+
+        _isPaused = false;
+
+        // Starte die Verarbeitung der Queue neu, falls Events anstehen
+        // und sie nicht bereits durch einen neuen `emit` gestartet wurde.
+        if (_eventQueue.length > 0 && !_isProcessing) {
+            _isProcessing = true;
+            setTimeout(_processQueue, 0);
+        }
+    }
+
     // noinspection JSUnusedGlobalSymbols
     return {
         on,
         off,
         emit,
+        pause,
+        resume,
     };
 })();

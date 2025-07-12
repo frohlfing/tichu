@@ -6,11 +6,11 @@
  * todo show() und hide() aus der View rausnehmen. Dies sollte nur der View-Manager machen dürfen.
  *
  * @typedef {Object} View
- * @property {function} init - Initialisiert die View.
- * @property {function} render - Rendert die View.
- * @property {function} show - Rendert die View und zeigt sie anschließend an.
- * @property {function} hide - Blendet die View aus.
- * @property {function} isVisible - Ermittelt, ob die View gerade angezeigt wird.
+ * @property {Function} init - Initialisiert die View.
+ * @property {Function} render - Rendert die View.
+ * @property {Function} show - Rendert die View und zeigt sie anschließend an.
+ * @property {Function} hide - Blendet die View aus.
+ * @property {Function} isVisible - Ermittelt, ob die View gerade angezeigt wird.
  */
 
 /**
@@ -135,6 +135,7 @@ const ViewManager = (() => {
         EventBus.emit("view:rendered", {viewName: viewName});
     }
 
+    // noinspection JSUnusedGlobalSymbols
     return {
         init,
         getViewByName,
