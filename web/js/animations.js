@@ -41,10 +41,6 @@ const Animations = (() => {
                 }
             }
         }
-
-        // setTimeout(() => {
-        //     console.log("Animation beendet, räume auf.");
-        // }, 2000); // etwas länger als die Animationsdauer (die Dauer ist in der CSS-Klasse .flying-card definiert)
     }
 
     /**
@@ -55,9 +51,17 @@ const Animations = (() => {
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
      */
     function _schupfCard(fromRelativeIndex, toRelativeIndex, callback) {
+        if (_schupfZones[fromRelativeIndex].classList.contains("hidden") || _schupfZones[toRelativeIndex].classList.contains("hidden")) {
+            // Schupf-Subzone ist nicht sichtbar
+            if (typeof callback === 'function') {
+                callback();
+            }
+            return;
+        }
+
         // DOM-Element, das die Tauschkarte zeigt
         const cardElement = _schupfZones[fromRelativeIndex].querySelector(`.schupf-subzone:nth-child(${(4 + fromRelativeIndex - toRelativeIndex) % 4}) .card`);
-        if (!cardElement) {
+        if (!cardElement || _schupfZones[fromRelativeIndex].classList.contains("hidden") || _schupfZones[toRelativeIndex].classList.contains("hidden")) {
             // Schupf-Subzone ist leer
             if (typeof callback === 'function') {
                 callback();
@@ -103,8 +107,9 @@ const Animations = (() => {
 
         // Event-Listener für das Ende der Transition
         cardElement.addEventListener('transitionend', () => {
+            //removeCard(cardElement, callback);
+            cardElement.remove();
             if (typeof callback === 'function') {
-                cardElement.remove();
                 callback();
             }
         }, { once: true });
@@ -135,43 +140,66 @@ const Animations = (() => {
     }
 
     /**
+     * Entfernt eine Karte aus dem Bildschirm mit einer Animation.
+     *
+     * @param {HTMLElement} cardElement - Die Karte, die entfernt werden sollen.
+     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
+     */
+    function removeCard(cardElement, callback) {
+        cardElement.classList.add('is-removing');
+        cardElement.addEventListener('transitionend', () => {
+            cardElement.remove();
+            if (typeof callback === 'function') {
+                callback();
+            }
+        }, { once: true });
+    }
+
+    /**
      * Entfernt einen Kartenstapel aus dem Bildschirm mit einer Animation.
      *
-     * @param {Array<HTMLElement>} cardElements - Ein Array von Karten-DOM-Elementen, die entfernt werden sollen.
+     * @param {Array<HTMLElement>} cardElements - Ein Array von Karten, die entfernt werden sollen.
+     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
      */
-    function removeCards(cardElements) {
-        cardElements.forEach(element => {
-            element.classList.add('is-removing');
-            // Element nach der Animation aus dem DOM entfernen
-            element.addEventListener('transitionend', () => {
-                element.remove();
-            }, { once: true });
+    function removeCards(cardElements, callback) {
+        let completed = 0;
+        let n = cardElements.length;
+        cardElements.forEach(cardElement => {
+            removeCard(cardElement, () => {
+                completed++;
+                if (completed === n && typeof callback === 'function') {
+                    callback();
+                }
+            });
         });
     }
 
     /**
      * Löst die Bomben-Animation aus.
+     *
+     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
      */
-    function animateBomb() {
-        // 1. Screen-Shake-Effekt
-        const wrapper = document.getElementById('wrapper');
-        wrapper.classList.add('screen-shake-effect');
-        wrapper.addEventListener('animationend', () => {
-            wrapper.classList.remove('screen-shake-effect');
-        }, { once: true });
+    function explodeBomb(callback) {
+        // Screen-Shake-Effekt
+        // const wrapper = document.getElementById('wrapper');
+        // wrapper.classList.add('screen-shake-effect');
+        // wrapper.addEventListener('animationend', () => {
+        //     wrapper.classList.remove('screen-shake-effect');
+        // }, { once: true });
 
-        // 2. "BOMBE!"-Text-Effekt
+        // "BOMBE!"-Text-Effekt
         const bombTextEl = document.createElement('div');
         bombTextEl.className = 'bomb-effect-text';
         bombTextEl.textContent = 'BOMBE!';
-        document.body.appendChild(bombTextEl);
-
-        // 3. Sound abspielen
-        SoundManager.playSound('bomb'); // Annahme: Es gibt einen allgemeinen Bombensound
-
-        // 4. Aufräumen
+        _wrapper.appendChild(bombTextEl);
+        //SoundManager.playSound('bomb');
         bombTextEl.addEventListener('animationend', () => {
             bombTextEl.remove();
+            if (typeof callback === 'function') {
+                // Der "BOMBE!"-Text-Effekt dauert etwas länger als der Screen-Shake-Effekt.
+                // Daher rufen wir hier die Callback-Funktion auf.
+                callback();
+            }
         }, { once: true });
     }
 
@@ -206,7 +234,7 @@ const Animations = (() => {
         schupf,
         flipCard,
         removeCards,
-        animateBomb,
+        explodeBomb,
         pulseElement,
         animateScoreUpdate,
     };

@@ -18,6 +18,7 @@ from src.players.player import Player
 from src.players.random_agent import RandomAgent
 from src.private_state import PrivateState
 from src.public_state import PublicState
+from time import time
 from typing import List, Optional, Dict, Tuple
 
 
@@ -274,11 +275,10 @@ class GameEngine:
     # ------------------------------------------------------
 
     # noinspection PyUnusedLocal
-    async def run_game_loop(self, break_time = 1) -> Optional[PublicState]:
+    async def run_game_loop(self) -> Optional[PublicState]:
         """
         Steuert den Spielablauf einer Partie.
 
-        :param break_time: Pause in Sekunden zwischen den Runden.
         :return: Der öffentliche Spielzustand.
         :raises ValueError: Wenn Parameter nicht ok sind.
         """
@@ -322,12 +322,12 @@ class GameEngine:
 
                 # Karten mischen
                 self._random.shuffle(self._mixed_deck)
-                # self._mixed_deck = [(card[0], CardSuit(card[1])) for card in [
-                #     (2, 1), (2, 2), (2, 3), (2, 4), (5, 2), (8, 4), (3, 4), (6, 4), (3, 1), (14, 4), (8, 1), (7, 1),  (7, 3), (3, 3),
-                #     (10, 2), (11, 3), (6, 1), (11, 4), (9, 1), (13, 1), (3, 2), (6, 3), (9, 2), (12, 4), (12, 2), (4, 3), (5, 1), (4, 2),
-                #     (0, 0), (13, 3), (1, 0), (9, 4), (5, 4), (10, 3), (8, 3), (10, 1), (14, 1), (9, 3), (7, 4), (8, 2), (13, 4), (10, 4),
-                #     (12, 3), (4, 4), (11, 1), (5, 3), (6, 2), (12, 1), (13, 2), (4, 1), (7, 2), (14, 3), (14, 2), (11, 2), (15, 0), (16, 0),
-                # ]]
+                self._mixed_deck = [(card[0], CardSuit(card[1])) for card in [
+                    (2, 1), (2, 2), (2, 3), (2, 4), (5, 2), (8, 4), (3, 4), (6, 4), (3, 1), (14, 4), (8, 1), (7, 1),  (7, 3), (3, 3),
+                    (10, 2), (11, 3), (6, 1), (11, 4), (9, 1), (13, 1), (3, 2), (6, 3), (9, 2), (12, 4), (12, 2), (4, 3), (5, 1), (4, 2),
+                    (0, 0), (13, 3), (1, 0), (9, 4), (5, 4), (10, 3), (8, 3), (10, 1), (14, 1), (9, 3), (7, 4), (8, 2), (13, 4), (10, 4),
+                    (12, 3), (4, 4), (11, 1), (5, 3), (6, 2), (12, 1), (13, 2), (4, 1), (7, 2), (14, 3), (14, 2), (11, 2), (15, 0), (16, 0),
+                ]]
 
                 # Karten verteilen
                 if clients_joined:
@@ -445,12 +445,18 @@ class GameEngine:
                                     if clients_joined:
                                         await self._broadcast("player_announced", {"player_index": pub.current_turn_index, "grand": False})
                             # Spieler fragen, welche Karten er spielen will
+                            time_start = time()
                             try:
                                 cards, combination = await self._players[pub.current_turn_index].play()
                             except PlayerInterruptError as e:
                                 # Ein Client hat eine Bombe geworfen. Wir wiederholen den aktuellen Schleifendurchlauf,
                                 # so dass nochmal gefragt wird, ob ein Spieler eine Bombe werfen will und lassen sie dann hochgehen.
                                 continue  # while not pub.is_round_over
+                            if clients_joined:
+                                delay = round((time() - time_start) * 1000)  # in ms
+                                if delay < config.AGENT_THINKING_TIME[0]:
+                                    delay = self._random.integer(config.AGENT_THINKING_TIME[0] - delay, config.AGENT_THINKING_TIME[1] - delay)
+                                    await asyncio.sleep(delay / 1000)
 
                         assert combination[1] <= pub.count_hand_cards[pub.current_turn_index] <= 14
                         assert combination[1] == len(cards)
@@ -601,10 +607,10 @@ class GameEngine:
                 pub.game_score[1].append(pub.points[3] + pub.points[1])
                 pub.round_counter += 1
 
-                if break_time:
-                    await asyncio.sleep(break_time)
                 if clients_joined:
                     await self._broadcast("round_over", {"points": pub.points, "loser_index": pub.loser_index, "is_double_victory": pub.is_double_victory})
+                    if config.BREAK_TIME_AFTER_ROUND > 0:
+                        await asyncio.sleep(config.BREAK_TIME_AFTER_ROUND / 1000)
 
             # Partie ist beendet
             score20, score31 = pub.total_score

@@ -1,9 +1,14 @@
 /* --- Animation für fliegende Karten --- */
 
+/**
+ * Dies Klasse bewirkt, dass eine Änderung von `transform` in 1500ms vollzogen wird.
+ * Mit `transform` kann man u.a. verschieben, drehen oder skalieren. `transform` wird hier per JS gesetzt.
+ * Cubic-bezier: https://cubic-bezier.com/
+*/
 .flying-card {
     position: absolute;
     z-index: 1000;
-    transition: transform 1800ms cubic-bezier(0.4, 0, 0.2, 1); /* Eine weichere Easing-Funktion */
+    transition: transform 1500ms cubic-bezier(0.4, 0, 0.4, 1);
 }
 
 /* --- Animation für das Wenden von Karten --- */
@@ -33,71 +38,12 @@
 /* --- Animation zum Entfernen von Karten --- */
 
 .card.is-removing {
-    transition: transform 0.4s ease-in, opacity 0.4s ease-in;
+    transition: transform 0.2s ease-in, opacity 0.4s ease-in;
     transform: translateY(150%) scale(0.5); /* Schiebt die Karte nach unten und verkleinert sie */
     opacity: 0;
 }
 
 /* --- Animation für die Bombe --- */
-
-@keyframes bomb-text-effect {
-    0% {
-        transform: scale(0.5);
-        opacity: 0;
-    }
-    50% {
-        transform: scale(1.5);
-        opacity: 1;
-    }
-    100% {
-        transform: scale(2.5);
-        opacity: 0;
-    }
-}
-
-.bomb-effect-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    font-size: 8em;
-    font-weight: bold;
-    color: white;
-    text-shadow: 0 0 10px red, 0 0 20px red, 0 0 30px orange;
-    pointer-events: none;
-    transform: translate(-50%, -50%);
-    animation: bomb-text-effect 0.8s ease-out forwards;
-    z-index: 2000;
-}
-
-@keyframes bomb-text-effect2 {
-    0% {
-        transform: translate(-50%, -50%) scale(0.5);
-        opacity: 0.5;
-    }
-    70% {
-        transform: translate(-50%, -50%) scale(1.5);
-        opacity: 1;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(1.2);
-        opacity: 0;
-    }
-}
-
-.bomb-effect2-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    font-size: 100px;
-    font-weight: bold;
-    color: red;
-    text-shadow: 3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000;
-    opacity: 1;
-    pointer-events: none;
-    transform: translate(-50%, -50%) scale(1);
-    animation: bomb-text-effect2 0.8s ease-out forwards;
-    z-index: 200;
-}
 
 @keyframes screen-shake {
     0%, 100% {
@@ -113,6 +59,50 @@
 
 .screen-shake-effect {
     animation: screen-shake 0.5s linear;
+}
+
+@keyframes bomb-text-effect2 {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(2.5);
+        opacity: 0;
+    }
+}
+
+@keyframes bomb-effect {
+    0% {
+        transform: translate(-50%, -50%) scale(0.6); /* 96px*/
+        opacity: 0.5;
+    }
+    70% {
+        transform: translate(-50%, -50%) scale(1); /* 160px */
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(3); /* 480px */
+        opacity: 0;
+    }
+}
+
+.bomb-effect-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 160px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 10px red, 0 0 20px red, 0 0 30px orange;
+    pointer-events: none;
+    transform: translate(-50%, -50%); /* zentrieren */
+    animation: bomb-effect 0.8s ease-out forwards;
+    z-index: 2000;
 }
 
 /* --- Pulsier-Animation --- */

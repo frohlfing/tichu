@@ -164,6 +164,7 @@ const TableView = (() => {
         // Ereignishändler für Dialoge einrichten
         EventBus.on("exitDialog:select", _handleExitDialogSelect);
 
+
         // Ereignishändler für die Controls einrichten
         _exitButton.addEventListener('click', _handleExitButtonClick);
         _settingsButton.addEventListener('click', _handleSettingsButtonClick);
@@ -219,6 +220,34 @@ const TableView = (() => {
     }
 
     // --------------------------------------------------------------------------------------
+    // Netzwerk-Ereignisse
+    // --------------------------------------------------------------------------------------
+
+    // /**
+    //  * Wird aufgerufen, wenn eine Netzwerknachricht empfangen wurde.
+    //  *
+    //  * @param {NetworkMessage} message - Die Nachricht vom Server.
+    //  */
+    // function _handleNetworkMessage(message) {
+    //     if (message.type !== 'notification') {
+    //         return;
+    //     }
+    //     //const context = message.payload.context || {};
+    //     // Animation abspielen
+    //     switch (message.payload.event) {
+    //         case "player_played": // Der Spieler hat Karten ausgespielt.
+    //         case "player_bombed": // Der Spieler hat außerhalb seines regulären Zuges eine Bombe geworfen.
+    //             if (State.getTrickCombination()[0] === CombinationType.BOMB) {
+    //                 EventBus.pause();
+    //                 Animations.explodeBomb(() => {
+    //                     EventBus.resume();
+    //                 });
+    //             }
+    //             break;
+    //     }
+    // }
+
+    // --------------------------------------------------------------------------------------
     // Ereignishändler für die Dialoge
     // --------------------------------------------------------------------------------------
 
@@ -241,7 +270,7 @@ const TableView = (() => {
      * Ereignishändler für den "Beenden"-Button.
      */
     function _handleExitButtonClick() {
-        testShowSchupfZones();
+        testUI();
         // SoundManager.playSound('buttonClick');
         // Modals.showExitDialog();
     }
@@ -250,7 +279,7 @@ const TableView = (() => {
      * Ereignishändler für den "Optionen"-Button.
      */
     function _handleSettingsButtonClick() {
-        Animations.schupf(() => {
+        Animations.explodeBomb(() => {
             console.log("Animation beendet");
         });
 
@@ -261,16 +290,19 @@ const TableView = (() => {
 
     // ------------------------------------------------------------------------------------------------------
 
-    function testShowSchupfZones() {
+    function testUI() {
         State.resetRound();
         State.setGivenSchupfCards(/** @type Cards */ [[4,1], [5,1], [14,3]]);
+        State.setReceivedSchupfCards(/** @type Cards */ [[10,1], [11,2], [12,2]]);
+        State.confirmReceivedSchupfCards()
         let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
-        cards.length = 11;
+        //cards.length = 11;
         State.setHandCards(cards);
         for (let i = 0; i <= 3; i++) {
-            State.setCountHandCards(i, 11);
+            State.setCountHandCards(i, 14);
             _updateSchupfZoneAndHand(i);
         }
+        _updateBombIcon();
         _updatePlayButton();
     }
 
@@ -540,8 +572,11 @@ const TableView = (() => {
      * Aktualisiert den aktuellen Stich.
      */
     function _updateTrick() {
+        let countTurnDiff = 0; // Anzahl der neuen Spielzüge
+
         // ausgespielte Karten entfernen
         for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
+            countTurnDiff -= _trickZones[relativeIndex].children.length;
             _trickZones[relativeIndex].replaceChildren();
         }
 
@@ -557,6 +592,7 @@ const TableView = (() => {
                     const relativeIndex = Lib.getRelativePlayerIndex(turn[0]);
                     const turnElement = _createTurnElement(turn[1]);
                     _trickZones[relativeIndex].appendChild(turnElement);
+                    countTurnDiff++;
                 }
             });
             // den letzten Spielzug hervorheben
@@ -567,6 +603,13 @@ const TableView = (() => {
                     turnElement.classList.add("last");
                 }
             }
+        }
+
+        if (State.getTrickCombination()[0] === CombinationType.BOMB && countTurnDiff) {
+            EventBus.pause();
+            Animations.explodeBomb(() => {
+                EventBus.resume();
+            });
         }
     }
 
@@ -674,26 +717,22 @@ const TableView = (() => {
                 if (relativeIndex === 0) {
                     if (!State.isConfirmedReceivedSchupfCards()) {
                         // Der Benutzer hat die erhaltenen Tauschkarten noch nicht bestätigt.
-                        // Wir starten die Animation, in der die Karten unter den Spielern ausgetauscht werden.
                         _clearSelectedCards();
                         _schupfZones[0].classList.remove('hidden');
-                        // for (let i = 1; i <= 3; i++) {
-                        //     _schupfZones[i].classList.remove('hidden'); // für die Dauer der Animation die Schupfzonen der Mitspieler anzeigen
-                        // }
-                        EventBus.pause();
-                        // todo darf nur einmal aufgerufen werden
-                        Animations.schupf(() => {
-                            // for (let i = 1; i <= 3; i++) {
-                            //     _schupfZones[i].classList.add('hidden'); // nach der Animation die Schupfzone des Mitspielers ausblenden
-                            // }
-                            // Tauschkarten anzeigen
-                            _clearSchupfZone(playerIndex);
-                            const receivedCards = State.getReceivedSchupfCards().toReversed(); // linker Gegner, Partner, rechter Gegner
-                            _schupfZones[0].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
-                                subzoneElement.appendChild(_createCardElement(receivedCards[i]));
+                        if (!_getCountHandCardsInSchupfZone()) {
+                            // Die erhaltenen Tauschkarten werden noch nicht angezeigt.
+                            // Wie starten die Animation, in der die Karten unter den Spielern ausgetauscht werden.
+                            EventBus.pause();
+                            Animations.schupf(() => {
+                                // Tauschkarten mit der Vorderseite zeigen
+                                _clearSchupfZone(playerIndex);
+                                const receivedCards = State.getReceivedSchupfCards().toReversed(); // linker Gegner, Partner, rechter Gegner
+                                _schupfZones[0].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
+                                    subzoneElement.appendChild(_createCardElement(receivedCards[i]));
+                                });
+                                EventBus.resume();
                             });
-                            EventBus.resume();
-                        });
+                        }
                     }
                     else {
                         // Schupfzone des Benutzers ausblenden

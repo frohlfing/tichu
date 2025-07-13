@@ -526,6 +526,8 @@ const AppController = (() => {
         if (Network.isReady()) {
             if (State.isRunning()) {
                 ViewManager.showTableView();
+                // todo besser über TableView steuern:
+                //  _request in State verlagern, dann kann die View wissen, wann der Dialog eingeblendet werden muss
                 if (_request && _request.action === "wish") {
                     Modals.showWishDialog();
                 }

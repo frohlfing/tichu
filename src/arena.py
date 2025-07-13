@@ -23,7 +23,7 @@ async def _create_engine_and_run(table_name: str, agents: list[Agent], seed: Opt
     """
     try:
         engine = GameEngine(table_name, default_agents=agents, seed=seed)
-        pub = await engine.run_game_loop(break_time=0)
+        pub = await engine.run_game_loop()
         return pub
     except Exception as e:
         logger.exception(f"[Arena] Unerwarteter Fehler in der Game-Engine '{table_name}': {e}")
