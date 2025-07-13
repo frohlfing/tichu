@@ -138,7 +138,7 @@ const Lib = (() => {
      */
     function formatScore(score) {
         const points20 = (score[0] < 0 ? '-' : '') + Math.abs(score[0]).toString().padStart(4, '0');
-        const points31 = (score[0] < 0 ? '-' : '') + Math.abs(score[1]).toString().padStart(4, '0');
+        const points31 = (score[1] < 0 ? '-' : '') + Math.abs(score[1]).toString().padStart(4, '0');
         return `${points20} : ${points31}`;
     }
 

@@ -279,9 +279,12 @@ const TableView = (() => {
      * Ereignishändler für den "Optionen"-Button.
      */
     function _handleSettingsButtonClick() {
-        Animations.explodeBomb(() => {
-            console.log("Animation beendet");
-        });
+
+        const score = State.getTotalScore();
+        const oldScore = _scoreDisplay.textContent.split(":").map(value => parseInt(value.trim()));
+        if (oldScore[0] !== score[0] || oldScore[1] !== score[1]) {
+            Animations.flashScoreDisplay();
+        }
 
         // SoundManager.playSound('buttonClick');
         // Modals.showErrorToast("Einstellungen sind noch nicht implementiert.");
@@ -471,8 +474,15 @@ const TableView = (() => {
      * Aktualisiert den Punktestand in der Top-Bar.
      */
     function _updateScore() {
-        const score = State.getTotalScore();
-        _scoreDisplay.textContent = Lib.formatScore(score);
+        let score = State.getTotalScore();
+        if (State.getPlayerIndex() === 1 || State.getPlayerIndex() === 3) {
+            [score[0], score[1]] = [score[1], score[0]];
+        }
+        const oldScore = _scoreDisplay.textContent.split(":").map(value => parseInt(value.trim()));
+        if (oldScore[0] !== score[0] || oldScore[1] !== score[1]) {
+            _scoreDisplay.textContent = Lib.formatScore(score);
+            Animations.flashScoreDisplay();
+        }
     }
 
     /**
@@ -723,7 +733,7 @@ const TableView = (() => {
                             // Die erhaltenen Tauschkarten werden noch nicht angezeigt.
                             // Wie starten die Animation, in der die Karten unter den Spielern ausgetauscht werden.
                             EventBus.pause();
-                            Animations.schupf(() => {
+                            Animations.schupfCards(() => {
                                 // Tauschkarten mit der Vorderseite zeigen
                                 _clearSchupfZone(playerIndex);
                                 const receivedCards = State.getReceivedSchupfCards().toReversed(); // linker Gegner, Partner, rechter Gegner
@@ -915,14 +925,6 @@ const TableView = (() => {
             _playButton.disabled = !isCurrentPlayer || !State.isPlayableCombination(_getSelectedCards()); // nicht am Zug oder keine Spielbare Kombination ausgewählt
         }
     }
-
-    // Visuelle Effekte & Animationen
-    // todo Bombe werfen
-    // todo Tich ansagen (ein- oder 2mal Pulse-Effekt)
-    // todo Karten ablegen (von der Hand dorthin, wo auch die Schupfzone liegt)
-    // todo Karten kassieren (von der aktuellen Position der Karten zum Spieler, der die Karten bekommt)
-    // todo Schupfkarten tauschen (von Zone zu Zone)
-    // todo Sound
 
     // noinspection JSUnusedGlobalSymbols
     return {

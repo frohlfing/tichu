@@ -1,5 +1,11 @@
 /**
- * Stellt Animationen bereit.
+ * Visuelle Effekte & Animationen
+ *
+ * todo Tich ansagen (ein- oder 2mal Pulse-Effekt)
+ * todo Wish-Symbol einblenden (ein- oder 2mal Pulse-Effekt)
+ * todo Karten ablegen (von der Hand dorthin, wo auch die Schupfzone liegt)
+ * todo Karten kassieren (von der aktuellen Position der Karten zum Spieler, der die Karten bekommt)
+ * todo Sound
  */
 const Animations = (() => {
 
@@ -23,11 +29,18 @@ const Animations = (() => {
     ];
 
     /**
+     * Die Anzeige des Punktestandes.
+     *
+     * @type {HTMLDivElement}
+     */
+    const _scoreDisplay = document.getElementById('score-display');
+
+    /**
      * Tauscht die Schupfkarten aller Spieler untereinander aus.
      *
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation.
      */
-    function schupf(callback) {
+    function schupfCards(callback) {
         let completed = 0;
         for (let fromRelativeIndex=0; fromRelativeIndex <= 3; fromRelativeIndex++) {
             for (let toRelativeIndex=0; toRelativeIndex <= 3; toRelativeIndex++) {
@@ -123,23 +136,6 @@ const Animations = (() => {
     }
 
     /**
-     * Wendet einen Kartenstapel (dreht ihn von Vorder- zu Rückseite oder umgekehrt).
-     *
-     * HINWEIS: Erfordert eine spezifische HTML-Struktur:
-     * @example
-     * <div class="card-flipper">
-     *     <div class="card-face front"></div>
-     *     <div class="card-face back"></div>
-     * </div>
-     *
-     * @param {HTMLElement} flipperElement - Das Elternelement, das die CSS-Klasse 'card-flipper' hat.
-     */
-    function flipCard(flipperElement) {
-        if (!flipperElement) return;
-        flipperElement.classList.toggle('is-flipped');
-    }
-
-    /**
      * Entfernt eine Karte aus dem Bildschirm mit einer Animation.
      *
      * @param {HTMLElement} cardElement - Die Karte, die entfernt werden sollen.
@@ -180,14 +176,6 @@ const Animations = (() => {
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
      */
     function explodeBomb(callback) {
-        // Screen-Shake-Effekt
-        // const wrapper = document.getElementById('wrapper');
-        // wrapper.classList.add('screen-shake-effect');
-        // wrapper.addEventListener('animationend', () => {
-        //     wrapper.classList.remove('screen-shake-effect');
-        // }, { once: true });
-
-        // "BOMBE!"-Text-Effekt
         const bombTextEl = document.createElement('div');
         bombTextEl.className = 'bomb-effect-text';
         bombTextEl.textContent = 'BOMBE!';
@@ -196,8 +184,6 @@ const Animations = (() => {
         bombTextEl.addEventListener('animationend', () => {
             bombTextEl.remove();
             if (typeof callback === 'function') {
-                // Der "BOMBE!"-Text-Effekt dauert etwas länger als der Screen-Shake-Effekt.
-                // Daher rufen wir hier die Callback-Funktion auf.
                 callback();
             }
         }, { once: true });
@@ -215,27 +201,27 @@ const Animations = (() => {
     }
 
     /**
-     * Animiert die Punkteanzeige durch einen kurzen "Blitz"-Effekt.
+     * Animiert die Punkteanzeige durch ein kurzes Aufblinken.
      *
-     * @param {HTMLElement} scoreElement - Das DOM-Element der Punkteanzeige.
+     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
+     *
      */
-    function animateScoreUpdate(scoreElement) {
-        if (!scoreElement) return;
-        // Die Animation wird durch das Hinzufügen der Klasse ausgelöst.
-        // Wir entfernen die Klasse nach der Animation wieder, damit sie erneut ausgelöst werden kann.
-        scoreElement.classList.add('score-updated');
-        scoreElement.addEventListener('animationend', () => {
-            scoreElement.classList.remove('score-updated');
+    function flashScoreDisplay(callback) {
+        _scoreDisplay.classList.add('score-updated'); // die Animation wird durch das Hinzufügen der Klasse ausgelöst
+        _scoreDisplay.addEventListener('animationend', () => {
+            _scoreDisplay.classList.remove('score-updated');
+            if (typeof callback === 'function') {
+                callback();
+            }
         }, { once: true });
     }
 
     // noinspection JSUnusedGlobalSymbols
     return {
-        schupf,
-        flipCard,
-        removeCards,
+        schupfCards,
+        removeCards, // todo wird noch nicht verwendet
         explodeBomb,
-        pulseElement,
-        animateScoreUpdate,
+        pulseElement,  // todo wird noch nicht verwendet
+        flashScoreDisplay,
     };
 })();
