@@ -13,8 +13,8 @@
 # Frontend
 
 ## Bugs:
-* Tichu-Button nicht disable, obwohl Karten gespielt.
-* Score-Anzeige bei negativen Punkten
+* Wenn Spiel mitten drin beendet wird, bleiben Züge liegen. Wenn dann ein neues Spiel gestartet wird, 
+  werden diese Karten kassiert (Animation läuft).
 
 ## Features:
 * Animationen

@@ -55,7 +55,6 @@ class RandomAgent(Agent):
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler noch Karten abgeben muss.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
-        Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner.
         """

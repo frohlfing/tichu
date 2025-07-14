@@ -332,7 +332,7 @@ class GameEngine:
                 # Karten verteilen
                 if clients_joined:
                     # Alle Spieler erhalten gleichzeitig die ersten 8 Karten. Sobald sie ein großes Tichu angesagt oder abgelehnt haben, erhalten sie die restlichen Karten und können Tauschkarten abgeben.
-                    await asyncio.gather(*[self._deal_out(player_index, clients_joined) for player_index in range(4)], return_exceptions=True)
+                    await asyncio.gather(*[self._deal_out(player_index, clients_joined) for player_index in range(4)])
                 else:
                     # Alte Version: Alles der Reihe nach (8 Karten verteilen, Frage nach Tichu, restliche Karten verteilen, Tauschkarten abgeben)
                     # todo Fallunterscheidung zeitlich relevant?
@@ -688,28 +688,30 @@ class GameEngine:
         pub = self._public_state
         priv = self._private_states[player_index]
         player = self._players[player_index]
+        time_start = time()
 
-        # Karten aufnehmen, erst 8 dann alle
-        for n in (8, 14):
-            # Karten verteilen (deal out)
-            offset = player_index * 14
-            priv.hand_cards = self._mixed_deck[offset:offset + n]
-            pub.count_hand_cards[player_index] = n
-            if clients_joined:
-                await self._broadcast("hand_cards_dealt", {"player_index": player_index, "count": n})
-            # möchte ein Spieler ein Tichu ansagen?
-            if not pub.announcements[player_index]:
-                grand = n == 8  # großes Tichu?
-                announced = await player.announce_grand_tichu() if grand else await player.announce_tichu()
-                # if announced and pub.announcements[(player_index + 2) % 4]:
-                #     # Zusatzregel Doku 2.3: Wenn der Partner schon ein Tichu angesagt hat, kann der Spieler kein Tichu mehr ansagen.
-                #     if isinstance(player, Peer):
-                #         await player.error("Tichu abgelehnt", ErrorCode.INVALID_ANNOUNCE)
-                #     announced = False
-                if announced:
-                    pub.announcements[player_index] = 2 if grand else 1
-                    if clients_joined:
-                        await self._broadcast("player_announced", {"player_index": player_index, "grand": grand})
+        # 8 Karten aufnehmen
+        n = 8
+        offset = player_index * 14
+        priv.hand_cards = self._mixed_deck[offset:offset + n]
+        pub.count_hand_cards[player_index] = n
+        if clients_joined:
+            await self._broadcast("hand_cards_dealt", {"player_index": player_index, "count": n})
+
+        # Möchte ein Spieler ein großes Tichu ansagen?
+        if not pub.announcements[player_index]:
+            if await player.announce_grand_tichu():
+                pub.announcements[player_index] = 2
+                if clients_joined:
+                    await self._broadcast("player_announced", {"player_index": player_index, "grand": True})
+
+        # die restlichen Karten aufnehmen
+        n = 14
+        offset = player_index * 14
+        priv.hand_cards = self._mixed_deck[offset:offset + n]
+        pub.count_hand_cards[player_index] = n
+        if clients_joined:
+            await self._broadcast("hand_cards_dealt", {"player_index": player_index, "count": n})
 
         # jetzt muss der Spieler schupfen (Tauschkarten abgeben)
         assert len(priv.hand_cards) == 14
@@ -719,6 +721,10 @@ class GameEngine:
         assert len(priv.hand_cards) == 11
         self._public_state.count_hand_cards[player_index] = 11
         if clients_joined:
+            delay = round((time() - time_start) * 1000)  # in ms
+            if delay < config.AGENT_THINKING_TIME[0]:
+                delay = self._random.integer(config.AGENT_THINKING_TIME[0] - delay, config.AGENT_THINKING_TIME[1] - delay)
+                await asyncio.sleep(delay / 1000)
             await self._broadcast("player_schupfed", {"player_index": player_index})
 
     async def _take_trick(self, clients_joined: bool):

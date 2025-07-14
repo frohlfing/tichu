@@ -373,15 +373,12 @@ class Peer(Player):
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler noch Karten abgeben muss.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
-        Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :return: Karten (Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner).
-        :raises PlayerInterruptError: Wenn die Anfrage durch ein Interrupt-Event abgebrochen wurde.
         """
         cards: Optional[Tuple[Card, Card, Card]] = None
         while cards is None:
-            response_data = await self._ask("schupf", {"hand_cards": self.priv.hand_cards}, interruptable=True)
-            logger.debug(f"[{self._name}] Schupf: {response_data}")
+            response_data = await self._ask("schupf", {"hand_cards": self.priv.hand_cards})
 
             # Fallback bei Verbindungsabbruch
             if response_data is None:

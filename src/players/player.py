@@ -86,9 +86,9 @@ class Player:
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein einfaches Tichu ansagen darf.
         Die Bedingung ist::
+            self.pub.start_player_index >= 0 and
             self.pub.announcements[self.priv.player_index] == 0 and
-            ((self.pub.start_player_index == -1 and self.pub.count_hand_cards[self.priv.player_index] > 8) or
-            (self.pub.start_player_index >= 0 and self.pub.count_hand_cards[self.priv.player_index] == 14))
+            self.pub.count_hand_cards[self.priv.player_index] == 14
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
@@ -106,10 +106,8 @@ class Player:
             self.priv.given_schupf_cards is None
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
-        Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
         :return: Karte für rechten Gegner, Karte für Partner, Karte für linken Gegner.
-        :raises PlayerInterruptError: Wenn die Aktion durch ein Interrupt abgebrochen wurde.
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'schupf' implementieren.")
 

@@ -874,7 +874,7 @@ const TableView = (() => {
      * Aktualisiert den Pass-Button.
      */
     function _updatePassButton() {
-        if (!State.getReceivedSchupfCards() && State.getCountHandCards() === 8) {
+        if (State.getStartPlayerIndex() === -1 && State.getCountHandCards() === 8) {
             // Der Benutzer kann ein großes Tichu ansagen.
             _passButton.dataset.mode = "NO_GRAND_TICHU";
             _passButton.textContent = "Weiter";
@@ -891,7 +891,7 @@ const TableView = (() => {
      * Aktualisiert den Tichu-Button.
      */
     function _updateTichuButton() {
-        if (!State.getReceivedSchupfCards() && State.getCountHandCards() === 8) {
+        if (State.getStartPlayerIndex() === -1  && State.getCountHandCards() === 8) {
             _tichuButton.dataset.mode = "GRAND_TICHU";
             _tichuButton.textContent = "Großes Tichu";
             _tichuButton.disabled = State.getAnnouncement() > 0;
@@ -899,7 +899,7 @@ const TableView = (() => {
         else  {
             _tichuButton.dataset.mode = "TICHU";
             _tichuButton.textContent = "Tichu";
-            _tichuButton.disabled = State.getCountHandCards() < 14 || State.getAnnouncement() > 0;
+            _tichuButton.disabled = State.getStartPlayerIndex() === -1 || State.getCountHandCards() < 14 || State.getAnnouncement() > 0;
         }
     }
 

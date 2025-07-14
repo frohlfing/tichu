@@ -87,45 +87,42 @@ Die detaillierten Spielregeln für Tichu sind hier zu finden:
 2.  **Kartenausgabe (Initial):** Der Server verteilt je 8 Karten an jeden Spieler.
 3.  **Großes Tichu ansagen:** Jeder Spieler muss sich dann entscheiden, ob er ein großes Tichu ansagen möchte oder nicht.
 4.  **Kartenausgabe (restliche):** Sobald jeder Spieler sich entschieden hat, teilt der Server die restlichen Karten aus (je 6 pro Spieler, insgesamt 14).
-5.  **Einfaches Tichu ansagen:** Ab jetzt kann der Spieler jederzeit ein einfaches Tichu ansagen, solange er noch keine Kombination ausgespielt hat. 
-6.  **Schupfen:** Die Spieler müssen nun drei Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler). Falls während dessen jemand ein Tichu ansagt, nehmen alle Spieler ihre Karten zurück und geben erneut eine Tauschkarte ab. 
-7.  **Tauschkarte aufnehmen:** Sobald alle Spieler die Karten zum Tauschen abgegeben haben, werden diese an die adressierten Spieler verteilt.
-8.  **Karten ausspielen:**
+5.  **Schupfen:** Die Spieler müssen nun drei Karten zum Tauschen abgeben (verdeckt, je eine pro Mitspieler). Falls während dessen jemand ein Tichu ansagt, nehmen alle Spieler ihre Karten zurück und geben erneut eine Tauschkarte ab. 
+6.  **Tauschkarte aufnehmen:** Sobald alle Spieler die Karten zum Tauschen abgegeben haben, werden diese an die adressierten Spieler verteilt.
+7.  **Karten ausspielen:**
+    *   Ab jetzt kann der Spieler jederzeit ein einfaches Tichu ansagen, solange er noch keine Kombination ausgespielt hat. 
     *   Ab jetzt kann der Spieler jederzeit (auch wenn er nicht am Zug ist) eine Bombe werfen - es sei denn, ein Mitspieler hat das Anspielrecht. Wer eine Bombe wirft, erhält sofort das Zugrecht. 
     *   Der Spieler mit dem MahJong muss als Erstes eine Kartenkombination ablegen.
-    *   Wird der MahJong gespielt, muss der Spieler, der den Mahjong ausgelegt hat, ein Kartenwert wünschen. Dieser Wunsch muss erfüllt werden, sobald die Regeln es zulassen.
+    *   Wird der MahJong gespielt, muss der Spieler, der den Mahjong ausgelegt hat, einen Kartenwert wünschen. Dieser Wunsch muss erfüllt werden, sobald die Regeln es zulassen.
     *   Wird der Hund gespielt, bekommt der Partner das Zugrecht.
     *   Der nächste Spieler wird aufgefordert, Karten abzulegen oder zu Passen.
     *   Dies wird wiederholt, bis alle Mitspieler hintereinander gepasst haben, sodass der Spieler, der die letzten Karten gespielt hat, wieder an der Reihe ist.
-9.  **Stich kassieren:** Dieser Spieler darf die Karten kassieren. Falls der Stich mit dem Drachen gewonnen wurde, muss der Spieler den Stich an einen der Gegner verschenken.
-10. **Spieler scheidet aus:** Wenn ein Spieler keine Handkarten mehr hat, kann er in die Karten der (noch aktiven) Mitspieler schauen (die Karten sind für ihn nicht mehr verdeckt).
-11. **Runden-Ende:** Die Runde endet, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wird. Punkte werden vergeben. Wenn die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), startet eine neue Runde ein (beginnend bei Punkt 2: Kartenausgabe).
-12. **Partie-Ende:** Wenn die Partie entschieden ist, wird die Punktetabelle angezeigt. Danach geht es zurück in die Lobby (Punkt 1).
+8.  **Stich kassieren:** Dieser Spieler darf die Karten kassieren. Falls der Stich mit dem Drachen gewonnen wurde, muss der Spieler den Stich an einen der Gegner verschenken.
+9. **Spieler scheidet aus:** Wenn ein Spieler keine Handkarten mehr hat, kann er in die Karten der (noch aktiven) Mitspieler schauen (die Karten sind für ihn nicht mehr verdeckt).
+10. **Runden-Ende:** Die Runde endet, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wird. Punkte werden vergeben. Wenn die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), startet eine neue Runde ein (beginnend bei Punkt 2: Kartenausgabe).
+11. **Partie-Ende:** Wenn die Partie entschieden ist, wird die Punktetabelle angezeigt. Danach geht es zurück in die Lobby (Punkt 1).
 
-### 2.3 Sonderfälle
+Zusatzregeln und Unterschiede zum offiziellen Regelwerk:
 
-Diese Punkte stammen aus dem offiziellen Regelwerk:
-
-*   **Kein Vierling:** Es gibt kein Vierling, daher ist ein Drilling mit Phönix nicht möglich.
-*   **Full House Restriktion:** Ein Fullhouse darf nicht aus einer 4er-Bombe mit Phönix gebildet werden (Drilling und Pärchen dürfen nicht den gleichen Rang haben).
-*   **Wunscherfüllung:** Der Wunsch muss zwar erfüllt werden, wenn man am Zug ist (sofern möglich), aber nicht in dem Moment, wenn man eine Bombe wirft. 
-*   **Phönix als Einzelkarte**: 
-    *   Vor dem Ausspielen ist der Rang 14.5 (schlägt das Ass, aber nicht den Drachen). 
-    *   Nach dem Ausspielen ist der Rang 0.5 höher die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
-
-Darüber hinaus werden für dieses Projekt folgende Zusatzregeln definiert:
-  
-* Es MUSS ein Wunsch geäußert werden, nicht KANN!
+* Laut offiziellem Regelwerk kann ein einfaches Tichu schon vor und während des Schupfens angesagt werden. 
+  Fairerweise müssen dann aber alle Spieler die Möglichkeit haben, ihre Schupfkarten noch einmal zu wählen. 
+  Aber das ist offiziell nicht geregelt und auch lästig für alle. Daher die Regel: Einfaches Tichu erst nach dem Schupfen.    
+* Laut offiziellem Regelwerk KANN ein Wunsch geäußert werden, nicht, nicht MUSS. So ist es derzeit aber nicht umgesetzt. 
 * Der Hund bleibt liegen und wird erst mit dem nachfolgenden Stich abgeräumt.
 * Um auch beim **Phönix als Einzelkarte** ganzzahlige Ränge zu haben, wird gerundet (ist für das Spiel egal):   
     *   Vor dem Ausspielen ist der Rang 15 (schlägt das Ass, aber nicht den Drachen). 
     *   Nach dem Ausspielen ist der Rang wie die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.
 
-Zu überlegen ist, ob folgende Zusatzregeln sinnvoll sind:
+### 2.3 Sonderfälle
 
-* Hat ein Spieler ein Tichu angesagt, kann der Partner kein Tichu mehr ansagen.
-* Es KANN ein Wunsch geäußert werden, nicht MUSS!
+Diese Punkte stammen aus dem offiziellen Regelwerk:
 
+*   **Kein Vierling:** Es gibt keinen Vierling, daher ist ein Drilling mit Phönix nicht möglich.
+*   **Full House Restriktion:** Ein Fullhouse darf nicht aus einer 4er-Bombe mit Phönix gebildet werden (Drilling und Pärchen dürfen nicht den gleichen Rang haben).
+*   **Wunscherfüllung:** Der Wunsch muss zwar erfüllt werden, wenn man am Zug ist (sofern möglich), aber nicht in dem Moment, wenn man eine Bombe wirft. 
+*   **Phönix als Einzelkarte**: 
+    *   Vor dem Ausspielen ist der Rang 14.5 (schlägt das Ass, aber nicht den Drachen). 
+    *   Nach dem Ausspielen ist der Rang 0.5 höher als die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
 
 ## 3. Systemarchitektur
 
