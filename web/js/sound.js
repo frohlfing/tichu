@@ -30,15 +30,17 @@ const Sound = (() => {
      * @type {Array<string>}
      */
     const _files = [
-            'announce0.ogg', 'announce1.ogg', 'announce2.ogg', 'announce3.ogg',
-            'bomb0.ogg', 'bomb1.ogg', 'bomb2.ogg', 'bomb3.ogg',
-            'dealout.ogg',
-            'pass0.ogg', 'pass1.ogg', 'pass2.ogg', 'pass3.ogg',
-            'play0.ogg', 'play1.ogg', 'play2.ogg', 'play3.ogg',
-            'schupf0.ogg', 'schupf1.ogg', 'schupf2.ogg', 'schupf3.ogg',
-            'shuffle.ogg',
-            'take0.ogg', 'take1.ogg', 'take2.ogg', 'take3.ogg',
-            //'buttonClick',
+        'announce.ogg',
+        'bomb.ogg',
+        'chips.ogg',
+        'click.ogg',
+        'dealout.ogg',
+        'move.ogg',
+        'pass0.ogg', 'pass1.ogg', 'pass2.ogg', 'pass3.ogg',
+        'play0.ogg', 'play1.ogg', 'play2.ogg', 'play3.ogg',
+        'schupf0.ogg', 'schupf1.ogg', 'schupf2.ogg', 'schupf3.ogg',
+        'shuffle.ogg',
+        'take.ogg',
     ]
 
     /**

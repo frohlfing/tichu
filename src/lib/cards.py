@@ -157,7 +157,7 @@ def stringify_cards(cards: Iterable[Card]) -> str:
     """
     Formatiert die Karte als lesbaren String.
 
-    :param cards: Die Karten , z.B. [[8,3], [2,4], [0,1]].
+    :param cards: Die Karten, z.B. [[8,3], [2,4], [0,1]].
     :return: Die Labels der Karte mit Leerzeichen getrennt.
     """
     return " ".join([_card_labels[deck.index(card)] for card in cards])

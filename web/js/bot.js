@@ -94,7 +94,7 @@ const Bot = (() => {
 
         const gameOverButton = document.querySelector('#game-over-dialog:not(.hidden) button:not(:disabled)');
         if (gameOverButton) {
-            // Partien mitzählen. Wenn eine bestimmte Anzahl erreicht ist, nichts mehr machen.
+            // Partien mitzählen. Wenn eine bestimmte Anzahl erreicht wurde, nichts mehr machen.
             _gameCounter++; // Partie beendet, Zähler erhöhen
             console.log(`%c🤖 Bot: Partie ${_gameCounter} beendet. Schließe GameOver-Dialog.`, "color: #008000; font-weight: bold;");
             gameOverButton.click();
@@ -157,11 +157,38 @@ const Bot = (() => {
 
         if (TableView.isVisible()) {
             _testUIHand();
+            _testUIScoreDisplay();
+            _testUIWishIcon();
 
             if (State.getReceivedSchupfCards() && !State.isConfirmedReceivedSchupfCards()) {
                 // Wir haben geschupfte Karten erhalten und müssen sie bestätigen
                 console.log("🤖 Bot: Bestätige erhaltene Schupf-Karten.");
                 _clickButton('#play-button[data-mode="RECEIVE"]');
+            }
+
+            _testUITichuIcons();
+            const tichuButton = document.getElementById('tichu-button');
+            if (!tichuButton.disabled) {
+                if (Random.boolean()) { // todo gewichten
+                    console.log("🤖 Bot: Klicke auf Tichu-Button.");
+                    tichuButton.click();
+                }
+            }
+
+            _testUIBombIcon();
+            const bombIcon = document.getElementById('bomb-icon');
+            if (!bombIcon.classList.contains('hidden') && !bombIcon.classList.contains("disabled")) {
+                if (Random.boolean()) { // todo gewichten
+                    console.log("🤖 Bot: Klicke auf das Bomben-Symbol.");
+                    if (State.canPlayCards()) {
+                        _clearSelectedCards();
+                        bombIcon.click(); // Nach dem Klick werden die Karten selektiert.
+                        setTimeout(() => {
+                            console.log("🤖 Bot: Klicke auf Play-Button.");
+                            _clickButton('#play-button[data-mode="BOMB"]')
+                        }, 100);
+                    }
+                }
             }
 
             // Prüfe, ob eine Anfrage vom Server an uns gerichtet ist
@@ -184,9 +211,14 @@ const Bot = (() => {
 
                 switch (request.action) {
                     case 'announce_grand_tichu':
-                        const announceGrand = Random.choice([true, false], [1, 19]);
-                        console.log(`🤖 Bot: Antworte auf Grand Tichu mit: ${announceGrand}`);
-                        _clickButton(announceGrand ? '#tichu-button' : '#pass-button');
+                        if (Random.choice([true, false], [1, 19])) { // todo Random.boolean()
+                            console.log("🤖 Bot: Klicke auf GrandTichu-Button.");
+                            _clickButton('#tichu-button[data-mode="GRAND_TICHU"]');
+                        }
+                        else {
+                            console.log("🤖 Bot: Klicke auf NoGrandTichu-Button.");
+                            _clickButton('#pass-button[data-mode="NO_GRAND_TICHU"]');
+                        }
                         break;
 
                     case 'schupf':
@@ -195,7 +227,7 @@ const Bot = (() => {
                         const handCardElements = Array.from(document.querySelectorAll('#hand-bottom .card'));
                         const cardElements = Random.sample(handCardElements, 3);
                         const schupfSubZones = document.querySelectorAll('#schupf-zone-bottom .schupf-subzone');
-                        console.log(`🤖 Bot: Wähle Schupf-Karten aus...`);
+                        console.log(`🤖 Bot: Wähle Schupf-Karten aus.`);
                         cardElements.forEach((cardElement, i) => {
                             cardElement.click();
                             schupfSubZones[i].click();
@@ -210,30 +242,34 @@ const Bot = (() => {
                         // Zufällig eine von zwei Strategien wählen
                         if (Random.boolean()) {
                             // a) Zufällige gültige Kombination spielen
-                            console.log("🤖 Bot: Spiele zufällige gültige Kombination...");
+                            console.log("🤖 Bot: Selektiere zufällige Kombination...");
                             const actionSpace = State.getActionSpace();
                             const action = Random.choice(actionSpace);
                             _selectCards(action[0]);
-                            if (action[1][0] === CombinationType.PASS) {
-                                _clickButton('#pass-button');
+                            if (action[1][0] !== CombinationType.PASS) {
+                                console.log("🤖 Bot: Klicke auf Play-Button.");
+                                _clickButton('#play-button[data-mode="PLAY"]');
                             }
                             else {
-                                _clickButton('#play-button[data-mode="PLAY"]');
+                                 console.log("🤖 Bot: Klicke auf Passen-Button.");
+                                _clickButton('#pass-button');
                             }
                         }
                         else {
                             // b) AUTOSELECT-Button der View nutzen
-                            console.log("🤖 Bot: Nutze AUTOSELECT...");
                             if (State.canPlayCards()) {
                                 _clearSelectedCards();
                                 // Nach dem ersten Klick werden die Karten selektiert.
+                                console.log("🤖 Bot: Klicke auf Autoselect-Button.");
                                 _clickButton('#play-button[data-mode="AUTOSELECT"]');
                                 // Plane einen zweiten Klick, um sie auszuspielen.
                                 setTimeout(() => {
+                                    console.log("🤖 Bot: Klicke auf Play-Button.");
                                     _clickButton('#play-button[data-mode="PLAY"]')
                                 }, 500);
                             }
                             else { // kein Autoselect möglich (z.B. nur Passen).
+                                 console.log("🤖 Bot: Klicke auf Passen-Button.");
                                 _clickButton('#pass-button');
                             }
                         }
@@ -241,10 +277,10 @@ const Bot = (() => {
 
                     case 'wish':
                         _testUIWishDialog();
-                        // Klick auf den Button im Modal-Dialog
+                        // Klick auf den Button im Wish-Dialog
                         const wishOptions = document.querySelectorAll('#wish-dialog:not(.hidden) button:not(:disabled)');
                         if (wishOptions.length > 0) {
-                            console.log("🤖 Bot: Wähle einen zufälligen Wunsch...");
+                            console.log("🤖 Bot: Wähle einen zufälligen Wunsch.");
                             Random.choice(Array.from(wishOptions)).click();
                         }
                         break;
@@ -254,7 +290,7 @@ const Bot = (() => {
                         // Klick auf den Button im Dragon-Dialog
                         const dragonOptions = document.querySelectorAll('#dragon-dialog:not(.hidden) button:not(:disabled)');
                         if (dragonOptions.length > 0) {
-                            console.log("🤖 Bot: Verschenke Drachen zufällig...");
+                            console.log("🤖 Bot: Verschenke Drachen zufällig.");
                             Random.choice(Array.from(dragonOptions)).click();
                         }
                         break;
@@ -271,7 +307,7 @@ const Bot = (() => {
     // --------------------------------------------------------------------------------------
 
     /**
-     * Klickt auf ein Button, falls er sichtbar und aktiv ist.
+     * Klickt auf einen Button, falls er sichtbar und aktiv ist.
      *
      * @param {string} selector - Der CSS-Selektor für einen Button.
      * @returns {boolean} - True, wenn der Klick erfolgreich war.
@@ -397,6 +433,64 @@ const Bot = (() => {
         _assertUI(document.querySelector('#player-name-bottom').classList.contains('current-player'), "UI zeigt nicht an, dass der Bot am Zug ist.");
     }
 
+
+    /**
+     * UI-Test für die Tichu-Symbole (und den Tichu-Button).
+     */
+    function _testUITichuIcons() {
+        for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
+            const tichuIcon = document.getElementById(`tichu-icon-${['bottom', 'right', 'top', 'left'][relativeIndex]}`)
+            const announce = State.getAnnouncement(Lib.getCanonicalPlayerIndex(relativeIndex));
+            if (announce) {
+                _assertUI(!tichuIcon.classList.contains("hidden"), "Das Tichu-Symbol eines Spieler ist zu nicht sehen, obwohl er ein Tichu angesagt hat.");
+                if (announce === 2) {
+                    _assertUI(tichuIcon.src.includes("grand"), "Das Tichu-Symbol eines Spieler zeigt ein einfaches statt großes Tichu an.");
+                }
+                else {
+                    _assertUI(!tichuIcon.src.includes("grand"), "Das Tichu-Symbol eines Spieler zeigt ein großes statt einfaches Tichu an.");
+                }
+                if (relativeIndex === 0) {
+                    _assertUI(document.getElementById('tichu-button').disabled, "Der Tichu-Button ist aktiviert, obwohl der Benutzer bereits ein Tichu angesagt hat.");
+                }
+            }
+            else {
+                _assertUI(tichuIcon.classList.contains("hidden"), "Das Tichu-Symbol eines Spieler ist zu sehen, obwohl er kein Tichu angesagt hat.");
+            }
+        }
+    }
+
+    /**
+     * UI-Test für das Bomben-Symbol.
+     */
+    function _testUIBombIcon() {
+        const bombIcon = document.getElementById('bomb-icon');
+        if (State.hasBomb()) {
+            _assertUI(!bombIcon.classList.contains('hidden'), "Das Bomben-Symbol ist nicht sichtbar, obwohl der Bot eine Bombe hat.");
+            if (State.canPlayBomb()) {
+                _assertUI(!bombIcon.classList.contains("disabled"), "Das Bomben-Symbol ist deaktiviert, obwohl der Bot eine Bombe werfen darf.");
+            }
+            else {
+                _assertUI(bombIcon.classList.contains("disabled"), "Das Bomben-Symbol ist aktiviert, obwohl der Bot keine Bombe werfen darf.");
+            }
+        }
+        else {
+            _assertUI(bombIcon.classList.contains('hidden'), "Das Bomben-Symbol ist sichtbar, obwohl der Bot keine Bombe hat.");
+        }
+    }
+
+    /**
+     * UI-Test für den Wish-Dialog.
+     */
+    function _testUIWishIcon() {
+        const _wishIcon = document.getElementById('wish-icon');
+        if (State.getWishValue() > 0) {
+            _assertUI(!_wishIcon.classList.contains('hidden'), "Das Wunsch-Symbol ist nicht sichtbar, obwohl ein Wunsch unerfüllt ist.");
+        }
+        else {
+            _assertUI(_wishIcon.classList.contains('hidden'), "Das Wunsch-Symbol ist sichtbar, obwohl kein Wunsch offen ist.");
+        }
+    }
+
     /**
      * UI-Test für den Wish-Dialog.
      */
@@ -409,6 +503,18 @@ const Bot = (() => {
      */
     function _testUIDragonDialog() {
         _assertUI(!document.getElementById('dragon-dialog').classList.contains('hidden'), "Drachen-Dialog sollte sichtbar sein.");
+    }
+
+    /**
+     * UI-Test für den Punkteanzeige.
+     */
+    function _testUIScoreDisplay() {
+        let score = State.getTotalScore();
+        if (State.getPlayerIndex() === 1 || State.getPlayerIndex() === 3) {
+            [score[0], score[1]] = [score[1], score[0]];
+        }
+        const scoreDisplay = document.getElementById('score-display').textContent.split(":").map(value => parseInt(value.trim()));
+        _assertUI(scoreDisplay[0] === score[0] && scoreDisplay[1] === score[1], "Punkteanzeige zeigt einen falschen Wert.");
     }
 
     return {

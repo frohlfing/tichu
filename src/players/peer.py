@@ -42,7 +42,7 @@ class Peer(Player):
         self._websocket = websocket
         self._random = Random(seed)  # Zufallsgenerator
         self._new_websocket_event = asyncio.Event()
-        self._pending_requests: Dict[str, asyncio.Future] = {}  # die noch vom Client unbeantworteten Anfragen
+        self._pending_requests: Dict[str, Tuple[str, asyncio.Future]] = {}  # die noch vom Client unbeantworteten Anfragen  # todo es ist immer nur eine Anfrage offen!
         self._pending_announce: Optional[bool] = None  # die noch vom Server abzuholende Tichu-Ansage
         self._pending_bomb: Optional[Cards] = None  # die noch vom Server abzuholende Bombe
 
@@ -69,16 +69,13 @@ class Peer(Player):
         """
         Setzt spielrundenspezifische Werte zurück.
         """
-        #self._cancel_pending_requests()
-        assert self._pending_requests == {}
-        assert self._pending_announce is None
-        assert self._pending_bomb is None
+        self._cancel_pending_requests()
 
     def _cancel_pending_requests(self):
         """
         Offene Anfragen verwerfen.
         """
-        for request_id, future in list(self._pending_requests.items()):
+        for request_id, (_action, future) in list(self._pending_requests.items()):
             if not future.done():
                 future.set_result(None)
         self._pending_requests = {}
@@ -186,12 +183,13 @@ class Peer(Player):
         :param request_id:  Die UUID der Anfrage.
         :param response_data: Die Daten der Antwort.
         """
-        future = self._pending_requests.pop(request_id, None)  # hole und entferne die Future aus _pending_requests
-        if not future:  # keine wartende Anfrage für diese Antwort gefunden
+        _request = self._pending_requests.pop(request_id, None)  # hole und entferne die Future aus _pending_requests
+        if not _request:  # keine wartende Anfrage für diese Antwort gefunden
             msg = "Keine wartende Anfrage für diese Antwort gefunden"
             logger.warning(f"[{self._name}] {msg}; Request-ID {request_id}.")
             await self.error(msg, ErrorCode.INVALID_RESPONSE, context={"request_id": request_id})
             return
+        _action, future = _request
         if future.done():  # _ask() hat inzwischen das Warten auf diese Antwort aufgegeben (wegen Timeout, Interrupt oder Server beenden)
             msg = "Anfrage ist veraltet"
             logger.warning(f"[{self._name}] {msg}; Request-ID: {request_id}.")
@@ -221,7 +219,8 @@ class Peer(Player):
         loop = asyncio.get_running_loop()
         request_id = str(uuid4())
         response_future = loop.create_future()
-        self._pending_requests[request_id] = response_future
+        assert len(self._pending_requests) == 0, "Eine Anfrage wurde bereits gesendet!"
+        self._pending_requests[request_id] = (action, response_future)
 
         # Anfrage senden
         request_message: dict = {
@@ -304,7 +303,7 @@ class Peer(Player):
                 except Exception as cleanup_e:
                     logger.exception(f"[{self._name}] Fehler beim Aufräumen von Task {task.get_name()}: {cleanup_e}")
             # noinspection PyAsyncCall
-            self._pending_requests.pop(request_id, None)
+            self._pending_requests.pop(request_id, None)  # Future entfernen
 
     async def announce_grand_tichu(self) -> bool:
         """
@@ -382,6 +381,7 @@ class Peer(Player):
         cards: Optional[Tuple[Card, Card, Card]] = None
         while cards is None:
             response_data = await self._ask("schupf", {"hand_cards": self.priv.hand_cards}, interruptable=True)
+            logger.debug(f"[{self._name}] Schupf: {response_data}")
 
             # Fallback bei Verbindungsabbruch
             if response_data is None:
@@ -654,6 +654,7 @@ class Peer(Player):
                     "session_id": self._session_id,
                     "public_state": self.pub.to_dict(),
                     "private_state": self.priv.to_dict(),
+                    "pending_request": self._get_pending_request(),
                 }
 
         elif event == "hand_cards_dealt":
@@ -734,3 +735,19 @@ class Peer(Player):
         :return: True, wenn verbunden, sonst False.
         """
         return not self._websocket.closed
+
+    # ------------------------------------------------------
+    # Hilfsfunktionen
+    # ------------------------------------------------------
+
+    def _get_pending_request(self) -> Optional[Tuple[str, str]]:
+        """
+        Gibt die ID und Aktion der laufenden Anfrage zurück.
+
+        :return: Request-ID und Aktion, wenn eine Anfrage läuft, sonst None.
+        """
+        if not self._pending_requests:
+            return None
+        assert len(self._pending_requests) == 1
+        request_id, (action, _future) = next(iter(self._pending_requests.items()))  # ersten Eintrag holen
+        return request_id, action

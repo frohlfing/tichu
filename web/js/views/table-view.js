@@ -592,6 +592,7 @@ const TableView = (() => {
             }
 
             // Animation starten (dadurch werden die Spielzüge gelöscht)
+            console.debug("Animation.takeTrick");
             EventBus.pause();
             Animation.takeTrick(lastTurnIndex, () => {
                 EventBus.resume();
@@ -633,6 +634,7 @@ const TableView = (() => {
         if (State.getTrickCombination()[0] === CombinationType.BOMB && countTurnDiff) {
             //Sound.play(`bomb${State.getTrickOwnerIndex()}`);
             Sound.play("bomb");
+            console.debug("Animation.explodeBomb");
             EventBus.pause();
             Animation.explodeBomb(() => {
                 EventBus.resume();
@@ -748,7 +750,8 @@ const TableView = (() => {
                         _schupfZones[0].classList.remove('hidden');
                         if (!_getCountHandCardsInSchupfZone()) {
                             // Die erhaltenen Tauschkarten werden noch nicht angezeigt.
-                            // Wie starten die Animation, in der die Karten unter den Spielern ausgetauscht werden.
+                            // Wir starten die Animation, in der die Karten unter den Spielern ausgetauscht werden.
+                            console.debug("Animation.schupfCards");
                             EventBus.pause();
                             Animation.schupfCards(() => {
                                 // Tauschkarten mit der Vorderseite zeigen
@@ -814,7 +817,7 @@ const TableView = (() => {
         const relativeIndex = Lib.getRelativePlayerIndex(playerIndex);
         const announcement = State.getAnnouncement(playerIndex);
         if (announcement) {
-            _tichuIcons.src = announcement === 2 ? "images/grand-tichu-icon.png" : "images/tichu-icon.png";
+            _tichuIcons[relativeIndex].src = announcement === 2 ? "images/grand-tichu-icon.png" : "images/tichu-icon.png";
             _tichuIcons[relativeIndex].classList.remove('hidden');
         }
         else {

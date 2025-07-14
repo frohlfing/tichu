@@ -157,6 +157,7 @@ const Animation = (() => {
         for (let fromRelativeIndex= 0; fromRelativeIndex <= 3; fromRelativeIndex++) {
             _takeTurns(fromRelativeIndex, toRelativeIndex, () => {
                 completed++;
+                console.debug(`takeTrick: completed = ${completed}`);
                 if (completed === 4 && typeof callback === 'function') {
                     callback();
                 }
@@ -182,7 +183,7 @@ const Animation = (() => {
 
         let completed = 0;
 
-        // Alle Spielzüge des Spielers durchlaufen...
+        // Alle Spielzüge des Spielers durchlaufen.
         turnElements.forEach(turnElement => {
 
             // Position und aktuellen Skalierungsfaktor des Wrappers
@@ -223,6 +224,7 @@ const Animation = (() => {
                 //removeCard(cardElement, callback);
                 turnElement.remove();
                 completed++;
+                console.debug(`takeTrick: completed = ${completed}, turnElements.length = ${turnElements.length}`);
                 if (completed === turnElements.length && typeof callback === 'function') {
                     callback();
                 }

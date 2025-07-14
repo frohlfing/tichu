@@ -311,7 +311,7 @@ const State = (() => {
     /**
      * Setzt die Anzahl der Handkarten eines Spielers.
      *
-     * Ist der Spieler der Benutzer, sollte die angegebene Anzahl mit getHandCards() übereinstimmten.
+     * Ist der Spieler der Benutzer, sollte die angegebene Anzahl mit getHandCards() übereinstimmen.
      * Es findet keine Validierung statt!
      *
      * @param {number} playerIndex - Der Index des Spielers.
@@ -339,7 +339,7 @@ const State = (() => {
     
     /**
      * @param {number|null} playerIndex - Der Index des Spielers. Wenn nicht angegeben, wird der Index des Benutzers genommen.
-     * @returns {number} Tichu-Ansage des Spielers (0 = keine Ansage, 1 = einfaches, 2 = großes).
+     * @returns {number} Tichu-Ansage des Spielers (0 = keine Ansage, 1 = einfaches Tichu, 2 = großes Tichu).
      */
     function getAnnouncement(playerIndex = null){
         if (playerIndex == null) {
@@ -350,7 +350,7 @@ const State = (() => {
 
     /**
      * @param {number} playerIndex - Der Index des Spielers.
-     * @param {number} announcement - Tichu-Ansage des Spielers (0 = keine Ansage, 1 = einfaches, 2 = großes).
+     * @param {number} announcement - Tichu-Ansage des Spielers (0 = keine Ansage, 1 = einfaches Tichu, 2 = großes Tichu).
      */
     function setAnnouncement(playerIndex, announcement) {
         _publicState.announcements[playerIndex] = announcement;
@@ -645,12 +645,12 @@ const State = (() => {
     }
 
     /**
-     * Wählt die "beste" Kombination, die gespielt werden kann, aus.
+     * Wählt die "beste" Kombination aus, die gespielt werden kann.
      *
      * Die Kombination wird nach folgender Heuristik ausgewählt:
-     * - Die längste Kombination; unter den gleichlangen die rangniedrigste.
+     * - Die längste Kombination; unter den gleichlangen die Rangniedrigste.
      * - Aber:
-     *   - Bomben werden niemals zerrissen (eine Kombination, dessen Karten Teil einer Bombe sind, wird nicht betrachtet, es sei denn, sie ist selbst eine Bombe).
+     *   - Bomben werden niemals zerrissen (eine Kombination, deren Karten Teil einer Bombe sind, wird nicht betrachtet, es sei denn, sie ist selbst eine Bombe).
      *   - Eine Bombe wird nur gespielt, wenn keine andere Kombination möglich ist. Passen ist die letzte Option.
      *
      * @returns {[Cards, Combination]} - Die empfohlene Kombination.
@@ -723,10 +723,10 @@ const State = (() => {
     }
 
     /**
-     * Wählt die "beste" Bombe, die gespielt werden kann, aus.
+     * Wählt die "beste" Bombe aus, die gespielt werden kann.
      *
      * Die Bombe wird nach folgender Heuristik ausgewählt:
-     * - Die längste Kombination; unter den gleichlangen die rangniedrigste.
+     * - Die längste Kombination; unter den gleichlangen die Rangniedrigste.
      *
      * @returns {[Cards, Combination]} - Die empfohlene Kombination.
      */

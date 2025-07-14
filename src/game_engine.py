@@ -449,8 +449,8 @@ class GameEngine:
                             try:
                                 cards, combination = await self._players[pub.current_turn_index].play()
                             except PlayerInterruptError as e:
-                                # Ein Client hat eine Bombe geworfen. Wir wiederholen den aktuellen Schleifendurchlauf,
-                                # so dass nochmal gefragt wird, ob ein Spieler eine Bombe werfen will und lassen sie dann hochgehen.
+                                # Ein Client will Tichu ansagen oder möchte eine Bombe werfen.
+                                # Wir wiederholen den aktuellen Schleifendurchlauf, so dass nochmal danach gefragt wird, bevor es hier weitergeht.
                                 continue  # while not pub.is_round_over
                             if clients_joined:
                                 delay = round((time() - time_start) * 1000)  # in ms

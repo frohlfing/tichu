@@ -1,121 +1,27 @@
 Wir programmieren ein Kartenspiel namens Tichu. Lies dir die technische Dokumentation zum Projekt genau durch.
 Du bist mein erfahrener Kollege als JS-Entwickler. Deine Aufgabe ist es, das Web-Frontend mit Vanilla-JS (keine ES6-Module), CSS und HTML zu entwickeln.
-Wir verzeichten auf Frameworks und vermeidbare Abhängigkeiten.
+Wir verzichten auf Frameworks und vermeidbare Abhängigkeiten.
 
 Der für dich relevante Source-Code des Backends hab ich angehängt. Insbesondere der Peer sollte dich interessieren.
-Zusammen mit der Dokumentation soltest du alle notwendigen INformationen haben, um das Frontend zu prpgrammieren.
+Zusammen mit der Dokumentation solltest du alle notwendigen Informationen haben, um das Frontend zu programmieren.
 
-Die Ansicht ist für ein modernes Smartphone optimiert, solte aber auch am PC spielbar sein.
-Die Screenshots der Views stammen aus einem Godot-Projekt. Dieses Umgebung vervolgen wir nicht weiter, wollen aber die Ansichten möglichst geanuu
-so übenehmen!
-
-Es gibt folgende Views:
-
-* Formulare in der Lobby:
-- Form mit Textfeld zur Eingabe des eigenen Namens, ein Textfeld für den Name des Tisches, darunter ein ein Login-Button.
-- Form, um die vier Spieler in zwei Teams unterteilen zu können. Darunter ein Start-Button, um das Spiel zu starten.
-
-* Formulare während des Spiels (am Spieltisch):
-- Form, um sich ein Kartenwert zu wünschen
-- Form, um den Drachen zu verschenken
-- Form, um das Ergebnis anzuzeigen, nachdem die Runde beendet ist
-- Form, um das Ergebnis anzuzeigen, nachdem die Partie beendet ist
-- Form, um nachzufragen, ob man wirklich den Tisch verlassen will.
-
-* Der Spieltisch:
-- Es gitb oben links ein Button zum Beenden, oben links ein Optionen-Button. Dazwischen wird r aktuelle Punktestand angezeigt.
-- Unten sind drei Button für Passen, TIchu ansagen und Karten ausspeieln zu sehen.
-- Der eigene Spieler sitzt am unterene Rand des Tisches. Die 14 Karten sind aufgefächste offen einsehbar.
-- Klickt man auf eine Karte, rutscht die selekteirte Karte etwas nach oben. Klickt man erneut auf die (selektierte) Karte, wird die Karte wieder zu den anderen Karten eingereiht.
-- Mit Klick auf Spielen-Button, gleiten die selektierten Karten Karten auf den Tisch, sind aber von der Position eindeutig zum Spieler zugeordnet.
-- Wenn der Spieler eine Bombe hat, ist ein entsprechendes Icon zu sehen. Klickt er drauf, hört man ein entsprechendes Geräusch, und "gebombt" wird kurz eingebendet.
-- Drei dunklere Felder markieren die Zone, in denen die zu tauschenden Karten abgelegt werden..
-- Die Karten der Gegener sind links und rechts vom Tisch verdeckt aufgefächert. Der Partner ist gegenüber (am oberen Rand) vom Tisch.
-- Wenn ein Spieler ein Tichu angesagt hat, ist ein roter Drachenkopf rechts vom Spiler über den Karten zu sehen.
-- Ein Stern oder Kreis oder ähnliches markiert den Spieler, der am Zug ist.
-- Ist ein Wunsch noch offe, wird der Kartenwert in der Mitte als Symbol des Majongs angezeigt.
-
-- Query-Parameter und LocalStorage
-- Name des Spielers und Name des Tisches können per URL übergeben werden.
-- Name des Spielers, Name des Tisches und die Session-ID werden im LokalStorage persistent gespeichert.
-- Wenn die Session-ID im LocalStorage vorhanden ist, erfolgt der Login automatisch mit Hilfe dieer Session-ID.
-  Außnahme: Der automtische Login erfolgt NICHT, wenn Name des Spielers und Name des Tisches per URL angegeben sind.
-- Ist die Session ungültig, wird sie aus dem LokalStorage gelöscht.
-- Ist die Session-ID nicht vorhanden (oder Name des Spielers und Name des Tisches sind per URL angegeben), wir die Form angezeigt, um die Namen eingeben zu können.
-
-Ablauf:
-Bei Programmstart ist der Spieler in einer Lobby. Als Hintergrund soll ein Bild mit einem Drachenkopf erscheinen.
-Der Spieler gibt sein Name ein eine Name für einen Tisch ein. Mit Klick auf einem Login-Button meldet er sich an.
-Zu sehen sind dann alle bisher angemeldeten Spieler/Agenten am Tisch. Wenn der Spieler der erst Mensch ist, ist er der Host und darf
-die Reihenfolge der Spieler/Agenten verändern, um so die Teams bilden zu können. Mit Klick auf Start-Button
-wird die Lobby ausgeblendet und der Spieltisch angezeigt. Die Partie beginnt.
+---------------------------------------------------------------------------
 
 
-### 8.2 Verantwortlichkeiten der JavaScript-Module
+Ich habe mit Python eine Umgebung gebaut, in der 4 Agenten Tichu spielen können.
 
-Zuständigkeiten der Module (Diskussionsgrundlage):
-1) main.js (Applikations-Starter / Orchestrator)
-*   Hauptverantwortung:
-    *   Initialisierung der Anwendung, grundlegendes Setup, Verknüpfung der Hauptmodule.
-*   Aufgaben:
-    *   Wartet auf DOMContentLoaded.
-    *   Initialisiert Kern-Services/Module (z.B. GameState, WebSocketService, UiManager).
-    *   Liest initiale Konfiguration (z.B. URL-Parameter) und gibt sie an zuständige Module weiter (z.B. GameState).
-    *   Setzt den globalen Nachrichten-Callback für WebSocketService.
-    *   Startet die initiale UI-Anzeige (z.B. UiManager.showInitialView()).
-    *   Behandelt globale Anwendungs-Events oder leitet sie an den UiManager oder spezifische Handler weiter (z.B. die erste player_joined-Notification, die den Übergang von "Beitreten" zu "In Lobby" signalisiert).
-*   Sollte nicht:
-    *   Direkt DOM-Elemente manipulieren oder detaillierte UI-Logik für spezifische Ansichten enthalten. Es delegiert dies an den UiManager und die View-Module.
+Bisher hab ich nur RandomAgents. Damit du mir helfen kannst, weitere Agents zu kreieren, teile ich mit dir meine Gedanken:
 
-2) UiManager.js (View-Koordinator / Router)
-*   Hauptverantwortung:
-    *   Verwalten, welche Hauptansicht (Lobby, Spieltisch) gerade aktiv ist. Umschalten zwischen diesen Ansichten.
-*   Aufgaben:
-    *   Kennt die verschiedenen Haupt-View-Module (LobbyView, TableView).
-    *   Methoden wie showLobbyView(), showTableView().
-    *   Stellt sicher, dass immer nur eine Hauptansicht sichtbar ist.
-    *   Könnte auch globale UI-Elemente verwalten, die über allen Ansichten liegen (z.B. ein globales Benachrichtigungsfeld für Verbindungsfehler, obwohl das auch im WebSocketService oder main.js getriggert werden könnte).
-*   Sollte nicht:
-    *   Die interne Logik oder das Rendering-Detail einer spezifischen View kennen.
+Ich habe eine Funktion entwickelt, mit der ich die Wahrscheinlichkeit exakt berechnen kann, ob eine bestimmte Kartenkombination überstochen wird.
+Eine weitere berechnet die Wahrscheinlichkeit, ob ein Mitspieler eine Kombination ausspielt, die mit einer bestimmten Kombination überstochen werden kann.
+Vielleicht könnte damit ein Neuronales Netz trainieren.
 
-3. LobbyView.js / TableView.js (Spezifische View-Module)
-*   Hauptverantwortung:
-    *   Rendern und Verwalten ihrer spezifischen Ansicht und der zugehörigen UI-Interaktionen.
-*   Aufgaben:
-    *   Referenzen auf ihre relevanten DOM-Elemente halten.
-    *   Methoden zum Anzeigen (show()) und Verstecken (hide()) ihrer eigenen View-Container.
-    *   Eigenständiger Zugriff auf GameState: Ja, absolut! Jede View sollte direkt auf GameState.getPublicState(), GameState.getPrivateState(), GameState.getPlayerName() etc. zugreifen können, um die benötigten Daten für ihre Darstellung zu holen. Das ist ein Kernprinzip einer guten Frontend-Architektur – die Views sind datengesteuert.
-    *   Event-Listener für UI-Elemente innerhalb ihrer View (z.B. Klick auf "Join"-Button, Kartenklick).
-    *   Callbacks an main.js oder einen Controller (falls vorhanden) für Aktionen, die über die reine UI hinausgehen (z.B. "Versuche, dem Spiel beizutreten").
-    *   Aktualisieren ihrer Darstellung basierend auf Änderungen im GameState oder direkten Anweisungen (z.B. "zeige Fehler X an").
-    *   LobbyView:
-        *   showJoinForm(): Zeigt das Formular an.
-        *   showTableInfo(players, isHost): Zeigt die Spielerliste und Host-Controls an.
-        *   Füllt beim init (oder show) die Input-Felder aus GameState.
-*   Sollte nicht:
-    *   Andere Views direkt manipulieren. Die Kommunikation zwischen Views oder das Umschalten von Views geht über den UiManager oder Callbacks zu main.js.
+Ich habe von Brettspielwelt.de die Logdateien von ca 20 Mio. Tichu-Partien. Vielleicht könnte man auch damit die ich nutzen könnte, um ein
+Neuronales Netz trainieren, der menschliche Entscheidungen nachahmt.
 
-4. WebSocketService.js
-*   Hauptverantwortung:
-    *   Kapselung der gesamten WebSocket-Kommunikation.
-*   Aufgaben:
-    *   connect(), sendMessage(), closeConnection(), isConnected().
-    *   Empfangen von Nachrichten und Weiterleitung an einen einzigen globalen Handler (Callback), der in main.js gesetzt wird. Dieser Handler in main.js entscheidet dann, welche View oder welches Modul die Nachricht weiterverarbeiten soll.
-*   Sollte nicht:
-    *   Direkten Zugriff auf DOM-Elemente haben oder UI-Logik enthalten.
+Solche Netze könnten dann im Selbstspiel wie im AlphaZero-Algorithmus verbessert werden.
 
-5. GameState.js
-*   Hauptverantwortung:
-    *   Verwaltung des clientseitigen Zustands der Anwendung (Spielerinfos, Tischinfos, session_id, Kopie von public_state, private_state). Inklusive Persistenz via localStorage.
-*   Aufgaben:
-    *   Getter und Setter für die Zustandsdaten.
-    *   Laden/Speichern von/nach localStorage.
-*   Sollte nicht:
-    *   UI-Logik oder WebSocket-Logik enthalten.
+Was schlägst du vor, wie ich vorgehen soll?
 
-6. cardRenderer.js (oder Teil von TableView)
-*   Hauptverantwortung:
-    *   Logik zum visuellen Darstellen von Karten.
-*   Aufgaben:
-    *   Funktionen, die Kartenobjekte (aus GameState) in HTML/CSS umwandeln.
-    *   Ggf. Logik für Kartenanimationen (obwohl das auch reines CSS sein kann).
+
+Decision Transformer

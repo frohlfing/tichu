@@ -109,7 +109,7 @@ const AppController = (() => {
     function _handleNetworkError(error) {
         console.debug("App._handleNetworkError()", error);
         _renderView(error.message);
-        Modal.showErrorToast(`Fehler ${error.message}`);
+        Modal.showErrorToast(error.message);
     }
     
     /**
@@ -184,6 +184,12 @@ const AppController = (() => {
                     State.setPrivateState(context.private_state);
                     if (State.getReceivedSchupfCards()) {
                         State.confirmReceivedSchupfCards()
+                    }
+                    if (context.pending_request) {
+                        _setRequest(context.pending_request[0], context.pending_request[1]);
+                    }
+                    else {
+                        _removeRequest();
                     }
                 }
                 else { // Ein Mitspieler ist beigetreten.
