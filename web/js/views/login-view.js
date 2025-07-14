@@ -105,7 +105,7 @@ const LoginView = (() => {
         }
 
         _submitButton.disabled = true;
-        Sound.play('buttonClick');
+        Sound.play('click');
         EventBus.emit("loginView:login", {playerName: playerName, tableName: tableName});
     }
 

@@ -677,7 +677,9 @@ Init:
 | Dateiname | Original                                        | Verwendung                         |
 |-----------|-------------------------------------------------|------------------------------------|
 | announce0 | music-jingles/jingles_STEEL00,04,08,16          | Tichu ansagen (Spieler 0 bis 4)    |
-| bomb0     | digital-audio/laser1,2,3,4                      | Bombe werfen (Spieler 0 bis 4)     |
+| bomb      | sci-fi-sounds/lowFrequency_explosion_000.ogg    | Bombe werfen                       |
+| chips     | casino-audio/chips-handle-6.ogg                 | Punkteanzeige aktualisieren        |
+| click     | ui-audio/click1.ogg                             | Button anklicken                   |
 | dealout   | casino-audio/card-fan-1                         | Karten austeilen                   |
 | pass0     | impact-sounds/impactSoft_medium_001,002,003,004 | Passen (Spieler 0 bis 4)           |
 | play0     | casino-audio/card-slide-1,2,3,4                 | Karte ausspielen (Spieler 0 bis 4) |

@@ -270,7 +270,7 @@ const TableView = (() => {
      * Ereignishändler für den "Beenden"-Button.
      */
     function _handleExitButtonClick() {
-        Sound.play('buttonClick');
+        Sound.play('click');
         Modal.showExitDialog();
     }
 
@@ -321,7 +321,7 @@ const TableView = (() => {
             }
         }
 
-        Sound.play('buttonClick');
+        Sound.play('click');
         cardElement.classList.toggle('selected');
         _updatePlayButton();
     }
@@ -337,7 +337,7 @@ const TableView = (() => {
             const subzoneElement = event.target;
             const cardElement = _hands[0].querySelector('.card.selected');
             if (cardElement) {
-                Sound.play('buttonClick');
+                Sound.play('click');
                 subzoneElement.appendChild(cardElement);
                 cardElement.classList.remove('selected');
             }
@@ -361,7 +361,7 @@ const TableView = (() => {
             }
 
             // Karte zurück in die Hand einsortieren
-            Sound.play('buttonClick');
+            Sound.play('click');
             if (referenceElement) {
                 _hands[0].insertBefore(cardElement, referenceElement);
             }
@@ -382,7 +382,7 @@ const TableView = (() => {
         if (_bombIcon.classList.contains("disabled")) {
             return;
         }
-        Sound.play('buttonClick');
+        Sound.play('click');
         _selectCards(State.getBestPlayableBomb()[0])
         _updatePlayButton();
     }
@@ -392,7 +392,7 @@ const TableView = (() => {
      */
     function _handlePassButtonClick() {
         _passButton.disabled = true;
-        Sound.play('buttonClick');
+        Sound.play('click');
         switch (_passButton.dataset.mode) {
             case "NO_GRAND_TICHU": // Der Benutzer möchte kein großes Tichu ansagen.
                 EventBus.emit("tableView:grandTichu", false);
@@ -411,7 +411,7 @@ const TableView = (() => {
      */
     function _handleTichuButtonClick() {
         _tichuButton.disabled = true;
-        Sound.play('buttonClick');
+        Sound.play('click');
         switch (_tichuButton.dataset.mode) {
             case "GRAND_TICHU": // Der Benutzer möchte ein großes Tichu ansagen.
                 EventBus.emit("tableView:grandTichu", true);
@@ -430,7 +430,7 @@ const TableView = (() => {
      */
     function _handlePlayButtonClick() {
         _playButton.disabled = true;
-        Sound.play('buttonClick');
+        Sound.play('click');
         switch (_playButton.dataset.mode) {
             case "SCHUPF": // Der Benutzer möchte drei Tauschkarten für die Mitspieler abgeben.
                 EventBus.emit("tableView:schupf", _getHandCardsInSchupfZone());
@@ -631,7 +631,8 @@ const TableView = (() => {
 
         // falls eine neue Bombe liegt, dies animieren
         if (State.getTrickCombination()[0] === CombinationType.BOMB && countTurnDiff) {
-            Sound.play(`bomb${State.getTrickOwnerIndex()}`);
+            //Sound.play(`bomb${State.getTrickOwnerIndex()}`);
+            Sound.play("bomb");
             EventBus.pause();
             Animation.explodeBomb(() => {
                 EventBus.resume();
