@@ -56,8 +56,8 @@ const AppController = (() => {
         EventBus.on("dragonDialog:select", _handleDragonDialogSelect);
 
         Network.init();
-        SoundManager.init();
-        Modals.init();
+        Sound.init();
+        Modal.init();
         ViewManager.init();
 
         // QueryString der URL auswerten
@@ -109,7 +109,7 @@ const AppController = (() => {
     function _handleNetworkError(error) {
         console.debug("App._handleNetworkError()", error);
         _renderView(error.message);
-        Modals.showErrorToast(`Fehler ${error.message}`);
+        Modal.showErrorToast(`Fehler ${error.message}`);
     }
     
     /**
@@ -312,11 +312,11 @@ const AppController = (() => {
                 // todo TotalScore sollte ebenfalls oder statt GameScore übergeben werden (sonst würde ein Fehleintrag nicht korrigiert werden)
                 State.addGameScoreEntry([context.points[2] + context.points[0], context.points[3] + context.points[1]])
                 State.setRoundCounter(State.getRoundCounter() + 1); // todo raus damit, ist unwichtig.
-                Modals.showRoundOverDialog()
+                Modal.showRoundOverDialog()
                 break;
             case "game_over": // Die Runde ist vorbei und die Partie ist entschieden.
                 State.setRunning(false);
-                Modals.showGameOverDialog()
+                Modal.showGameOverDialog()
                 break;
             default:
                 console.error('App: Unbehandelte Server-Notification:', notification.event);
@@ -334,7 +334,7 @@ const AppController = (() => {
     function _handleServerError(error) {
         console.debug("App._handleServerError()", error.message, error.code, error.context);
         _renderView(error.message);
-        Modals.showErrorToast(`Fehler ${error.message}`);
+        Modal.showErrorToast(`Fehler ${error.message}`);
     }
     
     // --------------------------------------------------------------------------------------
@@ -395,7 +395,7 @@ const AppController = (() => {
      */
     function _handleTableViewGrandTichu(announced) {
         if (!_request || _request.action  !== "announce_grand_tichu") {
-            Modals.showErrorToast("Keine Anfrage für große Tichu-Ansage erhalten.");
+            Modal.showErrorToast("Keine Anfrage für große Tichu-Ansage erhalten.");
             return
         }
         Network.send("response", {
@@ -420,7 +420,7 @@ const AppController = (() => {
      */
     function _handleTableViewSchupf(givenSchupfCards) {
         if (!_request || _request.action  !== "schupf") {
-            Modals.showErrorToast("Keine Anfrage für Schupfen erhalten.");
+            Modal.showErrorToast("Keine Anfrage für Schupfen erhalten.");
             return
         }
         Network.send("response", {
@@ -438,7 +438,7 @@ const AppController = (() => {
      */
     function _handleTableViewPlay(cards) {
         if (!_request || _request.action  !== "play") {
-            Modals.showErrorToast("Keine Anfrage für Ausspielen erhalten.");
+            Modal.showErrorToast("Keine Anfrage für Ausspielen erhalten.");
             return
         }
         Network.send("response", {
@@ -484,7 +484,7 @@ const AppController = (() => {
      */
     function _handleWishDialogSelect(value) {
         if (!_request || _request.action  !== "wish") {
-            Modals.showErrorToast("Keine Anfrage für Wünschen erhalten.");
+            Modal.showErrorToast("Keine Anfrage für Wünschen erhalten.");
             return
         }
         Network.send("response", {
@@ -502,7 +502,7 @@ const AppController = (() => {
      */
     function _handleDragonDialogSelect(value) {
         if (!_request || _request.action  !== "give_dragon_away") {
-            Modals.showErrorToast("Keine Anfrage für Wünschen erhalten.");
+            Modal.showErrorToast("Keine Anfrage für Wünschen erhalten.");
             return
         }
         const dragonRecipient = Lib.getCanonicalPlayerIndex(value);
@@ -529,10 +529,10 @@ const AppController = (() => {
                 // todo besser über TableView steuern:
                 //  _request in State verlagern, dann kann die View wissen, wann der Dialog eingeblendet werden muss
                 if (_request && _request.action === "wish") {
-                    Modals.showWishDialog();
+                    Modal.showWishDialog();
                 }
                 else if (_request && _request.action === "give_dragon_away") {
-                    Modals.showDragonDialog();
+                    Modal.showDragonDialog();
                 }
             }
             else {

@@ -1,7 +1,7 @@
 /**
  * Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
  */
-const Modals = (() => {
+const Modal = (() => {
 
     // --------------------------------------------------------------------------------------
     // DOM-Elemente
@@ -114,7 +114,7 @@ const Modals = (() => {
         if (typeof event.target.dataset.value === "undefined") {
             return;
         }
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         _hideModal(_wishDialog);
         const value = parseInt(event.target.dataset.value, 10);
         EventBus.emit("wishDialog:select", value);
@@ -136,7 +136,7 @@ const Modals = (() => {
         if (typeof event.target.dataset.value === "undefined") {
             return;
         }
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         _hideModal(_dragonDialog);
         const value = parseInt(event.target.dataset.value, 10);
         EventBus.emit("dragonDialog:select", value);
@@ -160,7 +160,7 @@ const Modals = (() => {
         if (event.target.tagName !== "BUTTON") {
             return;
         }
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         _hideModal(_roundOverDialog);
         EventBus.emit("roundOverDialog:click");
     }
@@ -183,7 +183,7 @@ const Modals = (() => {
         if (event.target.tagName !== "BUTTON") {
             return;
         }
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         _hideModal(_gameOverDialog);
         EventBus.emit("gameOverDialog:click");
     }
@@ -204,7 +204,7 @@ const Modals = (() => {
         if (typeof event.target.dataset.value === "undefined") {
             return;
         }
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         _hideModal(_exitDialog);
         const value = parseInt(event.target.dataset.value, 10);
         EventBus.emit("exitDialog:select", value);

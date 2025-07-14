@@ -55,5 +55,4 @@ window.addEventListener('resize', () => {
  * Nützlich für Dinge, die erst nach dem Laden aller Assets passieren sollen.
  */
 window.onload = () => {
-    // Hier könnten z.B. Sounds vorgeladen werden, falls nicht schon in SoundManager.init()
 };

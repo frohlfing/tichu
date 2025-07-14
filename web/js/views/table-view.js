@@ -239,7 +239,7 @@ const TableView = (() => {
     //         case "player_bombed": // Der Spieler hat außerhalb seines regulären Zuges eine Bombe geworfen.
     //             if (State.getTrickCombination()[0] === CombinationType.BOMB) {
     //                 EventBus.pause();
-    //                 Animations.explodeBomb(() => {
+    //                 Animation.explodeBomb(() => {
     //                     EventBus.resume();
     //                 });
     //             }
@@ -270,44 +270,35 @@ const TableView = (() => {
      * Ereignishändler für den "Beenden"-Button.
      */
     function _handleExitButtonClick() {
-        testUI();
-        // SoundManager.playSound('buttonClick');
-        // Modals.showExitDialog();
+        Sound.play('buttonClick');
+        Modal.showExitDialog();
     }
 
     /**
      * Ereignishändler für den "Optionen"-Button.
      */
     function _handleSettingsButtonClick() {
-
-        const score = State.getTotalScore();
-        const oldScore = _scoreDisplay.textContent.split(":").map(value => parseInt(value.trim()));
-        if (oldScore[0] !== score[0] || oldScore[1] !== score[1]) {
-            Animations.flashScoreDisplay();
-        }
-
-        // SoundManager.playSound('buttonClick');
-        // Modals.showErrorToast("Einstellungen sind noch nicht implementiert.");
+        Modal.showErrorToast("Einstellungen sind noch nicht implementiert.");
     }
 
 
     // ------------------------------------------------------------------------------------------------------
 
-    function testUI() {
-        State.resetRound();
-        State.setGivenSchupfCards(/** @type Cards */ [[4,1], [5,1], [14,3]]);
-        State.setReceivedSchupfCards(/** @type Cards */ [[10,1], [11,2], [12,2]]);
-        State.confirmReceivedSchupfCards()
-        let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
-        //cards.length = 11;
-        State.setHandCards(cards);
-        for (let i = 0; i <= 3; i++) {
-            State.setCountHandCards(i, 14);
-            _updateSchupfZoneAndHand(i);
-        }
-        _updateBombIcon();
-        _updatePlayButton();
-    }
+    // function testUI() {
+    //     State.resetRound();
+    //     State.setGivenSchupfCards(/** @type Cards */ [[4,1], [5,1], [14,3]]);
+    //     State.setReceivedSchupfCards(/** @type Cards */ [[10,1], [11,2], [12,2]]);
+    //     State.confirmReceivedSchupfCards()
+    //     let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
+    //     //cards.length = 11;
+    //     State.setHandCards(cards);
+    //     for (let i = 0; i <= 3; i++) {
+    //         State.setCountHandCards(i, 14);
+    //         _updateSchupfZoneAndHand(i);
+    //     }
+    //     _updateBombIcon();
+    //     _updatePlayButton();
+    // }
 
     // ------------------------------------------------------------------------------------------------------
 
@@ -330,7 +321,7 @@ const TableView = (() => {
             }
         }
 
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         cardElement.classList.toggle('selected');
         _updatePlayButton();
     }
@@ -346,7 +337,7 @@ const TableView = (() => {
             const subzoneElement = event.target;
             const cardElement = _hands[0].querySelector('.card.selected');
             if (cardElement) {
-                SoundManager.playSound('buttonClick');
+                Sound.play('buttonClick');
                 subzoneElement.appendChild(cardElement);
                 cardElement.classList.remove('selected');
             }
@@ -370,7 +361,7 @@ const TableView = (() => {
             }
 
             // Karte zurück in die Hand einsortieren
-            SoundManager.playSound('buttonClick');
+            Sound.play('buttonClick');
             if (referenceElement) {
                 _hands[0].insertBefore(cardElement, referenceElement);
             }
@@ -391,7 +382,7 @@ const TableView = (() => {
         if (_bombIcon.classList.contains("disabled")) {
             return;
         }
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         _selectCards(State.getBestPlayableBomb()[0])
         _updatePlayButton();
     }
@@ -401,7 +392,7 @@ const TableView = (() => {
      */
     function _handlePassButtonClick() {
         _passButton.disabled = true;
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         switch (_passButton.dataset.mode) {
             case "NO_GRAND_TICHU": // Der Benutzer möchte kein großes Tichu ansagen.
                 EventBus.emit("tableView:grandTichu", false);
@@ -420,7 +411,7 @@ const TableView = (() => {
      */
     function _handleTichuButtonClick() {
         _tichuButton.disabled = true;
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         switch (_tichuButton.dataset.mode) {
             case "GRAND_TICHU": // Der Benutzer möchte ein großes Tichu ansagen.
                 EventBus.emit("tableView:grandTichu", true);
@@ -439,7 +430,7 @@ const TableView = (() => {
      */
     function _handlePlayButtonClick() {
         _playButton.disabled = true;
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         switch (_playButton.dataset.mode) {
             case "SCHUPF": // Der Benutzer möchte drei Tauschkarten für die Mitspieler abgeben.
                 EventBus.emit("tableView:schupf", _getHandCardsInSchupfZone());
@@ -481,7 +472,7 @@ const TableView = (() => {
         const oldScore = _scoreDisplay.textContent.split(":").map(value => parseInt(value.trim()));
         if (oldScore[0] !== score[0] || oldScore[1] !== score[1]) {
             _scoreDisplay.textContent = Lib.formatScore(score);
-            Animations.flashScoreDisplay();
+            Animation.flashScoreDisplay();
         }
     }
 
@@ -582,19 +573,42 @@ const TableView = (() => {
      * Aktualisiert den aktuellen Stich.
      */
     function _updateTrick() {
+        if (State.getTrickOwnerIndex() === -1) {
+            // Stich kassieren
+
+            // Der Spielzustand hält die abgeräumte Situation fest. Es wird nicht festgehalten, wer den Stich bekommen hat.
+            // Wir können den Gewinner des Stichs aber an der View erkennen.
+            let lastTurnIndex = -1; // der Index des Spielers mit dem letzten Spielzug
+            for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
+                const lastTurn = _trickZones[relativeIndex].querySelector(".turn.last");
+                if (lastTurn) {
+                    if (Array.from(lastTurn.children).some(cardElement => cardElement.dataset.card === '15,0')) {
+                        lastTurnIndex = State.getDragonRecipient(); // der Spieler des letzten Spielzugs bekommt den Stich
+                    }
+                    else {
+                        lastTurnIndex = Lib.getCanonicalPlayerIndex(relativeIndex); // Stich wurde verschenkt
+                    }
+                }
+            }
+
+            // Animation starten (dadurch werden die Spielzüge gelöscht)
+            EventBus.pause();
+            Animation.takeTrick(lastTurnIndex, () => {
+                EventBus.resume();
+            });
+
+            return;
+        }
+
         let countTurnDiff = 0; // Anzahl der neuen Spielzüge
 
-        // ausgespielte Karten entfernen
+        // bisherige Spielzüge entfernen
         for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
             countTurnDiff -= _trickZones[relativeIndex].children.length;
             _trickZones[relativeIndex].replaceChildren();
         }
 
-        if (State.getTrickOwnerIndex() === -1) {
-            return; // kein offener Stich
-        }
-
-        // Spielzüge anzeigen
+        // aktuelle Spielzüge anzeigen
         const trick = State.getLastTrick();
         if (trick) {
             trick.forEach(turn => {
@@ -615,9 +629,11 @@ const TableView = (() => {
             }
         }
 
+        // falls eine neue Bombe liegt, dies animieren
         if (State.getTrickCombination()[0] === CombinationType.BOMB && countTurnDiff) {
+            Sound.play(`bomb${State.getTrickOwnerIndex()}`);
             EventBus.pause();
-            Animations.explodeBomb(() => {
+            Animation.explodeBomb(() => {
                 EventBus.resume();
             });
         }
@@ -733,7 +749,7 @@ const TableView = (() => {
                             // Die erhaltenen Tauschkarten werden noch nicht angezeigt.
                             // Wie starten die Animation, in der die Karten unter den Spielern ausgetauscht werden.
                             EventBus.pause();
-                            Animations.schupfCards(() => {
+                            Animation.schupfCards(() => {
                                 // Tauschkarten mit der Vorderseite zeigen
                                 _clearSchupfZone(playerIndex);
                                 const receivedCards = State.getReceivedSchupfCards().toReversed(); // linker Gegner, Partner, rechter Gegner

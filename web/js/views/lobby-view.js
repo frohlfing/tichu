@@ -130,7 +130,7 @@ const LobbyView = (() => {
      */
     function _handleStartButtonClick() {
         _disableButtons();
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         EventBus.emit("lobbyView:start");
     }
 
@@ -139,7 +139,7 @@ const LobbyView = (() => {
      */
     function _handleExitButtonClick() {
         _disableButtons();
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         EventBus.emit("lobbyView:exit");
     }
 
@@ -150,7 +150,7 @@ const LobbyView = (() => {
      * @param {number} direction - +1 um mit dem nächsten zu tauschen, -1 um mit dem vorherigen.
      */
     function _upOrDownButton_click(playerIndex, direction) {
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         let playerIndex2 = playerIndex + direction
 
         // Der erste Spieler kann nicht verschoben werden.

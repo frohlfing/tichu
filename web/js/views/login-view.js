@@ -94,7 +94,7 @@ const LoginView = (() => {
         const tableName = _tableNameInput.value.trim();
 
         if (!playerName || !tableName) {
-            Modals.showErrorToast("Bitte Spielername und Tisch eingeben.");
+            Modal.showErrorToast("Bitte Spielername und Tisch eingeben.");
             if (!playerName) {
                 _playerNameInput.focus();
             }
@@ -105,7 +105,7 @@ const LoginView = (() => {
         }
 
         _submitButton.disabled = true;
-        SoundManager.playSound('buttonClick');
+        Sound.play('buttonClick');
         EventBus.emit("loginView:login", {playerName: playerName, tableName: tableName});
     }
 

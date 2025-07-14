@@ -676,14 +676,14 @@ Init:
 
 | Dateiname | Original                                        | Verwendung                         |
 |-----------|-------------------------------------------------|------------------------------------|
-| shuffle   | casino-audio/card-shuffle                       | Karten mischen                     |
-| dealout   | casino-audio/card-fan-1                         | Karten austeilen                   |
-| schupf0   | casino-audio/card-place-1,2,3,4                 | Karten schupfen (Spieler 0 bis 3)  |
-| play0     | casino-audio/card-slide-1,2,3,4                 | Karte ausspielen (Spieler 0 bis 4) |
-| take0     | casino-audio/card-shove-1,2,3,4                 | Karten nehmen (Spieler 0 bis 3)    |
-| bomb0     | digital-audio/laser1,2,3,4                      | Bombe werfen (Spieler 0 bis 4)     |
-| pass0     | impact-sounds/impactSoft_medium_001,002,003,004 | Passen (Spieler 0 bis 4)           |
 | announce0 | music-jingles/jingles_STEEL00,04,08,16          | Tichu ansagen (Spieler 0 bis 4)    |
+| bomb0     | digital-audio/laser1,2,3,4                      | Bombe werfen (Spieler 0 bis 4)     |
+| dealout   | casino-audio/card-fan-1                         | Karten austeilen                   |
+| pass0     | impact-sounds/impactSoft_medium_001,002,003,004 | Passen (Spieler 0 bis 4)           |
+| play0     | casino-audio/card-slide-1,2,3,4                 | Karte ausspielen (Spieler 0 bis 4) |
+| schupf0   | casino-audio/card-place-1,2,3,4                 | Karten schupfen (Spieler 0 bis 3)  |
+| shuffle   | casino-audio/card-shuffle                       | Karten mischen                     |
+| take0     | casino-audio/card-shove-1,2,3,4                 | Karten nehmen (Spieler 0 bis 3)    |
 
 #### Schriftarten
 
