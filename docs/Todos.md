@@ -7,6 +7,8 @@
 * Offenes Spiel
 * Alte Unit-Tests -> PyTest
 * Sicherheitsaspekte (Input-Validierung, Schutz vor Missbrauch).
+* Websocket mit SSL
+* Sounds einbauen
 
 # Frontend
 
@@ -28,3 +30,5 @@
     *   Implementierung von `BehaviorAgent`.
         *   Brettspielwelt-Logs aufbereiten
     *   Implementierung von `AlphaZeroAgent`.
+
+NEU: Decision Transformer, Return-to-go (Anzahl Punkte ab jetzt bis zum Sieg)
