@@ -114,7 +114,7 @@ const Modal = (() => {
         if (typeof event.target.dataset.value === "undefined") {
             return;
         }
-        Sound.play('click');
+        //Sound.play('click');
         _hideModal(_wishDialog);
         const value = parseInt(event.target.dataset.value, 10);
         EventBus.emit("wishDialog:select", value);
@@ -136,7 +136,7 @@ const Modal = (() => {
         if (typeof event.target.dataset.value === "undefined") {
             return;
         }
-        Sound.play('click');
+        //Sound.play('click');
         _hideModal(_dragonDialog);
         const value = parseInt(event.target.dataset.value, 10);
         EventBus.emit("dragonDialog:select", value);
@@ -160,7 +160,7 @@ const Modal = (() => {
         if (event.target.tagName !== "BUTTON") {
             return;
         }
-        Sound.play('click');
+        //Sound.play('click');
         _hideModal(_roundOverDialog);
         EventBus.emit("roundOverDialog:click");
     }
@@ -183,7 +183,7 @@ const Modal = (() => {
         if (event.target.tagName !== "BUTTON") {
             return;
         }
-        Sound.play('click');
+        //Sound.play('click');
         _hideModal(_gameOverDialog);
         EventBus.emit("gameOverDialog:click");
     }
@@ -204,7 +204,7 @@ const Modal = (() => {
         if (typeof event.target.dataset.value === "undefined") {
             return;
         }
-        Sound.play('click');
+        //Sound.play('click');
         _hideModal(_exitDialog);
         const value = parseInt(event.target.dataset.value, 10);
         EventBus.emit("exitDialog:select", value);

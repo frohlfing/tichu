@@ -322,10 +322,11 @@ const AppController = (() => {
                     State.setPoints(playerIndex, context.points[playerIndex]);
                 }
                 State.setLoserIndex(context.loser_index);
+                State.setRoundOver(true);
                 State.setDoubleVictory(context.is_double_victory);
                 // todo TotalScore sollte ebenfalls oder statt GameScore übergeben werden (sonst würde ein Fehleintrag nicht korrigiert werden)
                 State.addGameScoreEntry([context.points[2] + context.points[0], context.points[3] + context.points[1]])
-                State.setRoundCounter(State.getRoundCounter() + 1); // todo raus damit, ist unwichtig.
+                State.setRoundCounter(State.getRoundCounter() + 1);
                 Modal.showRoundOverDialog()
                 break;
             case "game_over": // Die Runde ist vorbei und die Partie ist entschieden.

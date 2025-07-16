@@ -129,8 +129,7 @@ const LobbyView = (() => {
      * Ereignishändler für den StartGame-Button.
      */
     function _handleStartButtonClick() {
-        _disableButtons();
-        Sound.play('click');
+        //Sound.play('click');
         EventBus.emit("lobbyView:start");
     }
 
@@ -138,8 +137,8 @@ const LobbyView = (() => {
      * Ereignishändler für den Exit-Button.
      */
     function _handleExitButtonClick() {
+        //Sound.play('click');
         _disableButtons();
-        Sound.play('click');
         EventBus.emit("lobbyView:exit");
     }
 
@@ -150,11 +149,9 @@ const LobbyView = (() => {
      * @param {number} direction - +1 um mit dem nächsten zu tauschen, -1 um mit dem vorherigen.
      */
     function _upOrDownButton_click(playerIndex, direction) {
-        Sound.play('click');
-        let playerIndex2 = playerIndex + direction
+        //Sound.play('click');
 
-        // Der erste Spieler kann nicht verschoben werden.
-        // Und Spieler können nicht an Position 0 geschoben werden.
+        let playerIndex2 = playerIndex + direction
         if (playerIndex2 < 1 || playerIndex2 > 3) {
             return;
         }

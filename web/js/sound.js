@@ -32,13 +32,13 @@ const Sound = (() => {
     const _files = [
         'announce.ogg',
         'bomb.ogg',
-        'chips.ogg',
-        'click.ogg',
-        'dealout.ogg',
-        'move.ogg',
-        'pass0.ogg', 'pass1.ogg', 'pass2.ogg', 'pass3.ogg',
-        'play0.ogg', 'play1.ogg', 'play2.ogg', 'play3.ogg',
-        'schupf0.ogg', 'schupf1.ogg', 'schupf2.ogg', 'schupf3.ogg',
+        'play0.ogg',
+        'play1.ogg',
+        'play2.ogg',
+        'play3.ogg',
+        'schupf.ogg',
+        'score.ogg',
+        'select.ogg',
         'shuffle.ogg',
         'take.ogg',
     ]
@@ -58,21 +58,39 @@ const Sound = (() => {
      * Spielt einen Soundeffekt ab.
      *
      * @param {string} basename - Der Name der Audiodatei ohne Erweiterung.
+     * @param {Function} [callback] - (Optional) Callback nach Soundende.
      */
-    function play(basename) {
+    function play(basename, callback) {
         if (!_enabled) {
+            if (typeof callback === 'function') {
+                callback();
+            }
             return;
         }
 
         const audio = _audio[basename];
         if (!audio) {
             console.error(`Sound: '${basename}' ist unbekannt.`);
+            if (typeof callback === 'function') {
+                callback();
+            }
             return;
         }
 
+        audio.addEventListener('ended', () => {
+            console.debug(`Sound: '${basename}' ist fertig`);
+            if (typeof callback === 'function') {
+                callback();
+            }
+        });
+
+        console.debug(`Sound: '${basename}'`);
         audio.currentTime = 0;
         audio.play().catch(error => {
             console.error(`Sound: "${audio.src}" konnte nicht abgespielt werden:`, error.message);
+            if (typeof callback === 'function') {
+                callback();
+            }
         });
     }
 

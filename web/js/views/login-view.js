@@ -90,9 +90,10 @@ const LoginView = (() => {
      */
     function _handleLoginFormSubmit(event) {
         event.preventDefault(); // Standard-Formularabsendung verhindern
+        //Sound.play('click');
+
         const playerName = _playerNameInput.value.trim();
         const tableName = _tableNameInput.value.trim();
-
         if (!playerName || !tableName) {
             Modal.showErrorToast("Bitte Spielername und Tisch eingeben.");
             if (!playerName) {
@@ -105,7 +106,6 @@ const LoginView = (() => {
         }
 
         _submitButton.disabled = true;
-        Sound.play('click');
         EventBus.emit("loginView:login", {playerName: playerName, tableName: tableName});
     }
 

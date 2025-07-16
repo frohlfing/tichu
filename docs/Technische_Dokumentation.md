@@ -669,19 +669,19 @@ Init:
 	You may use these assets in personal and commercial projects.
 	Credit (Kenney or www.kenney.nl) would be nice but is not mandatory (Donate: http://support.kenney.nl)
 
-| Dateiname | Original                                        | Verwendung                         |
-|-----------|-------------------------------------------------|------------------------------------|
-| announce  | music-jingles/jingles_STEEL04                   | Tichu ansagen                      |
-| bomb      | sci-fi-sounds/lowFrequency_explosion_000.ogg    | Bombe werfen                       |
-| chips     | casino-audio/chips-handle-6.ogg                 | Punkteanzeige aktualisieren        |
-| click     | ui-audio/click1.ogg                             | Button anklicken                   |
-| dealout   | casino-audio/card-fan-1                         | Karten austeilen                   |
-| pass0     | impact-sounds/impactSoft_medium_001,002,003,004 | Passen (Spieler 0 bis 4)           |
-| play0     | casino-audio/card-place-1,2,3,4                 | Karte ausspielen (Spieler 0 bis 4) |
-| schupf0   | casino-audio/card-slide-1,2,3,4                 | Karten schupfen (Spieler 0 bis 3)  |
-| shuffle   | casino-audio/card-shuffle                       | Karten mischen                     |
-| take      | casino-audio/card-shove-1                       | Karten kassieren                   |
-| move      | casino-audio/card-shove-2                       | Tauschkarten verteilen             |
+| Dateiname | Original                                     | Verwendung                  |
+|-----------|----------------------------------------------|-----------------------------|
+| announce  | music-jingles/jingles_STEEL04                | Tichu ansagen               |
+| bomb      | sci-fi-sounds/lowFrequency_explosion_000.ogg | Bombe werfen                |
+| play0     | casino-audio/card-place-1                    | Karte ausspielen Spieler 0  |
+| play1     | casino-audio/card-place-2                    | Karte ausspielen Spieler 1  |
+| play2     | casino-audio/card-place-3                    | Karte ausspielen Spieler 2  |
+| play3     | casino-audio/card-place-4                    | Karte ausspielen Spieler 3  |
+| schupf    | casino-audio/card-shove-2                    | Tauschkarten verteilen      |
+| score     | casino-audio/chips-handle-6.ogg              | Punkteanzeige aktualisieren |
+| select    | ui-audio/click1.ogg                          | Handkarte selektieren       |
+| shuffle   | casino-audio/card-shuffle                    | Karten mischen              |
+| take      | casino-audio/card-shove-1                    | Karten kassieren            |
 
 #### Schriftarten
 
