@@ -3,18 +3,23 @@
 # Backend
 
 * Todos im code umsetzten
-* Interrupt-Handling für Tichu-Ansagen und Bomben
 * Offenes Spiel
 * Alte Unit-Tests -> PyTest
-* Sicherheitsaspekte (Input-Validierung, Schutz vor Missbrauch).
 * Websocket mit SSL
-* Sounds einbauen
+* WSClient mit Bot ausstatten
+* CardsAndCombination
+* Engine-Loop verkleinern
 
 # Frontend
+* z-index planen
+* Sounds einbauen
+* Sicherheitsaspekte (Input-Validierung).
+* Unittest
+* Wish- und DragonDialog nach tableView
+* pendingRequest ohne ID, nur ein Request, keine Liste
+* bomb und play zusammenführen
 
 ## Bugs:
-* Wenn Spiel mitten drin beendet wird, bleiben Züge liegen. Wenn dann ein neues Spiel gestartet wird, 
-  werden diese Karten kassiert (Animation läuft).
 
 ## Features:
 * Animationen

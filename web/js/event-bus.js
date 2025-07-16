@@ -38,18 +38,27 @@ const EventBus = (() => {
     const _eventQueue = [];
 
     /**
-     * Flag, das anzeigt, ob die Ereigniswarteschlange gerade verarbeitet wird.
+     * Gibt an, ob die Ereigniswarteschlange gerade verarbeitet wird.
      *
      * @type {boolean}
      */
     let _isProcessing = false;
 
+    // /**
+    //  * Flag, das gesetzt ist, wenn die Ereigniswarteschlange pausiert.
+    //  *
+    //  * @type {boolean}
+    //  */
+    // let _isPaused = false;
+
     /**
-     * Flag, das gesetzt ist, wenn die Ereigniswarteschlange pausiert.
+     * ID für den Pause-Timeout.
      *
-     * @type {boolean}
+     * Wenn gesetzt, pausiert die Verarbeitung der Queue.
+     *
+     * @type {number|null}
      */
-    let _isPaused = false;
+    let _pauseTimeoutId = null;
 
     /**
      * Registriert einen Ereignishändler.
@@ -88,7 +97,7 @@ const EventBus = (() => {
      * Die Handler werden synchron und blockierend innerhalb eines Events ausgeführt.
      */
     function _processQueue() {
-        if (_isPaused || _eventQueue.length === 0) {
+        if (_pauseTimeoutId !== null || _eventQueue.length === 0) {
             _isProcessing = false;
             return;
         }
@@ -136,7 +145,7 @@ const EventBus = (() => {
         // Event und Daten zur Queue hinzufügen
         _eventQueue.push({event, data});
 
-        // Wenn die Warteschlange nicht bereits verarbeitet wird, starte die Verarbeitung.
+        // Verarbeitung starten, sofern die Warteschlange nicht bereits verarbeitet wird.
         if (!_isProcessing) {
             _isProcessing = true;
             setTimeout(_processQueue, 0); // starte die Verarbeitung asynchron
@@ -145,31 +154,42 @@ const EventBus = (() => {
 
     /**
      * Pausiert die Verarbeitung der Event-Queue.
+     *
      * Neue Events werden weiterhin zur Queue hinzugefügt, aber nicht verarbeitet.
+     * @param {number} [timeout] Timeout in ms, bis die Verarbeitung fortgesetzt wird.
      */
-    function pause() {
+    function pause(timeout = 5000) {
         console.log("EventBus: Pausiert.");
-        _isPaused = true;
+        if (_pauseTimeoutId !== null) {
+            clearTimeout(_pauseTimeoutId);
+        }
+        _pauseTimeoutId = setTimeout(() => {
+            console.warn("EventBus: Timeout nach Pause! Setze Verarbeitung fort.");
+            resume();
+        }, timeout); // Dauer der Animation + Puffer
     }
 
     /**
      * Setzt die Verarbeitung der Event-Queue fort.
      */
     function resume() {
-        if (!_isPaused) {
+        if (_pauseTimeoutId === null) {
             return;
         }
-
         console.log("EventBus: Fortgesetzt.");
-
-        _isPaused = false;
-
-        // Starte die Verarbeitung der Queue neu, falls Events anstehen
-        // und sie nicht bereits durch einen neuen `emit` gestartet wurde.
+        clearTimeout(_pauseTimeoutId);
+        _pauseTimeoutId = null;
         if (_eventQueue.length > 0 && !_isProcessing) {
             _isProcessing = true;
             setTimeout(_processQueue, 0);
         }
+    }
+
+    /**
+     * @returns {boolean} True, wenn die Verarbeitung pausiert ist, sonst false.
+     */
+    function isPaused() {
+        return _pauseTimeoutId !== null;
     }
 
     // noinspection JSUnusedGlobalSymbols
@@ -179,5 +199,6 @@ const EventBus = (() => {
         emit,
         pause,
         resume,
+        isPaused,
     };
 })();

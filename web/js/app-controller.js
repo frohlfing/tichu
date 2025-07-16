@@ -77,6 +77,13 @@ const AppController = (() => {
         _renderView();
     }
 
+    /**
+     * Wird aufgerufen, wenn ein Fehler auftritt.
+     */
+    window.addEventListener("error", function(event) {
+        //console.error("Fehler abgefangen", event.message, event.filename, event.lineno);
+    });
+
     // --------------------------------------------------------------------------------------
     // Netzwerk-Ereignisse
     // --------------------------------------------------------------------------------------
@@ -107,8 +114,7 @@ const AppController = (() => {
      * @param {NetworkError} error - Der Netzwerkfehler.
      */
     function _handleNetworkError(error) {
-        console.debug("App._handleNetworkError()", error);
-        _renderView(error.message);
+        console.error("App._handleNetworkError()", error);
         Modal.showErrorToast(error.message);
     }
     
@@ -220,10 +226,8 @@ const AppController = (() => {
                 break;
             case "player_announced": // Der Spieler hat ein Tichu angesagt.
                 State.setAnnouncement(context.player_index, context.grand ? 2 : 1);
-                if (context.grand) {
-                    if (context.player_index === State.getPlayerIndex()) {
-                        _removeRequest();
-                    }
+                if (context.grand && context.player_index === State.getPlayerIndex()) {
+                    _removeRequest();
                 }
                 break;
             case "player_schupfed": // Der Spieler hat drei Karten zum Tausch abgegeben.
@@ -256,19 +260,23 @@ const AppController = (() => {
                 }
                 break;
             case "player_played": // Der Spieler hat Karten ausgespielt.
-            case "player_bombed": // Der Spieler hat außerhalb seines regulären Zuges eine Bombe geworfen.
-                if (notification.event === "player_bombed") {
-                    State.setCurrentTurnIndex(context.turn[0]);
-                }
-                if (context.turn[0] === State.getPlayerIndex()) {
+            case "player_bombed": // Der Spieler hat außerhalb seines regulären Zuges eine Bombe geworfen. // todo Event verwerfen
+                if (context.turn[0] === State.getPlayerIndex()) { // der Benutzer hat Karten ausgespielt
                     // todo Handkarten besser übergeben?
                     let cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.turn[1]));
                     State.setHandCards(cards);
+                    if (notification.event === "player_bombed") { // context.turn[0] !== State.getCurrentTurnIndex()  # Benutzer hat eine Bombe geworfen
+                        State.setCurrentTurnIndex(context.turn[0]);
+                    }
                     _removeRequest();
                 }
                 else {
                     // todo Anzahl Handkarten besser übergeben?
                     State.setCountHandCards(context.turn[0], State.getCountHandCards(context.turn[0]) - context.turn[1].length);
+                    if (notification.event === "player_bombed") { // context.turn[0] !== State.getCurrentTurnIndex()  # Benutzer hat eine Bombe geworfen
+                        State.setCurrentTurnIndex(context.turn[0]);
+                        _removeRequest();
+                    }
                 }
                 State.setPlayedCards(State.getPlayedCards().concat(context.turn[1]));
                 // todo eine Funktion State.addTurn() bereitstellen
@@ -338,8 +346,7 @@ const AppController = (() => {
      * @param {ServerError} error - Die Fehlermeldung.
      */
     function _handleServerError(error) {
-        console.debug("App._handleServerError()", error.message, error.code, error.context);
-        _renderView(error.message);
+        console.error("App._handleServerError()", error.message, error.code, error.context);
         Modal.showErrorToast(`Fehler ${error.message}`);
     }
     

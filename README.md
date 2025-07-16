@@ -49,3 +49,5 @@ Eine detailliertere technische Dokumentation zur Architektur, den Modulen und de
 ## Lizenz
 
 Dieses Projekt steht unter der [GPL-3.0-Lizenz](LICENSE).
+
+Die verwendeten Kartenmotive und das Spielprinzip von Tichu sind Eigentum von [Fata Morgana Spiele, Bern](https://www.fatamorgana.ch).

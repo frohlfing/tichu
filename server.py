@@ -100,7 +100,8 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                             await peer.error("Es konnte keine neue Partie gestartet werden. Es läuft bereits eine.", ErrorCode.INVALID_MESSAGE, context=payload)
 
                     elif msg_type == "announce":  # proaktive Tichu-Ansage vom Client
-                        await peer.client_announce()
+                        if not await engine.set_announcement(peer.priv.player_index):
+                            await peer.error("Tichu-Ansage abgelehnt.", ErrorCode.INVALID_ANNOUNCE)
 
                     elif msg_type == "bomb":  # proaktiver Bombenwurf vom Client
                         await peer.client_bomb(payload.get("cards"))

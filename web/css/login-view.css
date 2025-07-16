@@ -19,10 +19,22 @@
 
 #login-screen h1 {
     font-size: clamp(3em, 12vmin, 5em);
-    margin-bottom: 30px;
+    /*margin-bottom: 30px;*/
     color: #ecf0f1;
     text-shadow: 2px 2px 4px #00000080;
     z-index: 1;
+}
+
+#login-screen h2 {
+    width: 450px;
+    margin-bottom: 50px;
+    text-align: center;
+    font-size: 24px;
+    z-index: 100; /* damit der Link anklickbar ist */
+}
+
+#login-screen a {
+    color: white;
 }
 
 #login-form {

@@ -161,9 +161,11 @@ const Bot = (() => {
             _testUIWishIcon();
 
             if (State.getReceivedSchupfCards() && !State.isConfirmedReceivedSchupfCards()) {
-                // Wir haben geschupfte Karten erhalten und müssen sie bestätigen
-                console.log("🤖 Bot: Bestätige erhaltene Schupf-Karten.");
-                _clickButton('#play-button[data-mode="RECEIVE"]');
+                if (document.querySelectorAll('#schupf-zone-bottom .schupf-subzone .card:not(.back-site)').length) {
+                    // Wir haben geschupfte Karten erhalten und müssen sie bestätigen
+                    console.log("🤖 Bot: Bestätige erhaltene Schupf-Karten.");
+                    _clickButton('#play-button[data-mode="RECEIVE"]');
+                }
             }
 
             _testUITichuIcons();
@@ -180,13 +182,18 @@ const Bot = (() => {
             if (!bombIcon.classList.contains('hidden') && !bombIcon.classList.contains("disabled")) {
                 if (Random.boolean()) { // todo gewichten
                     console.log("🤖 Bot: Klicke auf das Bomben-Symbol.");
-                    if (State.canPlayCards()) {
+                    if (State.canPlayBomb()) {
                         _clearSelectedCards();
                         bombIcon.click(); // Nach dem Klick werden die Karten selektiert.
-                        setTimeout(() => {
+                        //setTimeout(() => {
                             console.log("🤖 Bot: Klicke auf Play-Button.");
-                            _clickButton('#play-button[data-mode="BOMB"]')
-                        }, 100);
+                            if (State.isCurrentPlayer()) {
+                                _clickButton('#play-button[data-mode="PLAY"]')
+                            }
+                            else {
+                                _clickButton('#play-button[data-mode="BOMB"]')
+                            }
+                        //}, 100);
                     }
                 }
             }
@@ -263,10 +270,10 @@ const Bot = (() => {
                                 console.log("🤖 Bot: Klicke auf Autoselect-Button.");
                                 _clickButton('#play-button[data-mode="AUTOSELECT"]');
                                 // Plane einen zweiten Klick, um sie auszuspielen.
-                                setTimeout(() => {
+                                //setTimeout(() => {
                                     console.log("🤖 Bot: Klicke auf Play-Button.");
                                     _clickButton('#play-button[data-mode="PLAY"]')
-                                }, 500);
+                                //}, 500);
                             }
                             else { // kein Autoselect möglich (z.B. nur Passen).
                                  console.log("🤖 Bot: Klicke auf Passen-Button.");

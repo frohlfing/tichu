@@ -57,8 +57,10 @@ const Animation = (() => {
                 if (fromRelativeIndex !== toRelativeIndex) {
                     _schupfCard(fromRelativeIndex, toRelativeIndex, () => {
                         completed++;
-                        if (completed === 12 && typeof callback === 'function') {
-                            callback();
+                        if (completed === 12) {
+                            if (typeof callback === 'function') {
+                                callback();
+                            }
                         }
                     });
                 }
@@ -92,9 +94,6 @@ const Animation = (() => {
             return;
         }
 
-        // Container, in der die Tauschkarte abgelegt werden soll
-        const targetContainer = _schupfZones[toRelativeIndex].querySelector(`.schupf-subzone:nth-child(${(4 + toRelativeIndex - fromRelativeIndex) % 4})`);
-
         // Position und aktuellen Skalierungsfaktor des Wrappers
         const wrapperRect = _wrapper.getBoundingClientRect(); // die Werte von getBoundingClientRect() sind skaliert!
         const wrapperScale = _wrapper.offsetWidth ? wrapperRect.width / _wrapper.offsetWidth : 1;
@@ -107,11 +106,19 @@ const Animation = (() => {
         const startDeg = [0, -90, 180, 90][fromRelativeIndex];
 
         // Endpositionen (relativ zum Wrapper)
-        const endRect = targetContainer.getBoundingClientRect();
-        const endOffset = toRelativeIndex === 1 || toRelativeIndex === 3 ? 30 : 0; // 30 = (Kartenhöhe - Kartenbreite) / 2, entsteht durch die Drehung um 90 Grad um den Kartenmittelpunkt
-        const endX = (endRect.left - wrapperRect.left) / wrapperScale + endOffset;
-        const endY = (endRect.top - wrapperRect.top) / wrapperScale - endOffset;
+        // const targetContainer = _schupfZones[toRelativeIndex].querySelector(`.schupf-subzone:nth-child(${(4 + toRelativeIndex - fromRelativeIndex) % 4})`);
+        // const endRect = targetContainer.getBoundingClientRect();
+        // const endOffset = toRelativeIndex === 1 || toRelativeIndex === 3 ? 30 : 0; // 30 = (Kartenhöhe - Kartenbreite) / 2, entsteht durch die Drehung um 90 Grad um den Kartenmittelpunkt
+        // const endX = (endRect.left - wrapperRect.left) / wrapperScale + endOffset;
+        // const endY = (endRect.top - wrapperRect.top) / wrapperScale - endOffset;
+        let endX = [540, 1170, 540, -90][toRelativeIndex]; // [1080/2, 1080+Kartenhöhe/2, 1080/2, -Kartenhöhe/2]
+        let endY = [1920, 810, -180, 810][toRelativeIndex]; // [1920, 1920/2, -Kartenhöhe, 1920/2]
         const endDeg = [0, -90, 180, 90][toRelativeIndex];
+        if (toRelativeIndex === 0) {
+            const endRect = _schupfZones[0].querySelector(`.schupf-subzone:nth-child(${4 - fromRelativeIndex})`).getBoundingClientRect();
+            endX = (endRect.left - wrapperRect.left) / wrapperScale;
+            endY = (endRect.top - wrapperRect.top) / wrapperScale;
+        }
 
         // Die Karte direkt in den Hauptcontainer legen, damit sie über allem fliegen kann.
         cardElement.classList.add('flying-card');
@@ -129,13 +136,15 @@ const Animation = (() => {
         }
 
         // Event-Listener für das Ende der Transition
-        cardElement.addEventListener('transitionend', () => {
-            //removeCard(cardElement, callback);
+        const handler = () => {
             cardElement.remove();
+            console.log('cardElement.remove()', fromRelativeIndex, toRelativeIndex);
             if (typeof callback === 'function') {
                 callback();
             }
-        }, { once: true });
+        };
+        cardElement.addEventListener('transitionend', handler, { once: true });
+        cardElement.addEventListener('transitioncancel', handler, { once: true });
 
         // Animation im nächsten Frame starten
         //const startTime = document.timeline.currentTime;
@@ -144,7 +153,6 @@ const Animation = (() => {
             cardElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
         });
     }
-
 
     /**
      * Nimmt den Stich vom Tisch.
@@ -157,9 +165,10 @@ const Animation = (() => {
         for (let fromRelativeIndex= 0; fromRelativeIndex <= 3; fromRelativeIndex++) {
             _takeTurns(fromRelativeIndex, toRelativeIndex, () => {
                 completed++;
-                console.debug(`takeTrick: completed = ${completed}`);
-                if (completed === 4 && typeof callback === 'function') {
-                    callback();
+                if (completed === 4) {
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
                 }
             });
         }
@@ -220,15 +229,17 @@ const Animation = (() => {
             }
 
             // Event-Listener für das Ende der Transition
-            turnElement.addEventListener('transitionend', () => {
-                //removeCard(cardElement, callback);
+            const handler = () => {
                 turnElement.remove();
                 completed++;
-                console.debug(`takeTrick: completed = ${completed}, turnElements.length = ${turnElements.length}`);
-                if (completed === turnElements.length && typeof callback === 'function') {
-                    callback();
+                if (completed === turnElements.length) {
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
                 }
-            }, { once: true });
+            };
+            turnElement.addEventListener('transitionend', handler, { once: true });
+            turnElement.addEventListener('transitioncancel', handler, { once: true });
 
             // Animation im nächsten Frame starten
             //const startTime = document.timeline.currentTime;
@@ -237,20 +248,6 @@ const Animation = (() => {
                 turnElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
             });
         });
-    }
-
-    /**
-     * Verschiebt die Karten eines Spielzuges von einem Spieler zum anderen.
-     *
-     * @param {HTMLElement} turnElement - DOM-Element für den Spielzug.
-     * @param {number} fromRelativeIndex - Relativer Index des Spielers, der die Karten abgibt.
-     * @param {number} toRelativeIndex - Relativer Index des Spielers, der die Karten bekommt.
-     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
-     */
-    function _takeTurn(turnElement, fromRelativeIndex, toRelativeIndex, callback) {
-        // DOM-Element, das die Karten des Spielzuges zeigt
-
-
     }
 
     /**
@@ -273,7 +270,7 @@ const Animation = (() => {
     /**
      * Entfernt eine Karte aus dem Bildschirm mit einer Animation.
      *
-     * @param {HTMLElement} cardElement - Die Karte, die entfernt werden sollen.
+     * @param {HTMLElement} cardElement - Die Karte, die entfernt werden soll.
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
      */
     function removeCard(cardElement, callback) {
@@ -315,12 +312,14 @@ const Animation = (() => {
         bombTextEl.className = 'bomb-effect-text';
         bombTextEl.textContent = 'BOMBE!';
         _wrapper.appendChild(bombTextEl);
-        bombTextEl.addEventListener('animationend', () => {
+        const handler = () => {
             bombTextEl.remove();
             if (typeof callback === 'function') {
                 callback();
             }
-        }, { once: true });
+        };
+        bombTextEl.addEventListener('animationend', handler, { once: true });
+        bombTextEl.addEventListener('animationcancel', handler, { once: true });
     }
 
     /**
@@ -342,12 +341,14 @@ const Animation = (() => {
      */
     function flashScoreDisplay(callback) {
         _scoreDisplay.classList.add('score-updated'); // die Animation wird durch das Hinzufügen der Klasse ausgelöst
-        _scoreDisplay.addEventListener('animationend', () => {
+        const handler = () => {
             _scoreDisplay.classList.remove('score-updated');
             if (typeof callback === 'function') {
                 callback();
             }
-        }, { once: true });
+        };
+        _scoreDisplay.addEventListener('animationend', handler, { once: true });
+        _scoreDisplay.addEventListener('animationcancel', handler, { once: true });
     }
 
     // noinspection JSUnusedGlobalSymbols

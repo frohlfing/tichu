@@ -43,7 +43,6 @@ class Peer(Player):
         self._random = Random(seed)  # Zufallsgenerator
         self._new_websocket_event = asyncio.Event()
         self._pending_requests: Dict[str, Tuple[str, asyncio.Future]] = {}  # die noch vom Client unbeantworteten Anfragen  # todo es ist immer nur eine Anfrage offen!
-        self._pending_announce: Optional[bool] = None  # die noch vom Server abzuholende Tichu-Ansage
         self._pending_bomb: Optional[Cards] = None  # die noch vom Server abzuholende Bombe
 
     async def cleanup(self):
@@ -79,7 +78,6 @@ class Peer(Player):
             if not future.done():
                 future.set_result(None)
         self._pending_requests = {}
-        self._pending_announce = None
         self._pending_bomb = None
 
     def set_websocket(self, new_websocket: WebSocketResponse):
@@ -111,23 +109,12 @@ class Peer(Player):
     # Entscheidungen
     # ------------------------------------------------------
 
-    async def client_announce(self):
-        """
-        Der WebSocket-Handler ruft diese Funktion auf, wenn der Client ein einfaches Tichu angesagt hat.
-        """
-        if self.pub.count_hand_cards[self.priv.player_index] != 14 or self.pub.announcements[self.priv.player_index]:
-            # Spieler hat schon Karten ausgespielt oder bereits Tichu angesagt
-            msg = "Tichu-Ansage abgelehnt."
-            logger.warning(f"[{self._name}] {msg}")
-            await self.error(msg, ErrorCode.INVALID_ANNOUNCE)
-            return
-
-        self._pending_announce = True
-        self.interrupt_event.set()
-
     async def client_bomb(self, cards: Cards):
         """
         Der WebSocket-Handler ruft diese Funktion auf, wenn der Client proaktiv (also außerhalb seines regulären Zuges) eine Bombe geworfen hat.
+
+        Die Bombe wird zwischengespeichert, bis sie von der Engine regulär im Game-Loop abgeholt wird.
+        Es wird ein Interrupt ausgelöst, so dass die Engine schnellstmöglich nach der Bombe fragt.
 
         :param cards: Die Karten, aus denen die Bombe gebildet wurde. Werden absteigend sortiert (mutable!).
         """
@@ -185,12 +172,13 @@ class Peer(Player):
         """
         _request = self._pending_requests.pop(request_id, None)  # hole und entferne die Future aus _pending_requests
         if not _request:  # keine wartende Anfrage für diese Antwort gefunden
+            # Das kann passieren, wenn der Client antwortet, kurz nachdem die Anfrage durch ein Interrupt verworfen, aber noch kein neues Ereignis gesendet wurde.
             msg = "Keine wartende Anfrage für diese Antwort gefunden"
             logger.warning(f"[{self._name}] {msg}; Request-ID {request_id}.")
-            await self.error(msg, ErrorCode.INVALID_RESPONSE, context={"request_id": request_id})
+            #await self.error(msg, ErrorCode.INVALID_RESPONSE, context={"request_id": request_id})
             return
         _action, future = _request
-        if future.done():  # _ask() hat inzwischen das Warten auf diese Antwort aufgegeben (wegen Timeout, Interrupt oder Server beenden)
+        if future.done():  # _ask() hat inzwischen das Warten auf diese Antwort aufgegeben (wegen Timeout oder Server beenden)
             msg = "Anfrage ist veraltet"
             logger.warning(f"[{self._name}] {msg}; Request-ID: {request_id}.")
             await self.error(msg, ErrorCode.REQUEST_OBSOLETE, context={"request_id": request_id})
@@ -297,7 +285,7 @@ class Peer(Player):
                 if not task.done():
                     task.cancel()
                 try:
-                    await asyncio.wait_for(task, timeout=0.1)
+                    await asyncio.wait_for(task, timeout=0.1)  # todo muss das so kompliziert sein?
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     pass
                 except Exception as cleanup_e:
@@ -343,29 +331,15 @@ class Peer(Player):
         """
         Die Engine fragt den Spieler, ob er ein einfaches Tichu ansagen möchte.
 
-        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein einfaches Tichu ansagen darf.
-        Die Engine verlässt sich darauf, dass die Antwort valide ist.
+        # Da der Client proaktiv (also ungefragt) ein einfaches Tichu ansagt, wird die Frage nicht an den Client weitergeleitet,
+        # sondern einfach mit False beantwortet.
 
-        # Da der Client proaktiv (also ungefragt) ein einfaches Tichu ansagt, wird die Frage nicht an den Client
-        # weitergeleitet, sondern es wird im Puffer geschaut, ob eine unbearbeitete Tichu-Ansage vorliegt.
+        # Wenn der Client ein Tichu ansagt, leitet der Websocket-Handler die Nachricht direkt an die Engine weiter, die dann die
+        # Ansage parallel zum Game-Loop speichert.
 
-        :return: True, wenn ein Tichu angesagt wird, sonst False.
+        :return: False
         """
-        # Liegt eine Ansage vor?
-        if not self._pending_announce:
-            return False
-
-        # Ansage aus dem Puffer nehmen
-        announced = self._pending_announce
-        self._pending_announce = None
-        assert announced == True
-
-        # Darf der Spieler noch Tichu sagen? (stellt die Engine sicher)  todo rausnehmen
-        assert (self.pub.announcements[self.priv.player_index] == 0 and
-                ((self.pub.start_player_index == -1 and self.pub.count_hand_cards[self.priv.player_index] > 8) or
-                 (self.pub.start_player_index >= 0 and self.pub.count_hand_cards[self.priv.player_index] == 14)))
-
-        return announced
+        return False
 
     async def schupf(self) -> Tuple[Card, Card, Card]:
         """
@@ -435,6 +409,9 @@ class Peer(Player):
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0))
         :raises PlayerInterruptError: Wenn die Anfrage durch ein Interrupt-Event abgebrochen wurde.
         """
+        if self._pending_bomb: # kann nur vorkommen, wenn der Client eine Bombe wirft, obwohl er selbst dran ist
+            return await self.bomb()
+
         cards = None
         combination = None
         while combination is None:

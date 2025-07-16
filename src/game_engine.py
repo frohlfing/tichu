@@ -4,8 +4,6 @@ Definiert die Spiellogik.
 
 import asyncio
 from aiohttp.web_ws import WebSocketResponse
-from coverage.debug import simplify
-
 import config
 from src.common.logger import logger
 from src.common.rand import Random
@@ -63,7 +61,7 @@ class GameEngine:
         )
         self._private_states = [PrivateState(player_index=i) for i in range(4)]
 
-        # Referenz auf den Hintergrund-Task `_run_game_loop`
+        # Referenz zum Hintergrund-Task `_run_game_loop`
         self.game_loop_task: Optional[asyncio.Task] = None
 
         # Interrupt-Event
@@ -85,7 +83,6 @@ class GameEngine:
             agent.priv = self._private_states[i]
             agent.interrupt_event = self.interrupt_event  # Todo Test für diese Zuweisung hinzufügen
 
-        agent_names = ", ".join(default_agent.name for default_agent in self._default_agents)
         logger.info(f"[{self.table_name}] Initialisiert.")
 
     async def cleanup(self):
@@ -258,7 +255,7 @@ class GameEngine:
 
     async def start_game(self) -> bool:
         """
-        Startet den Hintergrundtask für die Spielsteuerung eine Partie.
+        Startet den Hintergrundtask für die Spielsteuerung einer Partie.
 
         :return: True, wenn eine neue Partie gestartet werden konnte, sonst False.
         """
@@ -406,13 +403,13 @@ class GameEngine:
                 check_deck = sorted(privs[0].hand_cards + privs[1].hand_cards + privs[2].hand_cards + privs[3].hand_cards)
                 assert check_deck == list(deck), f"{stringify_cards(check_deck)} != {stringify_cards(deck)}"
 
-                # los geht's - das eigentliche Spiel kann beginnen...
+                # Los geht's - das eigentliche Spiel kann beginnen.
                 assert 0 <= pub.current_turn_index <= 3
                 while not pub.is_round_over:
                     assert 0 <= pub.count_hand_cards[pub.current_turn_index] <= 14
 
-                    # wenn kein Anspiel, und falls der aktuelle Spieler den Stich kassieren darf oder aktiv an der Runde beteiligt ist (noch Handkarten hat),
-                    # jeden Mitspieler fragen, ob er eine Bombe werfen will
+                    # Wenn kein Anspiel, und falls der aktuelle Spieler den Stich kassieren darf oder aktiv an der Runde beteiligt ist (noch Handkarten hat),
+                    # jeden Mitspieler fragen, ob er eine Bombe werfen will.
                     bomb: Optional[Tuple[Cards, Combination]] = None
                     if pub.trick_combination[2] > 0 and (pub.trick_owner_index == pub.current_turn_index or pub.count_hand_cards[pub.current_turn_index] > 0):
                         first = self._random.integer(0, 4)  # zufällige Zahl zwischen 0 und 3
@@ -421,30 +418,31 @@ class GameEngine:
                             if player_index != pub.current_turn_index and self._private_states[player_index].has_bomb:
                                 bomb = await self._players[player_index].bomb()
                                 if bomb:
+                                    # todo Nachricht senden
                                     pub.current_turn_index = player_index
                                     break
 
                     assert privs[pub.current_turn_index].player_index == pub.current_turn_index
                     assert len(privs[pub.current_turn_index].hand_cards) == pub.count_hand_cards[pub.current_turn_index]
 
-                    # falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen
+                    # Falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen.
                     if not bomb and pub.trick_owner_index == pub.current_turn_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt liegen
                         await self._take_trick(clients_joined)
 
-                    # hat der Spieler noch Karten?
+                    # Hat der Spieler noch Karten?
                     if pub.count_hand_cards[pub.current_turn_index] > 0:
                         if bomb:
-                            # der Spieler hat bereits die Bombe geworfen, wir müssen nicht nochmal nach einer Kombination fragen
+                            # Der Spieler hat bereits die Bombe geworfen, wir müssen nicht nochmal nach einer Kombination fragen.
                             cards, combination = bomb
                         else:
-                            # falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden
+                            # Falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden.
                             if pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
                                 if await self._players[pub.current_turn_index].announce_tichu():
                                     # Spieler hat Tichu angesagt
                                     pub.announcements[pub.current_turn_index] = 1
                                     if clients_joined:
                                         await self._broadcast("player_announced", {"player_index": pub.current_turn_index, "grand": False})
-                            # Spieler fragen, welche Karten er spielen will
+                            # Spieler fragen, welche Karten er spielen will.
                             time_start = time()
                             try:
                                 cards, combination = await self._players[pub.current_turn_index].play()
@@ -503,7 +501,7 @@ class GameEngine:
                             assert not set(cards).intersection(pub.played_cards), f"cards: {stringify_cards(cards)},  played_cards: {stringify_cards(pub.played_cards)}"  # darf keine Schnittmenge bilden
                             pub.played_cards += cards
 
-                            # ist der erste Spieler fertig?
+                            # Ist der erste Spieler fertig?
                             if pub.count_hand_cards[pub.current_turn_index] == 0:
                                 n = pub.count_active_players
                                 assert 1 <= n <= 3
@@ -523,7 +521,7 @@ class GameEngine:
                                 if clients_joined:
                                     await self._broadcast("wish_fulfilled")
 
-                            # ermitteln, ob die Runde beendet ist
+                            # Ermitteln, ob die Runde beendet ist.
                             if pub.count_hand_cards[pub.current_turn_index] == 0:
                                 n = pub.count_active_players
                                 assert 1 <= n <= 3
@@ -546,7 +544,7 @@ class GameEngine:
                                 await self._take_trick(clients_joined)
                                 break  # while not pub.is_round_over
 
-                            # falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden
+                            # Falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden.
                             if CARD_MAH in cards:
                                 assert pub.wish_value == 0
                                 pub.wish_value = await self._players[pub.current_turn_index].wish()
@@ -558,7 +556,7 @@ class GameEngine:
                             if clients_joined:
                                 await self._broadcast("player_passed", {"player_index": pub.current_turn_index})
 
-                    # nächster Spieler ist an der Reihe
+                    # Nächster Spieler ist an der Reihe
                     assert not pub.is_round_over
                     assert 0 <= pub.current_turn_index <= 3
                     if pub.trick_combination == FIGURE_DOG and pub.trick_owner_index == pub.current_turn_index:
@@ -571,9 +569,9 @@ class GameEngine:
                 # Runde ist beendet
 
                 # Endwertung der Runde
+                assert pub.is_round_over
                 if pub.is_double_victory:
                     # Doppelsieg! Das Gewinnerteam kriegt 200 Punkte. Die Gegner nichts.
-                    assert pub.is_round_over
                     assert sum(1 for n in pub.count_hand_cards if n > 0) == 2
                     assert 0 <= pub.winner_index <= 3
                     pub.points = [0, 0, 0, 0]
@@ -602,7 +600,7 @@ class GameEngine:
                         else:
                             pub.points[player_index] -= 100 * pub.announcements[player_index]
 
-                # Ergebnis der Runde in die Punktetabelle der Partie eintragen
+                # Ergebnis der Runde in die Punktetabelle der Partie eintragen.
                 pub.game_score[0].append(pub.points[2] + pub.points[0])
                 pub.game_score[1].append(pub.points[3] + pub.points[1])
                 pub.round_counter += 1
@@ -645,6 +643,27 @@ class GameEngine:
             self.game_loop_task = None  # Referenz aufheben
 
         return pub
+
+
+    async def set_announcement(self, player_index):
+        """
+        Ein Client hat Tichu angesagt.
+
+        Diese Funktion wird direkt vom WebSocket-Handler aufgerufen, wenn ein Client die entsprechende Nachricht gesendet hat (proaktiv).
+
+        :param player_index: Der Index des Clients, der Tichu angesagt hat.
+        :return: True, wenn die Ansage erfolgreich gesetzt wurde.
+        """
+        pub = self.public_state
+        if not pub.is_running or pub.is_round_over:
+            return False  # es läuft kein Spiel oder die letzte Runde wird gerade gewertet
+        if pub.start_player_index == -1:
+            return False  # das Kartenausspielen hat noch nicht begonnen
+        if pub.count_hand_cards[player_index] != 14 or pub.announcements[player_index]:
+            return False  # der Spieler hat schon Karten ausgespielt oder bereits Tichu angesagt
+        pub.announcements[player_index] = 1
+        await self._broadcast("player_announced", {"player_index": player_index, "grand": False})
+        return True
 
     # ------------------------------------------------------
     # Hilfsfunktionen
@@ -747,7 +766,7 @@ class GameEngine:
             # Stich selbst kassieren
             recipient = pub.trick_owner_index
 
-        # Punkte im Stich dem Spieler gut schreiben
+        # Punkte im Stich dem Spieler Gut schreiben.
         pub.points[recipient] += pub.trick_points
         assert -25 <= pub.points[recipient] <= 125
 

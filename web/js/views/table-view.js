@@ -164,7 +164,6 @@ const TableView = (() => {
         // Ereignishändler für Dialoge einrichten
         EventBus.on("exitDialog:select", _handleExitDialogSelect);
 
-
         // Ereignishändler für die Controls einrichten
         _exitButton.addEventListener('click', _handleExitButtonClick);
         _settingsButton.addEventListener('click', _handleSettingsButtonClick);
@@ -213,7 +212,7 @@ const TableView = (() => {
     /**
      * Ermittelt, ob der Spieltisch-Bildschirm gerade angezeigt wird.
      *
-     * @returns {boolean}
+     * @returns {boolean} // todo returns oder return? in (python heißt es :return:) Was ist üblich?
      */
     function isVisible() {
         return _viewContainer.classList.contains('active');
@@ -235,15 +234,9 @@ const TableView = (() => {
     //     //const context = message.payload.context || {};
     //     // Animation abspielen
     //     switch (message.payload.event) {
-    //         case "player_played": // Der Spieler hat Karten ausgespielt.
-    //         case "player_bombed": // Der Spieler hat außerhalb seines regulären Zuges eine Bombe geworfen.
-    //             if (State.getTrickCombination()[0] === CombinationType.BOMB) {
-    //                 EventBus.pause();
-    //                 Animation.explodeBomb(() => {
-    //                     EventBus.resume();
-    //                 });
-    //             }
-    //             break;
+    //          case "round_over": // Die Runde ist vorbei und die Karten werden neu gemischt.
+    //              document.querySelectorAll(".card").forEach(cardElement => {cardElement.remove()});
+    //              break
     //     }
     // }
 
@@ -257,9 +250,13 @@ const TableView = (() => {
      * @param {number} value - Der gedrückte Button (1 == ja, 0 == nein).
      */
     function _handleExitDialogSelect(value) {
-        if (value) {
-            EventBus.emit("tableView:exit");
+        if (!value) {
+            return;
         }
+        document.querySelectorAll(".card").forEach(cardElement => {
+            cardElement.remove();
+        });
+        EventBus.emit("tableView:exit");
     }
 
     // --------------------------------------------------------------------------------------
@@ -280,27 +277,6 @@ const TableView = (() => {
     function _handleSettingsButtonClick() {
         Modal.showErrorToast("Einstellungen sind noch nicht implementiert.");
     }
-
-
-    // ------------------------------------------------------------------------------------------------------
-
-    // function testUI() {
-    //     State.resetRound();
-    //     State.setGivenSchupfCards(/** @type Cards */ [[4,1], [5,1], [14,3]]);
-    //     State.setReceivedSchupfCards(/** @type Cards */ [[10,1], [11,2], [12,2]]);
-    //     State.confirmReceivedSchupfCards()
-    //     let cards = /** @type Cards */ [[0,0], [1,0], [2,1], [2,2], [2,3], [2,4], [3,4], [10,1], [11,2], [12,2], [13,3], [14,3], [15,0], [16,0]];
-    //     //cards.length = 11;
-    //     State.setHandCards(cards);
-    //     for (let i = 0; i <= 3; i++) {
-    //         State.setCountHandCards(i, 14);
-    //         _updateSchupfZoneAndHand(i);
-    //     }
-    //     _updateBombIcon();
-    //     _updatePlayButton();
-    // }
-
-    // ------------------------------------------------------------------------------------------------------
 
     /**
      * Ereignishändler für das Anklicken der eigenen Hand.
@@ -573,6 +549,16 @@ const TableView = (() => {
      * Aktualisiert den aktuellen Stich.
      */
     function _updateTrick() {
+        if (State.getStartPlayerIndex() === -1) {
+            for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
+                const turnElements = _trickZones[relativeIndex].querySelectorAll(".turn");
+                turnElements.forEach(turnElement => {
+                    turnElement.remove();
+                });
+            }
+            return;
+        }
+
         if (State.getTrickOwnerIndex() === -1) {
             // Stich kassieren
 
@@ -591,12 +577,14 @@ const TableView = (() => {
                 }
             }
 
-            // Animation starten (dadurch werden die Spielzüge gelöscht)
-            console.debug("Animation.takeTrick");
-            EventBus.pause();
-            Animation.takeTrick(lastTurnIndex, () => {
-                EventBus.resume();
-            });
+            if (lastTurnIndex >= 0) {
+                // Animation starten (dadurch werden die Spielzüge gelöscht)
+                console.debug("Animation.takeTrick");
+                EventBus.pause();
+                Animation.takeTrick(lastTurnIndex, () => {
+                    EventBus.resume();
+                });
+            }
 
             return;
         }
@@ -755,9 +743,11 @@ const TableView = (() => {
                             EventBus.pause();
                             Animation.schupfCards(() => {
                                 // Tauschkarten mit der Vorderseite zeigen
+                                console.debug("_clearSchupfZone");
                                 _clearSchupfZone(playerIndex);
                                 const receivedCards = State.getReceivedSchupfCards().toReversed(); // linker Gegner, Partner, rechter Gegner
                                 _schupfZones[0].querySelectorAll('.schupf-subzone').forEach((subzoneElement, i) => {
+                                    console.debug("_createCardElement", receivedCards[i]);
                                     subzoneElement.appendChild(_createCardElement(receivedCards[i]));
                                 });
                                 EventBus.resume();

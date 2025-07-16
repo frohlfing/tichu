@@ -26,7 +26,7 @@
  */
 
 .card-flipper {
-    transition: transform 0.6s;
+    transition: transform 600ms;
     transform-style: preserve-3d;
 }
 
@@ -51,7 +51,7 @@
  */
 
 .card.is-removing {
-    transition: transform 0.2s ease-in, opacity 0.4s ease-in;
+    transition: transform 200ms ease-in, opacity 0.4s ease-in;
     transform: translateY(150%) scale(0.5); /* schiebt die Karte nach unten und verkleinert sie */
     opacity: 0;
 }
@@ -70,7 +70,7 @@
     text-shadow: 0 0 10px red, 0 0 20px red, 0 0 30px orange;
     pointer-events: none;
     transform: translate(-50%, -50%); /* zentrieren */
-    animation: bomb-effect 0.8s ease-out forwards;
+    animation: bomb-effect 800ms ease-out forwards;
     z-index: 2000;
 }
 
@@ -94,7 +94,7 @@
  */
 
 .is-pulsing {
-    animation: pulse-effect 1.5s infinite ease-in-out;
+    animation: pulse-effect 1500ms infinite ease-in-out;
 }
 
 @keyframes pulse-effect {
@@ -116,11 +116,11 @@
  * Score-Update-Animation.
  *
  * Die Animation wird durch das Hinzufügen der Klasse "score-updated" ausgelöst.
- * Mit `animation` in dieser Klasse wird angegeben, dass die Keyframes "score-update-flash" in 0.5s abgespielt werden.
+ * Mit `animation` in dieser Klasse wird angegeben, dass die Keyframes "score-update-flash" in 500ms abgespielt werden.
  */
 
 .score-updated {
-    animation: score-update-flash 0.5s ease-in-out;
+    animation: score-update-flash 500ms ease-in-out;
 }
 
 @keyframes score-update-flash {
