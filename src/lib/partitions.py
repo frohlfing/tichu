@@ -5,37 +5,38 @@ Dieses Modul definiert Funktionen zur Erstellung und Verwaltung einer Kartenpart
 __all__ = "Partition", \
     "build_partitions", "remove_partitions", \
     "filter_playable_partitions", "filter_playable_combinations", \
-    "stringify_partition", \
-    "partition_quality",
+    "stringify_partition",
 
 import config
-import math
 from src.lib.cards import Cards
 from src.lib.combinations import stringify_combination, remove_combinations, Combination
 from typing import List, Tuple, Optional
-
-# todo Dokumentieren (reStructuredText)
 
 # -----------------------------------------------------------------------------
 # Partitionen
 # -----------------------------------------------------------------------------
 
-# Type-Alias für eine Partition
-# Typ Partition ist technisch gleich Typ Combinations, aber in der Partition kommt keine Karte mehrfach vor.
-Partition = List[Tuple[Cards, Combination]]  # todo überall konsequent verwenden
+Partition = List[Tuple[Cards, Combination]]
+"""
+Type-Alias für eine Partition
 
-# Berechnet die Partitionen, die mit den verfügbaren Kombinationen gebildet werden können.
-#
-# Da die offensichtlich guten Kombis zuerst aufgelistet sind, werden auch die offensichtlich besseren Partitionen zuerst gebildet.
-#
-# partitions: Diese Liste wird während der Berechnung gefüllt.
-# combis: Die möglichen Kombinationen der Handkarten (sortiert, die besten zuerst!)
-# counter: Anzahl Handkarten
-# maxlen: Maximale Anzahl Partitionen, die berechnet werden.
-# curr: Die aktuell noch unvollständige Partition, für die passende Kombinationen gesucht werden.
-# deep: Suchtiefe
-# Rückgabe: True, wenn alle möglichen Partitionen berechnet wurden. False, wenn es mehr als partitions_max_len Partitionen gibt.
+Typ Partition ist technisch gleich Typ Combinations, aber in der Partition kommt keine Karte mehrfach vor.
+"""
+
 def build_partitions(partitions: List[Partition], combis: List[Tuple[Cards, Combination]], counter: int, maxlen=config.PARTITIONS_MAXLEN, curr: Optional[Partition] = None, deep=0) -> bool:
+    """
+    Berechnet die Partitionen, die mit den verfügbaren Kombinationen gebildet werden können.
+
+    Da die offensichtlich guten Kombis zuerst aufgelistet sind, werden auch die offensichtlich besseren Partitionen zuerst gebildet.
+
+    :param partitions: Diese Liste wird während der Berechnung gefüllt.
+    :param combis: Die möglichen Kombinationen der Handkarten (sortiert, die besten zuerst!).
+    :param counter: Anzahl Handkarten.
+    :param maxlen: Die maximale Anzahl von Partitionen, die berechnet werden.
+    :param curr: Die aktuell noch unvollständige Partition, für die passende Kombinationen gesucht werden.
+    :param deep: Die Suchtiefe.
+    :return: True, wenn alle möglichen Partitionen berechnet wurden. False, wenn es mehr als partitions_max_len Partitionen gibt.
+    """
     if len(partitions) == maxlen:
         return False  # es gibt zu viele Möglichkeiten, wir brechen ab
 
@@ -59,12 +60,14 @@ def build_partitions(partitions: List[Partition], combis: List[Tuple[Cards, Comb
     return completed
 
 
-# Entfernt Karten aus den Partitionen
-
-# partitions: Partitionen
-# cards: Karten, die entfernt werden sollen
-# return: Neue Liste der Partitionen
 def remove_partitions(partitions: List[Partition], cards: Cards) -> List[Partition]:
+    """
+    Entfernt Karten aus den Partitionen.
+
+    :param partitions: Die Partitionen.
+    :param cards: Karten, die entfernt werden sollen.
+    :return: Die neue Liste der Partitionen.
+    """
     new_partitions = []
     for partition in partitions:
         new_partition = []
@@ -83,8 +86,14 @@ def remove_partitions(partitions: List[Partition], cards: Cards) -> List[Partiti
     return new_partitions
 
 
-# Ermittelt Partitionen, die mindestens eine spielbare Kombination haben
 def filter_playable_partitions(partitions: List[Partition], action_space: List[Tuple[Cards, Combination]]) -> List[Partition]:
+    """
+    Ermittelt Partitionen, die mindestens eine spielbare Kombination haben.
+
+    :param partitions: Die Partitionen.
+    :param action_space: Die spielbaren Kombinationen.
+    :return: Die Partitionen mit mindestens einer spielbaren Kombination.
+    """
     new_partitions = []
     for partition in partitions:
         for combi in partition:
@@ -94,8 +103,14 @@ def filter_playable_partitions(partitions: List[Partition], action_space: List[T
     return new_partitions
 
 
-# Ermittelt die spielbaren Kartenkombinationen
 def filter_playable_combinations(partition: Partition, action_space: List[Tuple[Cards, Combination]]) -> List[Tuple[Cards, Combination]]:
+    """
+    Ermittelt die spielbaren Kartenkombinationen einer gegebenen Partition.
+
+    :param partition: Die Partition.
+    :param action_space: Alle spielbaren Kombinationen der Handkarten.
+    :return: Die spielbaren Kombinationen der Partition.
+    """
     combis = []
     for combi in partition:
         if combi in action_space:
@@ -103,78 +118,11 @@ def filter_playable_combinations(partition: Partition, action_space: List[Tuple[
     return combis
 
 
-# Wandelt die Partition in ein Label um
 def stringify_partition(partition: Partition) -> str:
+    """
+    # Wandelt die Partition in ein Label um.
+
+    :param partition: Die Partition.
+    :return: Das Label der Partition.
+    """
     return " ".join([stringify_combination(combi[1]) for combi in partition])
-
-
-# Schätzt, die Güte der gegebenen Partition.
-#
-# Die Güte ist ein Maß für die Qualität der Partition. Je häufiger wir das Anspielrecht erhalten, desto größer ist
-# der Wert. Je häufiger wir das Anspielrecht verlieren, desto kleiner ist der Wert. Kombinationen, mir der wir
-# statistisch gesehen weder das Anspielrecht gewinnen noch verlieren, beeinflussen die Güte nicht.
-# Ein Wert von -1 bedeutet, dass man immer verliert (der Letzte ist).
-# Ein Wert von 1 würde heißen, dass man immer gewinnt (als erstes fertig wird).
-# Der Wert 0 heißt, dass man im Durchschnitt genauso häufig verliert wie man gewinnt.
-#
-# partition: Partition
-# action_space: spielbare Aktionen (leer, wenn die Partition jetzt nicht gespielt werden darf)
-# statistic: Ergebnis von combinations.calc_statistic()
-# return: Güte im Wertebereich [-1, 1]
-# todo vermutlich besser in lib/prob/statistic.py aufgehoben
-def partition_quality(partition: Partition, action_space: List[Tuple[Cards, Combination]], statistic: dict) -> float:
-
-    # !!!!!!!!!!!!!!!!!! Neue Beschreibung  !!!!!!!!!!!!!!!!!!!
-    #
-    # p_lo: Wahrscheinlichkeit, dass ein Mitspieler die Kombination (mit niederem Rang) anspielen kann (Bespielbarkeit)
-    # p_hi: Wahrscheinlichkeit, dass ein Mitspieler die Kombination überstechen kann.
-    # p_pw = 1 - p_hi  # Wahrscheinlichkeit, mit der Kombination das Anspielrecht zu erhalten (Schlagkraft)
-    # q_combi = p_lo * p_pw # Güte der Kombinationen = Bespielbarkeit * Schlagkraft
-    #
-    # Für die Kombinationen, die jetzt ausgespielt werden kann und soll, ist p_lo = 1 (sie ist definitiv bespielbar).
-    # q_first_combi = p_pw
-    #
-    # Für die letzte Kombination ist p_hi = 0 (kann nicht überstochen werden) und somit p_pw = 1
-    # q_last_combi = p_lo
-    #
-    # Die Güte der Hand ist die Summe aller Kombinationen, wobei die erste und letzte Kombination so gewählt ist, dass der Wert maximiert wird.
-    # q_hand = q_first_combi + sum(q_middle_combi) + q_last_combi
-
-    assert partition
-    total_lo = total_hi = 0.
-    lo_playing_now = math.inf
-    hi_last_combi = -math.inf
-    n_lo = n_hi = len(partition)
-    assert n_lo > 0
-    for combi in partition:
-        assert tuple(combi[0]) in statistic, ("Fehler in der Statistik", combi[0], statistic)
-        lo_opp, lo_par, hi_opp, hi_par, eq_opp, eq_par = statistic[tuple(combi[0])]
-        lo = lo_opp + lo_par
-        hi = hi_opp + hi_par
-        total_lo += lo
-        total_hi += hi
-        if lo_playing_now > lo and combi in action_space:
-            lo_playing_now = lo
-        #     if n_hi == 1:
-        #         hi_last_combi = hi
-        # elif hi_last_combi < hi:
-        if hi_last_combi < hi:
-            hi_last_combi = hi
-
-    # Falls wir dran sind, kann der kleinste Lo-Wert wieder abgezogen werden, da wir mit dieser Kombi jetzt spielen.
-    if lo_playing_now < math.inf:
-        total_lo -= lo_playing_now
-        n_lo -= 1
-
-    # Bei der letzten Kombination, die wir ausspielen werden, ist es egal, ob die Kombination durch den Mitspieler
-    # überstochen werden kann. Wir können also den höchsten Hi-Wert auf 0 setzen und somit ignorieren.
-    assert hi_last_combi > -math.inf
-    total_hi -= hi_last_combi
-    n_hi -= 1
-
-    # normalisieren
-    # Randbedingungen:
-    # - Falls n_lo gleich 0 ist, ist n_hi auch 0, denn wir sind wir dran und spielen die letzte Kombi. q ist in diesem Fall 1.
-    # - Falls nur n_hi gleich 0 ist, haben wir nur noch eine Kombi, sind aber nicht dran. Dann ist nur der lo-Anteil relevant.
-    q = ((total_lo / n_lo) if n_lo else 1) - ((total_hi / n_hi) if n_hi else 0)
-    return q

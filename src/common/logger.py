@@ -1,6 +1,6 @@
 """
 Diese Datei definiert eine zentrale Logger-Instanz zur Protokollierung von Ereignissen und Ausgaben im System.
-Sie unterstützt die Protokollierung in eine Datei sowie die farbliche Ausgabe im Terminal.
+Sie unterstützt die Protokollierung in einer Datei sowie die farbliche Ausgabe im Terminal.
 """
 
 __all__ = "logger",

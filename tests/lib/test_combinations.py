@@ -22,9 +22,9 @@ def find_combination(target_cards: Cards, combinations_list: List[Tuple[Cards, C
 
 @pytest.mark.parametrize("cards_str, trick_value, expected_figure", [
     # Singles
-    ("Hu", 0, FIGURE_DOG),
-    ("Ma", 0, FIGURE_MAH),
-    ("Dr", 0, FIGURE_DRA),
+    ("Hu", 0, (CombinationType.SINGLE, 1, 0)),
+    ("Ma", 0, (CombinationType.SINGLE, 1, 1)),
+    ("Dr", 0, (CombinationType.SINGLE, 1, 15)),
     ("Ph", 0, (CombinationType.SINGLE, 1, 1)), # Phoenix Anspiel -> Wert 1 (wie Mah Jong)
     ("Ph", 5, (CombinationType.SINGLE, 1, 5)), # Phoenix auf 5 -> Wert 5
     ("SA", 0, (CombinationType.SINGLE, 1, 14)), # Ass
@@ -125,15 +125,12 @@ def sample_hand_and_combis() -> Tuple[Cards, List[Tuple[Cards, Combination]]]:
     # Enthält u.a.: Paar 5, Paar 6, Single 7, 8, 9, Drache, Treppe 5566, Straße 789
     return hand, combis
 
-# Fixture für leere Kombinationen (Passen)
-FIGURE_PASS_TUPLE = ([], FIGURE_PASS)
-
 def test_action_space_anspiel(sample_hand_and_combis):
     """Testet den Action Space beim Anspiel (leerer Stich)."""
     hand, combis = sample_hand_and_combis
-    action_space = build_action_space(combis, FIGURE_PASS, 0) # Leerer Stich, kein Wunsch
+    action_space = build_action_space(combis, (CombinationType.SINGLE, 1, 0), 0) # Leerer Stich, kein Wunsch
     # Muss alle Kombinationen aus der Hand enthalten, außer Passen
-    assert FIGURE_PASS_TUPLE not in action_space
+    assert ([], (CombinationType.SINGLE, 1, 0)) not in action_space
     # Jede Kombination im action_space muss auch in den ursprünglichen combis sein
     for action in action_space:
         assert action in combis
@@ -143,9 +140,9 @@ def test_action_space_anspiel(sample_hand_and_combis):
 def test_action_space_anspiel_dog(sample_hand_and_combis):
     """Testet den Action Space beim Anspiel nach einem SINGLE-00."""
     hand, combis = sample_hand_and_combis
-    action_space = build_action_space(combis, FIGURE_DOG, 0) # SINGLE-00 liegt, kein Wunsch
+    action_space = build_action_space(combis, (CombinationType.SINGLE, 1, 0), 0) # SINGLE-00 liegt, kein Wunsch
     # Muss alle Kombinationen aus der Hand enthalten, außer Passen
-    assert FIGURE_PASS_TUPLE not in action_space
+    assert ([], (CombinationType.SINGLE, 1, 0)) not in action_space
     assert len(action_space) == len(combis)
 
 def test_action_space_beat_pair(sample_hand_and_combis):
@@ -155,7 +152,7 @@ def test_action_space_beat_pair(sample_hand_and_combis):
     action_space = build_action_space(combis, trick_figure, 0)
 
     # Passen muss möglich sein
-    assert FIGURE_PASS_TUPLE in action_space
+    assert ([], (CombinationType.SINGLE, 1, 0)) in action_space
     # Höhere Paare (Paar 5, Paar 6) müssen drin sein
     assert find_combination(parse_cards("S5 G5"), action_space) is not None
     assert find_combination(parse_cards("S6 B6"), action_space) is not None
@@ -174,7 +171,7 @@ def test_action_space_beat_street(sample_hand_and_combis):
     action_space = build_action_space(combis, trick_figure, 0)
 
     # Passen muss möglich sein
-    assert FIGURE_PASS_TUPLE in action_space
+    assert ([], (CombinationType.SINGLE, 1, 0)) in action_space
     # Nur höhere Straßen *gleicher Länge* oder Bomben sind erlaubt.
     # Unsere Straße 5-6-7-8-9 ist auch Länge 5 -> sollte erlaubt sein
     assert find_combination(parse_cards("S9 S8 S7 B6 G5"), action_space) is not None
@@ -185,7 +182,7 @@ def test_action_space_beat_street(sample_hand_and_combis):
 def test_action_space_wish_fulfillable(sample_hand_and_combis):
     """Testet Action Space, wenn ein erfüllbarer Wunsch aktiv ist."""
     hand, combis = sample_hand_and_combis
-    trick_figure = FIGURE_PASS # Anspiel
+    trick_figure = (CombinationType.SINGLE, 1, 0) # Anspiel
     wish = 8 # Wunsch SINGLE-08
     action_space = build_action_space(combis, trick_figure, wish)
 
@@ -197,16 +194,16 @@ def test_action_space_wish_fulfillable(sample_hand_and_combis):
 def test_action_space_wish_unfulfillable(sample_hand_and_combis):
     """Testet Action Space, wenn ein Wunsch nicht erfüllbar ist."""
     hand, combis = sample_hand_and_combis
-    trick_figure = FIGURE_PASS # Anspiel
+    trick_figure = (CombinationType.SINGLE, 1, 0) # Anspiel
     wish = 10 # Wunsch SINGLE-10 (nicht in Hand)
     action_space = build_action_space(combis, trick_figure, wish)
 
     # Da Wunsch nicht erfüllbar, ist der normale Action Space für Anspiel aktiv
-    assert FIGURE_PASS_TUPLE not in action_space
-    assert len(action_space) == len(combis) # Alle Kombis der Hand
+    assert ([], (CombinationType.SINGLE, 1, 0)) not in action_space
+    assert len(action_space) == len(combis) # Alle Kombinationen der Hand
 
 @pytest.mark.parametrize("figure, expected_valid", [
-    (FIGURE_PASS, True),
+    ((CombinationType.SINGLE, 1, 0), True),
     ((CombinationType.SINGLE, 1, 5), True),
     ((CombinationType.SINGLE, 2, 5), False), # Falsche Länge
     ((CombinationType.PAIR, 2, 14), True),

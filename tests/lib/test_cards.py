@@ -108,12 +108,27 @@ def test_ranks_to_vector_simple():
 
 def test_cards_to_vector_simple():
     """Testet die Umwandlung in den vollständigen Karten-Vektor."""
-    hand: Cards = [(2, 1), CARD_MAH] # Schwarz 2, MahJong
-    # Erwarteter Vektor (Länge 56): Nur an den Indizes für S2 und MahJong ist eine 1.
+    hand: Cards = [(2, 1), (14, 1), CARD_MAH]
     expected_vector = [0] * 56
     expected_vector[1] = 1 # MahJong
     expected_vector[2] = 1 # Schwarz 2
+    expected_vector[50] = 1 # Schwarz As
     assert cards_to_vector(hand) == expected_vector
+
+    h1 = [1, 0,
+          0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+          0, 0]
+    assert h1 == cards_to_vector([(0, CardSuit.SPECIAL), (14, CardSuit.SWORD), (10, CardSuit.PAGODA), (5, CardSuit.JADE), (2, CardSuit.STAR)])
+
+    h = cards_to_vector([(0, CardSuit.SPECIAL), (14, CardSuit.SWORD), (10, CardSuit.PAGODA), (5, CardSuit.JADE), (2, CardSuit.STAR), (16, CardSuit.SPECIAL)])
+    assert h[0]
+    assert h[(14-2)*4 + CardSuit.SWORD + 1]
+    assert h[(10-2)*4 + CardSuit.PAGODA + 1]
+    assert h[(5-2)*4 + CardSuit.JADE + 1]
+    assert h[(2-2)*4 + CardSuit.STAR + 1]
+    assert h[55]
+
 
 # -------------------------------------------------------
 # Alte Tests (ursprünglich mit unittest geschrieben)
@@ -133,23 +148,23 @@ def test_ranks_to_vector():
     assert h == ranks_to_vector([(1, 0), (8, 1), (8, 2), (8, 3), (8, 4), (16, 0)])
 
 def test_cards_to_vector():
-    h1 = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-          0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-          0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0]
-    assert h1 == cards_to_vector([(0, 0), (14, 1), (10, 2), (5, 3), (2, 4)])
+    h1 = [1, 0,
+          0, 0, 0, 1,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 1, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
+          0, 0, 0, 0,   0, 1, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   1, 0, 0, 0,
+          0, 0]
+    assert h1 == cards_to_vector([(0, CardSuit.SPECIAL), (14, CardSuit.SWORD), (10, CardSuit.PAGODA), (5, CardSuit.JADE), (2, CardSuit.STAR)])
 
-    h2 = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 1, 0, 1]
-    assert h2 == cards_to_vector([(1, 0), (14, 4), (16, 0)])
+    h2 = [0, 1,
+          0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
+          0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 1,
+          0, 1]
+    assert h2 == cards_to_vector([(1, CardSuit.SPECIAL), (14, CardSuit.STAR), (16, CardSuit.SPECIAL)])
 
-    h3 = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 1, 0]
-    assert h3 == cards_to_vector([(2, 1), (15, 0)])
+    h3 = [0, 0,
+          1, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
+          0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
+          1, 0]
+    assert h3 == cards_to_vector([(2, CardSuit.SWORD), (15, CardSuit.SPECIAL)])
 
 def test_is_wish_in2():
     assert is_wish_in(10, parse_cards("RA Ph BZ BZ RB SB")), "eine 10 ist unter den Karten"

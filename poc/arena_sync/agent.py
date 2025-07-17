@@ -3,8 +3,9 @@ import math
 from poc.arena_sync.state import PublicState, PrivateState
 from src.common.rand import Random
 from src.lib.cards import Card, CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO
-from src.lib.combinations import Combination, build_action_space, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, remove_combinations, FIGURE_PHO
-from src.lib.partitions import partition_quality, filter_playable_partitions, filter_playable_combinations
+from src.lib.combinations import Combination, build_action_space, remove_combinations, CombinationType
+from src.lib.partitions import filter_playable_partitions, filter_playable_combinations
+from src.lib.prob.statistic import partition_quality
 from typing import Optional, List, Tuple
 from uuid import uuid4
 
@@ -18,6 +19,7 @@ STAIR = 4      # Treppe
 FULLHOUSE = 5  # Full House
 STREET = 6     # Straße
 BOMB = 7       # Vierer-Bombe oder Farbbombe
+
 
 class Player:
     def __init__(self, name: str, session: Optional[str] = None):
@@ -213,7 +215,7 @@ class HeuristicAgent(Agent):
         return announcement
 
     # Welche Kombination soll gespielt werden?
-    # action_space: Mögliche Kombinationen (inklusiv Passen; Passen steht an erster Stelle)
+    # action_space: Mögliche Kombinationen (inklusive Passen; Passen steht an erster Stelle)
     # return: Ausgewählte Kombination (Karten, (Typ, Länge, Wert))
     def combination(self, pub: PublicState, priv: PrivateState, action_space: List[tuple]) -> tuple:
         action_len = len(action_space)
@@ -221,7 +223,7 @@ class HeuristicAgent(Agent):
         if action_len == 1:
             return action_space[0]  # es gibt nur diese mögliche Aktion
 
-        can_skip = action_space[0][1] == FIGURE_PASS
+        can_skip = action_space[0][1][0] == CombinationType.PASS
         partner = priv.partner
         opp_right = priv.opponent_right
         opp_left = priv.opponent_left
@@ -253,7 +255,7 @@ class HeuristicAgent(Agent):
 
         # Können und wollen wir den Hund ausspielen?
         for cards, figure in action_space:
-            if figure == FIGURE_DOG:
+            if figure == (CombinationType.SINGLE, 1, 0):
                 return cards, figure  # wir spielen den Hund so bald wie möglich
 
         # Wir suchen zuerst die Partitionen, die mindestens eine spielbare Kombination haben. Damit vermeiden wir das
@@ -269,7 +271,7 @@ class HeuristicAgent(Agent):
 
         # Als Zweites suchen wir die kürzeste Partition, da wir mit dieser vermutlich am schnellsten fertig werden.
         # Eine Bombe bleibt meistens in der Auswahl. Eine Straße könnte aber eine kürzere Partition bilden, sodass
-        # in diesem Fall die Bombe auseinander gerissen wird.
+        # in diesem Fall die Bombe auseinandergerissen wird.
         len_min = 14
         for partition in partitions:
             len_min = min(len_min, len(partition))
@@ -303,12 +305,12 @@ class HeuristicAgent(Agent):
                 m = pub.number_of_cards[pub.current_player_index]
                 opp_could_win = pub.current_player_index in (opp_right, opp_left) and m < 6
                 # Würden die Gegner 40 Punkte oder mehr kriegen?
-                b1 = pub.trick_player_index in (priv.player_index, partner) and pub.trick_figure == FIGURE_DRA
-                b2 = pub.trick_player_index in (opp_right, opp_left) and pub.trick_figure != FIGURE_DRA
+                b1 = pub.trick_player_index in (priv.player_index, partner) and pub.trick_figure == (CombinationType.SINGLE, 1, 15)
+                b2 = pub.trick_player_index in (opp_right, opp_left) and pub.trick_figure != (CombinationType.SINGLE, 1, 15)
                 opp_win_trick = pub.trick_points >= 40 and (b1 or b2)
                 # Ist mindestens ein Kriterium erfüllt?
                 if could_win or opp_could_win or opp_win_trick:
-                    # Vermasseln wir auch nicht das Tichu des Partners, in dem wir schluss machen?
+                    # Vermasseln wir auch nicht das Tichu des Partners, in dem wir Schluss machen?
                     if not has_partner_tichu or not could_win:
                         return cards, (t, n, v)  # wir schmeißen die Bombe
                 # Die Kriterien sind nicht erfüllt. Wir nehmen die Bombe aus unserer Wahl, falls noch andere Aktionen
@@ -355,7 +357,7 @@ class HeuristicAgent(Agent):
         lost_min = math.inf
         for combi in combis:
             lo_opp, lo_par, hi_opp, hi_par, eq_opp, hi_par = statistic[tuple(combi[0])]
-            v = trick_sum if combi[1] != FIGURE_DRA else -trick_sum
+            v = trick_sum if combi[1] != (CombinationType.SINGLE, 1, 15) else -trick_sum
             lost = (lo_opp + lo_par) * (1 - v) + (hi_opp + hi_par) * v
             if lost_min > lost:
                 lost_min = lost
@@ -601,7 +603,7 @@ def calc_statistic(player: int, hand: List[tuple], combis: List[tuple], number_o
             # Anzahl Kombis der Mitspieler insgesamt, die hier betrachtet werden (das sind alle Kombis bis auf Hund)
             sum_combis = \
                 sum([sum(d[k][m]) for k in range(1, 7) for m in range(1, len(d[k])) if d[k][m] is not None]) \
-                + (0 if figure == FIGURE_DOG else sum_bombs)
+                + (0 if figure == (CombinationType.SINGLE, 1, 0) else sum_bombs)
 
             # lo = normale Kombis + kürzere Bomben + niederwertige Bomben gleicher länge
             lo_opp = \
@@ -627,21 +629,21 @@ def calc_statistic(player: int, hand: List[tuple], combis: List[tuple], number_o
 
         else:  # keine Bombe
             # Anzahl Kombis der Mitspieler, die betrachtet werden (Kombis gleicher Länge (aber kein Hund) plus Bomben)
-            sum_combis = sum(d[t][n][1:]) + (0 if figure == FIGURE_DOG else sum_bombs)
+            sum_combis = sum(d[t][n][1:]) + (0 if figure == (CombinationType.SINGLE, 1, 0) else sum_bombs)
 
             # niederwertige Kombis (ohne Hund) - wie viele Kombinationen gibt es, die ich mit combi stechen kann?
             a = 1
-            b = 15 if figure == FIGURE_PHO else v
-            w = sum(d[t][n][a:b]) + (d[t][n][16] if figure == FIGURE_DRA else 0)  # Anzahl niederwertige Kombinationen
+            b = 15 if figure == (CombinationType.SINGLE, 1, 16) else v
+            w = sum(d[t][n][a:b]) + (d[t][n][16] if figure == (CombinationType.SINGLE, 1, 15) else 0)  # Anzahl niederwertige Kombinationen
             lo_opp = (p[opp_right][n] + p[opp_left][n]) * w
             lo_par = p[partner][n] * w
 
             # höherwertige Kombis
-            a = trick_figure[2] + 1 if figure == FIGURE_PHO else v + 1
+            a = trick_figure[2] + 1 if figure == (CombinationType.SINGLE, 1, 16) else v + 1
             b = 16
-            w = sum(d[t][n][a:b]) + (d[t][n][16] if t == SINGLE and figure != FIGURE_DRA else 0)  # höherwertige (ohne Bomben)
-            hi_opp = (p[opp_right][n] + p[opp_left][n]) * w + (0 if figure == FIGURE_DOG else p_bomb_opp)
-            hi_par = p[partner][n] * w + (0 if figure == FIGURE_DOG else p_bomb_par)
+            w = sum(d[t][n][a:b]) + (d[t][n][16] if t == SINGLE and figure != (CombinationType.SINGLE, 1, 15) else 0)  # höherwertige (ohne Bomben)
+            hi_opp = (p[opp_right][n] + p[opp_left][n]) * w + (0 if figure == (CombinationType.SINGLE, 1, 0) else p_bomb_opp)
+            hi_par = p[partner][n] * w + (0 if figure == (CombinationType.SINGLE, 1, 0) else p_bomb_par)
 
             # gleichwertige Kombis
             w = d[t][n][v]  # Anzahl gleichwertige Kombinationen
@@ -650,7 +652,7 @@ def calc_statistic(player: int, hand: List[tuple], combis: List[tuple], number_o
 
         # Beim Phönix wurden die spielbaren Kombination (außer Drache) doppelt gerechnet. Das liegt daran, dass der
         # Wert vom ausgelegten Stich abhängt.
-        w = sum_combis + (sum(d[t][n][(trick_figure[2] + 1):15]) if figure == FIGURE_PHO else 0)
+        w = sum_combis + (sum(d[t][n][(trick_figure[2] + 1):15]) if figure == (CombinationType.SINGLE, 1, 16) else 0)
         if w:
             # normalisieren
             lo_opp /= w
@@ -659,7 +661,7 @@ def calc_statistic(player: int, hand: List[tuple], combis: List[tuple], number_o
             hi_par /= w
             eq_opp /= w
             eq_par /= w
-            # if figure == FIGURE_PHO:
+            # if figure == (CombinationType.SINGLE, 1, 16):
             #     assert eq_opp == 0
             #     assert eq_par == 0
             #     w = lo_opp + lo_par + hi_opp + hi_par

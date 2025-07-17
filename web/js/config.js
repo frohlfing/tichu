@@ -17,7 +17,7 @@ const Config = {
     // Automatische Wiederherstellung der Verbindung, wenn diese nicht manuell beendet wurde (in ms).
     RECONNECT_DELAY: 1500,
 
-    // Zeit für Fehler-Popup (in ms)
+    // Zeit für Fehler-Pop-up (in ms)
     TOAST_TIMEOUT: 3500,
 
     // Verzögerung des Bots (von/bis) in ms.

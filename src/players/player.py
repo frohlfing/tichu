@@ -132,9 +132,6 @@ class Player:
         Die Engine fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
 
         Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
-        Die Bedingung ist::
-            todo Schnelle Methode bereitstellen, die prüft, ob eine Bombe geworfen werden kann
-
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
@@ -149,7 +146,7 @@ class Player:
         Die Bedingung ist::
             self.pub.current_turn_index == self.priv.player_index and
             self.pub.wish_value == 0 and
-            CARD_MAH in self.pub.played_cards  # oder alternativ: CARD_MAH in self.pub.trick_cards
+            CARD_MAH in self.pub.played_cards # oder alternativ: CARD_MAH in self.pub.trick_cards
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
@@ -165,7 +162,7 @@ class Player:
         Die Bedingung ist::
             self.pub.current_turn_index == self.priv.player_index and
             self.pub.dragon_recipient == -1 and
-            self.pub.trick_combination == FIGURE_DRA
+            self.pub.trick_combination == (CombinationType.SINGLE, 1, 15)
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 

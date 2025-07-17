@@ -87,7 +87,7 @@ const Lib = (() => {
     /**
      * Formatiert den Punktestand
      *
-     * Die Punktzahl eines Teams wird als vierstellige Zahl mir führenden Nullen angezeigt und mit Doppelpunkt von der gegnerischen getrennt.
+     * Die Punktzahl eines Teams wird als vierstellige Zahl mit führenden Nullen angezeigt und mit Doppelpunkt von der gegnerischen getrennt.
      *
      * @param {[number, number]} score Punktestand für Team 20 und Team 31.
      * @returns {string} Punktestand als String, z.B. "0440 : 0300".
@@ -202,7 +202,7 @@ const Lib = (() => {
         0,    // 7
         0,    // 8
         0,    // 9
-        10,   // 10  → 10 Punkte
+        10,   // 10 → 10 Punkte
         0,    // 11: Bube
         0,    // 12: Dame
         10,   // 13: König → 10 Punkte
@@ -528,7 +528,7 @@ const Lib = (() => {
         const arr = [[], [], [], [], [], [], [], []]; // pro Typ ein Array
         const n = hand.length;
 
-        // Einzelkarten, Paare, Drilling, 4er-Bomben
+        // Einzelkarten, Paare, Drillinge, 4er-Bomben
         for (let i1 = 0; i1 < n; i1++) {
             const card1 = hand[i1];
             arr[CombinationType.SINGLE].push([card1]);
@@ -723,10 +723,10 @@ const Lib = (() => {
      *
      * @param {Array<[Cards, Combination]>} combis - Kombinationsmöglichkeiten der Hand ([(Karten, (Typ, Länge, Rang)), ...]).
      * @param {Combination} trickCombination - Typ, Länge, Rang des aktuellen Stichs ((0,0,0) falls kein Stich liegt).
-     * @param {number} unfulfilledWish - Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt).
+     * @param {number} wishValue - Wunsch (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt).
      * @returns {Array<[Cards, Combination]>} ([], (0,0,0)) für Passen sofern möglich + spielbare Kombinationsmöglichkeiten.
      */
-    function buildActionSpace(combis, trickCombination, unfulfilledWish) {
+    function buildActionSpace(combis, trickCombination, wishValue) {
         let result = [];
         if (trickCombination[2] > 0) {
             // kein Anspiel (Rang > 0; Stich liegt und es ist kein Hund)
@@ -747,16 +747,16 @@ const Lib = (() => {
             }
         }
         else {
-            // Anspiel! Freie Auswahl (bis auf passen).
+            // Anspiel! Freie Auswahl (bis auf Passen).
             result = combis;
         }
 
         // Falls ein Wunsch offen ist, muss der Spieler diesen erfüllen, wenn er kann.
-        if (unfulfilledWish > 0) {
-            //const mandatory = result.filter(combi => isWishIn(unfulfilledWish, combi[0]));
+        if (wishValue > 0) {
+            //const mandatory = result.filter(combi => isWishIn(wishValue, combi[0]));
             const mandatory = [];
             for (let combi of result ) {
-                if (isWishIn(unfulfilledWish, combi[0])) {
+                if (isWishIn(wishValue, combi[0])) {
                     mandatory.push(combi);
                 }
             }
@@ -788,7 +788,7 @@ const Lib = (() => {
     }
 
     /**
-     * Findet alle Bomben, die aktuelle spielbar sind.
+     * Findet alle Bomben, die aktuell spielbar sind.
      *
      * @param {Cards} hand - Die Handkarten des Spielers (werden durch die Funktion absteigend sortiert - mutable!).
      * @param {Combination} trickCombination - Die auf dem Tisch liegende Kombination.

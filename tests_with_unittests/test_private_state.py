@@ -48,7 +48,7 @@ class TestPrivateState(unittest.TestCase):
         self.pub._number_of_cards = [13, 14, 14, 14]
         self.pub._trick_player_index = 0
         self.pub.current_turn_index = 0
-        self.pub._trick_figure = FIGURE_DRA
+        self.pub._trick_figure = (CombinationType.SINGLE, 1, 15)
         self.pub.played_cards.append(CARD_DRA)
         # Partitionen
         partitions = self.priv.partitions
@@ -70,7 +70,7 @@ class TestPrivateState(unittest.TestCase):
         self.pub._number_of_cards = [14, 14, 14, 13]
         self.pub._trick_player_index = 3
         self.pub.current_turn_index = 0
-        self.pub._trick_figure = FIGURE_DRA
+        self.pub._trick_figure = (CombinationType.SINGLE, 1, 15)
         self.pub.played_cards.append(CARD_DRA)
         self.priv.play(combi)
         self.pub.play(combi)

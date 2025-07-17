@@ -251,6 +251,8 @@ Bewertung
 Team 20 gewonnen:     6 - 60.0 %
 Team 31 gewonnen:     4 - 40.0 %
 Unentschieden:        0 -  0.0 %
+
+
 Team 20: RandomAgent_8234bf05 + HeuristicAgent_76a22d48
 Team 31: RandomAgent_9682ba87 + RandomAgent_71ec3fce
 Verfügbare CPU-Kerne: 12
@@ -284,3 +286,17 @@ Team 31 gewonnen:     0 -  0.0 %
 Unentschieden:        0 -  0.0 %
 
 Process finished with exit code 0
+
+
+
+Anzahl Partien: 100
+Anzahl Runden: 2196
+Gesamtzeit: 2.872 s
+Zeit/Partie: 0.029 s
+Zeit/Runde: 1.308 ms
+Runden/Partie: 22.0
+Stiche/Runde: 18.1
+--- Ergebnis ---
+Team 20 gewonnen:    46 - 46.0 %
+Team 31 gewonnen:    54 - 54.0 %
+Unentschieden:        0 -  0.0 %

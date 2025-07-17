@@ -1,8 +1,14 @@
 from src.common.rand import Random
 from src.lib.cards import CARD_MAH
-from src.lib.combinations import FIGURE_DOG, FIGURE_DRA, build_action_space, FIGURE_PASS
+from src.lib.combinations import build_action_space, CombinationType
 from poc.arena_sync.agent import Agent
 from poc.arena_sync.state import PublicState, PrivateState
+
+FIGURE_PASS = (CombinationType.PASS, 0, 0)
+FIGURE_DOG = (CombinationType.SINGLE, 1, 0)
+FIGURE_MAH = (CombinationType.SINGLE, 1, 1)
+FIGURE_DRA = (CombinationType.SINGLE, 1, 15)
+FIGURE_PHO = (CombinationType.SINGLE, 1, 16)
 
 class GameEngine:
     # Spiellogik

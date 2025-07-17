@@ -91,7 +91,7 @@ describe('getPlayableBombs', () => {
     
     test('Bombe in der Hand und kein Stich auf dem Tisch', () => {
         const hand = Lib.parseCards("S8 G8 B8 R8");
-        const playableBombs = Lib.getPlayableBombs(hand, FIGURE_PASS);
+        const playableBombs = Lib.getPlayableBombs(hand, /** @type Combination **/ [CombinationType.PASS, 0, 0]);
         assert(playableBombs.length, 1); // Die 8er-Bombe ist spielbar.
         assert(playableBombs[0][1], [CombinationType.BOMB, 4, 8]); // Prüfe, ob es die 8er-Bombe ist.
     });
@@ -130,7 +130,7 @@ describe('getPlayableBombs', () => {
     
         //const trick = /** @type Combination **/ [CombinationType.BOMB, 2, 8]; // Kürzere 8er-Bombe
         //const playableBombs = Lib.getPlayableBombs(hand, trick);
-        // Annahme: Die 4er-Bombe (länger) und die 2er 9er-Bombe (höher) sind spielbar
+        // Annahme: Die 4er-Bombe (länger) und die 2er 9er-Bombe (höher) sind spielbar.
         // Dieser Test ist komplexer, da er die Logik von build_combinations umgeht.
         // Ein einfacherer Test ist vorzuziehen.
     
@@ -186,7 +186,7 @@ describe('canPlay', () => {
         State.setHandCards(Lib.parseCards("S5 S8 S9")); // Enthält keine 6
         State.setTrickCombination(/** @type Combination **/ [CombinationType.SINGLE, 1, 4]);
         State.setWishValue(6);
-        // Da Wunsch nicht erfüllbar ist, verhält es sich wie ein normaler Zug. 8 > 4.
+        // Da der Wunsch nicht erfüllbar ist, verhält es sich wie ein normaler Zug. 8 > 4.
         assert(State.canPlayCards(), true);
     });
 });
@@ -264,7 +264,7 @@ describe('getBestPlayableCombination', () => {
     });
 
     test('Wählt eine Bombe, bevor eine zerrissen wird.', () => {
-        // Hand enthält: Ein Paar 8er (Teil einer Bombe) und Singles, die nicht passen.
+        // Die Hand enthält: Ein Paar 8er (Teil einer Bombe) und Singles, die nicht passen.
         State.setHandCards(Lib.parseCards("S8 G8 B8 R8 SA SK S8 S9"));
         State.setTrickCombination(/** @type Combination **/ [CombinationType.PAIR, 2, 7]);
         State.setWishValue(0);
@@ -274,7 +274,7 @@ describe('getBestPlayableCombination', () => {
     });
 
     test('Spielt eine Bombe, wenn es die einzige Option ist (außer Passen)', () => {
-        // Hand enthält nur eine Bombe und einen Single, der nicht passt.
+        // Die Hand enthält nur eine Bombe und einen Single, der nicht passt.
         State.setHandCards(Lib.parseCards("S8 G8 B8 R8 SA"));
         State.setTrickCombination(/** @type Combination **/ [CombinationType.STREET, 5, 14]);
         State.setWishValue(0);

@@ -1,5 +1,5 @@
 /**
- * Verwaltet die Anzeige, Logik und Interaktion aller Modal-Dialoge der Anwendung.
+ * Verwaltet die Anzeige, Logik und Interaktion der (modalen) Dialoge der Anwendung.
  */
 const Modal = (() => {
 
@@ -211,14 +211,14 @@ const Modal = (() => {
     }
 
     /**
-     * ID für den Timeout des Fehler-Popups.
+     * ID für den Timeout des Fehler-Pop-ups.
      *
      * @type {number|null}
      */
     let _toastTimeoutId = null;
 
     /**
-     * Zeigt einen Fehler-Popup an.
+     * Zeigt einen Fehler-Pop-up an.
      *
      * @param {string} message - Die anzuzeigende Fehlermeldung.
      */
@@ -235,7 +235,7 @@ const Modal = (() => {
     }
 
     /**
-     * Ereignishändler für den Fehler-Popup.
+     * Ereignishändler für den Fehler-Pop-up.
      *
      * @param {PointerEvent} _event
      */

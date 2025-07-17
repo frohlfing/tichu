@@ -6,15 +6,14 @@ import config
 import math
 from src.common.rand import Random
 from src.lib.cards import Card, Cards, CARD_DOG, CARD_MAH
-from src.lib.combinations import Combination, build_action_space, remove_combinations, FIGURE_PASS, FIGURE_DOG, FIGURE_DRA, CombinationType
-from src.lib.partitions import partition_quality, filter_playable_combinations, filter_playable_partitions
-from src.lib.prob.statistic import calc_statistic
+from src.lib.combinations import Combination, build_action_space, remove_combinations, CombinationType
+from src.lib.partitions import filter_playable_combinations, filter_playable_partitions
+from src.lib.prob.statistic import calc_statistic, partition_quality
 from src.players.agent import Agent
 from src.private_state import PrivateState
 from src.public_state import PublicState
 from typing import Optional, List, Tuple
 
-# todo Datei Dokumentieren (reStructuredText)
 
 class HeuristicAgent(Agent):
     """
@@ -36,7 +35,7 @@ class HeuristicAgent(Agent):
         self._quality = grand_quality
         self._random = Random(seed)  # Zufallsgenerator, geeignet für Multiprocessing
         self.__statistic: dict = {}  # Statistische Häufigkeit der Kombinationen (wird erst berechnet, wenn benötigt)
-        self._statistic_key: tuple = ()  # Spieler und Anzahl Handkarten, für die die Statistik berechnet wurde
+        self._statistic_key: tuple = ()  # Spieler und Anzahl von Handkarten, für die die Statistik berechnet wurde
 
     def reset_round(self):  # pragma: no cover
         """
@@ -45,8 +44,14 @@ class HeuristicAgent(Agent):
         self.__statistic = {}
         self._statistic_key = ()
 
-    # Wahrscheinlichkeit, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können
     def _statistic(self, pub: PublicState, priv: PrivateState) -> dict:
+        """
+        Wahrscheinlichkeit, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können.
+
+        :param pub: Der öffentliche Spielzustand.
+        :param priv: Der private Spielzustand.
+        :return: Ergebnis von calc_statistic() (Package src.lib.prob.statistic)
+        """
         n = pub.count_hand_cards
         key = (priv.player_index, priv.hand_cards, n)
         if self._statistic_key != key:
@@ -139,7 +144,7 @@ class HeuristicAgent(Agent):
         """
         schupfed: List[Optional[Card]] = [None, None, None]
         for i in [2, 1, 3]:  # erst die Karte für den Partner aussuchen, dann für die Gegner
-            p = (self.priv.player_index + i) % 4  # Index in kanonische Form
+            p = (self.priv.player_index + i) % 4  # Index in kanonischer Form
             preferred = []  # Karten, die zum Abgeben in Betracht kommen
             if i == 2:  # Partner
                 if self.pub.announcements[self.priv.player_index] > self.pub.announcements[p]:
@@ -225,7 +230,7 @@ class HeuristicAgent(Agent):
         if action_len == 1:
             return action_space[0]  # es gibt nur diese mögliche Aktion
 
-        can_skip = action_space[0][1] == FIGURE_PASS
+        can_skip = action_space[0][1][0] == CombinationType.PASS
         partner = self.priv.partner_index
         opp_right = self.priv.opponent_right_index
         opp_left = self.priv.opponent_left_index
@@ -258,7 +263,7 @@ class HeuristicAgent(Agent):
 
         # Können und wollen wir den Hund ausspielen?
         for cards, figure in action_space:
-            if figure == FIGURE_DOG:
+            if figure == (CombinationType.SINGLE, 1, 0):
                 return cards, figure  # wir spielen den Hund so bald wie möglich
 
         # Wir suchen zuerst die Partitionen, die mindestens eine spielbare Kombination haben. Damit vermeiden wir das
@@ -308,8 +313,8 @@ class HeuristicAgent(Agent):
                 m = count_hand_cards[self.pub.current_turn_index]
                 opp_could_win = self.pub.current_turn_index in (opp_right, opp_left) and m < 6
                 # Würden die Gegner 40 Punkte oder mehr kriegen?
-                b1 = self.pub.trick_owner_index in (self.priv.player_index, partner) and self.pub.trick_combination == FIGURE_DRA
-                b2 = self.pub.trick_owner_index in (opp_right, opp_left) and self.pub.trick_combination != FIGURE_DRA
+                b1 = self.pub.trick_owner_index in (self.priv.player_index, partner) and self.pub.trick_combination == (CombinationType.SINGLE, 1, 15)
+                b2 = self.pub.trick_owner_index in (opp_right, opp_left) and self.pub.trick_combination != (CombinationType.SINGLE, 1, 15)
                 opp_win_trick = self.pub.trick_points >= 40 and (b1 or b2)
                 # Ist mindestens ein Kriterium erfüllt?
                 if could_win or opp_could_win or opp_win_trick:
@@ -360,7 +365,7 @@ class HeuristicAgent(Agent):
         lost_min = math.inf
         for combi in combis:
             lo_opp, lo_par, hi_opp, hi_par, eq_opp, hi_par = statistic[tuple(combi[0])]
-            v = trick_sum if combi[1] != FIGURE_DRA else -trick_sum
+            v = trick_sum if combi[1] != (CombinationType.SINGLE, 1, 15) else -trick_sum
             lost = (lo_opp + lo_par) * (1 - v) + (hi_opp + hi_par) * v
             if lost_min > lost:
                 lost_min = lost

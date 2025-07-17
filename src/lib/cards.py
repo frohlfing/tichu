@@ -16,7 +16,7 @@ from typing import Tuple, List, Iterable
 # Spielkarten
 # -----------------------------------------------------------------------------
 
-class CardSuit(enum.IntEnum):  # todo überall konsequent verwenden (ist ein kategorialer Typ)
+class CardSuit(enum.IntEnum):
     """
     Kartenfarben.
     """
@@ -26,11 +26,11 @@ class CardSuit(enum.IntEnum):  # todo überall konsequent verwenden (ist ein kat
     JADE = 3  # Grün/Jade
     STAR = 4  # Rot/Stern
 
-# Type-Alias für eine Karte
-Card = Tuple[int, CardSuit]  # Wert, Farbe   # todo überall konsequent verwenden
+Card = Tuple[int, CardSuit]  # Wert, Farbe
+"""Type-Alias für eine Karte"""
 
-# Type-Alias für mehrere Karten
-Cards = List[Card]  # todo überall konsequent verwenden
+Cards = List[Card]
+"""Type-Alias für mehrere Karten"""
 
 # Sonderkarten
 CARD_DOG = (0, CardSuit.SPECIAL)   # Dog
@@ -38,9 +38,6 @@ CARD_MAH = (1, CardSuit.SPECIAL)   # Mahjong
 CARD_DRA = (15, CardSuit.SPECIAL)  # Phoenix
 CARD_PHO = (16, CardSuit.SPECIAL)  # Dragon
 
-# Kartendeck (56 Karten)
-# Werte:  0 = Hund, 1 = Mahjong, 2 bis 10, 11 = Bube, 12 = Dame, 13 = König, 14 = As, 15 = Drache, 16 = Phönix
-# Farben: 0 = Sonderkarte, 1 = Schwarz/Schwert, 2 = Blau/Pagode, 3 = Grün/Jade, 4 = Rot/Stern
 deck = (  # const
     (0, CardSuit.SPECIAL),  # Hund
     (1, CardSuit.SPECIAL),  # Mahjong
@@ -60,8 +57,13 @@ deck = (  # const
     (15, CardSuit.SPECIAL),  # Drache
     (16, CardSuit.SPECIAL),                                                                    # Phönix
 )
+"""
+Kartendeck (56 Karten)
 
-# Kartenlabel
+- Werte:  0 = Hund, 1 = Mahjong, 2 bis 10, 11 = Bube, 12 = Dame, 13 = König, 14 = As, 15 = Drache, 16 = Phönix
+- Farben: 0 = Sonderkarte, 1 = Schwarz/Schwert, 2 = Blau/Pagode, 3 = Grün/Jade, 4 = Rot/Stern
+"""
+
 _card_labels = (
     # sw   bl    gr    rt
     "Hu",                    # Hund
@@ -82,8 +84,8 @@ _card_labels = (
     "Dr",                    # Drache
     "Ph",                    # Phönix
 )
+"""# Kartenlabel"""
 
-# Zuordnung von Kartenwert zu Punkten.
 _card_points = (
     0,    # Hund
     0,    # MahJong
@@ -103,23 +105,29 @@ _card_points = (
     25,   # Drache → 25 Punkte
     -25,  # Phönix → 25 Minuspunkte
 )
+"""Zuordnung von Kartenwert zu Punkten."""
 
 
-# Validiert die Karte im String
-# s: z.B. "R6"
-# todo UnitTest hinzufügen
 def validate_card(s: str) -> bool:
-   return s in _card_labels
+    """
+    Validiert die Karte im String.
+
+    :param s: z.B. "R6"
+    :return: True, wenn die Karte valide ist, sonst False.
+    """
+    return s in _card_labels
 
 
-# Validiert die Karten im String
-# s: z.B. "R6 B5 G4"
-# todo UnitTest hinzufügen
 def validate_cards(s: str) -> bool:
+    """
+    Validiert die Karten im String.
+
+    :param s: z.B. "R6 B5 G4"
+    :return: True, wenn alle Karten validiert sind, sonst False.
+    """
     return all(c in _card_labels for c in s.split(" ")) if s else True
 
 
-# todo UnitTest hinzufügen
 def parse_card(label: str) -> Card:
    """
    Parst die Karte aus dem String.
@@ -140,7 +148,6 @@ def parse_cards(labels: str) -> Cards:
     return [deck[_card_labels.index(label)] for label in labels.split(" ")] if labels else []
 
 
-# todo UnitTest hinzufügen
 def stringify_card(card: Card) -> str:
     """
     Formatiert die Karte als lesbaren String.
@@ -151,8 +158,6 @@ def stringify_card(card: Card) -> str:
     return _card_labels[deck.index(card)]
 
 
-# Formatiert Karten als lesbaren String
-# cards: Karten, z.B. [(8,3),(2,4),(0,1)]
 def stringify_cards(cards: Iterable[Card]) -> str:
     """
     Formatiert die Karte als lesbaren String.
@@ -163,11 +168,16 @@ def stringify_cards(cards: Iterable[Card]) -> str:
     return " ".join([_card_labels[deck.index(card)] for card in cards])
 
 
-# Zählt die Anzahl der Karten je Rang.
-#
-# Zurückgegeben wird eine Liste mit 17 Integer, wobei der Index dem Rang entspricht und
-# der Wert die Anzahl der Karten mit diesem Rang.
 def ranks_to_vector(cards: Cards) -> list[int]:
+    """
+    Zählt die Anzahl der Karten je Rang.
+
+    Zurückgegeben wird eine Liste mit 17 Integer, wobei der Index dem Rang entspricht und
+    der Wert die Anzahl der Karten mit diesem Rang.
+
+    :param cards: Die Karten, die gezählt werden sollen.
+    :return: Liste mit der Anzahl der Karten je Rang.
+    """
     # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
     # i= 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
     h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -176,14 +186,22 @@ def ranks_to_vector(cards: Cards) -> list[int]:
     return h
 
 
-# Wandelt die Karten in einen Vektor um
 def cards_to_vector(cards: Cards) -> list[int]:
-    # r=Hu Ma  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As  2  3  4  5  6  7  8  9 10 Bu Da Kö As Dr Ph
+    """
+    Wandelt die Karten in einen Vektor um.
+
+    Zurückgegeben wird eine Liste mit 56 Integer, wobei der Index auf die Karte im sortierten Deck zeigt
+    und der Wert angibt, ob die Karte vorhanden ist oder nicht (0 = Karte nicht vorhanden, 1 = Karte vorhanden).
+
+    :param cards: Die Karten, die als Vektor dargestellt werden sollen.
+    :return: Liste mit 56 Integer.
+    """
+    # r=Hu Ma  2  2  2  2  3  3  3  3  4  4  4  4  5  5  5  5  6  6  6  6  7  7  7  7  8  8  8  8  9  9  9  9 10 10 10 10 Bu Bu Bu Bu Da Da Da Da Kö Kö Kö Kö As As As As Dr Ph
     # i= 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55
     h = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     for r, c in cards:
         if c > 0:
-            h[r + 13 * (c - 1)] = 1
+            h[(r - 2) * 4 + c + 1] = 1
         else:
             h[r if r < 2 else r + 39] = 1
     return h

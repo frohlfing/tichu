@@ -3,7 +3,6 @@ Dieses Modul definiert die Logik zur Erkennung und Verarbeitung von Kartenkombin
 """
 
 __all__ = "CombinationType", "Combination",  \
-    "FIGURE_PASS", "FIGURE_DOG", "FIGURE_MAH", "FIGURE_DRA", "FIGURE_PHO", \
     "validate_combination", "stringify_combination", "stringify_type", "get_combination", \
     "build_combinations", "remove_combinations", \
     "build_action_space",
@@ -16,7 +15,7 @@ from typing import Tuple, List
 # Kartenkombinationen
 # -----------------------------------------------------------------------------
 
-class CombinationType(enum.IntEnum):  # todo überall konsequent verwenden
+class CombinationType(enum.IntEnum):
     """
     Enum für Kombinationstypen.
     """
@@ -30,18 +29,10 @@ class CombinationType(enum.IntEnum):  # todo überall konsequent verwenden
     BOMB = 7  # Vierer-Bombe oder Farbbombe
 
 
-Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)  # todo überall konsequent verwenden
+Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)
 """
 Type-Alias für eine Kombination.
 """
-
-
-# Sonderkarten einzeln ausgespielt  # todo entfernen
-FIGURE_PASS = (CombinationType.PASS, 0, 0)
-FIGURE_DOG = (CombinationType.SINGLE, 1, 0)
-FIGURE_MAH = (CombinationType.SINGLE, 1, 1)
-FIGURE_DRA = (CombinationType.SINGLE, 1, 15)
-FIGURE_PHO = (CombinationType.SINGLE, 1, 16)
 
 
 def validate_combination(combination: Tuple[int, int, int]) -> bool:
@@ -115,7 +106,7 @@ def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False)
     """
     n = len(cards)
     if n == 0:
-        return FIGURE_PASS
+        return CombinationType.PASS, 0, 0
 
     # Karten absteigend sortieren
     cards.sort(reverse=True)  # Der Phönix ist jetzt, falls vorhanden, die erste Karte von rechts!
@@ -363,27 +354,27 @@ def remove_combinations(combis: List[Tuple[Cards, Combination]], cards: Cards):
     return [combi for combi in combis if not set(cards).intersection(combi[0])]
 
 
-def build_action_space(combis: List[Tuple[Cards, Combination]], trick_combination: tuple, unfulfilled_wish: int) -> List[Tuple[Cards, Combination]]:  # todo unfulfilled_wish umbenennen in wish_value
+def build_action_space(combis: List[Tuple[Cards, Combination]], trick_combination: tuple, wish_value: int) -> List[Tuple[Cards, Combination]]:
     """
     Ermittelt spielbare Kartenkombinationen.
     
     :param combis: Kombinationsmöglichkeiten der Hand, ([(Karten, (Typ, Länge, Rang)), ...]).
     :param trick_combination: Typ, Länge, Rang des aktuellen Stichs ((0,0,0) falls kein Stich liegt).
-    :param unfulfilled_wish: Unerfüllter Wunsch (0 == kein Wunsch geäußert, negativ == bereits erfüllt).
+    :param wish_value: Wunsch (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt).
     :return: ([], (0,0,0)) für Passen sofern möglich + spielbare Kombinationsmöglichkeiten.
     """
     assert 0 <= trick_combination[0] <= 7
     assert 0 <= trick_combination[1] <= 14
     assert 0 <= trick_combination[2] <= 15
     result = []
-    if trick_combination not in (FIGURE_PASS, FIGURE_DOG):  # trickCombination[2] > 0  # Rang > 0?
+    if trick_combination not in ((CombinationType.PASS, 0, 0), (CombinationType.SINGLE, 1, 0)):  # trickCombination[2] > 0  # Rang > 0?
         # Stich liegt und es ist kein Hund
         result.append(([], (CombinationType.PASS, 0, 0)))  # Passen ist eine Option
         t, n, v = trick_combination
         for combi in combis:
             t2, n2, v2 = combi[1]
-            if combi[1] == FIGURE_PHO:  # Phönix als Einzelkarte
-                if trick_combination == FIGURE_DRA:
+            if combi[1] == (CombinationType.SINGLE, 1, 16):  # Phönix als Einzelkarte
+                if trick_combination == (CombinationType.SINGLE, 1, 15):
                     continue  # Phönix auf Drache ist nicht erlaubt
                 v2 = v + 0.5 if v > 0 else 1.5
             if (t == CombinationType.BOMB and t2 == t and (n2 > n or (n2 == n and v2 > v))) or \
@@ -395,11 +386,11 @@ def build_action_space(combis: List[Tuple[Cards, Combination]], trick_combinatio
         result = combis
 
     # Falls ein Wunsch offen ist, muss der Spieler diesen erfüllen, wenn er kann.
-    if unfulfilled_wish > 0:
-        assert 2 <= unfulfilled_wish <= 14
+    if wish_value > 0:
+        assert 2 <= wish_value <= 14
         mandatory = []
         for combi in result:
-            if is_wish_in(unfulfilled_wish, combi[0]):
+            if is_wish_in(wish_value, combi[0]):
                 mandatory.append(combi)
         if mandatory:
             # Der Spieler kann und muss den Wunsch erfüllen.

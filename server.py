@@ -215,7 +215,7 @@ async def main(args: argparse.Namespace):
         logger.debug(f"Web-App verfügbar unter http://{args.host}:{args.port}/index.html")
         logger.debug(f"WebSocket verfügbar unter ws://{args.host}:{args.port}/ws/")
         await asyncio.Event().wait()  # hält den Haupt-Task am Laufen, bis ein Ereignis (z.B. CancelledError durch shutdown) eintritt
-    except asyncio.CancelledError:  # wird ausgelöst, wenn shutdown() die Tasks abbricht.
+    except asyncio.CancelledError:  # wird ausgelöst, wenn shutdown() die Tasks abbricht
         logger.debug("Haupt-Task abgebrochen, beginne Shutdown-Sequenz.")
     finally:
         logger.debug("Fahre Server herunter...")
@@ -229,7 +229,7 @@ def shutdown(*_args):
     """
     Bricht laufende asyncio-Tasks ab und löst dadurch ein `CancelledError` aus.
 
-    Diese Funktion wird durch die Signal-Handler (SIGINT/SIGTERM) aufgerufen.
+    Diese Funktion wird durch die Signal-Händler (SIGINT/SIGTERM) aufgerufen.
     """
     logger.info("Shutdown-Signal empfangen.")
     # alle laufenden Tasks außer dem aktuellen Task (dem shutdown-Handler) abbrechen

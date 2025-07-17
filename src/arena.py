@@ -32,7 +32,7 @@ async def _create_engine_and_run(table_name: str, agents: list[Agent], seed: Opt
 
 class Arena:
     """
-    Repräsentiert die Arena, in denen Agenten gegeneinander antreten können.
+    Repräsentiert die Arena, in der Agenten gegeneinander antreten können.
     """
 
     def __init__(self, agents: list[Agent], max_games: int, verbose: bool = False,

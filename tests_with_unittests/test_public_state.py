@@ -25,9 +25,9 @@ class TestPublicState(unittest.TestCase):
 
         # passen
         self.pub.current_turn_index = 2
-        self.pub.play(([], FIGURE_PASS))
+        self.pub.play(([], (CombinationType.PASS, 0, 0)))
         self.assertEqual([3, 2, 1, 0], self.pub.count_hand_cards)
-        self.assertEqual([(2, ([], FIGURE_PASS))], self.pub.tricks)
+        self.assertEqual([(2, ([], (CombinationType.PASS, 0, 0)))], self.pub.tricks)
 
         # Karten legen
         self.pub.current_turn_index = 0
@@ -37,19 +37,19 @@ class TestPublicState(unittest.TestCase):
         self.assertEqual(played_cards, self.pub.played_cards)
         self.assertEqual([2, 2, 1, 0], self.pub.count_hand_cards)
         self.assertEqual(-13, self.pub.wish_value)
-        self.assertEqual([(2, ([], FIGURE_PASS)), (0, combi1)], self.pub.tricks)
+        self.assertEqual([(2, ([], (CombinationType.PASS, 0, 0))), (0, combi1)], self.pub.tricks)
         self.assertEqual(0, self.pub.trick_owner_index)
         self.assertEqual(combi1[1], self.pub.trick_combination)
         self.assertEqual(10, self.pub.trick_points)
 
         # Phönix als Einzelkarte ausspielen
         self.pub.current_turn_index = 1
-        combi2 = parse_cards("Ph"), FIGURE_PHO
+        combi2 = parse_cards("Ph"), (CombinationType.SINGLE, 1, 16)
         self.pub.play(combi2)
         played_cards.append((16, 0))
         self.assertEqual(played_cards, self.pub.played_cards)
         self.assertEqual([2, 1, 1, 0], self.pub.count_hand_cards)
-        self.assertEqual([(2, ([], FIGURE_PASS)), (0, combi1), (1, combi2)], self.pub.tricks)
+        self.assertEqual([(2, ([], (CombinationType.PASS, 0, 0))), (0, combi1), (1, combi2)], self.pub.tricks)
         self.assertEqual(1, self.pub.trick_owner_index)
         self.assertEqual(combi1[1], self.pub.trick_combination)
         self.assertEqual(-15, self.pub.trick_points)
@@ -65,8 +65,8 @@ class TestPublicState(unittest.TestCase):
 
         # 1. Spieler wird fertig
         self.pub.current_turn_index = 3
-        self.pub.play((parse_cards("Ph"), FIGURE_PHO))
-        self.assertEqual(FIGURE_MAH, self.pub.trick_combination)  # Anspiel mit Phönix == Anspiel mit Mahjong
+        self.pub.play((parse_cards("Ph"), (CombinationType.SINGLE, 1, 16)))
+        self.assertEqual((CombinationType.SINGLE, 1, 1), self.pub.trick_combination)  # Anspiel mit Phönix == Anspiel mit Mahjong
         self.assertEqual(-25, self.pub.trick_points)
         self.assertEqual([1, 1, 1, 0], self.pub.count_hand_cards)
         self.assertEqual(3, self.pub.count_active_players)
@@ -138,7 +138,7 @@ class TestPublicState(unittest.TestCase):
     def test_clear_trick_gift(self):
         self.pub.current_turn_index = 0
         self.pub.trick_owner_index = 0
-        self.pub.trick_combination = FIGURE_DRA
+        self.pub.trick_combination = (CombinationType.SINGLE, 1, 15)
         self.pub._trick_counter = 5
         self.pub.is_round_over = False
         self.pub.is_double_victory = False
@@ -195,7 +195,7 @@ class TestPublicState(unittest.TestCase):
 
     def test_step(self):
         # Hund liegt
-        self.pub.trick_combination = FIGURE_DOG
+        self.pub.trick_combination = (CombinationType.SINGLE, 1, 0)
         self.pub.trick_owner_index = 0
         self.pub.current_turn_index = 0
         self.pub.turn()
@@ -206,7 +206,7 @@ class TestPublicState(unittest.TestCase):
         self.assertEqual(1, self.pub.current_turn_index)
 
         # kein Hund
-        self.pub.trick_combination = FIGURE_PASS
+        self.pub.trick_combination = (CombinationType.PASS, 0, 0)
         self.pub.current_turn_index = 0
         self.pub.turn()
         self.assertEqual(1, self.pub.current_turn_index)

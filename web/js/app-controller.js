@@ -292,7 +292,7 @@ const AppController = (() => {
                 State.setTrickPoints(context.trick_points);
                 State.setWinnerIndex(context.winner_index);
                 break;
-            case "wish_made": // Ein Kartenwert wurde sich gewünscht.
+            case "wish_made": // Ein Kartenwert wurde gewünscht.
                 State.setWishValue(context.wish_value);
                 if (State.isCurrentPlayer()) {
                     _removeRequest();
@@ -473,7 +473,7 @@ const AppController = (() => {
     }
 
     /**
-     * Wird aufgerufen, wenn der Benutzer die Punktetabelle schließt und ein damit die Partie abgeschlossen ist.
+     * Wird aufgerufen, wenn der Benutzer die Punktetabelle schließt und damit die Partie abgeschlossen ist.
      */
     function _handleTableViewGameOver() {
         _renderView();

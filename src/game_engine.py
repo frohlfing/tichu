@@ -3,12 +3,13 @@ Definiert die Spiellogik.
 """
 
 import asyncio
-from aiohttp.web_ws import WebSocketResponse
 import config
+from aiohttp.web_ws import WebSocketResponse
+from copy import copy
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH, Cards, CardSuit, stringify_cards
-from src.lib.combinations import CombinationType, FIGURE_DRA, FIGURE_DOG, FIGURE_PASS, FIGURE_PHO, FIGURE_MAH, Combination
+from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH, Cards, stringify_cards
+from src.lib.combinations import CombinationType, Combination
 from src.lib.errors import ErrorCode, PlayerInterruptError
 from src.players.agent import Agent
 from src.players.peer import Peer
@@ -52,7 +53,7 @@ class GameEngine:
             self._default_agents: List[Agent] = [RandomAgent(name=f"RandomAgent_{i + 1}") for i in range(4)]
 
         # aktuelle Spielerliste
-        self._players: List[Player] = list(self._default_agents)  # die Liste ist eine Kopie, die Einträge nicht! #todo ist vermutlich ein Problem, wenn die Spieler vertauscht werden
+        self._players: List[Player] = list(self._default_agents)  # die Liste ist eine Kopie, die Einträge nicht!
 
         # aktueller Spielzustand
         self._public_state = PublicState(
@@ -81,7 +82,7 @@ class GameEngine:
         for i, agent in enumerate(self._default_agents):
             agent.pub = self._public_state
             agent.priv = self._private_states[i]
-            agent.interrupt_event = self.interrupt_event  # Todo Test für diese Zuweisung hinzufügen
+            agent.interrupt_event = self.interrupt_event
 
         logger.info(f"[{self.table_name}] Initialisiert.")
 
@@ -150,9 +151,9 @@ class GameEngine:
         if self._public_state.host_index == -1:
             self._public_state.host_index = available_index
         self._public_state.player_names[available_index] = peer.name
-        peer.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        peer.priv = self._private_states[available_index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen  todo unittest für dies Zuweisung
-        peer.interrupt_event = self.interrupt_event   # # todo unittest für dies Zuweisung
+        peer.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen
+        peer.priv = self._private_states[available_index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen
+        peer.interrupt_event = self.interrupt_event
 
         await self._broadcast("player_joined", {"player_index": available_index, "player_name": peer.name})
         return True
@@ -242,8 +243,7 @@ class GameEngine:
             logger.warning(f"[{self.table_name}] Vertauschen der Spieler nicht möglich. Die Partie läuft bereits.")
             return False
 
-        # todo UnitTest schreiben (mit pytest)
-        self._players[index1], self._players[index2] = self._players[index2], self._players[index1]
+        self._players[index1], self._players[index2] = copy(self._players[index2]), copy(self._players[index1])
         self._players[index1].priv = self._private_states[index1]
         self._players[index2].priv = self._private_states[index2]
         # Da der Spielzustand bei Spielstart zurückgesetzt wird, müssen die Felder pub.count_hand_cards, pub.announcements und pub.points nicht gedreht werden.
@@ -319,47 +319,15 @@ class GameEngine:
 
                 # Karten mischen
                 self._random.shuffle(self._mixed_deck)
-                self._mixed_deck = [(card[0], CardSuit(card[1])) for card in [
-                    (2, 1), (2, 2), (2, 3), (2, 4), (5, 2), (15, 0), (3, 4), (6, 4), (3, 1), (14, 4), (8, 1), (7, 1),  (7, 3), (3, 3),
-                    (10, 2), (11, 3), (6, 1), (11, 4), (9, 1), (13, 1), (3, 2), (6, 3), (9, 2), (12, 4), (12, 2), (4, 3), (5, 1), (4, 2),
-                    (0, 0), (13, 3), (1, 0), (9, 4), (5, 4), (10, 3), (8, 3), (10, 1), (14, 1), (9, 3), (7, 4), (8, 2), (13, 4), (10, 4),
-                    (12, 3), (4, 4), (11, 1), (5, 3), (6, 2), (12, 1), (13, 2), (4, 1), (7, 2), (14, 3), (14, 2), (11, 2), (8, 4), (16, 0),
-                ]]
+                # self._mixed_deck = [(card[0], CardSuit(card[1])) for card in [
+                #     (2, 1), (2, 2), (2, 3), (2, 4), (5, 2), (15, 0), (3, 4), (6, 4), (3, 1), (14, 4), (8, 1), (7, 1),  (7, 3), (3, 3),
+                #     (10, 2), (11, 3), (6, 1), (11, 4), (9, 1), (13, 1), (3, 2), (6, 3), (9, 2), (12, 4), (12, 2), (4, 3), (5, 1), (4, 2),
+                #     (0, 0), (13, 3), (1, 0), (9, 4), (5, 4), (10, 3), (8, 3), (10, 1), (14, 1), (9, 3), (7, 4), (8, 2), (13, 4), (10, 4),
+                #     (12, 3), (4, 4), (11, 1), (5, 3), (6, 2), (12, 1), (13, 2), (4, 1), (7, 2), (14, 3), (14, 2), (11, 2), (8, 4), (16, 0),
+                # ]]
 
-                # Karten verteilen
-                if clients_joined:
-                    # Alle Spieler erhalten gleichzeitig die ersten 8 Karten. Sobald sie ein großes Tichu angesagt oder abgelehnt haben, erhalten sie die restlichen Karten und können Tauschkarten abgeben.
-                    await asyncio.gather(*[self._deal_out(player_index, clients_joined) for player_index in range(4)])
-                else:
-                    # Alte Version: Alles der Reihe nach (8 Karten verteilen, Frage nach Tichu, restliche Karten verteilen, Tauschkarten abgeben)
-                    # todo Fallunterscheidung zeitlich relevant?
-
-                    # Karten aufnehmen, erst 8 dann alle
-                    first = self._random.integer(0, 4)  # zufällige eine Zahl zwischen 0 und 3
-                    for n in (8, 14):
-                        # Karten verteilen (deal out)
-                        for player_index in range(4):
-                            offset = player_index * 14
-                            privs[player_index].hand_cards = self._mixed_deck[offset:offset + n]
-                            pub.count_hand_cards[player_index] = n
-                        # möchte ein Spieler ein Tichu ansagen?
-                        for i in range(4):
-                            player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
-                            if not pub.announcements[player_index]: # and not pub.announcements[(player_index + 2) % 4]:  # Zusatzregel Doku 2.3: Wenn der Partner schon ein Tichu angesagt hat, kann der Spieler kein Tichu mehr ansagen
-                                grand = n == 8  # großes Tichu?
-                                announced = await self._players[player_index].announce_grand_tichu() if grand else await self._players[player_index].announce_tichu()
-                                if announced:
-                                    pub.announcements[player_index] = 2 if grand else 1
-
-                    # jetzt müssen die Spieler schupfen (Tauschkarten abgeben)
-                    for player_index in range(4):  # Geber
-                        priv = privs[player_index]
-                        assert len(priv.hand_cards) == 14
-                        priv.given_schupf_cards = await self._players[player_index].schupf()
-                        assert len(priv.given_schupf_cards) == 3
-                        priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
-                        assert len(priv.hand_cards) == 11
-                        pub.count_hand_cards[player_index] = 11
+                # Alle Spieler erhalten gleichzeitig die ersten 8 Karten. Sobald sie ein großes Tichu angesagt oder abgelehnt haben, erhalten sie die restlichen Karten und können Tauschkarten abgeben.
+                await asyncio.gather(*[self._deal_out(player_index, clients_joined) for player_index in range(4)])
 
                 for player_index in range(4):
                     logger.debug(f"[{self.table_name}] Handkarten Spieler {player_index}: {stringify_cards(privs[player_index].hand_cards)}")
@@ -426,7 +394,7 @@ class GameEngine:
                     assert len(privs[pub.current_turn_index].hand_cards) == pub.count_hand_cards[pub.current_turn_index]
 
                     # Falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen.
-                    if not bomb and pub.trick_owner_index == pub.current_turn_index and pub.trick_combination != FIGURE_DOG:  # der Hund bleibt liegen
+                    if not bomb and pub.trick_owner_index == pub.current_turn_index and pub.trick_combination != (CombinationType.SINGLE, 1, 0):  # der Hund bleibt liegen
                         await self._take_trick(clients_joined)
 
                     # Hat der Spieler noch Karten?
@@ -468,14 +436,14 @@ class GameEngine:
                         assert pub.current_turn_index == self._players[pub.current_turn_index].priv.player_index
                         assert pub.current_turn_index == privs[pub.current_turn_index].player_index
                         if pub.trick_owner_index == -1:  # neuer Stich?
-                            assert combination != FIGURE_PASS  # beim Anspiel darf nicht gepasst werden, der erste Eintrag im Stich sind also Karten
+                            assert combination[0] != CombinationType.PASS  # beim Anspiel darf nicht gepasst werden, der erste Eintrag im Stich sind also Karten
                             pub.tricks.append([(pub.current_turn_index, cards, combination)])
                         else:
                             assert len(pub.tricks) > 0
                             pub.tricks[-1].append((pub.current_turn_index, cards, combination))
 
                         # Kombination ausspielen, falls nicht gepasst wurde
-                        if combination != FIGURE_PASS:
+                        if combination[0] != CombinationType.PASS:
                             # Handkarten aktualisieren
                             assert pub.count_hand_cards[pub.current_turn_index] == len(privs[pub.current_turn_index].hand_cards)
                             privs[pub.current_turn_index].hand_cards = [card for card in privs[pub.current_turn_index].hand_cards if card not in cards]
@@ -486,12 +454,12 @@ class GameEngine:
                             # Stich aktualisieren
                             pub.trick_owner_index = pub.current_turn_index
                             pub.trick_cards = cards
-                            if combination == FIGURE_PHO:
-                                assert pub.trick_combination == FIGURE_PASS or pub.trick_combination[0] == CombinationType.SINGLE
-                                assert pub.trick_combination != FIGURE_DRA  # Phönix auf Drachen geht nicht
+                            if combination == (CombinationType.SINGLE, 1, 16):
+                                assert pub.trick_combination[0] == CombinationType.PASS or pub.trick_combination[0] == CombinationType.SINGLE
+                                assert pub.trick_combination != (CombinationType.SINGLE, 1, 15)  # Phönix auf Drachen geht nicht
                                 # Der Phönix ist eigentlich um 0.5 größer als der Stich, aber gleichsetzen geht auch (Anspiel == 1).
                                 if pub.trick_combination[2] == 0:  # Anspiel oder Hund?
-                                    pub.trick_combination = FIGURE_MAH
+                                    pub.trick_combination = (CombinationType.SINGLE, 1, 1)
                             else:
                                 pub.trick_combination = combination
                             pub.trick_points += sum_card_points(cards)
@@ -559,7 +527,7 @@ class GameEngine:
                     # Nächster Spieler ist an der Reihe
                     assert not pub.is_round_over
                     assert 0 <= pub.current_turn_index <= 3
-                    if pub.trick_combination == FIGURE_DOG and pub.trick_owner_index == pub.current_turn_index:
+                    if pub.trick_combination == (CombinationType.SINGLE, 1, 0) and pub.trick_owner_index == pub.current_turn_index:
                         pub.current_turn_index = (pub.current_turn_index + 2) % 4
                     else:
                         pub.current_turn_index = (pub.current_turn_index + 1) % 4
@@ -753,9 +721,9 @@ class GameEngine:
         :param clients_joined: True, wenn Clients im Spiel sind.
         """
         pub = self._public_state
-        assert pub.trick_combination != FIGURE_PASS
+        assert pub.trick_combination[0] != CombinationType.PASS
         assert pub.trick_owner_index == pub.current_turn_index
-        if pub.trick_combination == FIGURE_DRA and not pub.is_double_victory:  # Drache kassiert? Muss verschenkt werden, wenn kein Doppelsieg!
+        if pub.trick_combination == (CombinationType.SINGLE, 1, 15) and not pub.is_double_victory:  # Drache kassiert? Muss verschenkt werden, wenn kein Doppelsieg!
             # Stich verschenken
             recipient = await self._players[pub.current_turn_index].give_dragon_away()
             assert recipient in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2))

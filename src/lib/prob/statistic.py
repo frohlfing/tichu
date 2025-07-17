@@ -5,13 +5,18 @@ Kombination anspielen bzw. überstechen können.
 
 __all__ = "calc_statistic"
 
+import math
 from src.lib.cards import CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO, Cards
-from src.lib.combinations import FIGURE_DOG, FIGURE_DRA, FIGURE_PHO, CombinationType, Combination
+from src.lib.combinations import CombinationType, Combination
+from src.lib.partitions import Partition
 from typing import List, Tuple, Dict, Optional
 
 
-# todo dies ist noch die unveränderte (und nicht korrekte) Vorgänger-Version
+# todo Die Funktionen in diesem Modul müssen nochmal durchdacht und die neuen prob-Funktionen angewendet werden.
 
+
+# Dies ist noch die unveränderte (und nicht korrekte) Vorgänger-Version.
+#
 # Wahrscheinlichkeit berechnen, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können
 # Für jede eigene Kombination liefert die Funktion folgende Werte:
 # lo_opp: Wahrscheinlichkeit, das der Gegner eine Kombination hat, die ich stechen kann und somit das Anspiel gewinne
@@ -152,7 +157,7 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
                     counter += int(counter_without_phoenix / d[CombinationType.SINGLE][1][v - i])
             d[CombinationType.STREET][n][v] = counter
 
-    # Wir wissen nun die Anzahl Kombinationen, die mit allen Handkarten der anderen Spieler zusammen gebildet
+    # Wir wissen nun die Anzahl der Kombinationen, die mit allen Handkarten der anderen Spieler zusammen gebildet
     # werden können. Als Nächstes berechnen wir die statistische Häufigkeit der Kombinationen auf der Hand der
     # einzelnen Mitspieler.
 
@@ -171,7 +176,7 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
             if i == player:
                 p[i] = None  # die Wahrscheinlichkeiten für die eigenen Handkarten werden nicht benötigt
                 continue
-            h = number_of_cards[i]  # Anzahl Handkarten des Mitspielers i
+            h = number_of_cards[i]  # Anzahl der Handkarten des Mitspielers i
             p[i][1] = h / sum_c  # Wahrscheinlichkeit, dass der Spieler i eine bestimmte Einzelkarte hat
             for j in range(1, min(sum_c, 14)):
                 # nachdem eine Karte gezogen wurde, gibt es noch h - 1 Handkarten und sum_c - 1 ungespielte Karten
@@ -198,7 +203,7 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
             # Anzahl Kombis der Mitspieler insgesamt, die hier betrachtet werden (das sind alle Kombis bis auf Hund)
             sum_combis = \
                 sum([sum(d[k][m]) for k in range(1, 7) for m in range(1, len(d[k])) if d[k][m] is not None]) \
-                + (0 if combination == FIGURE_DOG else sum_bombs)
+                + (0 if combination == (CombinationType.SINGLE, 1, 0) else sum_bombs)
 
             # lo = normale Kombis + kürzere Bomben + niederwertige Bomben gleicher Länge
             lo_opp = \
@@ -224,30 +229,30 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
 
         else:  # keine Bombe
             # Anzahl Kombis der Mitspieler, die betrachtet werden (Kombis gleicher Länge (aber kein Hund) plus Bomben)
-            sum_combis = sum(d[t][n][1:]) + (0 if combination == FIGURE_DOG else sum_bombs)
+            sum_combis = sum(d[t][n][1:]) + (0 if combination == (CombinationType.SINGLE, 1, 0) else sum_bombs)
 
             # niederwertige Kombis (ohne Hund) - wie viele Kombinationen gibt es, die ich mit combi stechen kann?
             a = 1
-            b = 15 if combination == FIGURE_PHO else v
-            w = sum(d[t][n][a:b]) + (d[t][n][16] if combination == FIGURE_DRA else 0)  # Anzahl niederwertiger Kombinationen
+            b = 15 if combination == (CombinationType.SINGLE, 1, 16) else v
+            w = sum(d[t][n][a:b]) + (d[t][n][16] if combination == (CombinationType.SINGLE, 1, 15) else 0)  # Anzahl niederwertiger Kombinationen
             lo_opp = (p[opp_right][n] + p[opp_left][n]) * w
             lo_par = p[partner][n] * w
 
             # höherwertige Kombis
-            a = trick_combination[2] + 1 if combination == FIGURE_PHO else v + 1
+            a = trick_combination[2] + 1 if combination == (CombinationType.SINGLE, 1, 16) else v + 1
             b = 16
-            w = sum(d[t][n][a:b]) + (d[t][n][16] if t == CombinationType.SINGLE and combination != FIGURE_DRA else 0)  # höherwertige (ohne Bomben)
-            hi_opp = (p[opp_right][n] + p[opp_left][n]) * w + (0 if combination == FIGURE_DOG else p_bomb_opp)
-            hi_par = p[partner][n] * w + (0 if combination == FIGURE_DOG else p_bomb_par)
+            w = sum(d[t][n][a:b]) + (d[t][n][16] if t == CombinationType.SINGLE and combination != (CombinationType.SINGLE, 1, 15) else 0)  # höherwertige (ohne Bomben)
+            hi_opp = (p[opp_right][n] + p[opp_left][n]) * w + (0 if combination == (CombinationType.SINGLE, 1, 0) else p_bomb_opp)
+            hi_par = p[partner][n] * w + (0 if combination == (CombinationType.SINGLE, 1, 0) else p_bomb_par)
 
             # gleichwertige Kombis
-            w = d[t][n][v]  # Anzahl gleichwertige Kombinationen
+            w = d[t][n][v]  # Anzahl gleichwertiger Kombinationen
             eq_opp = (p[opp_right][n] + p[opp_left][n]) * w
             eq_par = p[partner][n] * w
 
         # Beim Phönix wurden die spielbaren Kombinationen (außer Drache) doppelt gerechnet. Das liegt daran, dass der
         # Wert vom ausgelegten Stich abhängt.
-        w = sum_combis + (sum(d[t][n][(trick_combination[2] + 1):15]) if combination == FIGURE_PHO else 0)
+        w = sum_combis + (sum(d[t][n][(trick_combination[2] + 1):15]) if combination == (CombinationType.SINGLE, 1, 16) else 0)
         if w:
             # normalisieren
             lo_opp /= w
@@ -256,7 +261,7 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
             hi_par /= w
             eq_opp /= w
             eq_par /= w
-            # if combination == FIGURE_PHO:
+            # if combination == (CombinationType.SINGLE, 1, 16):
             #     assert eq_opp == 0
             #     assert eq_par == 0
             #     w = lo_opp + lo_par + hi_opp + hi_par
@@ -275,14 +280,14 @@ def calc_statistic(player: int, hand: Cards, combis: List[Tuple[Cards, Combinati
     return statistic
 
 
-# todo dies wird neue Version, die die Wahrscheinlichkeitsberechnung korrekt durchführt (unter der Verwendung der Hilfstabelle)
-
+# Dies wird die neue Version, die die Wahrscheinlichkeitsberechnung korrekt durchführt (unter der Verwendung der Hilfstabelle).
+#
 # p_lo # Wahrscheinlichkeit, dass die Kombination angespielt wird.
 # p_hi # Wahrscheinlichkeit, dass die Kombination überstochen wird.
 # p_an = 1 - p_hi # Wahrscheinlichkeit, mit der Kombination das Anspielrecht zu erhalten.
 # v_ausspielen = (1 - p_lo) * p_an # Bewertung der Kombination, die ausgespielt wird.
 # v_bleibt = p_lo * p_an # Bewertung der Kombination, die auf der Hand bleibt.
-
+#
 # Berechnet die Wahrscheinlichkeit, dass die Mitspieler eine bestimmte Kombination anspielen bzw. überstechen können
 #
 # Für jede eigene Kombination liefert die Funktion folgende Werte:
@@ -321,7 +326,81 @@ def calc_statistic2(player: int, hand: Cards, combis: List[Tuple[Cards, Combinat
         _t, _n, _v = combination
         p_lo = 0.0
         p_hi = 0.0
-        # todo
+
+        # BAUSTELLE
+
         statistic[tuple(cards)] = p_lo, p_hi
 
     return statistic
+
+
+def partition_quality(partition: Partition, action_space: List[Tuple[Cards, Combination]], statistic: dict) -> float:
+    """
+    Schätzt, die Güte der gegebenen Partition.
+
+    Die Güte ist ein Maß für die Qualität der Partition. Je häufiger wir das Anspielrecht erhalten, desto größer ist
+    der Wert. Je häufiger wir das Anspielrecht verlieren, desto kleiner ist der Wert. Kombinationen, mit denen wir
+    statistisch gesehen weder das Anspielrecht gewinnen noch verlieren, beeinflussen die Güte nicht.
+    Ein Wert von -1 bedeutet, dass man immer verliert (der Letzte ist).
+    Ein Wert von 1 würde heißen, dass man immer gewinnt (als erstes fertig wird).
+    Der Wert 0 heißt, dass man im Durchschnitt genauso häufig verliert, wie man gewinnt.
+
+    --- Neue Beschreibung: ---
+
+    p_lo: Wahrscheinlichkeit, dass ein Mitspieler die Kombination (mit niederem Rang) anspielen kann (Bespielbarkeit).
+    p_hi: Wahrscheinlichkeit, dass ein Mitspieler die Kombination überstechen kann.
+    p_pw = 1 - p_hi # Wahrscheinlichkeit, mit der Kombination das Anspielrecht zu erhalten (Schlagkraft)
+    q_combi = p_lo * p_pw # Güte der Kombinationen = Bespielbarkeit * Schlagkraft
+
+    Für die Kombinationen, die jetzt ausgespielt werden können und sollen, ist p_lo = 1 (sie ist definitiv bespielbar).
+    q_first_combi = p_pw
+
+    Für die letzte Kombination ist p_hi = 0 (kann nicht überstochen werden) und somit p_pw = 1
+    q_last_combi = p_lo
+
+    Die Güte der Hand ist die Summe aller Kombinationen, wobei die erste und letzte Kombination so gewählt ist, dass der Wert maximiert wird.
+    q_hand = q_first_combi + sum(q_middle_combi) + q_last_combi
+
+    :param partition: Die Partition.
+    :param action_space: Die spielbaren Aktionen (leer, wenn die Partition jetzt nicht gespielt werden darf).
+    :param statistic: Ergebnis von calc_statistic()
+    :return: Güte im Wertebereich [-1, 1]
+    """
+    assert partition
+    total_lo = total_hi = 0.
+    lo_playing_now = math.inf
+    hi_last_combi = -math.inf
+    n_lo = n_hi = len(partition)
+    assert n_lo > 0
+    for combi in partition:
+        assert tuple(combi[0]) in statistic, ("Fehler in der Statistik", combi[0], statistic)
+        lo_opp, lo_par, hi_opp, hi_par, eq_opp, eq_par = statistic[tuple(combi[0])]
+        lo = lo_opp + lo_par
+        hi = hi_opp + hi_par
+        total_lo += lo
+        total_hi += hi
+        if lo_playing_now > lo and combi in action_space:
+            lo_playing_now = lo
+        #     if n_hi == 1:
+        #         hi_last_combi = hi
+        # elif hi_last_combi < hi:
+        if hi_last_combi < hi:
+            hi_last_combi = hi
+
+    # Falls wir dran sind, kann der kleinste Lo-Wert wieder abgezogen werden, da wir mit dieser Kombi jetzt spielen.
+    if lo_playing_now < math.inf:
+        total_lo -= lo_playing_now
+        n_lo -= 1
+
+    # Bei der letzten Kombination, die wir ausspielen werden, ist es egal, ob die Kombination durch den Mitspieler
+    # überstochen werden kann. Wir können also den höchsten Hi-Wert auf 0 setzen und somit ignorieren.
+    assert hi_last_combi > -math.inf
+    total_hi -= hi_last_combi
+    n_hi -= 1
+
+    # normalisieren
+    # Randbedingungen:
+    # - Falls n_lo gleich 0 ist, ist n_hi auch 0, denn wir sind wir dran und spielen die letzte Kombi. q ist in diesem Fall 1.
+    # - Falls nur n_hi gleich 0 ist, haben wir nur noch eine Kombi, sind aber nicht dran. Dann ist nur der lo-Anteil relevant.
+    q = ((total_lo / n_lo) if n_lo else 1) - ((total_hi / n_hi) if n_hi else 0)
+    return q

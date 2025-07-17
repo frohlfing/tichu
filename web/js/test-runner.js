@@ -56,7 +56,7 @@
     /**
      * Prüft, ob zwei Werte gleich sind.
      *
-     * Die Werte werden mit per Tiefenvergleich (Deep Comparison) geprüft, so dass auch
+     * Die Werte werden per Tiefenvergleich (Deep Comparison) geprüft, so dass auch
      * Arrays und Objekte korrekt verglichen werden.
      *
      * @param {any} actual - Der tatsächlich erhaltene Wert.

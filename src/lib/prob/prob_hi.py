@@ -58,11 +58,11 @@ def prob_of_higher_color_bomb(cards: Cards, k: int, m: int = 5, r: int = 5) -> f
                 n_remain = n
                 k_remain = k
                 for i in range(len(case)):
-                    if h[color * 13 + r_start + i] < case[i]:
+                    if h[(r_start + i - 2) * 4 + color + 2] < case[i]:
                         matches_part = 0
                         break
-                    #matches_part *= math.comb(h[color * 13 + r_start + i], case[i])  # der Binomialkoeffizienten ist hier immer 1
-                    n_remain -= h[color * 13 + r_start + i]
+                    #matches_part *= math.comb(h[(r_start + i - 2) * 4 + color + 2], case[i])  # der Binomialkoeffizienten ist hier immer 1
+                    n_remain -= h[(r_start + i - 2) * 4 + color + 2]
                     k_remain -= case[i]
                 if matches_part == 1:
                     matches_part = math.comb(n_remain, k_remain)
@@ -84,10 +84,10 @@ def prob_of_higher_color_bomb(cards: Cards, k: int, m: int = 5, r: int = 5) -> f
                                 n_remain2 = n_remain
                                 k_remain2 = k_remain
                                 for i in range(len(case2)):
-                                    if h[color2 * 13 + r_start2 + i] < case2[i]:
+                                    if h[(r_start2 + i - 2) * 4 + color2 + 2] < case2[i]:
                                         matches_part2 = 0
                                         break
-                                    n_remain2 -= h[color2 * 13 + r_start2 + i]
+                                    n_remain2 -= h[(r_start2 + i - 2) * 4 + color2 + 2]
                                     k_remain2 -= case2[i]
                                 if matches_part2 == 1:
                                     matches_part2 = math.comb(n_remain2, k_remain2)

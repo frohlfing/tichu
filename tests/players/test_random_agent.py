@@ -6,7 +6,7 @@ from src.private_state import PrivateState
 from src.players.random_agent import RandomAgent
 from src.players.agent import Agent
 from src.lib.cards import parse_cards
-from src.lib.combinations import CombinationType, FIGURE_PASS
+from src.lib.combinations import CombinationType
 
 # === Fixtures (spezifisch für RandomAgent-Tests) ===
 
@@ -97,7 +97,7 @@ async def test_random_agent_play(random_agent_seeded):
 
     # Erstelle einen Beispiel-Action-Space
     action_space = [
-        ([], FIGURE_PASS), # Passen
+        ([], (CombinationType.PASS, 0, 0)), # Passen
         (parse_cards("B2 S2 G3 S3"), (CombinationType.STAIR, 4, 3)),
         (parse_cards("B2 S2"), (CombinationType.PAIR, 2, 2)),
         (parse_cards("G3 S3"), (CombinationType.PAIR, 2, 3)),
@@ -107,7 +107,7 @@ async def test_random_agent_play(random_agent_seeded):
         (parse_cards("S2"), (CombinationType.SINGLE, 1, 2)),
     ]
 
-    # Setze Beispiel-Handkarten (obwohl Agent sie nicht prüft)
+    # Setze Beispiel-Handkarten (obwohl der Agent sie nicht prüft)
     agent.priv.hand_cards = parse_cards("B2 S2 G3 S3")
 
     # Rufe play auf

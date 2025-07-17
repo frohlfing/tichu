@@ -12,7 +12,6 @@ Dieses Modul implementiert einen WebSocket-Client für den Tichu-Server zu Test-
 import argparse
 import asyncio
 import config
-from datetime import datetime
 import json
 import os
 import pickle

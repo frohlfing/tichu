@@ -10,7 +10,7 @@ from aiohttp.web import WebSocketResponse
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import Card, Cards, stringify_cards, deck, CARD_MAH, CardSuit
-from src.lib.combinations import Combination, build_action_space, CombinationType, FIGURE_DRA
+from src.lib.combinations import Combination, build_action_space, CombinationType
 # noinspection PyUnresolvedReferences
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError, ErrorCode
 from src.players.player import Player
@@ -284,8 +284,9 @@ class Peer(Player):
             for task in pending:
                 if not task.done():
                     task.cancel()
+                # Die noch laufenden Tasks etwas Zeit geben, dass sie sich sauber beenden können.
                 try:
-                    await asyncio.wait_for(task, timeout=0.1)  # todo muss das so kompliziert sein?
+                    await asyncio.wait_for(task, timeout=0.1)
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     pass
                 except Exception as cleanup_e:
@@ -378,7 +379,7 @@ class Peer(Player):
                 continue
 
             # Sind die Karten unterschiedlich?
-            if len(set(cards)) != 3:  # todo testen!
+            if len(set(cards)) != 3:
                 msg = "Mindestens zwei Karten sind identisch"
                 logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
                 await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": cards})
@@ -600,7 +601,7 @@ class Peer(Player):
         # Ist der Drache noch zu verschenken? (stellt die Engine sicher)  todo rausnehmen
         assert (self.pub.current_turn_index == self.priv.player_index and
                 self.pub.dragon_recipient == -1 and
-                self.pub.trick_combination == FIGURE_DRA)
+                self.pub.trick_combination == (CombinationType.SINGLE, 1, 15))
 
         return dragon_recipient
 

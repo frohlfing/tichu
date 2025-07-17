@@ -1,5 +1,9 @@
 # Offene Punkte und nächste Schritte
 
+# reStructuredText:
+lib.prob.*
+
+
 # Backend
 
 * Todos im code umsetzten
@@ -18,6 +22,7 @@
 * Wish- und DragonDialog nach tableView
 * pendingRequest ohne ID, nur ein Request, keine Liste
 * bomb und play zusammenführen
+* loading-view als Pup-up-Fenster (modal)
 
 ## Bugs:
 

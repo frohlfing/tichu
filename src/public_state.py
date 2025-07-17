@@ -25,7 +25,7 @@ class PublicState:
 
     :ivar table_name: Pflichtargument. Der eindeutige Name des Tisches.
     :ivar player_names: Pflichtargument. Die Namen der 4 Spieler.
-    :ivar host_index: Index des Clients, der Host des Tisches ist (-1 == kein Client am Tisch)
+    :ivar host_index: Index des Clients, der Host des Tisches ist (-1 == kein Client am Tisch).
     :ivar is_running: # Gibt an, ob eine Partie gerade läuft.
     :ivar current_turn_index: Index des Spielers, der am Zug ist (-1 == Startspieler steht noch nicht fest).
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest; es wurde noch nicht geschupft).
@@ -176,7 +176,7 @@ class PublicState:
     # @property
     # def is_double_victory(self) -> bool:
     #     """Gibt an, ob die Runde durch einen Doppelsieg beendet wurde."""
-    #     # Ein Doppelsieg heißt, dass beide Spieler eines Teams fertig sind und die anderen beiden noch nicht.
+    #     # Ein Doppelsieg heißt, dass beide Spieler eines Teams fertig sind und die anderen beide noch nicht.
     #     return self.count_active_players == 2 and self.winner_index != -1 and self.count_hand_cards[(self.winner_index + 2) % 4] == 0
 
     @property

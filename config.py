@@ -1,7 +1,7 @@
 """
 Dieses Modul stellt zentrale Konfigurationsvariablen bereit.
 
-Die Standardwerte können mit den Umgebungsvariablen aus der `.env`-Datei überschieben werden.
+Die Standardwerte können mit den Umgebungsvariablen der `.env`-Datei überschieben werden.
 """
 
 import logging
