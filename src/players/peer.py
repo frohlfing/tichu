@@ -41,7 +41,7 @@ class Peer(Player):
         super().__init__(name, session_id=session_id)
         self._websocket = websocket
         self._random = Random(seed)  # Zufallsgenerator
-        self._new_websocket_event = asyncio.Event()
+        self._new_websocket_event = asyncio.Event()  #  wait_for_reconnect() wartet auf dieses Event
         self._pending_requests: Dict[str, Tuple[str, asyncio.Future]] = {}  # die noch vom Client unbeantworteten Anfragen  # todo es ist immer nur eine Anfrage offen!
         self._pending_bomb: Optional[Cards] = None  # die noch vom Server abzuholende Bombe
 
@@ -59,7 +59,12 @@ class Peer(Player):
             except Exception as e:
                 logger.exception(f"[{self._name}] Fehler beim Schließen der WebSocket': {e}")
 
-        self._new_websocket_event.set()
+        # Die Referenz auf den Spielzustand muss für eine Fallback-Entscheidung erhalten bleiben! Nachfolgende Zeilen müssen auskommentiert bleiben!
+        #peer.pub = None
+        #peer.priv = None
+        #peer.interrupt_event = None
+
+        self._new_websocket_event.set()  # bewirkt, dass wait_for_reconnect() fortgesetzt wird
 
         # Offene Anfragen verwerfen.
         self._cancel_pending_requests()
@@ -89,7 +94,7 @@ class Peer(Player):
         # WebSocket übernehmen
         logger.debug(f"[{self._name}] Aktualisiere WebSocket.")
         self._websocket = new_websocket
-        self._new_websocket_event.set()
+        self._new_websocket_event.set()  # bewirkt, dass wait_for_reconnect() fortgesetzt wird
 
     async def wait_for_reconnect(self, timeout: float):
         """

@@ -23,6 +23,10 @@ lib.prob.*
 * pendingRequest ohne ID, nur ein Request, keine Liste
 * bomb und play zusammenführen
 * loading-view als Pup-up-Fenster (modal)
+* Modul User sinnvoll?
+* URLSearchParams zentral auslesen (derzeitige Schalter: tisch_name, player_name, bot, sound)
+* localStorage sinnvoll einsetzen
+* Setup-Dialog
 
 ## Bugs:
 

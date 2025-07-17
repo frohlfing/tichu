@@ -198,10 +198,7 @@ class GameEngine:
         self._players[index] = self._default_agents[index]
         self._public_state.player_names[index] = self._default_agents[index].name
 
-        # Zuordnung zur Engine entfernen
-        peer.pub = None
-        peer.priv = None
-        peer.interrupt_event = None
+        # Peer-interne Resourcen bereinigen
         await peer.cleanup()
 
         # wenn der Client der Host des Tisches ist, nächsten Spieler als Host ernennen
