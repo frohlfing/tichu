@@ -83,18 +83,18 @@ class ErrorCode(enum.IntEnum):
     INVALID_MESSAGE = 101  # Ungültiges Nachrichtenformat empfangen.
     UNKNOWN_CARD = 102  # Mindestens eine Karte ist unbekannt.
     NOT_HAND_CARD = 103  # Mindestens eine Karte ist unbekannt.
-    #UNAUTHORIZED = 104  # Aktion nicht autorisiert.
-    #SERVER_BUSY = 105  # Der Server ist momentan überlastet. Bitte später versuchen.
+    #UNAUTHORIZED = 104 # Aktion nicht autorisiert.
+    #SERVER_BUSY = 105 # Der Server ist momentan überlastet. Bitte später versuchen.
     SERVER_DOWN = 106  # Der Server wurde heruntergefahren.
-    #MAINTENANCE_MODE = 107  # Der Server befindet sich im Wartungsmodus.
+    #MAINTENANCE_MODE = 107 # Der Server befindet sich im Wartungsmodus.
 
     # Verbindungs- & Session-Fehler (200-299)
     SESSION_EXPIRED = 200  # Deine Session ist abgelaufen. Bitte neu verbinden.
     SESSION_NOT_FOUND = 201  # Session nicht gefunden.
     #TABLE_NOT_FOUND = 202  # Tisch nicht gefunden.
-    #TABLE_FULL = 203  # Der Tisch ist bereits voll.
-    #NAME_TAKEN = 204  # Dieser Spielername ist an diesem Tisch bereits vergeben.
-    #ALREADY_ON_TABLE = 205  # Du bist bereits an diesem Tisch.
+    #TABLE_FULL = 203 # Der Tisch ist bereits voll.
+    #NAME_TAKEN = 204 # Dieser Spielername ist an diesem Tisch bereits vergeben.
+    #ALREADY_ON_TABLE = 205 # Du bist bereits an diesem Tisch.
 
     # Spiellogik-Fehler (300-399)
     INVALID_ACTION = 300  # Ungültige Aktion.
@@ -111,4 +111,4 @@ class ErrorCode(enum.IntEnum):
 
     # Lobby-Fehler (400-499)
     GAME_ALREADY_STARTED = 400  # Das Spiel an diesem Tisch hat bereits begonnen.
-    #NOT_LOBBY_HOST = 401  # Nur der Host kann diese Aktion ausführen.
+    #NOT_LOBBY_HOST = 401 # Nur der Host kann diese Aktion ausführen.

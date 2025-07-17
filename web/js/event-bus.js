@@ -1,7 +1,7 @@
 /**
  * Type-Alias für das Verzeichnis der Ereignishändler.
  *
- * @typedef {Object.<string, Array<Function>>} EventHandlers
+ * @typedef {Record<string, Array<Function>>} EventHandlers
  */
 
 /**

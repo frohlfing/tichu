@@ -1,9 +1,5 @@
 /**
  * Visuelle Effekte & Animationen
- *
- * todo Tich ansagen (ein- oder 2mal Pulse-Effekt)
- * todo Wish-Symbol einblenden (ein- oder 2mal Pulse-Effekt)
- * todo Karten ablegen (von der Hand dorthin, wo auch die Schupfzone liegt)
  */
 const Animation = (() => {
 
@@ -251,58 +247,6 @@ const Animation = (() => {
     }
 
     /**
-     * Wendet einen Kartenstapel (dreht ihn von Vorder- zu Rückseite oder umgekehrt).
-     *
-     * HINWEIS: Erfordert eine spezifische HTML-Struktur:
-     * @example
-     * <div class="card-flipper">
-     *     <div class="card-face front"></div>
-     *     <div class="card-face back"></div>
-     * </div>
-     *
-     * @param {HTMLElement} flipperElement - Das Elternelement, das die CSS-Klasse 'card-flipper' hat.
-     */
-    function flipCard(flipperElement) {
-        if (!flipperElement) return;
-        flipperElement.classList.toggle('is-flipped');
-    }
-
-    /**
-     * Entfernt eine Karte aus dem Bildschirm mit einer Animation.
-     *
-     * @param {HTMLElement} cardElement - Die Karte, die entfernt werden soll.
-     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
-     */
-    function removeCard(cardElement, callback) {
-        cardElement.classList.add('is-removing');
-        cardElement.addEventListener('transitionend', () => {
-            cardElement.remove();
-            if (typeof callback === 'function') {
-                callback();
-            }
-        }, { once: true });
-    }
-
-    /**
-     * Entfernt einen Kartenstapel aus dem Bildschirm mit einer Animation.
-     *
-     * @param {Array<HTMLElement>} cardElements - Ein Array von Karten, die entfernt werden sollen.
-     * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
-     */
-    function removeCards(cardElements, callback) {
-        let completed = 0;
-        let n = cardElements.length;
-        cardElements.forEach(cardElement => {
-            removeCard(cardElement, () => {
-                completed++;
-                if (completed === n && typeof callback === 'function') {
-                    callback();
-                }
-            });
-        });
-    }
-
-    /**
      * Löst die Bomben-Animation aus.
      *
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
@@ -323,17 +267,6 @@ const Animation = (() => {
     }
 
     /**
-     * Lässt ein Element pulsieren.
-     *
-     * @param {HTMLElement} element - Das Element, das pulsieren soll.
-     * @param {boolean} enable - True, um die Animation zu starten, False, um sie zu stoppen.
-     */
-    function pulseElement(element, enable) {
-        if (!element) return;
-        element.classList.toggle('is-pulsing', enable);
-    }
-
-    /**
      * Animiert die Punkteanzeige durch ein kurzes Aufblinken.
      *
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
@@ -351,14 +284,78 @@ const Animation = (() => {
         _scoreDisplay.addEventListener('animationcancel', handler, { once: true });
     }
 
+    // /**
+    //  * Lässt ein Element pulsieren.
+    //  *
+    //  * @param {HTMLElement} element - Das Element, das pulsieren soll.
+    //  * @param {boolean} enable - True, um die Animation zu starten, False, um sie zu stoppen.
+    //  */
+    // function pulseElement(element, enable) {
+    //     if (!element) return;
+    //     element.classList.toggle('is-pulsing', enable);
+    // }
+
+    // /**
+    //  * Wendet einen Kartenstapel (dreht ihn von Vorder- zu Rückseite oder umgekehrt).
+    //  *
+    //  * HINWEIS: Erfordert eine spezifische HTML-Struktur:
+    //  * @example
+    //  * <div class="card-flipper">
+    //  *     <div class="card-face front"></div>
+    //  *     <div class="card-face back"></div>
+    //  * </div>
+    //  *
+    //  * @param {HTMLElement} flipperElement - Das Elternelement, das die CSS-Klasse 'card-flipper' hat.
+    //  */
+    // function flipCard(flipperElement) {
+    //     if (!flipperElement) return;
+    //     flipperElement.classList.toggle('is-flipped');
+    // }
+
+    // /**
+    //  * Entfernt eine Karte aus dem Bildschirm mit einer Animation.
+    //  *
+    //  * @param {HTMLElement} cardElement - Die Karte, die entfernt werden soll.
+    //  * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
+    //  */
+    // function removeCard(cardElement, callback) {
+    //     cardElement.classList.add('is-removing');
+    //     cardElement.addEventListener('transitionend', () => {
+    //         cardElement.remove();
+    //         if (typeof callback === 'function') {
+    //             callback();
+    //         }
+    //     }, { once: true });
+    // }
+
+    // /**
+    //  * Entfernt einen Kartenstapel aus dem Bildschirm mit einer Animation.
+    //  *
+    //  * @param {Array<HTMLElement>} cardElements - Ein Array von Karten, die entfernt werden sollen.
+    //  * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
+    //  */
+    // function removeCards(cardElements, callback) {
+    //     let completed = 0;
+    //     let n = cardElements.length;
+    //     cardElements.forEach(cardElement => {
+    //         removeCard(cardElement, () => {
+    //             completed++;
+    //             if (completed === n && typeof callback === 'function') {
+    //                 callback();
+    //             }
+    //         });
+    //     });
+    // }
+
     // noinspection JSUnusedGlobalSymbols
     return {
         schupfCards,
         takeTrick,
-        flipCard,  // todo wird noch nicht verwendet
-        removeCards, // todo wird noch nicht verwendet
         explodeBomb,
-        pulseElement,  // todo wird noch nicht verwendet
         flashScoreDisplay,
+        //pulseElement,
+        //flipCard,
+        //removeCard,
+        //removeCards,
     };
 })();

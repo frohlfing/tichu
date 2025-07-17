@@ -104,7 +104,7 @@ const Bot = (() => {
         // Login-Screen-Logik
         // --------------------------------------------------------------------------------------
 
-        if (LoginView.isVisible()) {
+        if (ViewManager.isVisible('login')) {
             _testUILogin();
 
             // Fülle die Felder und löse den Submit aus
@@ -119,7 +119,7 @@ const Bot = (() => {
         // Lobby-Screen-Logik
         // --------------------------------------------------------------------------------------
 
-        if (LobbyView.isVisible()) {
+        if (ViewManager.isVisible('lobby')) {
             _testUILobby()
 
             if (Config.BOT_MAX_GAMES > 0 && _gameCounter >= Config.BOT_MAX_GAMES) {
@@ -155,7 +155,7 @@ const Bot = (() => {
         // Table-Screen-Logik
         // --------------------------------------------------------------------------------------
 
-        if (TableView.isVisible()) {
+        if (ViewManager.isVisible('table')) {
             _testUIHand();
             _testUIScoreDisplay();
             _testUIWishIcon();
@@ -171,7 +171,7 @@ const Bot = (() => {
             _testUITichuIcons();
             const tichuButton = document.getElementById('tichu-button');
             if (!tichuButton.disabled) {
-                if (Random.boolean()) { // todo gewichten
+                if (Random.boolean(0.25)) {
                     console.log("🤖 Bot: Klicke auf Tichu-Button.");
                     tichuButton.click();
                 }
@@ -180,7 +180,7 @@ const Bot = (() => {
             _testUIBombIcon();
             const bombIcon = document.getElementById('bomb-icon');
             if (!bombIcon.classList.contains('hidden') && !bombIcon.classList.contains("disabled")) {
-                if (Random.boolean()) { // todo gewichten
+                if (Random.boolean(0.25)) {
                     console.log("🤖 Bot: Klicke auf das Bomben-Symbol.");
                     if (State.canPlayBomb()) {
                         _clearSelectedCards();
@@ -218,7 +218,7 @@ const Bot = (() => {
 
                 switch (request.action) {
                     case 'announce_grand_tichu':
-                        if (Random.choice([true, false], [1, 19])) { // todo Random.boolean()
+                        if (Random.boolean(1/20)) {
                             console.log("🤖 Bot: Klicke auf GrandTichu-Button.");
                             _clickButton('#tichu-button[data-mode="GRAND_TICHU"]');
                         }

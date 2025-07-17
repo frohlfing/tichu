@@ -46,14 +46,15 @@ class Random:
         self._ensure_initialized()
         return self._random.randint(low, high - 1)
 
-    def boolean(self) -> bool:
+    def boolean(self, prob_true: float = 0.5) -> bool:
         """
         Gibt zufällig True oder False zurück.
 
+        :param prob_true: (Optional) Wahrscheinlichkeit für True (zwischen 0.0 und 1.0).
         :return: Ein zufälliger Wahrheitswert.
         """
         self._ensure_initialized()
-        return self._random.randint(0, 1) == 1
+        return self._random.random() < prob_true
 
     def choice(self, seq: list|tuple, weights: list|tuple = None) -> Any:
         """
@@ -63,7 +64,6 @@ class Random:
         :param weights: (Optional) Die Gewichtung (für jedes Element ein Wert, z.B. [1, 3, 6] oder normiert [0.1, 0.3, 0.6]).
         :return: Ein zufällig ausgewähltes Element.
         """
-
         self._ensure_initialized()
         if weights is None:
             return self._random.choice(seq)

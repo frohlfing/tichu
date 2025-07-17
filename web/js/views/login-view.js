@@ -4,12 +4,6 @@
  * @type {View}
  */
 const LoginView = (() => {
-    /**
-     * Der Container des Login-Bildschirms.
-     *
-     * @type {HTMLElement}
-     */
-    const _viewContainer = document.getElementById('login-screen');
 
     /**
      * Das Login-Formular
@@ -60,30 +54,6 @@ const LoginView = (() => {
     }
 
     /**
-     * Rendert den Login-Bildschirm und zeigt ihn anschließend an.
-     */
-    function show() {
-        render();
-        _viewContainer.classList.add('active');
-    }
-
-    /**
-     * Blendet den Login-Bildschirm aus.
-     */
-    function hide() {
-        _viewContainer.classList.remove('active');
-    }
-
-    /**
-     * Ermittelt, ob der Login-Bildschirm gerade angezeigt wird.
-     *
-     * @returns {boolean}
-     */
-    function isVisible() {
-        return _viewContainer.classList.contains('active');
-    }
-
-    /**
      * Dieser Ereignishändler wird aufgerufen, wenn das Login-Formular abgeschickt werden soll.
      *
      * @param {Event} event - Das Submit-Event.
@@ -112,8 +82,5 @@ const LoginView = (() => {
     return {
         init,
         render,
-        show,
-        hide,
-        isVisible
     };
 })();

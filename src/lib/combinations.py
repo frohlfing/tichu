@@ -215,7 +215,7 @@ def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
     arr = [[], [], [], [], [], [], [], []]  # pro Typ ein Array
     n = len(hand)
 
-    # Einzelkarten, Paare, Drilling, 4er-Bomben
+    # Einzelkarten, Paare, Drillinge, 4er-Bomben
     for i1 in range(0, n):
         card1 = hand[i1]
         arr[CombinationType.SINGLE].append([card1])

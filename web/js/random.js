@@ -27,10 +27,11 @@ const Random = (() => {
     /**
      * Gibt zufällig `true` oder `false` zurück.
      *
+     * @param {number} [probTrue=0.5] - (Optional) Wahrscheinlichkeit für `true` (zwischen 0.0 und 1.0).
      * @returns {boolean} Ein zufälliger Wahrheitswert.
      */
-    function boolean() {
-        return Math.random() < 0.5;
+    function boolean(probTrue = 0.5) {
+        return Math.random() < probTrue;
     }
 
     /**
@@ -44,7 +45,8 @@ const Random = (() => {
         if (!weights) {
             const index = Math.floor(Math.random() * seq.length);
             return seq[index];
-        } else {
+        }
+        else {
             const totalWeight = weights.reduce((acc, value) => acc + value, 0); // Summe bilden
             const rnd = Math.random() * totalWeight;
             let cumulative = 0
@@ -77,7 +79,7 @@ const Random = (() => {
     /**
      * Mischt eine Sequenz in-place.
      *
-     * Die Funktion basiert auf den Fisher-Yates-Algorithmus.
+     * Die Funktion basiert auf dem Fisher-Yates-Algorithmus.
      *
      * @param {Array} seq - Die zu mischende Sequenz (mutable).
      */

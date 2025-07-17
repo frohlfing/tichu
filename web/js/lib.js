@@ -1,40 +1,3 @@
-// noinspection JSUnusedGlobalSymbols // todo wenn nicht gebraucht, dann raus damit
-/**
- * Enum für Fehlercodes.
- */
-const ErrorCode = {
-    // Ein unbekannter Fehler ist aufgetreten.
-    UNKNOWN_ERROR: 100,
-    // Ungültiges Nachrichtenformat empfangen.
-    INVALID_MESSAGE: 101,
-    // Mindestens eine Karte ist unbekannt.
-    UNKNOWN_CARD: 102,
-    // Mindestens eine Karte ist keine Handkarte.
-    NOT_HAND_CARD: 103,
-    // Server wurde heruntergefahren.
-    SERVER_DOWN: 106,
-    // Deine Session ist abgelaufen. Bitte neu verbinden.
-    SESSION_EXPIRED: 200,
-    // Session nicht gefunden.
-    SESSION_NOT_FOUND: 201,
-    // Ungültige Aktion
-    INVALID_ACTION: 300,
-    // Keine wartende Anfrage für die Antwort gefunden.
-    INVALID_RESPONSE: 301,
-    // Mindestens zwei Karten sind identisch.
-    NOT_UNIQUE_CARDS: 302,
-    // Die Karten bilden keine spielbare Kombination.
-    INVALID_COMBINATION: 303,
-    // Ungültiger Kartenwunsch.
-    INVALID_WISH: 306,
-    // Tichu-Ansage nicht möglich.
-    INVALID_ANNOUNCE: 307,
-    // Wahl des Spielers, der den Drachen bekommt, ist ungültig.
-    INVALID_DRAGON_RECIPIENT: 308,
-    // Zeit für Aktion abgelaufen.
-    REQUEST_OBSOLETE: 310
-};
-
 /**
  * Kartenfarben.
  */
@@ -101,13 +64,6 @@ const CombinationType = {
  * @property {number} 1 - Länge der Kombination.
  * @property {number} 2 - Rang der Kombination.
  */
-
-// Sonderkarten einzeln ausgespielt // todo entfernen
-const FIGURE_PASS = /** @type Combination */ [CombinationType.PASS, 0, 0];
-const FIGURE_DOG = /** @type Combination */ [CombinationType.SINGLE, 1, 0];
-const FIGURE_MAH = /** @type Combination */ [CombinationType.SINGLE, 1, 1];
-const FIGURE_DRA = /** @type Combination */ [CombinationType.SINGLE, 1, 15];
-const FIGURE_PHO = /** @type Combination */ [CombinationType.SINGLE, 1, 16];
 
 /**
  * Tichu-Library
@@ -269,8 +225,6 @@ const Lib = (() => {
     /**
      * Prüft, ob zwei Kartenstapel gleich sind.
      *
-     * Es wird vorausgesetzt, dass beide Arrays absteigend sortiert sind.
-     *
      * @param {Cards} cards1 - Der erste Kartenstapel.
      * @param {Cards} cards2 - Der zweite Kartenstapel.
      * @returns {boolean} True, wenn die Kartenstapel gleich sind, sonst false.
@@ -356,7 +310,7 @@ const Lib = (() => {
     /**
      * Formatiert die Karte als lesbaren String.
      *
-     * @param {Cards} cards - Die Karten , z.B. [[8,3], [2,4], [0,1]].
+     * @param {Cards} cards - Die Karten, z.B. [[8,3], [2,4], [0,1]].
      * @returns {string} Die Labels der Karte mit Leerzeichen getrennt.
      */
     function stringifyCards(cards) {
@@ -432,7 +386,7 @@ const Lib = (() => {
     function getCombination(cards, trickValue, shiftPhoenix = false) {
         const n = cards.length;
         if (n === 0) {
-            return FIGURE_PASS;
+            return /** @type Combination */ [CombinationType.PASS, 0, 0];
         }
 
         // Karten absteigend sortieren
@@ -669,7 +623,7 @@ const Lib = (() => {
                     const temp2 = [];
                     for (const cards of temp) {
                         const cards2 = cards.slice(0, -1).concat([hand[i2]]);
-                        if (!temp2.some(c => stringifyCards(c) === stringifyCards(cards2))) { // todo geht das einfacher? if cards2 not in temp2:
+                        if (!temp2.some(cardsInTemp2 => isCardsEqual(cardsInTemp2, cards2))) { //if (!temp2.some(cardsInTemp2 => stringifyCards(cardsInTemp2) === stringifyCards(cards2))) {
                             temp2.push(cards2);
                         }
                     }

@@ -283,7 +283,7 @@ const State = (() => {
     }
 
     /** @returns {boolean} Gibt an, ob der Benutzer am Zug ist. */
-    function isCurrentPlayer() {  // todo umbenennen in "isTurn"
+    function isCurrentPlayer() {
         return _publicState.current_turn_index === _privateState.player_index;
     }
 
@@ -556,11 +556,6 @@ const State = (() => {
     function setTrickCounter(value) {
         _publicState.trick_counter = value;
     }
-
-    // /** @returns {boolean} Aktuelle Spielphase (z.B. "dealing", "schupfing", "playing"). */
-    // function getPhase() {
-    //     // todo!
-    // }
 
     // privater Spielzustand
 

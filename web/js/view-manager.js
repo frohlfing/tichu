@@ -3,78 +3,53 @@
  *
  * Jede View enthält mindestens die folgenden Funktionen.
  *
- * todo show() und hide() aus der View rausnehmen. Dies sollte nur der View-Manager machen dürfen.
- *
  * @typedef {Object} View
  * @property {Function} init - Initialisiert die View.
  * @property {Function} render - Rendert die View.
- * @property {Function} show - Rendert die View und zeigt sie anschließend an.
- * @property {Function} hide - Blendet die View aus.
- * @property {Function} isVisible - Ermittelt, ob die View gerade angezeigt wird.
  */
 
 /**
  * Schaltet zwischen den Views der Anwendung um.
  */
 const ViewManager = (() => {
-    /**
-     * Der Name des aktuell angezeigten Views.
-     *
-     * @type {string|null} _currentViewName -
-     */
-    let _currentViewName = null;
 
     /**
-     * Referenzen zu den Views.
+     * Die DOM-Container und Referenzen zu den View-Modulen.
      *
-     * @property {LoadingView} loading - Die Ladeanzeige.
-     * @property {LoginView} login - Der Login-Bildschirm.
-     * @property {LobbyView} lobby - Der Lobby-Bildschirm.
-     * @property {TableView} table - Der Spieltisch-Bildschirm.
+     * @type {Record<string, {container: HTMLElement, view: View}>}
      */
-    const _views = {};
+    const _subscreens = {
+        loading: {
+            container: document.getElementById('loading-screen'),
+            view: LoadingView
+        },
+        login: {
+            container: document.getElementById('login-screen'),
+            view: LoginView
+        },
+        lobby: {
+            container: document.getElementById('lobby-screen'),
+            view: LobbyView
+        },
+        table: {
+            container: document.getElementById('table-screen'),
+            view: TableView
+        },
+    };
 
     /**
      * Initialisiert den ViewManager.
      */
     function init() {
-        // View-Module registrieren und initialisieren
-        _views.loading = LoadingView;
-        _views.loading.init();
-
-        _views.login = LoginView;
-        _views.login.init();
-
-        _views.lobby = LobbyView;
-        _views.lobby.init();
-
-        _views.table = TableView;
-        _views.table.init();
-
-        // for (const name in _views) {
-        //     if (_views.hasOwnProperty(name)) {
-        //         _views[name].init();
-        //     }
-        // }
-
-        // Aktuelle View rendern
-        for (const name in _views) {
-            if (_views.hasOwnProperty(name) && _views[name].isVisible()) {
-                _views[name].render();
-                _currentViewName = name;
-                break;
+        // View-Module initialisieren und aktuelle View rendern.
+        for (const key in _subscreens) {
+            if (_subscreens.hasOwnProperty(key)) {
+                _subscreens[key].view.init();
+                if (isVisible(key)) {
+                    _subscreens[key].view.render();
+                }
             }
         }
-    }
-
-    /**
-     * Gibt die gewünschte View zurück.
-     *
-     * @param {string} viewName - Name der View ("loading", "login", "lobby" oder "table").
-     * @returns {View} Die View.
-     */
-    function getViewByName(viewName) {
-        return _views[viewName];
     }
 
     /**
@@ -106,42 +81,51 @@ const ViewManager = (() => {
     }
 
     /**
-     * Zeigt einen bestimmten View an und blendet andere aus.
+     * Zeigt eine bestimmte View an und blendet andere aus.
      *
-     * @param {string} viewName - Der Name des Views, der angezeigt werden soll ('loading', 'login', 'lobby', 'table').
+     * @param {string} key - Schlüssel der View ('loading', 'login', 'lobby', 'table').
      */
-    function _showView(viewName) {
-        if (!_views.hasOwnProperty(viewName)) {
+    function _showView(key) {
+        if (!_subscreens.hasOwnProperty(key)) {
             return;
         }
 
-        if (_currentViewName === viewName && _views[viewName].isVisible()) {
-            // Die View ist bereits aktiv, aber wir rendern trotzdem (es könnten sich Daten geändert haben).
-            _views[viewName].render();
+        if (isVisible(key)) {
+            // die View ist bereits aktiv, also nur rendern
+            _subscreens[key].view.render();
         }
         else {
-            // Alle Views ausblenden
-            for (const name in _views) {
-                if (_views.hasOwnProperty(name)) {
-                    _views[name].hide();
+            // alle Views ausblenden
+            for (const k in _subscreens) {
+                if (_subscreens.hasOwnProperty(k)) {
+                    _subscreens[k].container.classList.remove('active'); // hide
                 }
             }
 
-            // Gewünschten View anzeigen
-            _views[viewName].show();
-            _currentViewName = viewName;
+            // gewünschte View anzeigen
+            _subscreens[key].view.render();
+            _subscreens[key].container.classList.add('active'); // show
         }
 
-        EventBus.emit("view:rendered", {viewName: viewName});
+        EventBus.emit("view:rendered", {viewName: key});
     }
 
-    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Ermittelt, ob die angegebene View gerade angezeigt wird.
+     *
+     * @param {string} key - Schlüssel der View ('loading', 'login', 'lobby', 'table').
+     * @returns {boolean} True, wenn die View gerade angezeigt wird, sonst false.
+     */
+    function isVisible(key) {
+        return _subscreens[key].container.classList.contains('active');
+    }
+
     return {
         init,
-        getViewByName,
         showLoadingView,
         showLoginView,
         showLobbyView,
         showTableView,
+        isVisible,
     };
 })();

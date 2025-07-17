@@ -6,7 +6,7 @@ const Sound = (() => {
     /**
      * Audio-Objekte.
      *
-     * @type {Object.<string, HTMLAudioElement>}
+     * @type {Record<string, HTMLAudioElement>}
      */
     const _audio = {};
 
@@ -65,16 +65,16 @@ const Sound = (() => {
             if (typeof callback === 'function') {
                 callback();
             }
-            return;
+            return; // Sound ist deaktiviert
         }
 
         const audio = _audio[basename];
         if (!audio) {
-            console.error(`Sound: '${basename}' ist unbekannt.`);
+            console.error(`Sound: '${basename}' ist nicht vorhanden.`);
             if (typeof callback === 'function') {
                 callback();
             }
-            return;
+            return; // Sound-Datei nicht vorhanden
         }
 
         audio.addEventListener('ended', () => {

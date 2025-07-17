@@ -104,7 +104,7 @@ const AppController = (() => {
      * @param {CloseEvent} event - Das CloseEvent der WebSocket (siehe https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent).
      */
     function _handleNetworkClose(event) {
-        console.debug("App._handleNetworkClose()", event.code, event.reason, event.wasClean);
+        console.debug("App._handleNetworkClose()", Network.getWSCloseCodeName(event.code), event.reason, event.wasClean);
         _renderView();
     }
 
@@ -342,12 +342,12 @@ const AppController = (() => {
     }
 
     /**
-     * Wird aufgerufen, wenn der Server eine Fehlermeldung gesendet hat.
+     * Wird aufgerufen, wenn die Game-Engine eine Fehlermeldung gesendet hat.
      *
      * @param {ServerError} error - Die Fehlermeldung.
      */
     function _handleServerError(error) {
-        console.error("App._handleServerError()", error.message, error.code, error.context);
+        console.error("App._handleServerError()", error.message, Network.getServerErrorCodeName(error.code), error.context);
         Modal.showErrorToast(`Fehler ${error.message}`);
     }
     

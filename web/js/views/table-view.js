@@ -9,20 +9,6 @@ const TableView = (() => {
     // DOM-Elemente
     // --------------------------------------------------------------------------------------
 
-    // /**
-    //  * Der Hauptcontainer, der mit einer Ausgangsgröße von 1080x1920 in den Viewport des Browsers skaliert wird.
-    //  *
-    //  * @type {HTMLElement}
-    //  */
-    // const _wrapper = document.getElementById('wrapper');
-
-    /**
-     * Der Container des Spieltisch-Bildschirms.
-     *
-     * @type {HTMLDivElement}
-     */
-    const _viewContainer = document.getElementById('table-screen');
-
     /**
      * Button zum Beenden des Spiels/Verlassen des Tisches.
      *
@@ -147,10 +133,6 @@ const TableView = (() => {
     const _playButton = document.getElementById('play-button');
 
     // --------------------------------------------------------------------------------------
-    // Interne Variablen
-    // --------------------------------------------------------------------------------------
-
-    // --------------------------------------------------------------------------------------
     // Öffentliche Funktionen
     // --------------------------------------------------------------------------------------
 
@@ -194,51 +176,9 @@ const TableView = (() => {
         _updateWishIcon();
     }
 
-    /**
-     * Rendert den Spieltisch-Bildschirm und zeigt ihn anschließend an.
-     */
-    function show() {
-        render();
-        _viewContainer.classList.add('active');
-    }
-
-    /**
-     * Blendet den Spieltisch-Bildschirm aus.
-     */
-    function hide() {
-        _viewContainer.classList.remove('active');
-    }
-
-    /**
-     * Ermittelt, ob der Spieltisch-Bildschirm gerade angezeigt wird.
-     *
-     * @returns {boolean} // todo returns oder return? in (python heißt es :return:) Was ist üblich?
-     */
-    function isVisible() {
-        return _viewContainer.classList.contains('active');
-    }
-
     // --------------------------------------------------------------------------------------
     // Update-Funktionen und Ereignishändler
     // --------------------------------------------------------------------------------------
-
-    // /**
-    //  * Wird aufgerufen, wenn eine Netzwerknachricht empfangen wurde.
-    //  *
-    //  * @param {NetworkMessage} message - Die Nachricht vom Server.
-    //  */
-    // function _handleNetworkMessage(message) {
-    //     if (message.type !== 'notification') {
-    //         return;
-    //     }
-    //     //const context = message.payload.context || {};
-    //     // Animation abspielen
-    //     switch (message.payload.event) {
-    //          case "round_over": // Die Runde ist vorbei und die Karten werden neu gemischt.
-    //              document.querySelectorAll(".card").forEach(cardElement => {cardElement.remove()});
-    //              break
-    //     }
-    // }
 
     /**
      * Kennzeichnet, ob für eine neue Runde der Sound für Mischen abgespielt wurde.
@@ -973,8 +913,5 @@ const TableView = (() => {
     return {
         init,
         render,
-        show,
-        hide,
-        isVisible,
     };
 })();

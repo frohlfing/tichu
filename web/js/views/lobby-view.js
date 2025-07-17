@@ -4,12 +4,6 @@
  * @type {View}
  */
 const LobbyView = (() => {
-    /**
-     * Der Container des Lobby-Bildschirms.
-     *
-     * @type {HTMLElement}
-     */
-    const _viewContainer = document.getElementById('lobby-screen');
 
     /**
      * Zeigt den Namen des Tisches an.
@@ -102,34 +96,11 @@ const LobbyView = (() => {
     }
 
     /**
-     * Rendert die Lobby und zeigt sie anschließend an.
-     */
-    function show() {
-        render();
-        _viewContainer.classList.add('active');
-    }
-
-    /**
-     * Blendet die Lobby aus.
-     */
-    function hide() {
-        _viewContainer.classList.remove('active');
-    }
-
-    /**
-     * Ermittelt, ob die Lobby gerade angezeigt wird.
-     *
-     * @returns {boolean}
-     */
-    function isVisible() {
-        return _viewContainer.classList.contains('active');
-    }
-
-    /**
      * Ereignishändler für den StartGame-Button.
      */
     function _handleStartButtonClick() {
         //Sound.play('click');
+        _disableButtons();
         EventBus.emit("lobbyView:start");
     }
 
@@ -166,14 +137,13 @@ const LobbyView = (() => {
     function _disableButtons() {
         _startButton.disabled = true;
         _exitButton.disabled = true;
-        // todo Buttons in .player-order-controls deaktivieren
+        _playerList.querySelectorAll('button').forEach(button => {
+            button.disabled = true
+        });
     }
 
     return {
         init,
         render,
-        show,
-        hide,
-        isVisible
     };
 })();

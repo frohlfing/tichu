@@ -810,8 +810,9 @@ Zur Dokumentation von JavaScript wird [JSDoc](https://jsdoc.app/) angewendet.
 
 *   Jedes Modul (js-Datei) hat eine kurze Datei-Header-Beschreibung (ein oder zwei Sätze, die beschreiben, was das Modul definiert).
 *   Jedes öffentliche Objekt (inkl. Variable, Konstante und Namensraum) wird beschrieben und mit `@type` der Typ angegeben.
-*   Jede Funktion wird beschrieben, dessen Parameter mit `@param` und Rückgabewert mit `@returns` angegeben
-*   Für ein Type-Alias wird `@typedef` und `@property` verwendet. 
+*   Jede Funktion wird beschrieben und dessen Parameter mit `@param` und Rückgabewert mit `@returns` angegeben
+*   Für ein Type-Alias wird `@typedef` und `@property` verwendet.
+    todo: weitere Beispiele auflisten
 
 ### A4.2 Namenskonvention
 

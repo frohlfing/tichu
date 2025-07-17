@@ -1,6 +1,7 @@
 /**
- * Enum für aiohttp-Fehlercodes.
+ * Enum für WebSocket Close Codes.
  *
+ * Diese Codes sind auch im Python-Paket aiohttp definiert.
  * Siehe auch: https://www.rfc-editor.org/rfc/rfc6455.html#section-7.4.1
  */
 const WSCloseCode = {
@@ -37,7 +38,7 @@ const WSCloseCode = {
  *
  * @typedef {Object} NetworkError
  * @property {string} message - Die Fehlermeldung.
- * @property {Object<string, any>} [context] - Zusätzliche Informationen (optional).
+ * @property {Record<string, any>} [context] - Zusätzliche Informationen (optional).
  */
 
 /**
@@ -45,8 +46,12 @@ const WSCloseCode = {
  *
  * @typedef {Object} NetworkMessage
  * @property {string} type - Der Typ der Nachricht.
- * @property {Object<string, any>} [payload] - Nachrichtenspezifische Daten (optional).
+ * @property {Record<string, any>} [payload] - Nachrichtenspezifische Daten (optional).
  */
+
+// --------------------------------------------
+// Projektspezifische Typen.
+// --------------------------------------------
 
 /**
  * Typdefinition für eine Anfrage des Servers.
@@ -54,7 +59,7 @@ const WSCloseCode = {
  * @typedef {Object} ServerRequest
  * @property {string} request_id - Die UUID der Anfrage.
  * @property {string} action - Die angefragte Aktion.
- * @property {Object<string, any>} [context] - Zusätzliche Informationen (optional).
+ * @property {Record<string, any>} [context] - Zusätzliche Informationen (optional).
  */
 
 /**
@@ -62,7 +67,7 @@ const WSCloseCode = {
  *
  * @typedef {Object} ServerNotification
  * @property {string} event - Das Ereignis.
- * @property {Object<string, any>} [context] - Zusätzliche Informationen (optional).
+ * @property {Record<string, any>} [context] - Zusätzliche Informationen (optional).
  */
 
 /**
@@ -70,9 +75,47 @@ const WSCloseCode = {
  *
  * @typedef {Object} ServerError
  * @property {string} message - Die Fehlermeldung.
- * @property {number} code - Der Fehler.
- * @property {Object<string, any>} [context] - Zusätzliche Informationen (optional).
+ * @property {number} code - Der Fehlercode des Servers.
+ * @property {Record<string, any>} [context] - Zusätzliche Informationen (optional).
  */
+
+/**
+ * Enum für Fehlercodes des Servers.
+ */
+const ServerErrorCode = {
+    // Ein unbekannter Fehler ist aufgetreten.
+    UNKNOWN_ERROR: 100,
+    // Ungültiges Nachrichtenformat empfangen.
+    INVALID_MESSAGE: 101,
+    // Mindestens eine Karte ist unbekannt.
+    UNKNOWN_CARD: 102,
+    // Mindestens eine Karte ist keine Handkarte.
+    NOT_HAND_CARD: 103,
+    // Server wurde heruntergefahren.
+    SERVER_DOWN: 106,
+    // Deine Session ist abgelaufen. Bitte neu verbinden.
+    SESSION_EXPIRED: 200,
+    // Session nicht gefunden.
+    SESSION_NOT_FOUND: 201,
+    // Ungültige Aktion
+    INVALID_ACTION: 300,
+    // Keine wartende Anfrage für die Antwort gefunden.
+    INVALID_RESPONSE: 301,
+    // Mindestens zwei Karten sind identisch.
+    NOT_UNIQUE_CARDS: 302,
+    // Die Karten bilden keine spielbare Kombination.
+    INVALID_COMBINATION: 303,
+    // Ungültiger Kartenwunsch.
+    INVALID_WISH: 306,
+    // Tichu-Ansage nicht möglich.
+    INVALID_ANNOUNCE: 307,
+    // Wahl des Spielers, der den Drachen bekommt, ist ungültig.
+    INVALID_DRAGON_RECIPIENT: 308,
+    // Zeit für Aktion abgelaufen.
+    REQUEST_OBSOLETE: 310,
+    // Das Spiel an diesem Tisch hat bereits begonnen.
+    GAME_ALREADY_STARTED: 400,
+};
 
 /**
  * Verantwortlich für die WebSocket-Verbindung und Kommunikation mit dem Server.
@@ -144,7 +187,7 @@ const Network = (() => {
      * Sendet eine Nachricht an den Server.
      *
      * @param {string} type - Der Typ der Nachricht.
-     * @param {Object<string, any>|null} payload - Der Inhalt der Nachricht.
+     * @param {Record<string, any>|null} payload - Der Inhalt der Nachricht.
      */
     function send(type, payload=null) {
         if (!isReady()) {
@@ -161,6 +204,26 @@ const Network = (() => {
             console.error("Network: Fehler beim Senden der WebSocket-Nachricht:", e);
             EventBus.emit("network:error", {message: "Fehler beim Senden.", context: e});
         }
+    }
+
+    /**
+     * Reverse-Mapping-Funktion für WebSocket Close Codes.
+     *
+     * @param {number} code - WebSocket Close Code.
+     * @returns {string} - Fehlerschlüssel
+     */
+    function getWSCloseCodeName(code) {
+        return Object.keys(WSCloseCode).find(key => WSCloseCode[key] === code) || code;
+    }
+
+    /**
+     * Reverse-Mapping-Funktion für Fehlercodes des Servers.
+     *
+     * @param {number} code - Fehlercode des Servers
+     * @returns {string} - Fehlerschlüssel
+     */
+    function getServerErrorCodeName(code) {
+        return Object.keys(ServerErrorCode).find(key => ServerErrorCode[key] === code) || code;
     }
 
     // --------------------------------------------------------------------------------------
@@ -257,5 +320,7 @@ const Network = (() => {
         isReady,
         getSessionId,
         send,
+        getWSCloseCodeName,
+        getServerErrorCodeName,
     };
 })();
