@@ -25,6 +25,16 @@ const Sound = (() => {
     let _volume = parseFloat(localStorage.getItem('tichuMasterVolume') || '0.5');
 
     /**
+     * Gibt an, ob der Browser den Audio-Blocker aktiviert hat.
+     *
+     * Moderne Browser verhindern, dass Websites unaufgefordert Töne oder Videos abspielen, bis der Benutzer einmal mit der Seite interagiert hat.
+     * Fehlermeldung: "play() failed because the user didn't interact with the document first."
+     *
+     * @type {boolean}
+     */
+    let _audioBlocked = false;
+
+    /**
      * Verfügbare Audio-Dateien
      *
      * @type {Array<string>}
@@ -79,6 +89,7 @@ const Sound = (() => {
 
         audio.addEventListener('ended', () => {
             console.debug(`Sound: '${basename}' ist fertig`);
+
             if (typeof callback === 'function') {
                 callback();
             }
@@ -86,8 +97,21 @@ const Sound = (() => {
 
         console.debug(`Sound: '${basename}'`);
         audio.currentTime = 0;
-        audio.play().catch(error => {
-            console.error(`Sound: "${audio.src}" konnte nicht abgespielt werden:`, error.message);
+        audio.play().then(() => {
+            if (_audioBlocked) {
+                console.info("🎵 Sound: Audio erfolgreich gestartet nach Interaktion.");
+                _audioBlocked = false;
+            }
+        }).catch(error => {
+            if (error.name === 'NotAllowedError') {
+                if (!_audioBlocked) {
+                    console.warn("⚠️ Sound: Audio blockiert. Der Benutzer hat noch nicht mit dem Browser interagiert.");
+                    _audioBlocked = true;
+                }
+            }
+            else {
+                console.error(`Sound: "${audio.src}" konnte nicht abgespielt werden:`, error.message);
+            }
             if (typeof callback === 'function') {
                 callback();
             }
