@@ -73,9 +73,7 @@ const AppController = (() => {
             User.setTableName(paramTableName);
         }
         // Sound deaktivieren, falls gewünscht
-        if (urlParams.get('sound') === 'false') {
-            Sound.setEnabled(false);
-        }
+        Sound.setEnabled(urlParams.get('sound') !== 'false');
 
         // Ansicht aktualisieren
         _renderView();

@@ -142,11 +142,20 @@ const Animation = (() => {
         cardElement.addEventListener('transitionend', handler, { once: true });
         cardElement.addEventListener('transitioncancel', handler, { once: true });
 
-        // Animation im nächsten Frame starten
-        //const startTime = document.timeline.currentTime;
-        requestAnimationFrame(_timestamp => { // rAF sagt dem Browser: "Bevor du den nächsten Frame zeichnest, führe diese Funktion aus."
-            //const elapsed = timestamp - startTime;
-            cardElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
+        // // Animation im nächsten Frame starten
+        // //const startTime = document.timeline.currentTime;
+        // requestAnimationFrame(_timestamp => { // rAF sagt dem Browser: "Bevor du den nächsten Frame zeichnest, führe diese Funktion aus."
+        //     //const elapsed = timestamp - startTime;
+        //     cardElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
+        // });
+
+        // **DIE KORREKTUR: Doppelter requestAnimationFrame**
+        // rAF 1: Sorgt dafür, dass der Browser den oben gesetzten Startzustand rendert.
+        requestAnimationFrame(() => {
+            // rAF 2: Im nächsten Frame, wende die Ziel-Transformation an, um die Transition zu starten.
+            requestAnimationFrame(() => {
+                cardElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
+            });
         });
     }
 
@@ -161,6 +170,7 @@ const Animation = (() => {
         for (let fromRelativeIndex= 0; fromRelativeIndex <= 3; fromRelativeIndex++) {
             _takeTurns(fromRelativeIndex, toRelativeIndex, () => {
                 completed++;
+                console.log(`takeTrick: completed ${fromRelativeIndex} -> ${toRelativeIndex} (${completed}/${4})`);
                 if (completed === 4) {
                     if (typeof callback === 'function') {
                         callback();
@@ -181,10 +191,13 @@ const Animation = (() => {
         const turnElements = _trickZones[fromRelativeIndex].querySelectorAll(".turn");
         if (!turnElements.length) {
             if (typeof callback === 'function') {
+                console.log(`takeTrick: kein Stich von ${fromRelativeIndex}`);
                 callback();
             }
             return;
         }
+
+        console.log(`takeTrick: ${turnElements.length} Stiche von ${fromRelativeIndex}`);
 
         let completed = 0;
 
@@ -228,6 +241,7 @@ const Animation = (() => {
             const handler = () => {
                 turnElement.remove();
                 completed++;
+                console.log(`takeTrick: ${completed} Stiche von ${fromRelativeIndex} an ${toRelativeIndex} fertig`);
                 if (completed === turnElements.length) {
                     if (typeof callback === 'function') {
                         callback();
@@ -237,11 +251,21 @@ const Animation = (() => {
             turnElement.addEventListener('transitionend', handler, { once: true });
             turnElement.addEventListener('transitioncancel', handler, { once: true });
 
-            // Animation im nächsten Frame starten
-            //const startTime = document.timeline.currentTime;
-            requestAnimationFrame(_timestamp => { // rAF sagt dem Browser: "Bevor du den nächsten Frame zeichnest, führe diese Funktion aus."
-                //const elapsed = timestamp - startTime;
-                turnElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
+            // // Animation im nächsten Frame starten
+            // //const startTime = document.timeline.currentTime;
+            // requestAnimationFrame(_timestamp => { // rAF sagt dem Browser: "Bevor du den nächsten Frame zeichnest, führe diese Funktion aus."
+            //     //const elapsed = timestamp - startTime;
+            //     turnElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
+            // });
+
+            // **DIE KORREKTUR: Doppelter requestAnimationFrame**
+            // rAF 1: Stellt sicher, dass der Startzustand (Position, Rotation) im DOM committed ist.
+            requestAnimationFrame(() => {
+                // rAF 2: Im *nächsten* Frame, wende die Ziel-Transformation an.
+                // Dies gibt dem Browser garantiert die Chance, den Startzustand zu "sehen" und die Transition korrekt auszulösen.
+                requestAnimationFrame(() => {
+                    turnElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
+                });
             });
         });
     }
