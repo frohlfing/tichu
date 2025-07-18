@@ -45,3 +45,12 @@ lib.prob.*
     *   Implementierung von `AlphaZeroAgent`.
 
 NEU: Decision Transformer, Return-to-go (Anzahl Punkte ab jetzt bis zum Sieg)
+
+
+.gitignore:
+
+# Ignoriere das ganze cov Verzeichnis
+cov/
+
+# Aber ignoriere NICHT die SVG-Datei
+!cov/coverage.svg
