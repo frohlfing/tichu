@@ -5,9 +5,8 @@ Die Standardwerte können mit den Umgebungsvariablen der `.env`-Datei überschie
 """
 
 import logging
+import os
 from dotenv import load_dotenv
-from os import getenv
-from os.path import dirname
 
 # Lade die Umgebungsvariablen aus der .env-Datei
 load_dotenv()
@@ -50,47 +49,47 @@ Versionsnummer:
  3. Ziffer: Patch Level - wird erhöht bei Fehlerbereinigung.
 """
 
-DEBUG = _to_bool(getenv("DEBUG"))
+DEBUG = _to_bool(os.getenv("DEBUG"))
 """
 asyncio im Debug-Mode starten.
 """
 
-LOG_LEVEL = str_to_loglevel(getenv("LOG_LEVEL", "WARNING"))
+LOG_LEVEL = str_to_loglevel(os.getenv("LOG_LEVEL", "WARNING"))
 """
 Log Level .
 """
 
-LOG_COUNT = int(getenv("LOG_COUNT", 5))
+LOG_COUNT = int(os.getenv("LOG_COUNT", 5))
 """
 Maximale Anzahl Log-Dateien (pro Tag wird eine neue Datei angelegt; ältere Dateien werden automatisch gelöscht).
 """
 
-BASE_PATH = getenv("BASE_PATH", dirname(__file__))
+BASE_PATH = os.path.abspath(os.getenv("BASE_PATH", os.path.join(os.path.dirname(__file__), "..")))
 """
 Projektverzeichnis.
 """
 
-DATA_PATH = getenv("DATA_PATH", f'{BASE_PATH}/data')
+DATA_PATH = os.path.abspath(os.getenv("DATA_PATH", f'{BASE_PATH}/data'))
 """
 Datenverzeichnis.
 """
 
-HOST = getenv("HOST", "localhost")
+HOST = os.getenv("HOST", "localhost")
 """
 WebSocket-Host.
 """
 
-PORT = int(getenv("PORT", 8765))
+PORT = int(os.getenv("PORT", 8765))
 """
 WebSocket-Port.
 """
 
-SECRET_KEY = getenv("SECRET_KEY", "secret")
+SECRET_KEY = os.getenv("SECRET_KEY", "secret")
 """
 Wer das nicht kennt, darf nicht mitspielen.
 """
 
-KICK_OUT_TIME = int(getenv("KICK_OUT_TIME", 15))
+KICK_OUT_TIME = int(os.getenv("KICK_OUT_TIME", 15))
 """
 Wartezeit nach einem Verbindungsabbruch bis zum Rauswurf in Sekunden.
 """
@@ -100,7 +99,7 @@ DEFAULT_REQUEST_TIMEOUT = 99999999
 Maximale Wartezeit für Anfragen an den Client in Sekunden (None == unbegrenzt).
 """
 
-ARENA_WORKER = int(getenv("ARENA_WORKER", 1))
+ARENA_WORKER = int(os.getenv("ARENA_WORKER", 1))
 """
 Anzahl Prozesse für die Arena.
 """
@@ -111,7 +110,7 @@ Gewünschte Gewinnquote WIN / (WIN + LOST).
 Wenn erreicht, bricht die Arena den Wettkampf ab (sofern early_stopping gesetzt ist).
 """
 
-AGENT_THINKING_TIME = _to_array(getenv("AGENT_THINKING_TIME", [500, 1500]), lambda item: int(item))
+AGENT_THINKING_TIME = _to_array(os.getenv("AGENT_THINKING_TIME", [500, 1500]), lambda item: int(item))
 """
 Denkzeit des Agenten (von/bis) in ms.
 """

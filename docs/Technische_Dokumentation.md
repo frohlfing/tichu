@@ -18,9 +18,6 @@
     2.  [Klassenhierarchie](#32-klassenhierarchie)
     
 4.  [Modulübersicht und Verzeichnisse](#4-modulübersicht-und-verzeichnisse) TODO Verzeichnisstruktur zum Anhang packen
-    1.  [`src/`-Verzeichnis](#41-src-verzeichnis)
-    2.  [`tests/`-Verzeichnis](#42-tests-verzeichnis)
-    3.  [Start-Skripte](#43-start-skripte)
 
 5. [Daten, Konstanten, Typen](#5-daten-konstanten-typen) TODO zur ersten Ausbaustufe packen
     1.  [Datenklassen](#51-datenklassen)
@@ -72,7 +69,7 @@ Dieses Dokument beschreibt die technische Implementierung einer Webanwendung fü
 
 Das Projekt umfasst zwei Hauptbetriebsarten:
 *   Eine **Arena** für schnelle Simulationen zwischen Agenten optimiert. Für Forschungs- und Entwicklungszwecke (z.B. Training von KI-Agenten).
-*   Einen **Live-Betrieb**, der menschlichen Spielern via WebSockets ermöglicht, gegen Agenten oder andere menschliche Spieler anzutreten.
+*   Ein **Live-Betrieb**, der menschlichen Spielern via WebSockets ermöglicht, gegen Agenten oder andere menschliche Spieler anzutreten.
 
 ## 2. Regelwerk
 
@@ -166,60 +163,186 @@ WebsocketHandler
 
 ## 4 Modulübersicht und Verzeichnisse
 
-TODO: Verzeichnisstruktur wie bei [8.3](#83-verzeichnisstruktur) abbilden
+# Verzeichnisstruktur
 
-### 4.1 `src/`-Verzeichnis
+Diese Struktur trennt klar zwischen:
 
-Quellcode für Packages
+- Skripten zur Ausführung (bin/)
+- Generierten Daten (data/)
+- Dokumentation (docs/)
+- Proof of Concept (poc/)
+- Quellcode (src/)
+- Tests (tests/)
+- Frontend (web/)
 
-*   Datenstrukturen:
-    *   `public_state.py`: Datenklasse `PublicState`, die den öffentlichen Spielzustand enthält, also alle Informationen, die jedem Spieler an einem Tisch bekannt sind.
-    *   `private_state.py`: Datenklasse `PrivateState`, die den privaten Spielzustand eines Spielers enthält, wie z.B. die Handkarten des Spielers.
-
-*   Weitere Kernmodule:
-    *   `game_engine.py`: Die `GameEngine`-Klasse, die die Hauptspiellogik für einen Tisch steuert, Runden abwickelt und mit den `Player`-Instanzen interagiert.
-    *   `arena.py`: Die `Arena`-Klasse für den Arena-Betrieb, führt mehrere Spiele parallel oder sequenziell aus und sammelt Statistiken.
-
-*   Allgemeine Bibliotheken: 
-    * `src/common/` 
-       *   `logger.py`: Konfiguration des Logging-Frameworks, inklusive farbiger Konsolenausgabe.
-       *   `rand.py`: Benutzerdefinierte Zufallsgenerator-Klasse, optimiert für potenzielle Multiprocessing-Szenarien (verzögerte Initialisierung des Seeds pro Instanz).
-       *   `git_utils.py`: Hilfsfunktionen zur Interaktion mit Git (z.B. Ermittlung des aktuellen Tags/Version).
-
-*   Projektspezifische Bibliotheken
-    * `src/lib/`
-       *   `cards.py`: Definition von Karten, dem Deck, Punktwerten und Hilfsfunktionen zur Kartenmanipulation.
-       *   `combinations.py`: Definition von Kombinationstypen, Logik zur Erkennung, Generierung und Validierung von Kartenkombinationen. Enthält auch Logik zur Erstellung des gültigen Aktionsraums.
-       *   `partitions.py`: Logik zur Aufteilung von Handkarten in mögliche Sequenzen von Kombinationen.
-       *   `errors.py`: Definition anwendungsspezifischer Exception-Klassen.
-      
-*   Spieler-Typen:
-    * `src/players/`
-       *   `player.py`: Abstrakte Basisklasse `Player` mit der Grundschnittstelle für alle Spieler.
-       *   `agent.py`: Abstrakte Basisklasse `Agent`, erbt von `Player`, für KI-gesteuerte Spieler.
-       *   `random_agent.py`: Konkrete Implementierung eines Agenten, der zufällige, gültige Züge macht.
-       *   `heuristic_agent.py`: Agent, der auf Heuristiken basiert.
-       *   `peer.py`: (Für Server-Betrieb) Klasse, die den serverseitigen Endpunkt der WebSocket-Verbindung zu einem verbundenen Client repräsentiert.
-
-### 4.2 `tests/`-Verzeichnis
-
-Enthält Unit-Tests für die Module in `src/`, geschrieben mit `pytest`. 
-
-### 4.3 `poc/`-Verzeichnis
-
-Enthält Proof-of-Concept-Skripte.
-
-### 4.4 Start-Skripte
-
-*   `main.py`: Konfiguriert Agenten und startet die `Arena`.
-*   `server.py`: Startet den Server für den Live-Betrieb. 
-*   `wsclient.py`: Startet einen interaktiven WebSocket-Client für Testzwecke.
-
-### 4.5 Konfiguration
-
-*   `config.py`: Konfigurationsvariablen für das Projekt (z.B. Loglevel, Arena-Einstellungen).
-*   `.env`: Umgebungsvariablen für sensible  oder serverabhängige Daten. Wird nicht im Git-Repo abgelegt.
-*   `.env.example`: Diese Datei wird im Git-Repo abgelegt und dient als Vorlage für die .env-Datei. 
+<pre>
+└── tichu/
+    ├── .idea
+    ├── .venv
+    ├── bin/                        # ausführbare Skripte und Dateien
+    │   ├── bw_download.py          # Lädt Tichu-Logdateien von Brettspielwelt herunter
+    │   ├── bw_import.py            # Importiert die Logdateien von Brettspielwelt in eine Sqlite-DB
+    │   ├── cov.ps1                 # führt eine Code-Coverage-Analyse durch
+    │   ├── run_arena.py            # Startet die `Arena` mit 4 Agenten
+    │   ├── serve.py                # Startet den Server für den Live-Betrieb
+    │   └── wsclient.py             # Startet einen WebSocket-Client für Testzwecke
+    ├── data/                       # alle generierten Daten (von Git ignoriert!)
+    │   ├── bw/                     # Daten von Brettspielwelt
+    │   │   ├── tichulog
+    │   │   │   ├── 2007.zip
+    │   │   │   └── 2022.zip
+    │   │   └── Logs_runterladen.ipynb
+    │   ├── cov/                    # Coverage-Daten
+    │   │   ├── htmlcov/
+    │   │   │   └── index.html
+    │   │   ├── .coverage
+    │   │   └── coverage.xml
+    │   ├── db/                     # Datenbanken
+    │   │   └── tichu.sqlite
+    │   ├── logs/                   # Logdateien
+    │   │   ├── app.log
+    │   │   └── app.log.2025-07
+    │   ├── models/                 # Trainierte Modelle, Caches, Tabellen
+    │   ├── prob                    # Hilfstabellen für das `src/lib/prob`-Pakage
+    │   │   └── bomb04_hi.pkl.gz
+    │   │   └── triple_lo.pkl.gz
+    │   └── reports/
+    ├── docs/
+    │   ├── assets.py               # statische Assets (z.B. Bilder) für die Dokumentation
+    │   │   └── coverage.svg
+    │   ├── .gitkeep
+    │   ├── benchmark.txt
+    │   ├── Technische_Dokumentation.md
+    │   ├── Tichu_Pocket_Regeln.md
+    │   ├── Todos.md
+    │   └── Zustandsänderung bei Ereignis.xlsx
+    ├── poc/                        # Enthält Proof-of-Concept-Skripte
+    │   ├── arena_sync/
+    │   │   └── main.py
+    │   ├── benchmark.py
+    │   ├── poc_interrupt.py
+    │   └── poc_pickling.py
+    ├── src/                         # Top-Level Python-Package
+    │   ├── common/                  # allgemeine Bibliotheken
+    │   │   ├── git_utils.py         # Hilfsfunktionen zur Interaktion mit Git
+    │   │   ├── logger.py            # Logger-Klasse
+    │   │   └── rand.py              # Zufallsgenerator-Klasse
+    │   ├── lib/                     # projektspezifische Bibliotheken
+    │   │   ├── prob/                # Bibliothek zum Berechnen von Wahrscheinlichkeiten und Statistiken
+    │   │   │   ├── prob_hi.py
+    │   │   │   ├── prob_lo.py
+    │   │   │   ├── statistic.py
+    │   │   │   ├── tables_hi.py
+    │   │   │   └── tables_lo.py
+    │   │   ├── cards.py             # Definition von Karten, dem Deck, Punktwerten und Hilfsfunktionen zur Kartenmanipulation
+    │   │   ├── combinations.py      # Definition von Kombinationstypen, Logik zur Erkennung, Generierung und Validierung von Kartenkombinationen
+    │   │   ├── errors.py            # Definition anwendungsspezifischer Exception-Klassen
+    │   │   └── partitions.py        # Logik zur Aufteilung von Handkarten in mögliche Sequenzen von Kombinationen
+    │   ├── players/                 # Spieler-Typen
+    │   │   ├── player.py            # Abstrakte Basisklasse `Player` mit der Grundschnittstelle für alle Spieler
+    │   │   ├── agent.py             # Abstrakte Basisklasse `Agent`, erbt von `Player`, für KI-gesteuerte Spieler
+    │   │   ├── heuristic_agent.py   # Agent, der auf Heuristiken basiert
+    │   │   ├── peer.py              # Klasse, die den serverseitigen Endpunkt der WebSocket-Verbindung zu einem verbundenen Client repräsentiert
+    │   │   └── random_agent.py      # Konkrete Implementierung eines Agenten, der zufällige, gültige Züge macht
+    │   ├── __init__.py
+    │   ├── arena.py                 # `Arena`-Klasse für den Arena-Betrieb (führt mehrere Spiele parallel oder sequenziell aus und sammelt Statistiken)
+    │   ├── server.py                # Webserver und WebSocket-Server für den Live-Betrieb 
+    │   ├── config.py                # Konfigurationsvariablen für das Projekt (z.B. Loglevel, Arena-Einstellungen).
+    │   ├── game_engine.py           # `GameEngine`-Klasse, die die Hauptspiellogik für einen Tisch steuert
+    │   ├── game_factory.py
+    │   ├── private_state.py         #  öffentlichen Spielzustand
+    │   └── public_state.py          # privaten Spielzustand eines Spielers 
+    ├── tests/                       # Unit-Tests für die Module in `src/`, geschrieben mit `pytest` 
+    │   ├── common/                 
+    │   │   ├── test_git_utils.py    
+    │   │   ├── test_logger.py       
+    │   │   └── test_rand.py         
+    │   ├── lib/                     
+    │   │   ├── test_cards.py        
+    │   │   └── test_combinations.py 
+    │   ├── players/
+    │   │   ├── test_agent.py
+    │   │   ├── test_player.py
+    │   │   └── test_random_agent.py
+    │   ├── prob/
+    │   │   ├── test_prob_hi.py
+    │   │   └── test_prob_lo.py
+    │   ├── src/
+    │   │   ├── test_arena.py
+    │   │   ├── test_game_engine.py
+    │   │   ├── test_private_state.py
+    │   │   └── test_public_state.py
+    │   └── conftest.py
+    ├── web/                        # Frontend
+    │   ├── css/
+    │   │   ├── animation.css
+    │   │   ├── common.css
+    │   │   ├── loading-view.css
+    │   │   ├── lobby-view.css
+    │   │   ├── login-view.css
+    │   │   ├── modal.css
+    │   │   ├── table-view.css
+    │   │   └── test.css
+    │   ├── fonts/
+    │   │   └── architect-s-daughter/
+    │   │       ├── Architects Daughter SIL OFL Font License.txt
+    │   │       ├── ArchitectsDaughter.ttf
+    │   │       ├── ArchitectsDaughter.ttf.import
+    │   │       └── ArchitectsDaughter32.tres
+    │   ├── images/
+    │   │   ├── background.png/
+    │   │   ├── bomb-icon.png
+    │   │   ├── grand-tichu-icon.png
+    │   │   ├── icon.png
+    │   │   ├── logo.png
+    │   │   ├── spinner.png
+    │   │   ├── table-texture.png
+    │   │   ├── tichu-icon.png
+    │   │   └── wish-icon.png
+    │   ├── js/
+    │   │   └── views/
+    │   │   │   ├── loading-view.js
+    │   │   │   ├── lobby-view.js
+    │   │   │   ├── login-view.js
+    │   │   │   └── table-view.js
+    │   │   ├── animation.js
+    │   │   ├── app-controller.js
+    │   │   ├── bot.js
+    │   │   ├── config.js
+    │   │   ├── event-bus.js
+    │   │   ├── lib.js
+    │   │   ├── main.js
+    │   │   ├── modal.js
+    │   │   ├── network.js
+    │   │   ├── random.js
+    │   │   ├── sound.js
+    │   │   ├── state.js
+    │   │   ├── test-runner.js
+    │   │   ├── tests.js
+    │   │   ├── user.js
+    │   │   └── view-manager.js
+    │   └── sounds/
+    │   │   ├── announce.ogg
+    │   │   ├── bomb.ogg
+    │   │   ├── play0.ogg
+    │   │   ├── play1.ogg
+    │   │   ├── play2.ogg
+    │   │   ├── play3.ogg
+    │   │   ├── schupf.ogg
+    │   │   ├── score.ogg
+    │   │   ├── select.ogg
+    │   │   ├── shuffle.ogg
+    │   │   └── take.ogg
+    │   ├── index.html
+    │   └── tests.html
+    ├── .env                        # Umgebungsvariablen für sensible  oder serverabhängige Daten. Wird nicht im Git-Repo abgelegt.
+    ├── .env.example                # Diese Datei wird im Git-Repo abgelegt und dient als Vorlage für die .env-Datei.
+    ├── .gitignore               
+    ├── LICENSE
+    ├── pyproject.toml              # Projekt-Setup
+    ├── pytest.ini
+    └── README.md
+</pre>
 
 ## 5. Daten, Konstanten, Typen
 
@@ -258,7 +381,7 @@ Die Spielphasen des Servers werden nur bei der Validierung im Peer benötigt.
 
 ### 6.1 Zweck
 
-Der Arena-Betrieb (`arena.py` gestartet über `main.py`) dient dazu, KI-Agenten in einer großen Anzahl von Spielen gegeneinander antreten zu lassen. Dies ist nützlich für:
+Der Arena-Betrieb (`arena.py` gestartet über `bin/run_arena.py`) dient dazu, KI-Agenten in einer großen Anzahl von Spielen gegeneinander antreten zu lassen. Dies ist nützlich für:
 *   Testen der Stabilität der `GameEngine`.
 *   Evaluierung und Vergleich der Spielstärke verschiedener Agenten.
 *   Sammeln von Spieldaten für das Training von Machine-Learning-Agenten.
@@ -501,7 +624,7 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
     *   „Großes Tichu“ (Bei Klick: „Lange drücken für Ansage“.) 
     *   „Spielen“ (deaktiviert)
 
-*   Schupf-Phase - Austeilen 14 Karten:
+*   Schupf-Phase - Austeilen von 14 Karten:
     - A) Abgeben:
       *   „Passen“ (deaktiviert),
       *   „Tichu“ (deaktiviert, wenn bereits angesagt)
@@ -509,7 +632,7 @@ Der Server schließt die Verbindung mit Code 1008 (WSCloseCode.POLICY_VIOLATION)
 
       Nur eine Handkarte kann selektiert werden. Danach muss eine Schupfzone gewählt werden. 
       
-    - B) Aufnehmen - Nach Klick auf Schupfen:
+    - B) Aufnehmen – Nach Klick auf Schupfen:
       *   „Passen“ (deaktiviert),
       *   „Tichu“ (deaktiviert, wenn bereits angesagt)
       *   „Aufnehmen“
@@ -632,9 +755,9 @@ Init:
 *  web/images/cards
 	https://github.com/Tichuana-Tichu/tichuana-tichu/tree/develop/src/ch/tichuana/tichu/client/resources/images/cards
 	https://github.com/pgaref/Tichu/blob/master/Tichu_CardGame/src/tichu/images/back.jpg
-	Auf Anfrage für nicht kommerziellen Gebrauch von [Fata Morgana Spiele, Bern](www.fatamorgana.ch) genehmigt.
+	Auf Anfrage für nicht kommerziellen Gebrauch von [Fata Morgana Spiele, Bern](https://www.fatamorgana.ch) genehmigt.
 
-*  web/images/background.png, web/images/log.png, web/images/icon.png (web/images/dragon)
+*  web/images/background.png, web/images/logo.png, web/images/icon.png (web/images/dragon)
 	https://pixabay.com/de/vectors/drachen-eidechse-monster-chinesisch-149393/
 	Kostenlos, Zusammenfassung der Inhaltslizenz: https://pixabay.com/de/service/license-summary/
 
@@ -719,32 +842,39 @@ web/fonts/architect-s-daughter
     ```
 4.  Abhängigkeiten installieren:
     ```bash
-    pip pip install -r requirements.txt
+    # veraltet:
+    # pip pip install -r requirements.txt
+     
+    # moderner, die Abhängigkeiten stehen jetzt in der `pyproject.toml`-Datei: 
+    # -e: Editable, src wird verlinkt, nicht kopiert.
+    # .: Das Zielverzeichnis ist das aktuellen Verzeichnis.
+    # [dev]: Auch die optionale Abhängigkeitsgruppe namens dev installieren.
+    pip install -e .
+    # bzw mit alle [dev]-Abhängigkeiten:
+    pip install -e ".[dev]"
     ```
+    Mit `pip freeze` können die aktuellen Abhängigkeiten ermittelt werden.
+
 5.  **Arena starten:**
     ```bash
-    python main.py
+    python bin/run_arena.py
     ```
     **Server starten:**
     ```bash
-    python server.py
+    python bin/serve.py
     ```
     **WebSocket-Client zum Testen starten:**
     ```bash
-    python wsclient.py
-    ```
-6.  `requirements.txt` aktualisieren:
-    ```bash
-    pip freeze
+    python bin/wsclient.py
     ```
 
 ### A1.3 Testing
 
 *   Unit-Tests werden mit `pytest` geschrieben und befinden sich im `tests/`-Verzeichnis.
     *   Ausführen der Tests: `python -m pytest`.
-    *   Ausführen mit Coverage: `cov.ps1`
-*   Die Codeabdeckung der Tests wird mit `coverage` gemessen, Konfiguration in `.coveragerc`.
-    *   Ausführen: `cov.ps1`
+    *   Ausführen mit Coverage: `bin/cov.ps1`
+*   Die Codeabdeckung der Tests wird mit `coverage` gemessen, Konfiguration in `.coveragerc` (veraltet) bzw. in `pyproject.toml` (neu).
+    *   Ausführen: `bin/cov.ps1`
 
 ## A2. Exceptions
 

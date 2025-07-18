@@ -5,11 +5,11 @@ Sie unterstützt die Protokollierung in einer Datei sowie die farbliche Ausgabe 
 
 __all__ = "logger",
 
-import config
 import logging
 import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
+from src import config
 from typing import TextIO, Optional
 
 # https://xsnippet.org/359377/
@@ -90,7 +90,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(config.LOG_LEVEL)
 
 # Erstelle einen Handler für das Schreiben in eine Datei
-file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "logs", "app.log"))
+#file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "logs", "app.log"))
+file_path = os.path.join(config.DATA_PATH, "logs", "app.log")
 file_handler = TimedRotatingFileHandler(file_path, when="midnight", interval=1, backupCount=config.LOG_COUNT)
 file_handler.setLevel(config.LOG_LEVEL)
 

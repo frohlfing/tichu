@@ -5,11 +5,11 @@ benötigt werden.
 
 __all__ = "load_table_hi",
 
-import config
 import gzip
 import itertools
 import pickle
 from os import path, mkdir
+from src import config
 from src.lib.combinations import stringify_type, CombinationType
 from time import time
 
@@ -22,7 +22,7 @@ from time import time
 # t: Typ der Kombination
 # m: Länge der Kombination (nur für Treppe, Straße und Bombe relevant)
 def get_filename_hi(t: CombinationType, m: int = None):
-    folder = path.join(config.DATA_PATH, "lib/prob")
+    folder = path.join(config.DATA_PATH, "prob")
     if not path.exists(folder):
         mkdir(folder)
     name = stringify_type(t, m)

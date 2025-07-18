@@ -3,10 +3,10 @@ Definiert den serverseitigen Endpunkt der WebSocket-Verbindung für die Interakt
 """
 
 import asyncio
-import config
 import time
 from aiohttp import WSCloseCode
 from aiohttp.web import WebSocketResponse
+from src import config
 from src.common.logger import logger
 from src.common.rand import Random
 from src.lib.cards import Card, Cards, stringify_cards, deck, CARD_MAH, CardSuit

@@ -2,11 +2,9 @@
 /.pytest_cache
 /.venv
 /__pycache__
-/bw
-/cov/htmlcov
 /data
 /docs/E-Mail_Urheberrechte
-/logs
+/poc/_dev
 /.env
 /*.py.lprof
 /*.py.prof

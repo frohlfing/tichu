@@ -1,5 +1,5 @@
-import config
 import unittest
+from src import config
 from src.lib.cards import *
 from src.lib.combinations import *
 from src.private_state import PrivateState

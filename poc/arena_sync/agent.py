@@ -1,5 +1,5 @@
-import config
 import math
+from src import config
 from poc.arena_sync.state import PublicState, PrivateState
 from src.common.rand import Random
 from src.lib.cards import Card, CARD_DOG, CARD_MAH, CARD_DRA, CARD_PHO

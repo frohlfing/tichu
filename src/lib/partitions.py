@@ -7,7 +7,7 @@ __all__ = "Partition", \
     "filter_playable_partitions", "filter_playable_combinations", \
     "stringify_partition",
 
-import config
+from src import config
 from src.lib.cards import Cards
 from src.lib.combinations import stringify_combination, remove_combinations, Combination
 from typing import List, Tuple, Optional

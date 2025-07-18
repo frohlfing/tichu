@@ -3,8 +3,8 @@ Definiert die Arena, in der Agenten gegeneinander spielen können.
 """
 
 import asyncio
-import config
 from multiprocessing import Pool, Manager, cpu_count
+from src import config
 from src.common.logger import logger
 from src.game_engine import GameEngine
 from src.players.agent import Agent

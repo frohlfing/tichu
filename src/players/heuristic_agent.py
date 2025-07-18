@@ -2,8 +2,8 @@
 Definiert die Heuristik-Agenten.
 """
 
-import config
 import math
+from src import config
 from src.common.rand import Random
 from src.lib.cards import Card, Cards, CARD_DOG, CARD_MAH
 from src.lib.combinations import Combination, build_action_space, remove_combinations, CombinationType

@@ -11,12 +11,12 @@ Dieses Modul implementiert einen WebSocket-Client für den Tichu-Server zu Test-
 
 import argparse
 import asyncio
-import config
 import json
 import os
 import pickle
 import sys
 from aiohttp import WSMsgType, ClientSession, ClientWebSocketResponse, ClientConnectorError
+from src import config
 from src.common.git_utils import get_release
 from src.common.logger import logger
 from src.lib.errors import ClientDisconnectedError, ErrorCode

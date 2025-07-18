@@ -1,4 +1,4 @@
-import config
+from src import config
 from multiprocessing import Pool, Manager, cpu_count
 from poc.arena_sync.engine import GameEngine
 from poc.arena_sync.agent import Agent

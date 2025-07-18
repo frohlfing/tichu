@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import config
+from src import config
 from poc.arena_sync.arena import Arena
 from poc.arena_sync.agent import Agent, RandomAgent, HeuristicAgent
 

@@ -11,13 +11,13 @@ Dieses Modul implementiert den Webserver für Tichu.
 
 import argparse
 import asyncio
-import config
 import json
 import os
 import signal
 import sys
 from aiohttp import WSMsgType, WSCloseCode, WSMessage
 from aiohttp.web import Application, AppRunner, Request, WebSocketResponse, TCPSite
+from src import config
 from src.common.git_utils import get_release
 from src.common.logger import logger
 from src.game_factory import GameFactory

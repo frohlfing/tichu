@@ -1,4 +1,4 @@
-![Coverage](cov/coverage.svg)
+![Coverage](docs/assets/coverage.svg)
 ![Version](https://img.shields.io/github/v/tag/frohlfing/tichu)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![License](https://img.shields.io/github/license/frohlfing/tichu)
@@ -30,8 +30,8 @@ Tichu ist ein Kartenspiel, das ursprünglich aus China stammt und Ähnlichkeiten
 *   **Agenten:**
     *   `RandomAgent`: Implementiert (spielt zufällige, gültige Züge).
     *   Weitere Agenten (heuristisch, neuronal) sind geplant.
-*   **Server-Modus (Live-Spiel):** Befindet sich aktiv in der Entwicklung. Die grundlegende Architektur für WebSocket-Kommunikation und Tischverwaltung wird derzeit implementiert.
-*   **Frontend:** Geplant als reine Webanwendung (HTML/CSS/JS).
+*   **Server-Modus (Live-Spiel):** Weitgehend implementiert.
+*   **Frontend:** Weitgehend implementiert.
 
 ## Systemanforderungen
 

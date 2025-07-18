@@ -3,15 +3,11 @@ import logging
 import sys
 import os
 from io import StringIO  # Zum Abfangen von Stream-Ausgaben
-from unittest.mock import patch
-
-# Klassen und das konfigurierte Logger-Objekt importieren
-# ACHTUNG: Der Import von logger führt den Konfigurationscode aus!
+from src import config
 # noinspection PyProtectedMember
 from src.common.logger import logger, AnsiColorizer, ColorStreamHandler
+from unittest.mock import patch
 
-# Importiere config, um es evtl. zu mocken
-import config
 
 @pytest.fixture
 def mock_stream():
