@@ -64,35 +64,25 @@ class Player:
     # Entscheidungen
     # ------------------------------------------------------
 
-    async def announce_grand_tichu(self) -> bool:
+    async def announce(self) -> bool:
         """
-        Die Engine fragt den Spieler, ob er ein großes Tichu ansagen möchte.
+        Die Engine fragt den Spieler, ob er ein Tichu (großes oder einfaches) ansagen möchte.
 
-        Die Engine ruft diese Methode direkt nach dem Austeilen der ersten 8 Karten auf.
-        Die Bedingung ist::
+        Die Engine ruft diese Methode nur auf, wenn der Spieler ein Tichu ansagen darf.
+
+        Die Bedingung für ein großes Tichu (direkt nach dem Austeilen der ersten 8 Karten) ist::
             self.pub.announcements[self.priv.player_index] == 0 and
-            self.pub.start_player_index == -1 and
-            self.pub.count_hand_cards[self.priv.player_index] == 8
+            self.pub.count_hand_cards[self.priv.player_index] == 8 and
+            self.pub.start_player_index == -1
+
+        Die Bedingung für ein einfaches Tichu ist::
+            self.pub.announcements[self.priv.player_index] == 0 and
+            self.pub.count_hand_cards[self.priv.player_index] == 14 and
+            self.pub.start_player_index >= 0
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: True, wenn angesagt wird, sonst False.
-        """
-        raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'announce_grand_tichu' implementieren.")
-
-    async def announce_tichu(self) -> bool:
-        """
-        Die Engine fragt den Spieler, ob er ein einfaches Tichu ansagen möchte.
-
-        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein einfaches Tichu ansagen darf.
-        Die Bedingung ist::
-            self.pub.start_player_index >= 0 and
-            self.pub.announcements[self.priv.player_index] == 0 and
-            self.pub.count_hand_cards[self.priv.player_index] == 14
-
-        Die Engine verlässt sich darauf, dass die Antwort valide ist.
-
-        :return: True, wenn ein Tichu angesagt wird, sonst False.
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'announce_tichu' implementieren.")
 

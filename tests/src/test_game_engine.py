@@ -19,8 +19,7 @@ def mock_agents(mocker) -> List[AsyncMock]:
         player_mock.__class__ = Agent
         player_mock.cleanup = AsyncMock(name=f'cleanup_mock_{i}')
         player_mock.reset_round = AsyncMock(name=f'reset_round_mock_{i}')
-        player_mock.announce_grand_tichu = AsyncMock(name=f'announce_grand_tichu_mock_{i}')
-        player_mock.announce_tichu = AsyncMock(name=f'announce_tichu_mock_{i}')
+        player_mock.announce = AsyncMock(name=f'announce_mock_{i}')
         player_mock.schupf = AsyncMock(name=f'schupf_mock_{i}')
         player_mock.play = AsyncMock(name=f'play_mock_{i}')
         player_mock.wish = AsyncMock(name=f'wish_mock_{i}')

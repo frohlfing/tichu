@@ -71,11 +71,11 @@ const Sound = (() => {
      * @param {Function} [callback] - (Optional) Callback nach Soundende.
      */
     function play(basename, callback) {
-        if (!_enabled) {
+        if (!_enabled || document.visibilityState !== 'visible') {
             if (typeof callback === 'function') {
                 callback();
             }
-            return; // Sound ist deaktiviert
+            return; // Sound ist deaktiviert bzw. die Seite ist nicht sichtbar
         }
 
         const audio = _audio[basename];

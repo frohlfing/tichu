@@ -404,7 +404,7 @@ class GameEngine:
                         else:
                             # Falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden.
                             if pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
-                                if await self._players[pub.current_turn_index].announce_tichu():
+                                if await self._players[pub.current_turn_index].announce():
                                     # Spieler hat Tichu angesagt
                                     pub.announcements[pub.current_turn_index] = 1
                                     if clients_joined:
@@ -686,7 +686,7 @@ class GameEngine:
 
         # Möchte ein Spieler ein großes Tichu ansagen?
         if not pub.announcements[player_index]:
-            if await player.announce_grand_tichu():
+            if await player.announce():
                 pub.announcements[player_index] = 2
                 if clients_joined:
                     await self._broadcast("player_announced", {"player_index": player_index, "grand": True})

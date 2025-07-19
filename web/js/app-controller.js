@@ -46,6 +46,7 @@ const AppController = (() => {
 
         Network.init();
         Sound.init();
+        Animation.init();
         Modal.init();
         ViewManager.init();
 

@@ -154,7 +154,7 @@ async def main(args: argparse.Namespace):
 
 
         # Antworten von Server-Anfragen
-        # announce_grand_tichu
+        # announce
         {"type": "response", "payload": {"action": "<action>", "response_data": {"announced": False}}},
         {"type": "response", "payload": {"action": "<action>", "response_data": {"announced": True}}},
         # schupf

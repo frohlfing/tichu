@@ -77,17 +77,10 @@ async def test_random_agent_schupf(random_agent_seeded):
     assert agent.priv.hand_cards == original_hand_copy
 
 @pytest.mark.asyncio
-async def test_random_agent_announce_grand_tichu(random_agent_unseeded):
-    """Testet RandomAgent.announce_grand_tichu (nur Typ und Wertbereich)."""
-    agent = random_agent_unseeded
-    result = await agent.announce_grand_tichu()
-    assert isinstance(result, bool)
-
-@pytest.mark.asyncio
-async def test_random_agent_announce_tichu(random_agent_unseeded):
+async def test_random_agent_announce(random_agent_unseeded):
     """Testet RandomAgent.announce_tichu (nur Typ und Wertbereich)."""
     agent = random_agent_unseeded
-    result = await agent.announce_tichu()
+    result = await agent.announce()
     assert isinstance(result, bool)
 
 @pytest.mark.asyncio
@@ -196,12 +189,8 @@ async def test_schupf(agent):
     result = await agent.schupf()
     assert result == tuple(parse_cards("S4 B3 G4"))
 
-async def test_announce_grand_tichu(agent):
-    result = await agent.announce_grand_tichu()
-    assert result in [True, False]
-
-async def test_announce_tichu(agent):
-    result = await agent.announce_tichu()
+async def test_announce(agent):
+    result = await agent.announce()
     assert result in [True, False]
 
 @patch("src.players.random_agent.build_action_space")

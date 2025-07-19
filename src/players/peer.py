@@ -301,15 +301,25 @@ class Peer(Player):
             # noinspection PyAsyncCall
             self._pending_request = None  # Future wieder entfernen
 
-    async def announce_grand_tichu(self) -> bool:
+    async def announce(self) -> bool:
         """
-        Die Engine fragt den Spieler, ob er ein großes Tichu ansagen möchte.
+        Die Engine fragt den Spieler, ob er ein Tichu (großes oder einfaches) ansagen möchte.
 
-        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein großes Tichu ansagen darf.
+        Die Engine ruft diese Methode nur auf, wenn der Spieler ein Tichu ansagen darf.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
+
+        Wenn es um ein einfaches Tichu geht, wird die Anfrage einfach verneint, denn der Client sagt dies proaktiv an.
+        Ansonsten wird die Anfrage an den Client gesendet.
 
         :return: True, wenn angesagt wird, sonst False.
         """
+        grand = len(self.priv.hand_cards) == 8
+        if not grand:
+            # Eine einfache Tichu-Ansage entscheidet der Client proaktiv, also nicht jetzt.
+            # Sollte der Client ein einfaches Tichu ansagen, leitet der Websocket-Handler dies direkt an die Engine weiter,
+            # die dann die Ansage parallel zum Game-Loop speichert.
+            return False
+
         announced = None
         while announced is None:
             response_data = await self._ask("announce_grand_tichu")
@@ -334,20 +344,6 @@ class Peer(Player):
         assert self.pub.announcements[self.priv.player_index] == 0 and self.pub.start_player_index == -1 and self.pub.count_hand_cards[self.priv.player_index] == 8
 
         return announced
-
-    async def announce_tichu(self) -> bool:
-        """
-        Die Engine fragt den Spieler, ob er ein einfaches Tichu ansagen möchte.
-
-        # Da der Client proaktiv (also ungefragt) ein einfaches Tichu ansagt, wird die Frage nicht an den Client weitergeleitet,
-        # sondern einfach mit False beantwortet.
-
-        # Wenn der Client ein Tichu ansagt, leitet der Websocket-Handler die Nachricht direkt an die Engine weiter, die dann die
-        # Ansage parallel zum Game-Loop speichert.
-
-        :return: False
-        """
-        return False
 
     async def schupf(self) -> Tuple[Card, Card, Card]:
         """

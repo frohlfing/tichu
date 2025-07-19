@@ -80,37 +80,17 @@ class HeuristicAgent(Agent):
     #       future: Future = loop.run_in_executor(pool, blocking_function)
     #       result: int = await future
 
-    async def announce_grand_tichu(self) -> bool:
+    async def announce(self) -> bool:
         """
-        Die Engine fragt den Spieler, ob er ein großes Tichu ansagen möchte.
+        Die Engine fragt den Spieler, ob er ein Tichu (großes oder einfaches) ansagen möchte.
 
-        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein großes Tichu ansagen darf.
-        Die Engine verlässt sich darauf, dass die Antwort valide ist.
-
-        :return: True, wenn angesagt wird, sonst False.
-        """
-        return await self._announce(grand=True)
-
-    async def announce_tichu(self) -> bool:
-        """
-        Die Engine fragt den Spieler, ob er ein einfaches Tichu ansagen möchte.
-
-        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein einfaches Tichu ansagen darf.
+        Die Engine ruft diese Methode nur auf, wenn der Spieler ein Tichu ansagen darf.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: True, wenn ein Tichu angesagt wird, sonst False.
         """
-        return await self._announce(grand=False)
+        grand = len(self.priv.hand_cards) == 8
 
-    async def _announce(self, grand: bool) -> bool:
-        """
-        Die Engine fragt den Spieler, ob er ein Tichu (einfaches oder großes) ansagen möchte.
-
-        Die Engine verlässt sich darauf, dass die Antwort valide ist.
-
-        :param grand: Gibt an, ob ein großes Tichu gefragt ist.
-        :return: True, wenn angesagt wird, sonst False.
-        """
         if sum(self.pub.announcements) > 0:
             announcement = False  # Falls ein Mitspieler ein Tichu angesagt hat, sagen wir nichts an!
         else:

@@ -42,6 +42,76 @@ const Animation = (() => {
     const _scoreDisplay = document.getElementById('score-display');
 
     /**
+     * Hält eine Liste der Callbacks aller aktuell laufenden Animationen.
+     *
+     * @type {Set<Function>}
+     */
+    const _runningAnimationCallbacks = new Set();
+
+    /**
+     * Initialisiert den Page-Visibility-Handler.
+     */
+    function init() {
+        // Ereignis abfangen, wenn die Seite unsichtbar bzw. sichtbar wird.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // Die Seite ist unsichtbar geworden
+                console.warn("Seite wurde unsichtbar. Beende alle laufenden Animationen sofort.");
+                const callbacksToExecute = Array.from(_runningAnimationCallbacks); // konvertiere das Set in ein Array, da das Set durch die Events modifiziert wird
+                _runningAnimationCallbacks.clear(); // leere das Set sofort, um Race Conditions zu vermeiden.
+                callbacksToExecute.forEach(callback => { // rufe die Callback-Funktion manuell auf, da 'transitioncancel'- bzw 'animationcancel'-Event in diesem Fall nicht ausgelöst wird.
+                    callback();
+                });
+            }
+            else if (document.visibilityState === 'visible') {
+                // Die Seite ist sichtbar geworden.
+                console.warn("Seite wurde sichtbar.");
+            }
+        });
+    }
+
+    /**
+     * Wrapper für addEventListener, der das Element registriert.
+     *
+     * @param {HTMLElement} element
+     * @param {string} eventType - 'transitionend' oder 'animationend'
+     * @param {Function} callback - Callback nach Abschluss der Animation.
+     * @param {Function} [rAF] - (Optional) Callback für requestAnimationFrame().
+     */
+    function _addAnimationListener(element, eventType, callback, rAF) {
+        _runningAnimationCallbacks.add(callback);
+
+        element.addEventListener(`${eventType}end`, () => {
+            // Nur ausführen, wenn der Callback noch im Set ist (verhindert doppelte Ausführung,
+            // wenn `visibilitychange` und `transitionend` fast gleichzeitig feuern).
+            if (_runningAnimationCallbacks.has(callback)) {
+                _runningAnimationCallbacks.delete(callback);
+                callback();
+            }
+        }, { once: true });
+
+        element.addEventListener(`${eventType}cancel`, () => {
+            // Nur ausführen, wenn der Callback noch im Set ist (verhindert doppelte Ausführung,
+            // wenn `visibilitychange` und `transitionend` fast gleichzeitig feuern).
+            if (_runningAnimationCallbacks.has(callback)) {
+                _runningAnimationCallbacks.delete(callback);
+                callback();
+            }
+        }, { once: true });
+
+        if (rAF) {
+            // rAF 1: Stellt sicher, dass der Startzustand (Position, Rotation) im DOM committed ist.
+            requestAnimationFrame(() => {
+                // rAF 2: Im *nächsten* Frame, wende die Ziel-Transformation an.
+                // Dies gibt dem Browser garantiert die Chance, den Startzustand zu "sehen" und die Transition korrekt auszulösen.
+                requestAnimationFrame(() => {
+                    rAF();
+                });
+            });
+        }
+    }
+
+    /**
      * Tauscht die Schupfkarten aller Spieler untereinander aus.
      *
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation.
@@ -72,7 +142,7 @@ const Animation = (() => {
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
      */
     function _schupfCard(fromRelativeIndex, toRelativeIndex, callback) {
-        if (_schupfZones[fromRelativeIndex].classList.contains("hidden") || _schupfZones[toRelativeIndex].classList.contains("hidden")) {
+        if (document.visibilityState !== 'visible' || _schupfZones[fromRelativeIndex].classList.contains("hidden") || _schupfZones[toRelativeIndex].classList.contains("hidden")) {
             // Schupf-Subzone ist nicht sichtbar
             if (typeof callback === 'function') {
                 callback();
@@ -132,30 +202,14 @@ const Animation = (() => {
         }
 
         // Event-Listener für das Ende der Transition
-        const handler = () => {
+        _addAnimationListener(cardElement, 'transition', () => {
             cardElement.remove();
             console.log('cardElement.remove()', fromRelativeIndex, toRelativeIndex);
             if (typeof callback === 'function') {
                 callback();
             }
-        };
-        cardElement.addEventListener('transitionend', handler, { once: true });
-        cardElement.addEventListener('transitioncancel', handler, { once: true });
-
-        // // Animation im nächsten Frame starten
-        // //const startTime = document.timeline.currentTime;
-        // requestAnimationFrame(_timestamp => { // rAF sagt dem Browser: "Bevor du den nächsten Frame zeichnest, führe diese Funktion aus."
-        //     //const elapsed = timestamp - startTime;
-        //     cardElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
-        // });
-
-        // **DIE KORREKTUR: Doppelter requestAnimationFrame**
-        // rAF 1: Sorgt dafür, dass der Browser den oben gesetzten Startzustand rendert.
-        requestAnimationFrame(() => {
-            // rAF 2: Im nächsten Frame, wende die Ziel-Transformation an, um die Transition zu starten.
-            requestAnimationFrame(() => {
-                cardElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
-            });
+        }, () => {
+            cardElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
         });
     }
 
@@ -188,6 +242,14 @@ const Animation = (() => {
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation.
      */
     function _takeTurns(fromRelativeIndex, toRelativeIndex, callback) {
+        if (document.visibilityState !== 'visible') {
+            // die Seite ist nicht sichtbar
+            if (typeof callback === 'function') {
+                callback();
+            }
+            return;
+        }
+
         const turnElements = _trickZones[fromRelativeIndex].querySelectorAll(".turn");
         if (!turnElements.length) {
             if (typeof callback === 'function') {
@@ -238,7 +300,7 @@ const Animation = (() => {
             }
 
             // Event-Listener für das Ende der Transition
-            const handler = () => {
+            _addAnimationListener(turnElement, 'transition', () => {
                 turnElement.remove();
                 completed++;
                 console.log(`takeTrick: ${completed} Stiche von ${fromRelativeIndex} an ${toRelativeIndex} fertig`);
@@ -247,25 +309,8 @@ const Animation = (() => {
                         callback();
                     }
                 }
-            };
-            turnElement.addEventListener('transitionend', handler, { once: true });
-            turnElement.addEventListener('transitioncancel', handler, { once: true });
-
-            // // Animation im nächsten Frame starten
-            // //const startTime = document.timeline.currentTime;
-            // requestAnimationFrame(_timestamp => { // rAF sagt dem Browser: "Bevor du den nächsten Frame zeichnest, führe diese Funktion aus."
-            //     //const elapsed = timestamp - startTime;
-            //     turnElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
-            // });
-
-            // **DIE KORREKTUR: Doppelter requestAnimationFrame**
-            // rAF 1: Stellt sicher, dass der Startzustand (Position, Rotation) im DOM committed ist.
-            requestAnimationFrame(() => {
-                // rAF 2: Im *nächsten* Frame, wende die Ziel-Transformation an.
-                // Dies gibt dem Browser garantiert die Chance, den Startzustand zu "sehen" und die Transition korrekt auszulösen.
-                requestAnimationFrame(() => {
-                    turnElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
-                });
+            }, () => {
+                turnElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) rotate(${startDeg + diffDeg}deg)`;
             });
         });
     }
@@ -276,18 +321,23 @@ const Animation = (() => {
      * @param {Function} [callback] - (Optional) Callback nach Abschluss der Animation
      */
     function explodeBomb(callback) {
+        if (document.visibilityState !== 'visible') {
+            // die Seite ist nicht sichtbar
+            if (typeof callback === 'function') {
+                callback();
+            }
+            return;
+        }
         const bombTextEl = document.createElement('div');
         bombTextEl.className = 'bomb-effect-text';
         bombTextEl.textContent = 'BOMBE!';
         _wrapper.appendChild(bombTextEl);
-        const handler = () => {
+        _addAnimationListener(bombTextEl, 'animation', () => {
             bombTextEl.remove();
             if (typeof callback === 'function') {
                 callback();
             }
-        };
-        bombTextEl.addEventListener('animationend', handler, { once: true });
-        bombTextEl.addEventListener('animationcancel', handler, { once: true });
+        });
     }
 
     /**
@@ -297,15 +347,20 @@ const Animation = (() => {
      *
      */
     function flashScoreDisplay(callback) {
+        if (document.visibilityState !== 'visible') {
+            // die Seite ist nicht sichtbar
+            if (typeof callback === 'function') {
+                callback();
+            }
+            return;
+        }
         _scoreDisplay.classList.add('score-updated'); // die Animation wird durch das Hinzufügen der Klasse ausgelöst
-        const handler = () => {
+        _addAnimationListener(_scoreDisplay, 'animation', () => {
             _scoreDisplay.classList.remove('score-updated');
             if (typeof callback === 'function') {
                 callback();
             }
-        };
-        _scoreDisplay.addEventListener('animationend', handler, { once: true });
-        _scoreDisplay.addEventListener('animationcancel', handler, { once: true });
+        });
     }
 
     // /**
@@ -373,6 +428,7 @@ const Animation = (() => {
 
     // noinspection JSUnusedGlobalSymbols
     return {
+        init,
         schupfCards,
         takeTrick,
         explodeBomb,

@@ -27,27 +27,17 @@ class RandomAgent(Agent):
     # Entscheidungen
     # ------------------------------------------------------
 
-    async def announce_grand_tichu(self) -> bool:
+    async def announce(self) -> bool:
         """
-        Die Engine fragt den Spieler, ob er ein großes Tichu ansagen möchte.
+        Die Engine fragt den Spieler, ob er ein Tichu (großes oder einfaches) ansagen möchte.
 
-        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein großes Tichu ansagen darf.
-        Die Engine verlässt sich darauf, dass die Antwort valide ist.
-
-        :return: True, wenn angesagt wird, sonst False.
-        """
-        return self._random.choice([True, False], [1, 19])
-
-    async def announce_tichu(self) -> bool:
-        """
-        Die Engine fragt den Spieler, ob er ein einfaches Tichu ansagen möchte.
-
-        Die Engine ruft diese Methode nur auf, wenn der Spieler noch ein einfaches Tichu ansagen darf.
+        Die Engine ruft diese Methode nur auf, wenn der Spieler ein Tichu ansagen darf.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
         :return: True, wenn ein Tichu angesagt wird, sonst False.
         """
-        return self._random.choice([True, False], [1, 9])
+        grand = len(self.priv.hand_cards) == 8
+        return self._random.choice([True, False], [1, 19 if grand else 9])
 
     async def schupf(self) -> Tuple[Card, Card, Card]:
         """

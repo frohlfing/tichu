@@ -56,9 +56,7 @@ async def test_player_abstract_methods_raise_not_implemented():
     with pytest.raises(NotImplementedError):
         await player.schupf()
     with pytest.raises(NotImplementedError):
-        await player.announce_grand_tichu()
-    with pytest.raises(NotImplementedError):
-        await player.announce_tichu()
+        await player.announce()
     with pytest.raises(NotImplementedError):
         await player.play() # play statt combination
     with pytest.raises(NotImplementedError):
