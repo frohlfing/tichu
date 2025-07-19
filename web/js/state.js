@@ -46,7 +46,7 @@
  * @property {boolean} is_double_victory - Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
  * @property {GameScore} game_score - Punktetabelle der Partie für Team 20 und Team 31.
  * @property {number} round_counter - Anzahl der abgeschlossenen Runden der Partie.
- * @property {number} trick_counter - Anzahl der abgeräumten Stiche insgesamt über alle Runden.
+ * @property {number} trick_counter - Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie.
  */
 
 /**
@@ -106,6 +106,13 @@ const State = (() => {
         given_schupf_cards: null,
         received_schupf_cards: null
     };
+
+    /**
+     * Die vom Server angefragte Aktion (leer, wenn keine Anfrage offen ist).
+     *
+     * @type {string}
+     */
+    let _pendingAction = "";
 
     /**
      * Cache für Kombinationsmöglichkeiten der Hand.
@@ -191,6 +198,8 @@ const State = (() => {
         _privateState.given_schupf_cards = null;
         _privateState.received_schupf_cards = null;
         _receivedSchupfCardsConfirmed = false;
+        // Server-Anfrage
+        _pendingAction = "";
     }
 
     /**
@@ -547,14 +556,24 @@ const State = (() => {
         _publicState.round_counter = value;
     }
 
-    /** @returns {number} Anzahl der abgeräumten Stiche insgesamt über alle Runden. */
+    /** Inkrementiert den Zähler für abgeschlossene Runden. */
+    function incRoundCounter() {
+        _publicState.round_counter++;
+    }
+
+    /** @returns {number} Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie. */
     function getTrickCounter(){
         return _publicState.trick_counter;
     }
 
-    /** @param {number} value - Anzahl der abgeräumten Stiche insgesamt über alle Runden. */
+    /** @param {number} value - Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie. */
     function setTrickCounter(value) {
         _publicState.trick_counter = value;
+    }
+
+    /** Inkrementiert den Zähler für abgeräumte Stiche. */
+    function incTrickCounter() {
+        _publicState.trick_counter++;
     }
 
     // privater Spielzustand
@@ -756,6 +775,31 @@ const State = (() => {
         return actionSpace.some(combi => combi[1][0] === CombinationType.BOMB && Lib.isCardsEqual(cards, combi[0]))
     }
 
+    // angefragte Aktion
+
+    /**
+     * @returns {string} Die vom Server angefragte Aktion.
+     */
+    function getPendingAction() {
+        return _pendingAction;
+    }
+
+    /**
+     * Übernimmt die vom Server angefragte Aktion.
+     *
+     * @param {string} action - Die angefragte Aktion.
+     */
+    function setPendingAction(action) {
+        _pendingAction = action;
+    }
+
+    /**
+     * Setzt die Server-Anfrage auf "erledigt".
+     */
+    function removePendingAction() {
+        _pendingAction = "";
+    }
+
     // noinspection JSUnusedGlobalSymbols
     return {
         setPublicState,
@@ -785,8 +829,8 @@ const State = (() => {
         isRoundOver, setRoundOver,
         isDoubleVictory, setDoubleVictory,
         getGameScore, addGameScoreEntry, getLastScoreEntry, resetGameScore,
-        getRoundCounter, setRoundCounter,
-        getTrickCounter, setTrickCounter,
+        getRoundCounter, setRoundCounter, incRoundCounter,
+        getTrickCounter, setTrickCounter, incTrickCounter,
         getTotalScore,
         isGameOver,
         //getPhase,
@@ -800,5 +844,8 @@ const State = (() => {
         getCombinations, getActionSpace,
         canPlayCards, getBestPlayableCombination, isPlayableCombination,
         hasBomb, canPlayBomb, getBestPlayableBomb, isPlayableBomb,
+
+        // angefragte Aktion
+        getPendingAction, setPendingAction, removePendingAction,
     };
 })();

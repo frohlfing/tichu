@@ -107,7 +107,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                         await peer.client_bomb(payload.get("cards"))
 
                     elif msg_type == "response":  # Antwort auf eine vorherige Anfrage
-                        await peer.client_response(payload.get("request_id"), payload.get("response_data", {}))
+                        await peer.client_response(payload.get("action"), payload.get("response_data", {}))
 
                     else:  # Nachrichtentyp unbekannt
                         logger.error(f"[{remote_addr}] Message-Type '{msg_type}' unbekannt.")

@@ -42,7 +42,7 @@ class Peer(Player):
         self._websocket = websocket
         self._random = Random(seed)  # Zufallsgenerator
         self._new_websocket_event = asyncio.Event()  #  wait_for_reconnect() wartet auf dieses Event
-        self._pending_requests: Dict[str, Tuple[str, asyncio.Future]] = {}  # die noch vom Client unbeantworteten Anfragen  # todo es ist immer nur eine Anfrage offen!
+        self._pending_request: Optional[Tuple[str, asyncio.Future]] = None  # die noch vom Client unbeantwortete Anfrage
         self._pending_bomb: Optional[Cards] = None  # die noch vom Server abzuholende Bombe
 
     async def cleanup(self):
@@ -79,10 +79,9 @@ class Peer(Player):
         """
         Offene Anfragen verwerfen.
         """
-        for request_id, (_action, future) in list(self._pending_requests.items()):
-            if not future.done():
-                future.set_result(None)
-        self._pending_requests = {}
+        if self._pending_request and not self._pending_request[1].done():
+            self._pending_request[1].set_result(None)
+        self._pending_request = None
         self._pending_bomb = None
 
     def set_websocket(self, new_websocket: WebSocketResponse):
@@ -168,29 +167,35 @@ class Peer(Player):
         self._pending_bomb = cards
         self.interrupt_event.set()
 
-    async def client_response(self, request_id: str, response_data: dict):
+    async def client_response(self, action: str, response_data: dict):
         """
         Der WebSocket-Handler ruft diese Funktion auf, wenn der Client eine Anfrage beantwortet hat.
 
-        :param request_id:  Die UUID der Anfrage.
+        :param action: Die angefragte Aktion.
         :param response_data: Die Daten der Antwort.
         """
-        _request = self._pending_requests.pop(request_id, None)  # hole und entferne die Future aus _pending_requests
-        if not _request:  # keine wartende Anfrage für diese Antwort gefunden
-            # Das kann passieren, wenn der Client antwortet, kurz nachdem die Anfrage durch ein Interrupt verworfen, aber noch kein neues Ereignis gesendet wurde.
-            msg = "Keine wartende Anfrage für diese Antwort gefunden"
-            logger.warning(f"[{self._name}] {msg}; Request-ID {request_id}.")
-            #await self.error(msg, ErrorCode.INVALID_RESPONSE, context={"request_id": request_id})
+        if not self._pending_request or self._pending_request[0] != action:
+            # Die Aktion wurde nicht angefragt.
+            # Das kann auch bei einem fehlerfreien Client passieren. Denn nachdem eine Anfrage durch ein Interrupt verworfen,
+            # aber noch kein neues Ereignis gesendet wurde, hat der Client eine veraltete Anfrage.
+            logger.warning(f"Aktion '{action}' nicht erwartet. Warte auf '{self._pending_request[0]}'.")
+            #await self.error("Aktion nicht erwartet", ErrorCode.INVALID_RESPONSE, context={"action": action, "pending_action": self._pending_request[0]})
             return
-        _action, future = _request
-        if future.done():  # _ask() hat inzwischen das Warten auf diese Antwort aufgegeben (wegen Timeout oder Server beenden)
+
+        # Future abholen
+        future = self._pending_request[1]
+        self._pending_request = None
+
+        if future.done():
+            # _ask() hat inzwischen das Warten auf diese Antwort aufgegeben (wegen Timeout oder Server beenden).
             msg = "Anfrage ist veraltet"
-            logger.warning(f"[{self._name}] {msg}; Request-ID: {request_id}.")
-            await self.error(msg, ErrorCode.REQUEST_OBSOLETE, context={"request_id": request_id})
+            logger.warning(f"[{self._name}] {msg}; Request: {action}.")
+            await self.error(msg, ErrorCode.REQUEST_OBSOLETE, context={"action": action})
             return
-        # die Daten mittels Future an _ask() übergeben
+
+        # Die Daten mittels Future an _ask() übergeben.
         future.set_result(response_data)
-        logger.debug(f"[{self._name}] Antwort an wartende Methode übergeben; Request-ID {request_id}.")
+        logger.debug(f"[{self._name}] Antwort an wartende Methode übergeben; Request {action}.")
 
     async def _ask(self, action: str, context: Optional[dict] = None, interruptable: bool = False) -> dict | None:
         """
@@ -210,16 +215,14 @@ class Peer(Player):
 
         # Future erstellen und registrieren
         loop = asyncio.get_running_loop()
-        request_id = str(uuid4())
         response_future = loop.create_future()
-        assert len(self._pending_requests) == 0, "Eine Anfrage wurde bereits gesendet!"
-        self._pending_requests[request_id] = (action, response_future)
+        assert self._pending_request is None, "Eine Anfrage wurde bereits gesendet!"
+        self._pending_request = action, response_future
 
         # Anfrage senden
         request_message: dict = {
             "type": "request",
             "payload": {
-                "request_id": request_id,
                 "action": action,
                 "context": context if context else {},
             }
@@ -233,12 +236,12 @@ class Peer(Player):
         except (ConnectionResetError, RuntimeError, ConnectionAbortedError) as e:
             logger.warning(f"[{self._name}] Verbindungsfehler. Senden der Anfrage '{action}' fehlgeschlagen: {e}.")
             # noinspection PyAsyncCall
-            self._pending_requests.pop(request_id, None)  # Future entfernen
+            self._pending_request = None  # Future wieder entfernen
             return None
         except Exception as e:
             logger.exception(f"[{self._name}] Unerwarteter Fehler. Senden der Anfrage '{action}' fehlgeschlagen: {e}")
             # noinspection PyAsyncCall
-            self._pending_requests.pop(request_id, None)  # Future entfernen
+            self._pending_request = None  # Future wieder entfernen
             return None
 
         # Warte-Tasks anlegen
@@ -297,7 +300,7 @@ class Peer(Player):
                 except Exception as cleanup_e:
                     logger.exception(f"[{self._name}] Fehler beim Aufräumen von Task {task.get_name()}: {cleanup_e}")
             # noinspection PyAsyncCall
-            self._pending_requests.pop(request_id, None)  # Future entfernen
+            self._pending_request = None  # Future wieder entfernen
 
     async def announce_grand_tichu(self) -> bool:
         """
@@ -634,7 +637,7 @@ class Peer(Player):
                     "session_id": self._session_id,
                     "public_state": self.pub.to_dict(),
                     "private_state": self.priv.to_dict(),
-                    "pending_request": self._get_pending_request(),
+                    "pending_action": self._pending_request[0] if self._pending_request else "",
                 }
 
         elif event == "hand_cards_dealt":
@@ -715,19 +718,3 @@ class Peer(Player):
         :return: True, wenn verbunden, sonst False.
         """
         return not self._websocket.closed
-
-    # ------------------------------------------------------
-    # Hilfsfunktionen
-    # ------------------------------------------------------
-
-    def _get_pending_request(self) -> Optional[Tuple[str, str]]:
-        """
-        Gibt die ID und Aktion der laufenden Anfrage zurück.
-
-        :return: Request-ID und Aktion, wenn eine Anfrage läuft, sonst None.
-        """
-        if not self._pending_requests:
-            return None
-        assert len(self._pending_requests) == 1
-        request_id, (action, _future) = next(iter(self._pending_requests.items()))  # ersten Eintrag holen
-        return request_id, action

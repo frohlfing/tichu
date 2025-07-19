@@ -100,6 +100,8 @@ const Bot = (() => {
             gameOverButton.click();
         }
 
+        // todo in Funktionen aufteilen
+
         // --------------------------------------------------------------------------------------
         // Login-Screen-Logik
         // --------------------------------------------------------------------------------------
@@ -200,23 +202,11 @@ const Bot = (() => {
 
             // Prüfe, ob eine Anfrage vom Server an uns gerichtet ist
 
-            /**
-             * Aktuellen Anfrage.
-             *
-             * @type {object|null}
-             * @property {string} id - UUID der Anfrage.
-             * @property {string} action - Angefragte Aktion.
-             */
-            const request = {
-                id: localStorage.getItem("tichuRequestId"),
-                action: localStorage.getItem("tichuRequestAction")
-            };
-            // const request = State.getRequest();
+            const pendingAction = State.getPendingAction();
+            if (pendingAction) {
+                console.log(`🤖 Bot: Anfrage erhalten: ${pendingAction}`);
 
-            if (request && request.id) {
-                console.log(`🤖 Bot: Anfrage erhalten: ${request.action}`);
-
-                switch (request.action) {
+                switch (pendingAction) {
                     case 'announce_grand_tichu':
                         if (Random.boolean(1/20)) {
                             console.log("🤖 Bot: Klicke auf GrandTichu-Button.");

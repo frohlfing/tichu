@@ -23,7 +23,7 @@ from src.lib.errors import ClientDisconnectedError, ErrorCode
 from typing import Optional
 
 # Request-ID der letzten Server-Anfrage
-last_request_id: Optional[str] = None
+pending_action = ""
 
 
 def get_session_filename() -> str: # NEU
@@ -61,7 +61,7 @@ def load_session_id() -> Optional[str]:
 
 async def receive_messages(ws: ClientWebSocketResponse):
     """ Lauscht kontinuierlich auf Nachrichten vom Server und gibt sie aus. """
-    global last_request_id
+    global pending_action
 
     logger.debug("[WSClient] Starte Empfangs-Task...")
 
@@ -75,14 +75,12 @@ async def receive_messages(ws: ClientWebSocketResponse):
                 payload = data.get("payload", {})
 
                 if msg_type == "request":  # Server fordert eine Entscheidung
-                    last_request_id = payload.get("request_id", "")
-                    action_to_perform = payload.get("action")
+                    pending_action = payload.get("action")
                     _public_state = payload.get("public_state", {})
                     _private_state = payload.get("private_state", {})
                     print(f"--- SERVER ANFRAGE ---")
-                    print(f"  Aktion angefordert: {action_to_perform}")
-                    print(f"  Request ID: {last_request_id}")
-                    print(f"  Tipp: Antworte mit: {{\"type\": \"response\", \"payload\": {{\"request_id\": \"{last_request_id}\", \"response_data\": {{...deine Daten...}}}}}}")
+                    print(f"  Aktion: {pending_action}")
+                    print(f"  Tipp: Antworte mit: {{\"type\": \"response\", \"payload\": {{\"action\": \"{pending_action}\", \"response_data\": {{...deine Daten...}}}}}}")
 
                 elif msg_type == "notification":  # Server informiert über ein Spielereignis
                     event = payload.get("event")
@@ -138,7 +136,7 @@ async def receive_messages(ws: ClientWebSocketResponse):
 
 
 async def main(args: argparse.Namespace):
-    global last_request_id
+    global pending_action
 
     # URL zusammenbauen
     if args.session_id:
@@ -157,16 +155,16 @@ async def main(args: argparse.Namespace):
 
         # Antworten von Server-Anfragen
         # announce_grand_tichu
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"announced": False}}},
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"announced": True}}},
+        {"type": "response", "payload": {"action": "<action>", "response_data": {"announced": False}}},
+        {"type": "response", "payload": {"action": "<action>", "response_data": {"announced": True}}},
         # schupf
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": [(2,1), (2,2), (2,3)]}}},
+        {"type": "response", "payload": {"action": "<action>", "response_data": {"cards": [(2,1), (2,2), (2,3)]}}},
         # play
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"cards": [(2,1), (9,3)]}}},
+        {"type": "response", "payload": {"action": "<action>", "response_data": {"cards": [(2,1), (9,3)]}}},
         # wish
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"wish_value": 8}}},
+        {"type": "response", "payload": {"action": "<action>", "response_data": {"wish_value": 8}}},
         # give_dragon_away
-        {"type": "response", "payload": {"request_id": "<request_id>", "response_data": {"player_index": 2}}},
+        {"type": "response", "payload": {"action": "<action>", "response_data": {"player_index": 2}}},
     ]
 
     async with ClientSession() as http:
@@ -213,10 +211,10 @@ async def main(args: argparse.Namespace):
                                 msg_to_send["payload"] = {}
 
                             elif msg_to_send.get("type") == "response":
-                                if last_request_id:
-                                    msg_to_send["payload"]["request_id"] = last_request_id
+                                if pending_action:
+                                    msg_to_send["payload"]["action"] = pending_action
                                 else:
-                                    print("Keine aktive request_id für die Response-Nachricht vorhanden.")
+                                    print("Keine Aktion angefragt.")
                                     continue
 
                         except ValueError:

@@ -45,7 +45,7 @@ class PublicState:
     :ivar is_round_over: Gibt an, ob die aktuelle Runde beendet ist.
     :ivar is_double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
     :ivar game_score: Punktetabelle der Partie (Team 20, Team 31) (pro Team eine Liste von Punkten).
-    :ivar round_counter: Anzahl der abgeschlossenen Runden der Partie (nur für statistische Zwecke).
+    :ivar round_counter: Anzahl der abgeschlossenen Runden der Partie.
     :ivar trick_counter: Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie (nur für statistische Zwecke).
     """
     # --- Tisch- und Spielerinformationen ---
@@ -75,8 +75,8 @@ class PublicState:
 
     # --- Information über die Partie ---
     game_score: GameScore = field(default_factory=lambda: ([], []))
-    round_counter: int = 0  # nur für die Statistik
-    trick_counter: int = 0  # nur für die Statistik
+    round_counter: int = 0
+    trick_counter: int = 0  # nur für statistische Zwecke
 
     # todo Berechnung:
     #  1) is_round_over = count_active_players == 1 or is_double_victory  # nur noch eine Spieler im Spiel oder Doppelsieg

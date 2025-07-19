@@ -57,7 +57,6 @@ const WSCloseCode = {
  * Typdefinition für eine Anfrage des Servers.
  *
  * @typedef {Object} ServerRequest
- * @property {string} request_id - Die UUID der Anfrage.
  * @property {string} action - Die angefragte Aktion.
  * @property {Record<string, any>} [context] - Zusätzliche Informationen (optional).
  */
