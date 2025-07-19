@@ -65,35 +65,26 @@ class RandomAgent(Agent):
         a, b, c = self._random.sample(self.priv.hand_cards, 3)
         return a, b, c
 
-    async def play(self) -> Tuple[Cards, Combination]:
+    async def play(self, interruptable: bool = False) -> Tuple[Cards, Combination]:
         """
         Die Engine fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
-        Die Engine ruft diese Methode nur auf, wenn der Spieler am Zug ist.
+        Die Engine ruft diese Methode nur auf, wenn der Spieler am Zug ist oder eine Bombe hat.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
-        Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
+        :param interruptable: (Optional) Wenn True, kann die Anfrage durch ein Interrupt abgebrochen werden.
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0)).
         """
-        # mögliche Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle)
+        if self.pub.current_turn_index != self.priv.player_index:
+            # der Spieler ist nicht am Zug, daher kann er nur eine Bombe werfen
+            if not self._random.choice([True, False], [1, 2]):  # einmal Ja, zweimal Nein
+                return [], (CombinationType.PASS, 0, 0)
+            combinations = [combi for combi in self.priv.combinations if combi[1][0] == CombinationType.BOMB]
+            action_space = build_action_space(combinations, self.pub.trick_combination, wish_value=0)
+            return self._random.choice(action_space)
+
+        # alle spielbaren Kombinationen (inklusive Passen; wenn Passen erlaubt ist, steht Passen an erster Stelle)
         action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-        #return action_space[self._random.integer(0, len(action_space))]
-        return self._random.choice(action_space)
-
-    async def bomb(self) -> Optional[Tuple[Cards, Combination]]:
-        """
-        Die Engine fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
-
-        Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
-        Die Engine verlässt sich darauf, dass die Antwort valide ist.
-
-        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
-        """
-        if not self._random.choice([True, False], [1, 2]):  # einmal Ja, zweimal Nein
-            return None
-        combinations = [combi for combi in self.priv.combinations if combi[1][0] == CombinationType.BOMB]
-        action_space = build_action_space(combinations, self.pub.trick_combination, self.pub.wish_value)
-        #return action_space[self._random.integer(0, len(action_space))]
         return self._random.choice(action_space)
 
     async def wish(self) -> int:

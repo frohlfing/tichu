@@ -15,7 +15,6 @@ from src.lib.combinations import Combination, build_action_space, CombinationTyp
 from src.lib.errors import ClientDisconnectedError, PlayerInteractionError, PlayerInterruptError, PlayerTimeoutError, PlayerResponseError, ErrorCode
 from src.players.player import Player
 from typing import Optional, Dict, List, Tuple
-from uuid import uuid4
 
 
 class Peer(Player):
@@ -115,7 +114,7 @@ class Peer(Player):
 
     async def client_bomb(self, cards: Cards):
         """
-        Der WebSocket-Handler ruft diese Funktion auf, wenn der Client proaktiv (also außerhalb seines regulären Zuges) eine Bombe geworfen hat.
+        Der WebSocket-Handler ruft diese Funktion auf, wenn der Client proaktiv (also unaufgefordert) eine Bombe geworfen hat.
 
         Die Bombe wird zwischengespeichert, bis sie von der Engine regulär im Game-Loop abgeholt wird.
         Es wird ein Interrupt ausgelöst, so dass die Engine schnellstmöglich nach der Bombe fragt.
@@ -153,7 +152,7 @@ class Peer(Player):
 
         # Kombination der Bombe ermitteln. Ist sie spielbar?
         combination = None
-        action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
+        action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, wish_value=0)
         for playable_cards, playable_combination in action_space:
             if playable_combination[0] == CombinationType.BOMB and set(cards) == set(playable_cards):
                 combination = playable_combination
@@ -178,7 +177,7 @@ class Peer(Player):
             # Die Aktion wurde nicht angefragt.
             # Das kann auch bei einem fehlerfreien Client passieren. Denn nachdem eine Anfrage durch ein Interrupt verworfen,
             # aber noch kein neues Ereignis gesendet wurde, hat der Client eine veraltete Anfrage.
-            logger.warning(f"Aktion '{action}' nicht erwartet. Warte auf '{self._pending_request[0]}'.")
+            logger.warning(f"Aktion '{action}' nicht erwartet.")
             #await self.error("Aktion nicht erwartet", ErrorCode.INVALID_RESPONSE, context={"action": action, "pending_action": self._pending_request[0]})
             return
 
@@ -407,58 +406,70 @@ class Peer(Player):
 
         return cards
 
-    async def play(self) -> Tuple[Cards, Combination]:
+    async def play(self, interruptable: bool = False) -> Tuple[Cards, Combination]:
         """
         Die Engine fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
-        Die Engine ruft diese Methode nur auf, wenn der Spieler am Zug ist.
+        Die Engine ruft diese Methode nur auf, wenn der Spieler am Zug ist oder eine Bombe hat.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
-        Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
-        :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0))
-        :raises PlayerInterruptError: Wenn die Anfrage durch ein Interrupt-Event abgebrochen wurde.
+        Wenn der Client bereits eine Bombe gezündet hat (proaktiv), wird diese zurückgegeben.
+        Wenn der Client nicht am Zug ist, kann er nur eine Bombe dazwischenwerfen. Wenn er das nicht bereits
+        proaktiv gemacht hat, wird gepasst. Ansonsten wird die Anfrage an den Client gesendet.
+
+        :param interruptable: (Optional) Wenn True, kann die Anfrage durch ein Interrupt abgebrochen werden.
+        :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0)).
+        :raises PlayerInterruptError: Wenn die Aktion durch ein Interrupt abgebrochen wurde.
         """
-        if self._pending_bomb: # kann nur vorkommen, wenn der Client eine Bombe wirft, obwohl er selbst dran ist
-            return await self.bomb()
-
         cards = None
         combination = None
         while combination is None:
-            response_data = await self._ask("play", {
-                "hand_cards": self.priv.hand_cards,
-                "trick_combination": self.pub.trick_combination,
-                "wish_value": self.pub.wish_value,
-            }, interruptable=True)
+            if self._pending_bomb:
+                # Der Client hat bereits eine Bombe gezündet (proaktiv), jetzt ist Zeit, sie zu werfen.
+                cards = self._pending_bomb
+                self._pending_bomb = None
+            else:
+                if self.pub.current_turn_index != self.priv.player_index:
+                    # Der Client ist nicht am Zug und kann daher nur eine Bombe dazwischenwerfen.
+                    # Das hat er nicht getan, also passen wir.
+                    return [], (CombinationType.PASS, 0, 0)  # Passen
 
-            # Fallback bei Verbindungsabbruch
-            if response_data is None:
-                # Heuristik: Die schwächste spielbare Kombination wird ausgewählt. Passen ist die letzte Option.
-                logger.debug(f"[{self._name}] Fallback-Antwort")
-                action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-                return action_space[-1]
+                # Der Client ist regulär am Zug. Wir fordern ihn auf, Karten auszuwählen oder zu passen.
+                response_data = await self._ask("play", {
+                    "hand_cards": self.priv.hand_cards,
+                    "trick_combination": self.pub.trick_combination,
+                    "wish_value": self.pub.wish_value,
+                }, interruptable)
 
-            # Hat die Antwort die erwartete Struktur?
-            if not isinstance(response_data.get("cards"), list):
-                msg = "Ungültige Antwort für Anfrage 'play'"
-                logger.warning(f"[{self._name}] {msg}: {response_data}")
-                await self.error(msg, ErrorCode.INVALID_MESSAGE, context=response_data)
-                continue
+                # Fallback bei Verbindungsabbruch
+                if response_data is None:
+                    # Heuristik: Die schwächste spielbare Kombination wird ausgewählt. Passen ist die letzte Option.
+                    logger.debug(f"[{self._name}] Fallback-Antwort")
+                    action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
+                    return action_space[-1]
 
-            # Karten valide?
-            cards = [(card[0], CardSuit(card[1])) for card in response_data["cards"]]
-            if any(card not in deck for card in cards):
-                msg = "Mindestens eine Karte ist unbekannt"
-                logger.warning(f"[{self._name}] {msg}: {cards}")
-                await self.error(msg, ErrorCode.UNKNOWN_CARD, context={"cards": cards})
-                continue
+                # Hat die Antwort die erwartete Struktur?
+                if not isinstance(response_data.get("cards"), list):
+                    msg = "Ungültige Antwort für Anfrage 'play'"
+                    logger.warning(f"[{self._name}] {msg}: {response_data}")
+                    await self.error(msg, ErrorCode.INVALID_MESSAGE, context=response_data)
+                    continue
 
-            # Sind die Karten unterschiedlich?
-            if len(set(cards)) != len(cards):
-                msg = "Mindestens zwei Karten sind identisch"
-                logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
-                await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": cards})
-                cards = None
-                continue
+                # Karten valide?
+                cards = [(card[0], CardSuit(card[1])) for card in response_data["cards"]]
+                if any(card not in deck for card in cards):
+                    msg = "Mindestens eine Karte ist unbekannt"
+                    logger.warning(f"[{self._name}] {msg}: {cards}")
+                    await self.error(msg, ErrorCode.UNKNOWN_CARD, context={"cards": cards})
+                    continue
+
+                # Sind die Karten unterschiedlich?
+                if len(set(cards)) != len(cards):
+                    msg = "Mindestens zwei Karten sind identisch"
+                    logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
+                    await self.error(msg, ErrorCode.NOT_UNIQUE_CARDS, context={"cards": cards})
+                    cards = None
+                    continue
 
             # Sind die Karten auf der Hand?
             if any(card not in self.priv.hand_cards for card in cards):
@@ -469,7 +480,13 @@ class Peer(Player):
                 continue
 
             # Kombination ermitteln. Ist sie spielbar?
-            action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
+            if self.pub.current_turn_index != self.priv.player_index:
+                # Der Client ist nicht am Zug, daher kann er nur eine Bombe werfen.
+                combinations = [combi for combi in self.priv.combinations if combi[1][0] == CombinationType.BOMB]
+                action_space = build_action_space(combinations, self.pub.trick_combination, wish_value=0)
+            else:
+                # Der Client ist am Zug.
+                action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
             for playable_cards, playable_combination in action_space:
                 if set(cards) == set(playable_cards):
                     combination = playable_combination
@@ -481,51 +498,6 @@ class Peer(Player):
                 await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": cards})
                 cards = None
                 continue
-
-        # Ist der Spieler am Zug? (stellt die Engine sicher) todo rausnehmen
-        assert self.pub.current_turn_index == self.priv.player_index
-
-        return cards, combination
-
-    async def bomb(self) -> Optional[Tuple[Cards, Combination]]:
-        """
-        Die Engine fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
-
-        Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
-        Die Engine verlässt sich darauf, dass die Antwort valide ist.
-
-        Da der Client proaktiv (also ungefragt) eine Bombe wirft, wird die Frage nicht an den Client
-        weitergeleitet, sondern es wird im Puffer geschaut, ob ein Bombenwurf vorliegt.
-
-        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
-        """
-        # Liegt ein Bombenwurf vor?
-        if not self._pending_bomb:
-            return None
-
-        # Bombe aus dem Puffer nehmen
-        cards = self._pending_bomb
-        self._pending_bomb = None
-
-        # Sind die Karten noch auf der Hand?
-        if any(card not in self.priv.hand_cards for card in cards):
-            msg = "Mindestens eine Karte ist keine Handkarte"
-            logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
-            await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": cards})
-            return None
-
-        # Ist die Kombination noch spielbar?
-        combination = None
-        action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
-        for playable_cards, playable_combination in action_space:
-            if playable_combination[0] == CombinationType.BOMB and set(cards) == set(playable_cards):
-                combination = playable_combination
-                break
-        if combination is None:
-            msg = "Die Karten bilden keine spielbare Bombe"
-            logger.warning(f"[{self._name}] {msg}: {stringify_cards(cards)}")
-            await self.error(msg, ErrorCode.INVALID_COMBINATION, context={"cards": cards})
-            return None
 
         return cards, combination
 

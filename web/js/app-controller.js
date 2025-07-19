@@ -36,7 +36,7 @@ const AppController = (() => {
         EventBus.on("tableView:tichu", _handleTableViewTichu);
         EventBus.on("tableView:schupf", _handleTableViewSchupf);
         EventBus.on("tableView:play", _handleTableViewPlay);
-        EventBus.on("tableView:bomb", _handleTableViewBomb);
+        //EventBus.on("tableView:bomb", _handleTableViewBomb);
         EventBus.on("tableView:gameOver", _handleTableViewGameOver);
         EventBus.on("tableView:exit", _handleTableViewExit);
 
@@ -193,7 +193,7 @@ const AppController = (() => {
                     State.setPlayerName(context.player_index, context.player_name);
                 }
                 break;
-            case "player_left": // Der Spieler hat das Spiel verlassen; eine KI ist eingesprungen.
+            case "player_left": // Ein Spieler hat das Spiel verlassen; eine KI ist eingesprungen.
                 State.setPlayerName(context.player_index, context.player_name);
                 State.setHostIndex(context.host_index);
                 break;
@@ -215,13 +215,13 @@ const AppController = (() => {
                     State.setCountHandCards(context.player_index, context.count);
                 }
                 break;
-            case "player_announced": // Der Spieler hat ein Tichu angesagt.
+            case "player_announced": // Ein Spieler hat ein Tichu angesagt.
                 State.setAnnouncement(context.player_index, context.grand ? 2 : 1);
                 if (context.grand && context.player_index === State.getPlayerIndex()) {
                     State.removePendingAction();
                 }
                 break;
-            case "player_schupfed": // Der Spieler hat drei Karten zum Tausch abgegeben.
+            case "player_schupfed": // Ein Spieler hat drei Karten zum Tausch abgegeben.
                 if (context.given_schupf_cards) { // Der Benutzer hat geschupft.
                     // todo Handkarten besser übergeben?
                     const cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.given_schupf_cards));
@@ -245,26 +245,25 @@ const AppController = (() => {
                 State.setStartPlayerIndex(context.start_player_index);
                 State.setCurrentTurnIndex(context.start_player_index);
                 break;
-            case "player_passed": // Der Spieler hat gepasst.
+            case "player_passed": // Ein Spieler hat gepasst.
                 if (context.player_index === State.getPlayerIndex()) {
                     State.removePendingAction();
                 }
                 break;
-            case "player_played": // Der Spieler hat Karten ausgespielt.
-            case "player_bombed": // Der Spieler hat außerhalb seines regulären Zuges eine Bombe geworfen. // todo Event verwerfen
-                if (context.turn[0] === State.getPlayerIndex()) { // der Benutzer hat Karten ausgespielt
+            case "player_played": // Ein Spieler hat Karten ausgespielt.
+                if (context.turn[0] === State.getPlayerIndex()) { // Der Benutzer hat Karten ausgespielt.
                     // todo Handkarten besser übergeben?
                     let cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.turn[1]));
                     State.setHandCards(cards);
-                    if (notification.event === "player_bombed") { // context.turn[0] !== State.getCurrentTurnIndex()  # Benutzer hat eine Bombe geworfen
+                    if (context.turn[0] !== State.getCurrentTurnIndex()) { // Benutzer war nicht am Zug, hat also eine Bombe geworfen
                         State.setCurrentTurnIndex(context.turn[0]);
                     }
                     State.removePendingAction();
                 }
-                else {
+                else { // Ein Mitspieler hat Karten ausgespielt.
                     // todo Anzahl Handkarten besser übergeben?
                     State.setCountHandCards(context.turn[0], State.getCountHandCards(context.turn[0]) - context.turn[1].length);
-                    if (notification.event === "player_bombed") { // context.turn[0] !== State.getCurrentTurnIndex()  # Benutzer hat eine Bombe geworfen
+                    if (context.turn[0] !== State.getCurrentTurnIndex()) { // Der Mitspieler war nicht am Zug, hat also eine Bombe geworfen
                         State.setCurrentTurnIndex(context.turn[0]);
                         State.removePendingAction();
                     }
@@ -443,7 +442,12 @@ const AppController = (() => {
      */
     function _handleTableViewPlay(cards) {
         if (State.getPendingAction() !== "play") {
-            Modal.showErrorToast("Keine Anfrage für Ausspielen erhalten.");
+            if (State.isPlayableBomb(cards)) {
+                Network.send("bomb", {cards: cards});
+            }
+            else {
+                Modal.showErrorToast("Keine Anfrage für Ausspielen erhalten.");
+            }
             return
         }
         Network.send("response", {
@@ -454,14 +458,14 @@ const AppController = (() => {
         });
     }
 
-    /**
-     * Wird aufgerufen, wenn der Benutzer außerhalb seines regulären Zuges eine Bombe werfen will.
-     *
-     * @param {Cards} cards - Die Karten, die der Benutzer spielen möchte.
-     */
-    function _handleTableViewBomb(cards) {
-        Network.send("bomb", {cards: cards});
-    }
+    // /**
+    //  * Wird aufgerufen, wenn der Benutzer außerhalb seines regulären Zuges eine Bombe werfen will.
+    //  *
+    //  * @param {Cards} cards - Die Karten, die der Benutzer spielen möchte.
+    //  */
+    // function _handleTableViewBomb(cards) {
+    //     Network.send("bomb", {cards: cards});
+    // }
 
     /**
      * Wird aufgerufen, wenn der Benutzer die Punktetabelle schließt und damit die Partie abgeschlossen ist.

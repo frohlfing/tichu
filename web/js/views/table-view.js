@@ -640,7 +640,7 @@ const TableView = (() => {
         }
         else if (!isCurrentPlayer && State.isPlayableBomb(_getSelectedCards())) {
             // Der Benutzer hat außerhalb seines regulären Zuges eine spielbare Bombe ausgewählt.
-            _playButton.dataset.mode = "BOMB";
+            _playButton.dataset.mode = "PLAY"; //"BOMB";
             _playButton.textContent = "Bomben";
             _playButton.disabled = false;
         }
@@ -687,9 +687,9 @@ const TableView = (() => {
             case "PLAY": // Der Benutzer möchte die ausgewählten Karten spielen.
                 EventBus.emit("tableView:play", _getSelectedCards());
                 break;
-            case "BOMB": // Der Benutzer möchte außerhalb seines regulären Zuges die ausgewählte Bombe spielen.
-                EventBus.emit("tableView:bomb", _getSelectedCards());
-                break;
+            // case "BOMB": // Der Benutzer möchte außerhalb seines regulären Zuges die ausgewählte Bombe spielen.
+            //     EventBus.emit("tableView:bomb", _getSelectedCards());
+            //     break;
             default:
                 console.error(`TableView: PlayButton-Mode ${_playButton.dataset.mode} nicht gehandelt.`);
                 break;

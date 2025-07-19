@@ -186,15 +186,15 @@ const Bot = (() => {
                     console.log("🤖 Bot: Klicke auf das Bomben-Symbol.");
                     if (State.canPlayBomb()) {
                         _clearSelectedCards();
-                        bombIcon.click(); // Nach dem Klick werden die Karten selektiert.
+                        bombIcon.click(); // Nach dem Klick werden die Karten für eine Bombe selektiert.
                         //setTimeout(() => {
                             console.log("🤖 Bot: Klicke auf Play-Button.");
-                            if (State.isCurrentPlayer()) {
-                                _clickButton('#play-button[data-mode="PLAY"]')
-                            }
-                            else {
-                                _clickButton('#play-button[data-mode="BOMB"]')
-                            }
+                            //if (State.isCurrentPlayer()) {
+                            _clickButton('#play-button[data-mode="PLAY"]')
+                            // }
+                            // else {
+                            //     _clickButton('#play-button[data-mode="BOMB"]')
+                            // }
                         //}, 100);
                     }
                 }

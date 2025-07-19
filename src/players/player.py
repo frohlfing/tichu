@@ -111,32 +111,22 @@ class Player:
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'schupf' implementieren.")
 
-    async def play(self) -> Tuple[Cards, Combination]:
+    async def play(self, interruptable: bool = False) -> Tuple[Cards, Combination]:
         """
         Die Engine fordert den Spieler auf, eine gültige Kartenkombination auszuwählen oder zu passen.
 
-        Die Engine ruft diese Methode nur auf, wenn der Spieler am Zug ist.
+        Die Engine ruft diese Methode nur auf, wenn der Spieler am Zug ist oder eine Bombe hat.
         Die Bedingung ist::
-            self.pub.current_turn_index == self.priv.player_index
+            self.pub.current_turn_index == self.priv.player_index or
+            self._private_states[player_index].has_bomb
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
-        Diese Aktion kann durch ein Interrupt abgebrochen werden.
 
+        :param interruptable: (Optional) Wenn True, kann die Anfrage durch ein Interrupt abgebrochen werden.
         :return: Die ausgewählte Kombination (Karten, (Typ, Länge, Rang)) oder Passen ([], (0,0,0)).
         :raises PlayerInterruptError: Wenn die Aktion durch ein Interrupt abgebrochen wurde.
         """
         raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'play' implementieren.")
-
-    async def bomb(self) -> Optional[Tuple[Cards, Combination]]:
-        """
-        Die Engine fragt den Spieler, ob er eine Bombe werfen will, und wenn ja, welche.
-
-        Die Engine ruft diese Methode nur auf, wenn eine Bombe vorhanden ist.
-        Die Engine verlässt sich darauf, dass die Antwort valide ist.
-
-        :return: Die ausgewählte Bombe (Karten, (Typ, Länge, Rang)) oder None, wenn keine Bombe geworfen wird.
-        """
-        raise NotImplementedError(f"{self.__class__.__name__} muss die Methode 'bomb' implementieren.")
 
     async def wish(self) -> int:
         """
