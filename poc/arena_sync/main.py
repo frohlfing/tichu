@@ -43,14 +43,14 @@ if __name__ == "__main__":
         RandomAgent(),
         RandomAgent(),
         RandomAgent(),
-    ], 100, verbose=True)
+    ], 1000, verbose=False)
 
-    run_battle([
-        HeuristicAgent(),
-        RandomAgent(),
-        RandomAgent(),
-        RandomAgent(),
-    ], 10, verbose=True)
+    # run_battle([
+    #     HeuristicAgent(),
+    #     RandomAgent(),
+    #     RandomAgent(),
+    #     RandomAgent(),
+    # ], 10, verbose=True)
 
 # Interpreter-Options, um Asserts zu ignorieren:
 # -O
