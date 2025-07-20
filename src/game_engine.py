@@ -8,7 +8,7 @@ from copy import copy
 from src import config
 from src.common.logger import logger
 from src.common.rand import Random
-from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH, Cards, stringify_cards, CardSuit
+from src.lib.cards import deck, is_wish_in, sum_card_points, other_cards, CARD_DRA, CARD_MAH, Cards, stringify_cards
 from src.lib.combinations import CombinationType, Combination
 from src.lib.errors import ErrorCode, PlayerInterruptError
 from src.players.agent import Agent
@@ -24,9 +24,6 @@ from typing import List, Optional, Dict, Tuple
 class GameEngine:
     """
     Steuert den Spielablauf eines Tisches.
-
-    :ivar game_loop_task: Der asyncio Task, der die Hauptspielschleife ausführt.
-    :ivar interrupt_event: Globales Interrupt.
     """
 
     def __init__(self, table_name: str, default_agents: Optional[List[Agent]] = None, seed: Optional[int] = None):
@@ -63,10 +60,10 @@ class GameEngine:
         self._private_states = [PrivateState(player_index=i) for i in range(4)]
 
         # Referenz zum Hintergrund-Task `_run_game_loop`
-        self.game_loop_task: Optional[asyncio.Task] = None
+        self._game_loop_task: Optional[asyncio.Task] = None
 
         # Interrupt-Event
-        self.interrupt_event: asyncio.Event = asyncio.Event()
+        self._interrupt_event: asyncio.Event = asyncio.Event()
         self._interrupt_player_index: Optional[int] = None
         self._interrupt_reason: Optional[str] = None
 
@@ -82,7 +79,7 @@ class GameEngine:
         for i, agent in enumerate(self._default_agents):
             agent.pub = self._public_state
             agent.priv = self._private_states[i]
-            agent.interrupt_event = self.interrupt_event
+            agent.interrupt_event = self._interrupt_event
 
         logger.info(f"[{self.table_name}] Initialisiert.")
 
@@ -95,19 +92,19 @@ class GameEngine:
         logger.info(f"[{self.table_name}] Räume Tisch auf...")
 
         # bricht den Hintergrundtask für die Spielsteuerung ab, falls er läuft
-        if self.game_loop_task and not self.game_loop_task.done():
+        if self._game_loop_task and not self._game_loop_task.done():
             logger.debug(f"[{self.table_name}] Beende Hintergrundtask für die Spielsteuerung.")
-            self.game_loop_task.cancel()
+            self._game_loop_task.cancel()
             try:
                 # Warte kurz darauf, dass der Task auf den Abbruch reagiert.
-                await asyncio.wait_for(self.game_loop_task, timeout=1.0)
+                await asyncio.wait_for(self._game_loop_task, timeout=1.0)
             except asyncio.CancelledError:
                 logger.debug(f"[{self.table_name}] Abbruch. Hintergrundtask unsauber beendet.")
             except asyncio.TimeoutError:
                 logger.warning(f"[{self.table_name}] Timeout. Hintergrundtask unsauber beendet.")
             except Exception as e:
                  logger.exception(f"[{self.table_name}] Unerwarteter Fehler. Hintergrundtask unsauber beendet.: {e}")
-        self.game_loop_task = None # Referenz entfernen
+        self._game_loop_task = None # Referenz entfernen
 
         # alle Spieler-Instanzen bereinigen (parallel)
         await asyncio.gather(*[asyncio.create_task(p.cleanup()) for p in self._players], return_exceptions=True)
@@ -153,7 +150,7 @@ class GameEngine:
         self._public_state.player_names[available_index] = peer.name
         peer.pub = self._public_state  # Mutable - Änderungen durch Player möglich, aber nicht vorgesehen
         peer.priv = self._private_states[available_index]  # Mutable - Änderungen durch PLayer möglich, aber nicht vorgesehen
-        peer.interrupt_event = self.interrupt_event
+        peer.interrupt_event = self._interrupt_event
 
         await self._broadcast("player_joined", {"player_index": available_index, "player_name": peer.name})
         return True
@@ -178,7 +175,7 @@ class GameEngine:
         assert self._public_state.player_names[index] == peer.name
         assert peer.pub == self._public_state
         assert peer.priv == self._private_states[index]
-        assert peer.interrupt_event == self.interrupt_event
+        assert peer.interrupt_event == self._interrupt_event
 
         await self._broadcast("player_joined", {"player_index": index, "player_name": peer.name})
         return True
@@ -256,12 +253,12 @@ class GameEngine:
 
         :return: True, wenn eine neue Partie gestartet werden konnte, sonst False.
         """
-        if self.game_loop_task and not self.game_loop_task.done():
+        if self._game_loop_task and not self._game_loop_task.done():
             logger.warning(f"[{self.table_name}] Starten der Partie nicht möglich. Die Partie läuft bereits.")
             return False
 
         logger.debug(f"[{self.table_name}] Starte Hintergrundtask für die Spielsteuerung.")
-        self.game_loop_task = asyncio.create_task(self.run_game_loop(), name=f"Game Loop '{self.table_name}'")
+        self._game_loop_task = asyncio.create_task(self.run_game_loop(), name=f"Game Loop '{self.table_name}'")
         return True
 
     # ------------------------------------------------------
@@ -606,7 +603,7 @@ class GameEngine:
 
         finally:
             logger.info(f"[{self.table_name}] Spiel-Loop beendet.")
-            self.game_loop_task = None  # Referenz aufheben
+            self._game_loop_task = None  # Referenz aufheben
 
         return pub
 

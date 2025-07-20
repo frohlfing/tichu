@@ -157,27 +157,28 @@ class PublicState:
 
     @property
     def count_active_players(self) -> int:
-        """
-        Anzahl Spieler, die noch im Rennen sind.
-        """
+        """Anzahl der Spieler, die noch Handkarten haben."""
         return sum(1 for n in self.count_hand_cards if n > 0)
 
     @property
     def unplayed_cards(self) -> List[Card]:  # pragma: no cover
-        """Nicht gespielte Karten (in aufsteigender Reihenfolge)"""
+        """Nicht gespielte Karten (in aufsteigender Reihenfolge)."""
         return other_cards(self.played_cards)
 
     # @property
     # def is_round_over(self) -> bool:
-    #     """Gibt an, ob die aktuelle Runde beendet ist."""
-    #     # Runde ist vorbei, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wurde.
-    #     return self.count_active_players <= 1 or self.is_double_victory
+    #     """
+    #     Gibt an, ob die aktuelle Runde beendet ist.
+    #
+    #     Die Runde ist vorbei, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wurde.
+    #     """
+    #     assert self.count_active_players > 0, "Es muss mindestens ein Spieler im Spiel sein."
+    #     return self.count_active_players == 1 or self.is_double_victory
     #
     # @property
     # def is_double_victory(self) -> bool:
     #     """Gibt an, ob die Runde durch einen Doppelsieg beendet wurde."""
-    #     # Ein Doppelsieg heißt, dass beide Spieler eines Teams fertig sind und die anderen beide noch nicht.
-    #     return self.count_active_players == 2 and self.winner_index != -1 and self.count_hand_cards[(self.winner_index + 2) % 4] == 0
+    #     return self.winner_index != -1 and self.count_hand_cards[(self.winner_index + 2) % 4] == 0 and self.count_active_players == 2
 
     @property
     def total_score(self) -> Tuple[int, int]:

@@ -17,7 +17,7 @@ class PrivateState:
     Diese Klasse sammelt die Daten, die nur dem jeweiligen Spieler bekannt sind.
 
     :ivar player_index: Pflichtargument. Der Index dieses Spielers am Tisch (zwischen 0 und 3).
-    :ivar _hand_cards: (property `hand_cards`) Die aktuellen Handkarten des Spielers (absteigend sortiert, z.B. [(8,3), (2,4), (0,1)].
+    :ivar hand_cards: Die aktuellen Handkarten des Spielers (absteigend sortiert, z.B. [(8,3), (2,4), (0,1)].
     :ivar given_schupf_cards: Die drei Karten, die der Spieler zum Schupfen an den rechten Gegner, Partner und linken Gegner abgegeben hat.
     :ivar received_schupf_cards: Die drei Karten, die der Spieler beim Schupfen vom rechten Gegner, Partner und linken Gegner erhalten hat.
     """
@@ -45,7 +45,7 @@ class PrivateState:
 
     @hand_cards.setter
     def hand_cards(self, value: Cards):
-        """Setzt die Handkarten und leert den Cache."""
+        """Setzt die Handkarten und leert den Combination-Cache."""
         # Karten absteigend sortieren
         self._hand_cards = value
         self._hand_cards.sort(reverse=True)
