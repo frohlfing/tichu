@@ -279,7 +279,6 @@ const AppController = (() => {
                 State.setRoundOver(true);
                 State.setDoubleVictory(context.is_double_victory);
                 State.addGameScoreEntry([context.points[2] + context.points[0], context.points[3] + context.points[1]])
-                State.incRoundCounter();
                 Modal.showRoundOverDialog()
                 break;
             case "game_over": // Die Runde ist vorbei und die Partie ist entschieden.

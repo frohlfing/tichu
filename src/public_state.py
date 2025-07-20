@@ -8,7 +8,7 @@ from src.lib.combinations import Combination, CombinationType
 from typing import List, Tuple, Dict, Any
 
 # Type-Alias für einen Spielzug (inkl. Passen)
-Turn = Tuple[int, Cards, Combination]
+Turn = Tuple[int, Cards, Combination]  # Index des Spielers, Karten, Kombination (Typ, Länge, Rang)
 
 # Type-Alias für einen Stich (Liste von Spielzügen)
 Trick = List[Turn]
@@ -45,7 +45,6 @@ class PublicState:
     :ivar is_round_over: Gibt an, ob die aktuelle Runde beendet ist.
     :ivar is_double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
     :ivar game_score: Punktetabelle der Partie (Team 20, Team 31) (pro Team eine Liste von Punkten).
-    :ivar round_counter: Anzahl der abgeschlossenen Runden der Partie.
     :ivar trick_counter: Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie (nur für statistische Zwecke).
     """
     # --- Tisch- und Spielerinformationen ---
@@ -75,19 +74,13 @@ class PublicState:
 
     # --- Information über die Partie ---
     game_score: GameScore = field(default_factory=lambda: ([], []))
-    round_counter: int = 0
     trick_counter: int = 0  # nur für statistische Zwecke
 
     # todo Berechnung:
     #  1) is_round_over = count_active_players == 1 or is_double_victory  # nur noch eine Spieler im Spiel oder Doppelsieg
     #  2) is_double_victory = count_active_players == 2 and count_hand_cards[(winner_index + 2) % 4] == 0  # die beiden Spieler eine Teams sind fertig, die anderen 2 Spieler noch nicht
     #  3) trick_points = sum_card_points(??)  # kann aus tricks berechnet werden
-    #  Die Berechnung ist nicht aufwendig. Ich bevorzuge im Hinblick, neuronale Netze zu trainieren, so wenig wie nötig als
-    #  Zustandsvariablen definieren zu müssen. Properties sehe ich für das Training als optionale Features.
-    #  Aber ja, ich werde das später erst noch prüfen, in wie weit die Geschwindigkeit der Arena leiden würde.
-    #  4) round_counter = ??  # kann aus game_score ermittelt werden
-    #  5) trick_counter = ??  # kann aus tricks ermittelt werden
-    #  6) trick_owner_index, trick_cards, trick_combination bilden den letzten Eintrag aus tricks, der nicht Passen ist.
+    #  5) trick_owner_index, trick_cards, trick_combination bilden den letzten Eintrag aus tricks, der nicht Passen ist.
 
     def __post_init__(self):
         if not self.table_name.strip():
@@ -119,7 +112,6 @@ class PublicState:
         """Status für eine neue Partie zurücksetzen."""
         self.reset_round()
         self.game_score = [], []
-        self.round_counter = 0
         self.trick_counter = 0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -151,14 +143,20 @@ class PublicState:
             "is_round_over": self.is_round_over,
             "is_double_victory": self.is_double_victory,
             "game_score": self.game_score,
-            "round_counter": self.round_counter,
             "trick_counter": self.trick_counter,
         }
+
+    # ------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------
+
+    # Properties sehe ich für das Training von neuronalen Netzen als optionale Features.
 
     @property
     def count_active_players(self) -> int:
         """Anzahl der Spieler, die noch Handkarten haben."""
-        return sum(1 for n in self.count_hand_cards if n > 0)
+        #return sum(1 for n in self.count_hand_cards if n > 0)
+        return (self.count_hand_cards[0] > 0) + (self.count_hand_cards[1] > 0) + (self.count_hand_cards[2] > 0) + (self.count_hand_cards[3] > 0)
 
     @property
     def unplayed_cards(self) -> List[Card]:  # pragma: no cover
@@ -172,13 +170,23 @@ class PublicState:
     #
     #     Die Runde ist vorbei, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wurde.
     #     """
-    #     assert self.count_active_players > 0, "Es muss mindestens ein Spieler im Spiel sein."
-    #     return self.count_active_players == 1 or self.is_double_victory
+    #     c = self.count_hand_cards
+    #     if ((c[0] > 0 and c[1] == c[2] == c[3] == 0) or
+    #             (c[1] > 0 and c[0] == c[2] == c[3] == 0) or
+    #             (c[2] > 0 and c[0] == c[1] == c[3] == 0) or
+    #             (c[3] > 0 and c[0] == c[1] == c[2] == 0)):
+    #         return True
+    #     return self.is_double_victory
     #
     # @property
     # def is_double_victory(self) -> bool:
-    #     """Gibt an, ob die Runde durch einen Doppelsieg beendet wurde."""
-    #     return self.winner_index != -1 and self.count_hand_cards[(self.winner_index + 2) % 4] == 0 and self.count_active_players == 2
+    #     """
+    #     Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
+    #
+    #     Ein Doppelsieg heißt, beide Spieler eines Teams haben Handkarten, die beiden anderen nicht.
+    #     """
+    #     c = self.count_hand_cards
+    #     return (c[0] > 0 and c[2] > 0 and c[1] == c[3] == 0) or (c[1] > 0 and c[3] > 0 and c[0] == c[2] == 0)
 
     @property
     def total_score(self) -> Tuple[int, int]:
@@ -190,3 +198,8 @@ class PublicState:
         """Gibt an, ob die Partie beendet ist."""
         score20, score31 = self.total_score
         return score20 >= 1000 or score31 >= 1000
+
+    @property
+    def round_counter(self) -> int:
+        """Anzahl der abgeschlossenen Runden der Partie."""
+        return len(self.game_score[0])

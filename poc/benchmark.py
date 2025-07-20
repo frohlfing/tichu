@@ -21,6 +21,8 @@ from timeit import timeit
 import time
 import asyncio
 
+from src.public_state import PublicState
+
 
 # from time import time
 # time_start = time()
@@ -298,15 +300,19 @@ def sync_vs_async_benchmark():
     print(f"Async/Sync: {async_duration/sync_duration:.3f} mal langsamer")
 
 
+def is_double_victory():
+    number = 100000
+    pub = PublicState(table_name="test", player_names=["P0", "P1", "P2", "P3"])
+    pub.count_hand_cards = [0,1,0,4]
+    pub.winner_index = 0
+
+    t = timeit(lambda: pub.count_active_players, number=number) * 1000 / number
+    print(f"is_round_over: {t:.6f} ms")
+    print(pub.count_active_players)
+
+    t = timeit(lambda: pub.count_active_players2, number=number) * 1000 / number
+    print(f"is_round_over2: {t:.6f} ms")
+    print(pub.count_active_players2)
+
 if __name__ == '__main__':
-    benchmark_build_combinations()
-    #sync_vs_async_benchmark()
-
-    #possible_hands_benchmark()
-    #prob_of_hand_benchmark()
-
-    #calc_statistic_benchmark()
-    #binomial_benchmark(n=56, k=14)
-    #binomial_benchmark(n=1000, k=500)
-    #hypergeometric_benchmark(N=56, n=14, M=4, k=3)
-    #hypergeometric_benchmark(N=1000, n=500, M=100, k=50)
+    is_double_victory()

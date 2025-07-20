@@ -71,7 +71,7 @@ class PrivateState:
         """
         return {
             "player_index": self.player_index,
-            "hand_cards": self.hand_cards,
+            "hand_cards": self._hand_cards,
             "given_schupf_cards": self.given_schupf_cards,
             "received_schupf_cards": self.received_schupf_cards,
         }

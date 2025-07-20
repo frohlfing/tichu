@@ -45,7 +45,6 @@
  * @property {boolean} is_round_over - Gibt an, ob die Runde beendet ist.
  * @property {boolean} is_double_victory - Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
  * @property {GameScore} game_score - Punktetabelle der Partie für Team 20 und Team 31.
- * @property {number} round_counter - Anzahl der abgeschlossenen Runden der Partie.
  * @property {number} trick_counter - Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie.
  */
 
@@ -91,7 +90,6 @@ const State = (() => {
         is_round_over: false,
         is_double_victory: false,
         game_score: /** @type GameScore */ [[], []],
-        round_counter: 0,
         trick_counter: 0
     };
 
@@ -209,7 +207,6 @@ const State = (() => {
     function resetGame() {
         resetRound();
         _publicState.game_score = /** @type GameScore */ [[], []];
-        _publicState.round_counter = 0;
         _publicState.trick_counter = 0;
     }
     
@@ -595,17 +592,7 @@ const State = (() => {
 
     /** @returns {number} Anzahl der abgeschlossenen Runden der Partie. */
     function getRoundCounter(){
-        return _publicState.round_counter;
-    }
-
-    /** @param {number} value - Anzahl der abgeschlossenen Runden der Partie. */
-    function setRoundCounter(value) {
-        _publicState.round_counter = value;
-    }
-
-    /** Inkrementiert den Zähler für abgeschlossene Runden. */
-    function incRoundCounter() {
-        _publicState.round_counter++;
+        return _publicState.game_score[0].length;
     }
 
     /** @returns {number} Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie. */
@@ -913,11 +900,10 @@ const State = (() => {
         isRoundOver, setRoundOver,
         isDoubleVictory, setDoubleVictory,
         getGameScore, addGameScoreEntry, getLastScoreEntry, resetGameScore,
-        getRoundCounter, setRoundCounter, incRoundCounter,
+        getRoundCounter,
         getTrickCounter, setTrickCounter, setTrickClosed,
         getTotalScore,
         isGameOver,
-        //getPhase,
 
         // privater Spielzustand
         getPlayerIndex, setPlayerIndex,

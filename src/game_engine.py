@@ -566,7 +566,6 @@ class GameEngine:
                 # Ergebnis der Runde in die Punktetabelle der Partie eintragen.
                 pub.game_score[0].append(pub.points[2] + pub.points[0])
                 pub.game_score[1].append(pub.points[3] + pub.points[1])
-                pub.round_counter += 1
 
                 if clients_joined:
                     await self._broadcast("round_over", {"points": pub.points, "loser_index": pub.loser_index, "is_double_victory": pub.is_double_victory})
