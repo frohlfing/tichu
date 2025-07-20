@@ -5,7 +5,7 @@ Wir verzichten auf Frameworks und vermeidbare Abhängigkeiten.
 Der für dich relevante Source-Code des Backends hab ich angehängt. Insbesondere der Peer sollte dich interessieren.
 Zusammen mit der Dokumentation solltest du alle notwendigen Informationen haben, um das Frontend zu programmieren.
 
----------------------------------------------------------------------------
+------------------------------------------------------
 
 
 Ich habe mit Python eine Umgebung gebaut, in der 4 Agenten Tichu spielen können.

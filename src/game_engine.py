@@ -316,12 +316,12 @@ class GameEngine:
 
                 # Karten mischen
                 self._random.shuffle(self._mixed_deck)
-                self._mixed_deck = [(card[0], CardSuit(card[1])) for card in [
-                    (2, 1), (2, 2), (2, 3), (2, 4), (5, 2), (15, 0), (3, 4), (6, 4), (3, 1), (14, 4), (8, 1), (7, 1),  (7, 3), (3, 3),
-                    (10, 2), (11, 3), (6, 1), (11, 4), (9, 1), (13, 1), (3, 2), (6, 3), (9, 2), (12, 4), (12, 2), (4, 3), (5, 1), (4, 2),
-                    (0, 0), (13, 3), (1, 0), (9, 4), (5, 4), (10, 3), (8, 3), (10, 1), (14, 1), (9, 3), (7, 4), (8, 2), (13, 4), (10, 4),
-                    (12, 3), (4, 4), (11, 1), (5, 3), (6, 2), (12, 1), (13, 2), (4, 1), (7, 2), (14, 3), (14, 2), (11, 2), (8, 4), (16, 0),
-                ]]
+                # self._mixed_deck = [(card[0], CardSuit(card[1])) for card in [
+                #     (2, 1), (2, 2), (2, 3), (2, 4), (1, 0), (15, 0), (3, 4), (6, 4), (3, 1), (14, 4), (8, 1), (7, 1), (7, 3), (3, 3),
+                #     (10, 2), (11, 3), (6, 1), (11, 4), (9, 1), (13, 1), (3, 2), (6, 3), (9, 2), (12, 4), (12, 2), (4, 3), (5, 1), (4, 2),
+                #     (0, 0), (13, 3), (5, 2), (9, 4), (5, 4), (10, 3), (8, 3), (10, 1), (14, 1), (9, 3), (7, 4), (8, 2), (13, 4), (10, 4),
+                #     (12, 3), (4, 4), (11, 1), (5, 3), (6, 2), (12, 1), (13, 2), (4, 1), (7, 2), (14, 3), (14, 2), (11, 2), (8, 4), (16, 0),
+                # ]]
 
                 # Alle Spieler erhalten gleichzeitig die ersten 8 Karten. Sobald sie ein großes Tichu angesagt oder abgelehnt haben, erhalten sie die restlichen Karten und können Tauschkarten abgeben.
                 await asyncio.gather(*[self._deal_out(player_index, clients_joined) for player_index in range(4)])
@@ -385,7 +385,6 @@ class GameEngine:
                                 if bomb[1][0] == CombinationType.PASS:
                                     bomb = None
                                 if bomb:
-                                    # todo Nachricht senden
                                     pub.current_turn_index = player_index
                                     break
 

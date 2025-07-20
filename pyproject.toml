@@ -38,7 +38,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = []
 
-# -------------------------------------------------
+# ------------------------------------------------------
 # Konfiguration für pytest (ersetzt pytest.ini)
 # pytest ausführen: `python -m pytest`
 
@@ -53,7 +53,7 @@ addopts = [  # Optionen, die als Kommandozeilen-Argumente übergeben werden
     "--ignore=tests/prob",  # diese Tests werden ausgelassen
 ]
 
-# -------------------------------------------------
+# ------------------------------------------------------
 # Konfiguration für coverage (ersetzt .coveragerc)
 # coverage starten: `bin/cov.ps1`
 

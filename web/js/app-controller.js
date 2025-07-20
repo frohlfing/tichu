@@ -36,13 +36,10 @@ const AppController = (() => {
         EventBus.on("tableView:tichu", _handleTableViewTichu);
         EventBus.on("tableView:schupf", _handleTableViewSchupf);
         EventBus.on("tableView:play", _handleTableViewPlay);
-        //EventBus.on("tableView:bomb", _handleTableViewBomb);
         EventBus.on("tableView:gameOver", _handleTableViewGameOver);
         EventBus.on("tableView:exit", _handleTableViewExit);
-
-        // Ereignishändler für Dialoge einrichten
-        EventBus.on("wishDialog:select", _handleWishDialogSelect);
-        EventBus.on("dragonDialog:select", _handleDragonDialogSelect);
+        EventBus.on("tableView:wish", _handleTableViewWish);
+        EventBus.on("tableView:giveDragonAway", _handleTableViewGiveDragonAway);
 
         Network.init();
         Sound.init();
@@ -76,9 +73,9 @@ const AppController = (() => {
         //console.error("Fehler abgefangen", event.message, event.filename, event.lineno);
     });
 
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // Netzwerk-Ereignisse
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Wird aufgerufen, wenn die WebSocket-Verbindung erfolgreich geöffnet wurde.
@@ -131,9 +128,9 @@ const AppController = (() => {
         }
     }
     
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // Server-Nachrichten
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     
     /**
      * Wird aufgerufen, wenn der Server eine Anfrage gesendet hat.
@@ -224,9 +221,6 @@ const AppController = (() => {
                 break;
             case "player_schupfed": // Ein Spieler hat drei Karten zum Tausch abgegeben.
                 if (context.given_schupf_cards) { // Der Benutzer hat geschupft.
-                    // todo Handkarten besser übergeben?
-                    const cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.given_schupf_cards));
-                    State.setHandCards(cards);
                     State.setGivenSchupfCards(context.given_schupf_cards);
                     State.removePendingAction();
                 }
@@ -236,10 +230,6 @@ const AppController = (() => {
                 break;
             case "start_playing": // Die Karten können nun ausgespielt werden.
                 State.setReceivedSchupfCards(context.received_schupf_cards);
-                // todo Handkarten besser übergeben?
-                const cards = State.getHandCards().concat(context.received_schupf_cards);
-                Lib.sortCards(cards)
-                State.setHandCards(cards);
                 for (let relativeIndex = 1; relativeIndex <= 3; relativeIndex++) {
                     State.setCountHandCards(Lib.getCanonicalPlayerIndex(relativeIndex), 14);
                 }
@@ -247,41 +237,19 @@ const AppController = (() => {
                 State.setCurrentTurnIndex(context.start_player_index);
                 break;
             case "player_passed": // Ein Spieler hat gepasst.
+                State.addTurn(/** @type Turn */ [context.player_index, [], [CombinationType.PASS, 0, 0]]);
                 if (context.player_index === State.getPlayerIndex()) {
                     State.removePendingAction();
                 }
                 break;
             case "player_played": // Ein Spieler hat Karten ausgespielt.
-                if (context.turn[0] === State.getPlayerIndex()) { // Der Benutzer hat Karten ausgespielt.
-                    // todo Handkarten besser übergeben?
-                    let cards = State.getHandCards().filter(card => !Lib.includesCard(card, context.turn[1]));
-                    State.setHandCards(cards);
-                    if (context.turn[0] !== State.getCurrentTurnIndex()) { // Benutzer war nicht am Zug, hat also eine Bombe geworfen
-                        State.setCurrentTurnIndex(context.turn[0]);
-                    }
-                    State.removePendingAction();
-                }
-                else { // Ein Mitspieler hat Karten ausgespielt.
-                    // todo Anzahl Handkarten besser übergeben?
-                    State.setCountHandCards(context.turn[0], State.getCountHandCards(context.turn[0]) - context.turn[1].length);
-                    if (context.turn[0] !== State.getCurrentTurnIndex()) { // Der Mitspieler war nicht am Zug, hat also eine Bombe geworfen
-                        State.setCurrentTurnIndex(context.turn[0]);
-                        State.removePendingAction();
-                    }
-                }
-                State.setPlayedCards(State.getPlayedCards().concat(context.turn[1]));
-                // todo eine Funktion State.addTurn() bereitstellen
-                if (State.getTrickOwnerIndex() === -1) { // neuer Stich?
-                    State.addTrick([context.turn]);
-                }
-                else {
-                    State.getLastTrick().push(context.turn);
-                }
-                State.setTrickOwnerIndex(context.turn[0]);
-                State.setTrickCards(context.turn[1]);
-                State.setTrickCombination(context.turn[2]);
+                State.addTurn(context.turn);
                 State.setTrickPoints(context.trick_points);
                 State.setWinnerIndex(context.winner_index);
+                if (context.turn[0] === State.getPlayerIndex() || context.turn[0] !== State.getCurrentTurnIndex()) {
+                    // Der Benutzer hat Karten ausgespielt oder ein Mitspieler war nicht am Zug, hat also eine Bombe geworfen.
+                    State.removePendingAction();
+                }
                 break;
             case "wish_made": // Ein Kartenwert wurde gewünscht.
                 State.setWishValue(context.wish_value);
@@ -290,15 +258,10 @@ const AppController = (() => {
                 }
                 break;
             case "wish_fulfilled": // Der Wunsch wurde erfüllt.
-                // todo wish_value besser übergeben?
-                State.setWishValue(-State.getWishValue());
+                State.setWishFulfilled();
                 break;
             case "trick_taken": // Der Spieler hat den Stich kassiert.
-                State.setTrickOwnerIndex(-1);
-                State.setTrickCards([]);
-                State.setTrickCombination( /** @type Combination */[CombinationType.PASS, 0, 0]);
-                State.setTrickPoints(0);
-                State.incTrickCounter();
+                State.setTrickClosed();
                 State.setPoints(context.player_index, context.points);
                 State.setDragonRecipient(context.dragon_recipient);
                 if (State.isCurrentPlayer() && State.getPendingAction() === "give_dragon_away") {
@@ -315,7 +278,6 @@ const AppController = (() => {
                 State.setLoserIndex(context.loser_index);
                 State.setRoundOver(true);
                 State.setDoubleVictory(context.is_double_victory);
-                // todo TotalScore sollte ebenfalls oder statt GameScore übergeben werden (sonst würde ein Fehleintrag nicht korrigiert werden)
                 State.addGameScoreEntry([context.points[2] + context.points[0], context.points[3] + context.points[1]])
                 State.incRoundCounter();
                 Modal.showRoundOverDialog()
@@ -342,9 +304,9 @@ const AppController = (() => {
         Modal.showErrorToast(`Fehler ${error.message}`);
     }
     
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // LoginView-Ereignis
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Wird aufgerufen, wenn der Benutzer sich einloggen möchte.
@@ -359,9 +321,9 @@ const AppController = (() => {
         ViewManager.showLoadingView();
     }
 
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // Lobby-Ereignisse
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Wird aufgerufen, wenn der Benutzer die Reihenfolge der Spieler vertauschen möchte.
@@ -389,9 +351,9 @@ const AppController = (() => {
         ViewManager.showLoadingView();
     }
 
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // TableView-Ereignisse
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Wird aufgerufen, wenn der Benutzer sich entschieden hat, ob er ein großes Tichu ansagen möchte oder nicht.
@@ -476,23 +438,19 @@ const AppController = (() => {
     }
 
     /**
-     * Wird aufgerufen, wenn der Benutzer den Spieltisch verlassen möchte
+     * Wird aufgerufen, wenn der Benutzer den Spieltisch verlassen möchte.
      */
     function _handleTableViewExit() {
         Network.send('leave');
         ViewManager.showLoadingView();
     }
 
-    // --------------------------------------------------------------------------------------
-    // Ereignishändler für die Dialoge
-    // --------------------------------------------------------------------------------------
-
     /**
-     * Ereignishändler für den Wish-Dialog.
+     * Wird aufgerufen, wenn der Benutzer einen Kartenwert wünschen möchte.
      *
      * @param {number} value - Der gewählte Kartenwert (2 bis 14).
      */
-    function _handleWishDialogSelect(value) {
+    function _handleTableViewWish(value) {
         if (State.getPendingAction() !== "wish") {
             Modal.showErrorToast("Keine Anfrage für Wünschen erhalten.");
             return
@@ -506,16 +464,15 @@ const AppController = (() => {
     }
 
     /**
-     * Ereignishändler für den Dragon-Dialog.
+     * Wird aufgerufen, wenn der Benutzer den Drachen verschenken möchte.
      *
-     * @param {number} value - Der zum Benutzer relative Index des gewählten Gegners (1 == rechts, 3 == links).
+     * @param {number} dragonRecipient - Der Index des gewählten Gegners.
      */
-    function _handleDragonDialogSelect(value) {
+    function _handleTableViewGiveDragonAway(dragonRecipient) {
         if (State.getPendingAction() !== "give_dragon_away") {
-            Modal.showErrorToast("Keine Anfrage für Wünschen erhalten.");
+            Modal.showErrorToast("Keine Anfrage für Drachen verschenken erhalten.");
             return
         }
-        const dragonRecipient = Lib.getCanonicalPlayerIndex(value);
         Network.send("response", {
             action: State.getPendingAction(),
             response_data: {
@@ -524,9 +481,9 @@ const AppController = (() => {
         });
     }
 
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // Hilfsfunktionen
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Rendert die View.
@@ -536,13 +493,6 @@ const AppController = (() => {
         if (Network.isReady()) {
             if (State.isRunning()) {
                 ViewManager.showTableView();
-                // todo besser über TableView steuern:
-                if (State.getPendingAction() === "wish") {
-                    Modal.showWishDialog();
-                }
-                else if (State.getPendingAction() === "give_dragon_away") {
-                    Modal.showDragonDialog();
-                }
             }
             else {
                 ViewManager.showLobbyView();

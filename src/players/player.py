@@ -71,14 +71,14 @@ class Player:
         Die Engine ruft diese Methode nur auf, wenn der Spieler ein Tichu ansagen darf.
 
         Die Bedingung für ein großes Tichu (direkt nach dem Austeilen der ersten 8 Karten) ist::
-            self.pub.announcements[self.priv.player_index] == 0 and
-            self.pub.count_hand_cards[self.priv.player_index] == 8 and
-            self.pub.start_player_index == -1
+            pub.announcements[priv.player_index] == 0 and
+            pub.count_hand_cards[priv.player_index] == 8 and
+            pub.start_player_index == -1
 
         Die Bedingung für ein einfaches Tichu ist::
-            self.pub.announcements[self.priv.player_index] == 0 and
-            self.pub.count_hand_cards[self.priv.player_index] == 14 and
-            self.pub.start_player_index >= 0
+            pub.announcements[priv.player_index] == 0 and
+            pub.count_hand_cards[priv.player_index] == 14 and
+            pub.start_player_index >= 0
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
@@ -92,8 +92,8 @@ class Player:
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler noch Karten abgeben muss.
         Die Bedingung ist::
-            self.pub.count_hand_cards[self.priv.player_index] > 8 and
-            self.priv.given_schupf_cards is None
+            pub.count_hand_cards[priv.player_index] > 8 and
+            priv.given_schupf_cards is None
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
@@ -107,8 +107,8 @@ class Player:
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler am Zug ist oder eine Bombe hat.
         Die Bedingung ist::
-            self.pub.current_turn_index == self.priv.player_index or
-            self._private_states[player_index].has_bomb
+            pub.current_turn_index == priv.player_index or
+            priv.has_bomb
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
@@ -124,9 +124,9 @@ class Player:
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler sich einen Kartenwert wünschen muss.
         Die Bedingung ist::
-            self.pub.current_turn_index == self.priv.player_index and
-            self.pub.wish_value == 0 and
-            CARD_MAH in self.pub.played_cards # oder alternativ: CARD_MAH in self.pub.trick_cards
+            pub.current_turn_index == priv.player_index and
+            pub.wish_value == 0 and
+            (1,0) in pub.trick_cards
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 
@@ -136,13 +136,13 @@ class Player:
 
     async def give_dragon_away(self) -> int:
         """
-        Die Engine fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
+        Die Engine fragt den Spieler, welcher Gegner den Drachen bekommen soll.
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler den Drachen verschenken muss.
         Die Bedingung ist::
-            self.pub.current_turn_index == self.priv.player_index and
-            self.pub.dragon_recipient == -1 and
-            self.pub.trick_combination == (CombinationType.SINGLE, 1, 15)
+            pub.current_turn_index == priv.player_index and
+            pub.dragon_recipient == -1 and
+            pub.trick_combination == (0,1,15)
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
 

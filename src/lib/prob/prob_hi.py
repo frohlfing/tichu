@@ -13,9 +13,9 @@ from src.lib.prob.tables_hi import load_table_hi
 from time import time
 from timeit import timeit
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 # Wahrscheinlichkeitsberechnung p_high
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Farbbombe überstechen kann
 # (entweder durch einen höheren Rang, oder durch eine längere Bombe).
@@ -254,9 +254,9 @@ def prob_of_higher_combi_or_bomb(cards: Cards, k: int, combination: Combination)
         return p_min, p_max
 
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 # Test
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 
 # Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebene überstechen kann.
 #

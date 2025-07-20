@@ -36,7 +36,7 @@ class PublicState:
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == noch niemand).
     :ivar trick_owner_index: Index des Spielers, der die letzte Kombination gespielt hat, also Besitzer des Stichs ist (-1 == leerer Stich).
     :ivar trick_cards: Die Karten der letzten Kombination im Stich [Card, ...].
-    :ivar trick_combination: Typ, Länge und Wert des aktuellen Stichs ((0,0,0) == leerer Stich)
+    :ivar trick_combination: Typ, Länge und Rang des aktuellen Stichs ((0,0,0) == leerer Stich)
     :ivar trick_points: Punkte des aktuellen Stichs.
     :ivar tricks: Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen (wenn der Stich noch nicht einkassiert wurde).
     :ivar points: Bisher kassierte Punkte in der aktuellen Runde pro Spieler.

@@ -100,208 +100,203 @@ const Bot = (() => {
             gameOverButton.click();
         }
 
-        // todo in Funktionen aufteilen
-
-        // --------------------------------------------------------------------------------------
-        // Login-Screen-Logik
-        // --------------------------------------------------------------------------------------
-
         if (ViewManager.isVisible('login')) {
-            _testUILogin();
-
-            // Fülle die Felder und löse den Submit aus
-            console.log("🤖 Bot: Auf dem Login-Screen. Logge ein...");
-            document.getElementById('login-player-name').value = User.getPlayerName() || `Bot_${Random.integer(100, 999)}`;
-            document.getElementById('login-table-name').value = User.getTableName() || `Tisch_${Random.integer(10, 99)}`;
-            _clickButton('#login-submit-button');
-            return;
+            _performLoginAction();
         }
-
-        // --------------------------------------------------------------------------------------
-        // Lobby-Screen-Logik
-        // --------------------------------------------------------------------------------------
-
-        if (ViewManager.isVisible('lobby')) {
-            _testUILobby()
-
-            if (Config.BOT_MAX_GAMES > 0 && _gameCounter >= Config.BOT_MAX_GAMES) {
-                console.log(`🤖 Bot: Maximale Anzahl von ${Config.BOT_MAX_GAMES} Partien erreicht. Stoppe.`);
-                setEnabled(false);
-                return;
-            }
-
-            if (State.isHost()) {
-                // Zufällige Position der Spieler ändern
-                if (Random.boolean()) {
-                    const upButtons = document.querySelectorAll('#lobby-player-list .player-order-controls button:first-child:not(:disabled)');
-                    const downButtons = document.querySelectorAll('#lobby-player-list .player-order-controls button:last-child:not(:disabled)');
-                    const allButtons = [...upButtons, ...downButtons];
-                    if (allButtons.length > 0) {
-                        console.log("🤖 Bot: Tausche zufällig Spielerposition in der Lobby...");
-                        const randomButton = Random.choice(allButtons);
-                        randomButton.click();
-                        return;
-                    }
-                }
-                // Spiel starten
-                console.log("🤖 Bot: In der Lobby als Host. Starte das Spiel...");
-                _clickButton('#lobby-start-button');
-            }
-            else {
-                console.log("🤖 Bot: In der Lobby. Warte auf andere Spieler oder den Host...");
-            }
-            return;
+        else if (ViewManager.isVisible('lobby')) {
+            _performLobbyAction();
         }
-
-        // --------------------------------------------------------------------------------------
-        // Table-Screen-Logik
-        // --------------------------------------------------------------------------------------
-
-        if (ViewManager.isVisible('table')) {
-            _testUIHand();
-            _testUIScoreDisplay();
-            _testUIWishIcon();
-
-            if (State.getReceivedSchupfCards() && !State.isConfirmedReceivedSchupfCards()) {
-                if (document.querySelectorAll('#schupf-zone-bottom .schupf-subzone .card:not(.back-site)').length) {
-                    // Wir haben geschupfte Karten erhalten und müssen sie bestätigen
-                    console.log("🤖 Bot: Bestätige erhaltene Schupf-Karten.");
-                    _clickButton('#play-button[data-mode="RECEIVE"]');
-                }
-            }
-
-            _testUITichuIcons();
-            const tichuButton = document.getElementById('tichu-button');
-            if (!tichuButton.disabled) {
-                if (Random.boolean(0.25)) {
-                    console.log("🤖 Bot: Klicke auf Tichu-Button.");
-                    tichuButton.click();
-                }
-            }
-
-            _testUIBombIcon();
-            const bombIcon = document.getElementById('bomb-icon');
-            if (!bombIcon.classList.contains('hidden') && !bombIcon.classList.contains("disabled")) {
-                if (Random.boolean(0.25)) {
-                    console.log("🤖 Bot: Klicke auf das Bomben-Symbol.");
-                    if (State.canPlayBomb()) {
-                        _clearSelectedCards();
-                        bombIcon.click(); // Nach dem Klick werden die Karten für eine Bombe selektiert.
-                        //setTimeout(() => {
-                            console.log("🤖 Bot: Klicke auf Play-Button.");
-                            //if (State.isCurrentPlayer()) {
-                            _clickButton('#play-button[data-mode="PLAY"]')
-                            // }
-                            // else {
-                            //     _clickButton('#play-button[data-mode="BOMB"]')
-                            // }
-                        //}, 100);
-                    }
-                }
-            }
-
-            // Prüfe, ob eine Anfrage vom Server an uns gerichtet ist
-
-            const pendingAction = State.getPendingAction();
-            if (pendingAction) {
-                console.log(`🤖 Bot: Anfrage erhalten: ${pendingAction}`);
-
-                switch (pendingAction) {
-                    case 'announce_grand_tichu':
-                        if (Random.boolean(1/20)) {
-                            console.log("🤖 Bot: Klicke auf GrandTichu-Button.");
-                            _clickButton('#tichu-button[data-mode="GRAND_TICHU"]');
-                        }
-                        else {
-                            console.log("🤖 Bot: Klicke auf NoGrandTichu-Button.");
-                            _clickButton('#pass-button[data-mode="NO_GRAND_TICHU"]');
-                        }
-                        break;
-
-                    case 'schupf':
-                        _testUISchupfZone();
-                        // In der View der Reihe nach erst die Karte und dann auf die Schupfzone klicken.
-                        const handCardElements = Array.from(document.querySelectorAll('#hand-bottom .card'));
-                        const cardElements = Random.sample(handCardElements, 3);
-                        const schupfSubZones = document.querySelectorAll('#schupf-zone-bottom .schupf-subzone');
-                        console.log(`🤖 Bot: Wähle Schupf-Karten aus.`);
-                        cardElements.forEach((cardElement, i) => {
-                            cardElement.click();
-                            schupfSubZones[i].click();
-                        });
-                        // Nachdem 3 Karten ausgewählt sind, wird der Play-Button zu "Schupfen"
-                        console.log("🤖 Bot: Klicke auf Schupfen-Button.");
-                        _clickButton('#play-button[data-mode="SCHUPF"]');
-                        break;
-
-                    case 'play':
-                        _testUIPlay();
-                        // Zufällig eine von zwei Strategien wählen
-                        if (Random.boolean()) {
-                            // a) Zufällige gültige Kombination spielen
-                            console.log("🤖 Bot: Selektiere zufällige Kombination...");
-                            const actionSpace = State.getActionSpace();
-                            const action = Random.choice(actionSpace);
-                            _selectCards(action[0]);
-                            if (action[1][0] !== CombinationType.PASS) {
-                                console.log("🤖 Bot: Klicke auf Play-Button.");
-                                _clickButton('#play-button[data-mode="PLAY"]');
-                            }
-                            else {
-                                 console.log("🤖 Bot: Klicke auf Passen-Button.");
-                                _clickButton('#pass-button');
-                            }
-                        }
-                        else {
-                            // b) AUTOSELECT-Button der View nutzen
-                            if (State.canPlayCards()) {
-                                _clearSelectedCards();
-                                // Nach dem ersten Klick werden die Karten selektiert.
-                                console.log("🤖 Bot: Klicke auf Autoselect-Button.");
-                                _clickButton('#play-button[data-mode="AUTOSELECT"]');
-                                // Plane einen zweiten Klick, um sie auszuspielen.
-                                //setTimeout(() => {
-                                    console.log("🤖 Bot: Klicke auf Play-Button.");
-                                    _clickButton('#play-button[data-mode="PLAY"]')
-                                //}, 500);
-                            }
-                            else { // kein Autoselect möglich (z.B. nur Passen).
-                                 console.log("🤖 Bot: Klicke auf Passen-Button.");
-                                _clickButton('#pass-button');
-                            }
-                        }
-                        break;
-
-                    case 'wish':
-                        _testUIWishDialog();
-                        // Klick auf den Button im Wish-Dialog
-                        const wishOptions = document.querySelectorAll('#wish-dialog:not(.hidden) button:not(:disabled)');
-                        if (wishOptions.length > 0) {
-                            console.log("🤖 Bot: Wähle einen zufälligen Wunsch.");
-                            Random.choice(Array.from(wishOptions)).click();
-                        }
-                        break;
-
-                    case 'give_dragon_away':
-                        _testUIDragonDialog();
-                        // Klick auf den Button im Dragon-Dialog
-                        const dragonOptions = document.querySelectorAll('#dragon-dialog:not(.hidden) button:not(:disabled)');
-                        if (dragonOptions.length > 0) {
-                            console.log("🤖 Bot: Verschenke Drachen zufällig.");
-                            Random.choice(Array.from(dragonOptions)).click();
-                        }
-                        break;
-                }
-            }
-            else {
-                console.log("🤖 Bot: Auf dem Spieltisch. Warte auf meinen Zug oder ein Event...");
-            }
+        else if (ViewManager.isVisible('table')) {
+            _performTableAction();
         }
     }
 
-    // --------------------------------------------------------------------------------------
+    /**
+     * Bedient die Login-View.
+     */
+    function _performLoginAction() {
+        _testUILogin();
+        // Fülle die Felder und löse den Submit aus
+        console.log("🤖 Bot: Auf dem Login-Screen. Logge ein...");
+        document.getElementById('login-player-name').value = User.getPlayerName() || `Bot_${Random.integer(100, 999)}`;
+        document.getElementById('login-table-name').value = User.getTableName() || `Tisch_${Random.integer(10, 99)}`;
+        _clickButton('#login-submit-button');
+    }
+
+    /**
+     * Bedient die Lobby-View.
+     */
+    function _performLobbyAction() {
+        _testUILobby()
+
+        if (Config.BOT_MAX_GAMES > 0 && _gameCounter >= Config.BOT_MAX_GAMES) {
+            console.log(`🤖 Bot: Maximale Anzahl von ${Config.BOT_MAX_GAMES} Partien erreicht. Stoppe.`);
+            setEnabled(false);
+            return;
+        }
+
+        if (State.isHost()) {
+            // Zufällige Position der Spieler ändern
+            if (Random.boolean()) {
+                const upButtons = document.querySelectorAll('#lobby-player-list .player-order-controls button:first-child:not(:disabled)');
+                const downButtons = document.querySelectorAll('#lobby-player-list .player-order-controls button:last-child:not(:disabled)');
+                const allButtons = [...upButtons, ...downButtons];
+                if (allButtons.length > 0) {
+                    console.log("🤖 Bot: Tausche zufällig Spielerposition in der Lobby...");
+                    const randomButton = Random.choice(allButtons);
+                    randomButton.click();
+                    return;
+                }
+            }
+            // Spiel starten
+            console.log("🤖 Bot: In der Lobby als Host. Starte das Spiel...");
+            _clickButton('#lobby-start-button');
+        }
+        else {
+            console.log("🤖 Bot: In der Lobby. Warte auf andere Spieler oder den Host...");
+        }
+    }
+
+    /**
+     * Bedient die Table-View.
+     */
+    function _performTableAction() {
+        _testUIHand();
+        _testUIScoreDisplay();
+        _testUIWishIcon();
+
+        if (State.getReceivedSchupfCards() && !State.isConfirmedReceivedSchupfCards()) {
+            if (document.querySelectorAll('#schupf-zone-bottom .schupf-subzone .card:not(.back-site)').length) {
+                // Wir haben geschupfte Karten erhalten und müssen sie bestätigen
+                console.log("🤖 Bot: Bestätige erhaltene Schupf-Karten.");
+                _clickButton('#play-button[data-mode="RECEIVE"]');
+            }
+        }
+
+        _testUITichuIcons();
+        const tichuButton = document.getElementById('tichu-button');
+        if (!tichuButton.disabled) {
+            if (Random.boolean(0.25)) {
+                console.log("🤖 Bot: Klicke auf Tichu-Button.");
+                tichuButton.click();
+            }
+        }
+
+        _testUIBombIcon();
+        const bombIcon = document.getElementById('bomb-icon');
+        if (!bombIcon.classList.contains('hidden') && !bombIcon.classList.contains("disabled")) {
+            if (Random.boolean(0.25)) {
+                console.log("🤖 Bot: Klicke auf das Bomben-Symbol.");
+                if (State.canPlayBomb()) {
+                    _clearSelectedCards();
+                    bombIcon.click(); // Nach dem Klick werden die Karten für eine Bombe selektiert.
+                    console.log("🤖 Bot: Klicke auf Play-Button.");
+                    _clickButton('#play-button[data-mode="PLAY"]')
+                }
+            }
+        }
+
+        // Prüfe, ob eine Anfrage vom Server an uns gerichtet ist
+
+        const pendingAction = State.getPendingAction();
+        if (pendingAction) {
+            console.log(`🤖 Bot: Anfrage erhalten: ${pendingAction}`);
+            switch (pendingAction) {
+                case 'announce_grand_tichu':
+                    if (Random.boolean(1/20)) {
+                        console.log("🤖 Bot: Klicke auf GrandTichu-Button.");
+                        _clickButton('#tichu-button[data-mode="GRAND_TICHU"]');
+                    }
+                    else {
+                        console.log("🤖 Bot: Klicke auf NoGrandTichu-Button.");
+                        _clickButton('#pass-button[data-mode="NO_GRAND_TICHU"]');
+                    }
+                    break;
+
+                case 'schupf':
+                    _testUISchupfZone();
+                    // In der View der Reihe nach erst die Karte und dann auf die Schupfzone klicken.
+                    const handCardElements = Array.from(document.querySelectorAll('#hand-bottom .card'));
+                    const cardElements = Random.sample(handCardElements, 3);
+                    const schupfSubZones = document.querySelectorAll('#schupf-zone-bottom .schupf-subzone');
+                    console.log(`🤖 Bot: Wähle Schupf-Karten aus.`);
+                    cardElements.forEach((cardElement, i) => {
+                        cardElement.click();
+                        schupfSubZones[i].click();
+                    });
+                    // Nachdem 3 Karten ausgewählt sind, wird der Play-Button zu "Schupfen"
+                    console.log("🤖 Bot: Klicke auf Schupfen-Button.");
+                    _clickButton('#play-button[data-mode="SCHUPF"]');
+                    break;
+
+                case 'play':
+                    _testUIPlay();
+                    // Zufällig eine von zwei Strategien wählen
+                    if (Random.boolean()) {
+                        // a) Zufällige gültige Kombination spielen
+                        console.log("🤖 Bot: Selektiere zufällige Kombination...");
+                        const actionSpace = State.getActionSpace();
+                        const action = Random.choice(actionSpace);
+                        _selectCards(action[0]);
+                        if (action[1][0] !== CombinationType.PASS) {
+                            console.log("🤖 Bot: Klicke auf Play-Button.");
+                            _clickButton('#play-button[data-mode="PLAY"]');
+                        }
+                        else {
+                             console.log("🤖 Bot: Klicke auf Passen-Button.");
+                            _clickButton('#pass-button');
+                        }
+                    }
+                    else {
+                        // b) AUTOSELECT-Button der View nutzen
+                        if (State.canPlayCards()) {
+                            _clearSelectedCards();
+                            // Nach dem ersten Klick werden die Karten selektiert.
+                            console.log("🤖 Bot: Klicke auf Autoselect-Button.");
+                            _clickButton('#play-button[data-mode="AUTOSELECT"]');
+                            // Plane einen zweiten Klick, um sie auszuspielen.
+                            //setTimeout(() => {
+                                console.log("🤖 Bot: Klicke auf Play-Button.");
+                                _clickButton('#play-button[data-mode="PLAY"]')
+                            //}, 500);
+                        }
+                        else { // kein Autoselect möglich (z.B. nur Passen).
+                             console.log("🤖 Bot: Klicke auf Passen-Button.");
+                            _clickButton('#pass-button');
+                        }
+                    }
+                    break;
+
+                case 'wish':
+                    _testUIWishDialog();
+                    // Klick auf den Button im Wish-Dialog
+                    const wishOptions = document.querySelectorAll('#wish-dialog:not(.hidden) button:not(:disabled)');
+                    if (wishOptions.length > 0) {
+                        console.log("🤖 Bot: Wähle einen zufälligen Wunsch.");
+                        Random.choice(Array.from(wishOptions)).click();
+                    }
+                    break;
+
+                case 'give_dragon_away':
+                    _testUIDragonDialog();
+                    // Klick auf den Button im Dragon-Dialog
+                    const dragonOptions = document.querySelectorAll('#dragon-dialog:not(.hidden) button:not(:disabled)');
+                    if (dragonOptions.length > 0) {
+                        console.log("🤖 Bot: Verschenke Drachen zufällig.");
+                        Random.choice(Array.from(dragonOptions)).click();
+                    }
+                    break;
+            }
+        }
+        else {
+            console.log("🤖 Bot: Auf dem Spieltisch. Warte auf meinen Zug oder ein Event...");
+        }
+    }
+
+
+    // ------------------------------------------------------
     // Hilfsfunktionen
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Klickt auf einen Button, falls er sichtbar und aktiv ist.
@@ -366,9 +361,9 @@ const Bot = (() => {
         return condition;
     }
 
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // UI-Tests
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * UI-Test für Login-View.

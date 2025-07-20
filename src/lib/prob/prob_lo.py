@@ -21,9 +21,9 @@ from src.lib.combinations import stringify_combination, validate_combination, Co
 from src.lib.prob.tables_lo import load_table_lo
 from time import time
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 # Wahrscheinlichkeitsberechnung p_low
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination anspielen kann
 #
@@ -113,9 +113,9 @@ def prob_of_lower_combi(cards: Cards, k: int, combination: Combination) -> float
     return p
 
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 # Test
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 
 # Listet die möglichen Hände auf und markiert, welche eine Kombination hat, die die gegebenen anspielen kann.
 #

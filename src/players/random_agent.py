@@ -91,7 +91,7 @@ class RandomAgent(Agent):
 
     async def give_dragon_away(self) -> int:
         """
-        Die Engine fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
+        Die Engine fragt den Spieler, welcher Gegner den Drachen bekommen soll.
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler den Drachen verschenken muss.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.

@@ -36,7 +36,7 @@
  * @property {number} dragon_recipient - Index des Spielers, der den Drachen geschenkt bekommen hat (-1 = noch niemand).
  * @property {number} trick_owner_index - Index des Spielers, der den Stich besitzt (-1 = leerer Stich).
  * @property {Cards} trick_cards - Karten der letzten Kombination im Stich.
- * @property {Combination} trick_combination - Typ, Länge und Wert des aktuellen Stichs ([0,0,0] = leerer Stich).
+ * @property {Combination} trick_combination - Typ, Länge und Rang des aktuellen Stichs ([0,0,0] = leerer Stich).
  * @property {number} trick_points - Punkte des aktuellen Stichs.
  * @property {Array<Trick>} tricks - Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen.
  * @property {Array<number>} points - Bisher kassierte Punkte in der aktuellen Runde pro Spieler.
@@ -194,9 +194,10 @@ const State = (() => {
         _publicState.is_round_over = false;
         _publicState.is_double_victory = false;
         // privater Spielzustand
-        _privateState.hand_cards = [];
+        _privateState.hand_cards = /** @type Cards */ [];
         _privateState.given_schupf_cards = null;
         _privateState.received_schupf_cards = null;
+        _combinationCache = [];
         _receivedSchupfCardsConfirmed = false;
         // Server-Anfrage
         _pendingAction = "";
@@ -318,19 +319,19 @@ const State = (() => {
     }
 
     /**
-     * Setzt die Anzahl der Handkarten eines Spielers.
+     * Setzt die Anzahl der Handkarten eines Mitspielers.
      *
-     * Ist der Spieler der Benutzer, sollte die angegebene Anzahl mit getHandCards() übereinstimmen.
-     * Es findet keine Validierung statt!
+     * Diese Funktion ist nicht für den Benutzer vorgesehen! Verwende `setHandCards()` für den Benutzer.
      *
-     * @param {number} playerIndex - Der Index des Spielers.
-     * @param {number} count - Die Anzahl der Handkarten des angebenden Spielers.
+     * @param {number} playerIndex - Der Index des Mitspielers.
+     * @param {number} count - Die Anzahl der Handkarten des angebenden Mitspielers.
      */
     function setCountHandCards(playerIndex, count) {
+        if (playerIndex === _privateState.player_index) {
+            console.error("State.setCountHandCards: Diese Funktion ist nicht für den Benutzer vorgesehen!");
+        }
         if (count < 0) {
-            console.log("MIST!")
-            console.debug(_publicState)
-            console.debug(_privateState)
+            console.error("State.setCountHandCards: `count` darf nicht negativ sein!");
         }
         console.debug("setCountHandCards", playerIndex, count)
         _publicState.count_hand_cards[playerIndex] = count;
@@ -374,7 +375,12 @@ const State = (() => {
     function setWishValue(value) {
         _publicState.wish_value = value;
     }
-    
+
+    /** Markiert den Wunsch als erfüllt. */
+    function setWishFulfilled(value) {
+        _publicState.wish_value = -_publicState.wish_value;
+    }
+
     /** @returns {number} dragon_recipient - Index des Spielers, der den Drachen geschenkt bekommen hat (-1 = noch niemand). */
     function getDragonRecipient(){
         return _publicState.dragon_recipient;
@@ -405,12 +411,12 @@ const State = (() => {
         _publicState.trick_cards = cards;
     }
     
-    /** @returns {Combination} Typ, Länge und Wert des aktuellen Stichs ([0,0,0] = leerer Stich). */
+    /** @returns {Combination} Typ, Länge und Rang des aktuellen Stichs ([0,0,0] = leerer Stich). */
     function getTrickCombination(){
         return _publicState.trick_combination;
     }
 
-    /** @param {Combination} combination - Typ, Länge und Wert des aktuellen Stichs ([0,0,0] = leerer Stich). */
+    /** @param {Combination} combination - Typ, Länge und Rang des aktuellen Stichs ([0,0,0] = leerer Stich). */
     function setTrickCombination(combination) {
         _publicState.trick_combination = combination;
     }
@@ -447,6 +453,47 @@ const State = (() => {
      */
     function addTrick(trick) {
         _publicState.tricks.push(trick);
+    }
+
+    /**
+     * Fügt einen neuen Spielzug zur Liste der Stiche hinzu.
+     *
+     * Folgende Werte werden ebenfalls aktualisiert:
+     * - Index des Spielers, der am Zug ist
+     * - Index des Spielers, der den Stich besitzt
+     * - Karten der letzten Kombination im Stich
+     * - Die Handkarten und/oder die Anzahl der Handkarten
+     * - Bereits gespielte Karten in der Runde
+     * - Typ, Länge und Rang des Stichs
+     *
+     * @param {Turn} turn Der neue Spielzug.
+     */
+    function addTurn(turn) {
+        if (_publicState.trick_owner_index === -1) { // neuer Stich?
+            _publicState.tricks.push([turn]);
+        }
+        else {
+            if (_publicState.tricks.length === 0) {
+                console.error("State.addTurn: Der letzte Stich wurde nicht gespeichert!");
+                _publicState.tricks.push([]); // Fallback - sollte nicht nötig sein
+            }
+            _publicState.tricks[_publicState.tricks.length - 1].push(turn);
+        }
+        _publicState.current_turn_index = turn[0];
+        if (turn[2][0] !== CombinationType.PASS) {
+            _publicState.trick_owner_index = turn[0];
+        }
+        _publicState.trick_cards = turn[1];
+        if (turn[0] === _privateState.player_index) { // Der Benutzer hat Karten ausgespielt.
+            const handCards = _privateState.hand_cards.filter(handCard => !Lib.includesCard(handCard, turn[1]));
+            setHandCards(handCards);
+        }
+        else { // Ein Mitspieler hat Karten ausgespielt.
+            const coundHandCards = _publicState.count_hand_cards[turn[0]] - turn[1].length;
+            setCountHandCards(turn[0], coundHandCards);
+        }
+        _publicState.played_cards = _publicState.played_cards.concat(turn[1]);
+        _publicState.trick_combination = turn[2];
     }
 
     /**
@@ -571,9 +618,23 @@ const State = (() => {
         _publicState.trick_counter = value;
     }
 
-    /** Inkrementiert den Zähler für abgeräumte Stiche. */
-    function incTrickCounter() {
+    /**
+     * Markiert den letzten Stich als abgeräumt.
+     *
+     * Die Anzahl der abgeräumten Stiche wird inkrementiert.
+     *
+     * Folgende Werte werden zurückgesetzt:
+     * - Index des Spielers, der den Stich besitzt
+     * - Karten der letzten Kombination im Stich
+     * - Typ, Länge und Rang des aktuellen Stichs
+     * - Punkte des aktuellen Stichs
+     */
+    function setTrickClosed() {
         _publicState.trick_counter++;
+        _publicState.trick_owner_index = -1;
+        _publicState.trick_cards = /** @type Cards */ [];
+        _publicState.trick_combination = /** @type Combination */[CombinationType.PASS, 0, 0];
+        _publicState.trick_points = 0;
     }
 
     // privater Spielzustand
@@ -593,7 +654,13 @@ const State = (() => {
         return _privateState.hand_cards;
     }
 
-    /** @param {Cards} cards - Die aktuellen Handkarten des Benutzers. */
+    /**
+     * Übernimmt die Handkarten des Benutzers.
+     *
+     * Die Anzahl der Handkarten wird ebenfalls aktualisiert.
+     *
+     * @param {Cards} cards - Die aktuellen Handkarten des Benutzers.
+     */
     function setHandCards(cards) {
         console.debug("setHandCards", _privateState.player_index, cards.length)
         _privateState.hand_cards = cards;
@@ -606,8 +673,16 @@ const State = (() => {
         return _privateState.given_schupf_cards;
     }
 
-    /** @param {[Card, Card, Card] | null} cards - Die drei Karten (für rechten Gegner, Partner, linken Gegner), die der Benutzer weitergegeben hat. */
+    /**
+     * Übernimmt die Tauschkarten, die der Benutzer abgegeben hat.
+     *
+     * Die Handkarten (inkl. Anzahl) werden ebenfalls aktualisiert.
+     *
+     * @param {[Card, Card, Card] | null} cards - Die drei Karten (für rechten Gegner, Partner, linken Gegner), die der Benutzer weitergegeben hat.
+     */
     function setGivenSchupfCards(cards) {
+        const handCards = _privateState.hand_cards.filter(handCard => !Lib.includesCard(handCard, cards));
+        setHandCards(handCards);
         _privateState.given_schupf_cards = cards;
     }
 
@@ -616,8 +691,17 @@ const State = (() => {
         return _privateState.received_schupf_cards;
     }
 
-    /** @param {[Card, Card, Card] | null} cards - Die drei Karten (vom rechten Gegner, Partner, linken Gegner), die der Benutzer erhalten hat. */
+    /**
+     * Übernimmt die drei Tauschkarten, die der Benutzer erhalten hat.
+     *
+     * Die Handkarten (inkl. Anzahl) werden ebenfalls aktualisiert.
+     *
+     * @param {[Card, Card, Card] | null} cards - Die drei Karten (vom rechten Gegner, Partner, linken Gegner), die der Benutzer erhalten hat.
+     */
     function setReceivedSchupfCards(cards) {
+        const handCards = _privateState.hand_cards.concat(cards);
+        Lib.sortCards(handCards);
+        setHandCards(handCards);
         _privateState.received_schupf_cards = cards;
     }
 
@@ -816,13 +900,13 @@ const State = (() => {
         getCountHandCards, setCountHandCards,
         getPlayedCards, setPlayedCards,
         getAnnouncement, setAnnouncement,
-        getWishValue, setWishValue,
+        getWishValue, setWishValue, setWishFulfilled,
         getDragonRecipient, setDragonRecipient,
         getTrickOwnerIndex, setTrickOwnerIndex,
         getTrickCards, setTrickCards,
         getTrickCombination, setTrickCombination,
         getTrickPoints, setTrickPoints,
-        getTricks, setTricks, getLastTrick, addTrick,
+        getTricks, setTricks, getLastTrick, addTrick, addTurn,
         getPoints, setPoints,
         getWinnerIndex, setWinnerIndex,
         getLoserIndex, setLoserIndex,
@@ -830,7 +914,7 @@ const State = (() => {
         isDoubleVictory, setDoubleVictory,
         getGameScore, addGameScoreEntry, getLastScoreEntry, resetGameScore,
         getRoundCounter, setRoundCounter, incRoundCounter,
-        getTrickCounter, setTrickCounter, incTrickCounter,
+        getTrickCounter, setTrickCounter, setTrickClosed,
         getTotalScore,
         isGameOver,
         //getPhase,

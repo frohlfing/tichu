@@ -1,6 +1,6 @@
------------------------------------------------------
+------------------------------------------------------
 Ein- und Ausgabe-Vektor für Entscheidungen ab Anspiel
------------------------------------------------------
+------------------------------------------------------
 
 Folgende Properties aus der Umgebung und des Agents werden nicht berücksichtigt:
 points_per_team              # redundant  - ist in points enthalten

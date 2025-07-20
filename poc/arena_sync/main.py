@@ -43,7 +43,7 @@ if __name__ == "__main__":
         RandomAgent(),
         RandomAgent(),
         RandomAgent(),
-    ], 10, verbose=True)
+    ], 100, verbose=True)
 
     run_battle([
         HeuristicAgent(),

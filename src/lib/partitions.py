@@ -12,9 +12,9 @@ from src.lib.cards import Cards
 from src.lib.combinations import stringify_combination, remove_combinations, Combination
 from typing import List, Tuple, Optional
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 # Partitionen
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------
 
 Partition = List[Tuple[Cards, Combination]]
 """

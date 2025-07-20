@@ -49,9 +49,9 @@ const WSCloseCode = {
  * @property {Record<string, any>} [payload] - Nachrichtenspezifische Daten (optional).
  */
 
-// --------------------------------------------
+// ------------------------------------------------------
 // Projektspezifische Typen.
-// --------------------------------------------
+// ------------------------------------------------------
 
 /**
  * Typdefinition für eine Anfrage des Servers.
@@ -134,9 +134,9 @@ const Network = (() => {
      */
     let _sessionId = localStorage.getItem("tichuSessionId") || null;
 
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // Öffentliche Funktionen und Ereignishändler
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Initialisiert das Netzwerk und versucht, die letzte Session wieder aufzubauen.
@@ -225,9 +225,9 @@ const Network = (() => {
         return Object.keys(ServerErrorCode).find(key => ServerErrorCode[key] === code) || code;
     }
 
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // Hilfsfunktionen
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Stellt eine WebSocket-Verbindung her.

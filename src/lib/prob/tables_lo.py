@@ -13,9 +13,9 @@ from src import config
 from src.lib.combinations import stringify_type, CombinationType
 from time import time
 
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # Generierung von Hilfstabellen für die Wahrscheinlichkeitsberechnung p_low
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 
 # Gibt den Dateinamen für die Hilfstabelle
 #

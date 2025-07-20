@@ -340,9 +340,6 @@ class Peer(Player):
             # Antwort übernehmen
             announced = response_data["announced"]
 
-        # Darf der Spieler noch ein großes Tichu sagen? (stellt die Engine sicher) todo rausnehmen
-        assert self.pub.announcements[self.priv.player_index] == 0 and self.pub.start_player_index == -1 and self.pub.count_hand_cards[self.priv.player_index] == 8
-
         return announced
 
     async def schupf(self) -> Tuple[Card, Card, Card]:
@@ -396,9 +393,6 @@ class Peer(Player):
                 await self.error(msg, ErrorCode.NOT_HAND_CARD, context={"cards": cards})
                 cards = None
                 continue
-
-        # Wurde noch nicht geschupft? (stellt die Engine sicher) todo rausnehmen
-        assert self.pub.count_hand_cards[self.priv.player_index] > 8 and self.priv.given_schupf_cards is None
 
         return cards
 
@@ -532,16 +526,11 @@ class Peer(Player):
                 wish_value = None
                 continue
 
-        # Wurde noch kein Wunsch geäußert? (stellt die Engine sicher)  todo rausnehmen
-        assert (self.pub.current_turn_index == self.priv.player_index and
-                self.pub.wish_value == 0 and
-                CARD_MAH in self.pub.played_cards) # oder alternativ: CARD_MAH in self.pub.trick_cards
-
         return wish_value
 
     async def give_dragon_away(self) -> int:
         """
-        Die Engine fragt den Spieler, welchem Gegner der mit dem Drachen gewonnene Stich gegeben werden soll.
+        Die Engine fragt den Spieler, welcher Gegner den Drachen bekommen soll.
 
         Die Engine ruft diese Methode nur auf, wenn der Spieler den Drachen verschenken muss.
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
@@ -573,11 +562,6 @@ class Peer(Player):
                 await self.error(msg, ErrorCode.INVALID_DRAGON_RECIPIENT, context={"dragon_recipient": dragon_recipient})
                 dragon_recipient = None
                 continue
-
-        # Ist der Drache noch zu verschenken? (stellt die Engine sicher)  todo rausnehmen
-        assert (self.pub.current_turn_index == self.priv.player_index and
-                self.pub.dragon_recipient == -1 and
-                self.pub.trick_combination == (CombinationType.SINGLE, 1, 15))
 
         return dragon_recipient
 

@@ -5,9 +5,9 @@
  */
 const TableView = (() => {
 
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // DOM-Elemente
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Button zum Beenden des Spiels/Verlassen des Tisches.
@@ -132,9 +132,9 @@ const TableView = (() => {
      */
     const _playButton = document.getElementById('play-button');
 
-    // --------------------------------------------------------------------------------------
-    // Öffentliche Funktionen
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
+    // View-Interface
+    // ------------------------------------------------------
 
     /**
      * Initialisiert den Spieltisch-Bildschirm.
@@ -145,7 +145,9 @@ const TableView = (() => {
 
         // Ereignishändler für Dialoge einrichten
         EventBus.on("exitDialog:select", _handleExitDialogSelect);
-
+        EventBus.on("wishDialog:select", _handleWishDialogSelect);
+        EventBus.on("dragonDialog:select", _handleDragonDialogSelect);
+        
         // Ereignishändler für die Controls einrichten
         _exitButton.addEventListener('click', _handleExitButtonClick);
         _settingsButton.addEventListener('click', _handleSettingsButtonClick);
@@ -174,12 +176,53 @@ const TableView = (() => {
         _updatePassButton();
         _updatePlayButton();
         _updateWishIcon();
+        
+        if (State.getPendingAction() === "wish") {
+            Modal.showWishDialog();
+        }
+        else if (State.getPendingAction() === "give_dragon_away") {
+            Modal.showDragonDialog();
+        }
     }
 
-    // --------------------------------------------------------------------------------------
-    // Update-Funktionen und Ereignishändler
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
+    // Top-Bar
+    // ------------------------------------------------------
 
+    /**
+     * Ereignishändler für den "Beenden"-Button.
+     */
+    function _handleExitButtonClick() {
+        //Sound.play('click');
+        Modal.showExitDialog();
+    }
+
+    /**
+     * Ereignishändler für den Exit-Dialog.
+     *
+     * @param {number} value - Der gedrückte Button (1 == ja, 0 == nein).
+     */
+    function _handleExitDialogSelect(value) {
+        if (!value) {
+            return;
+        }
+        document.querySelectorAll(".card").forEach(cardElement => {
+            cardElement.remove();
+        });
+        EventBus.emit("tableView:exit");
+    }
+    
+    /**
+     * Ereignishändler für den "Optionen"-Button.
+     */
+    function _handleSettingsButtonClick() {
+        Modal.showErrorToast("Einstellungen sind noch nicht implementiert.");
+    }
+    
+    // ------------------------------------------------------
+    // Aktionen während der Runde
+    // ------------------------------------------------------
+    
     /**
      * Kennzeichnet, ob für eine neue Runde der Sound für Mischen abgespielt wurde.
      *
@@ -487,7 +530,7 @@ const TableView = (() => {
         const trick = State.getLastTrick();
         if (trick) {
             trick.forEach(turn => {
-                if (turn[1]) { // Karten vorhanden (nicht gepasst?
+                if (turn[2][0] !== CombinationType.PASS) {
                     const relativeIndex = Lib.getRelativePlayerIndex(turn[0]);
                     const turnElement = _createTurnElement(turn[1]);
                     _trickZones[relativeIndex].appendChild(turnElement);
@@ -746,43 +789,32 @@ const TableView = (() => {
         }
     }
 
-    // --------------------------------------------------------------------------------------
-    // Ereignishändler für die Dialoge
-    // --------------------------------------------------------------------------------------
-
+    // ------------------------------------------------------
+    // Wish- und Dragon-Dialog
+    // ------------------------------------------------------
+    
     /**
-     * Ereignishändler für den Exit-Dialog.
+     * Ereignishändler für den Wish-Dialog.
      *
-     * @param {number} value - Der gedrückte Button (1 == ja, 0 == nein).
+     * @param {number} value - Der gewählte Kartenwert (2 bis 14).
      */
-    function _handleExitDialogSelect(value) {
-        if (!value) {
-            return;
-        }
-        document.querySelectorAll(".card").forEach(cardElement => {
-            cardElement.remove();
-        });
-        EventBus.emit("tableView:exit");
+    function _handleWishDialogSelect(value) {
+        EventBus.emit("tableView:wish", value);
     }
 
     /**
-     * Ereignishändler für den "Beenden"-Button.
+     * Ereignishändler für den Dragon-Dialog.
+     *
+     * @param {number} value - Der zum Benutzer relative Index des gewählten Gegners (1 == rechts, 3 == links).
      */
-    function _handleExitButtonClick() {
-        //Sound.play('click');
-        Modal.showExitDialog();
+    function _handleDragonDialogSelect(value) {
+        const dragonRecipient = Lib.getCanonicalPlayerIndex(value);
+        EventBus.emit("tableView:giveDragonAway", dragonRecipient);
     }
 
-    /**
-     * Ereignishändler für den "Optionen"-Button.
-     */
-    function _handleSettingsButtonClick() {
-        Modal.showErrorToast("Einstellungen sind noch nicht implementiert.");
-    }
-
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
     // Hilfsfunktionen
-    // --------------------------------------------------------------------------------------
+    // ------------------------------------------------------
 
     /**
      * Erzeugt eine Karte.
