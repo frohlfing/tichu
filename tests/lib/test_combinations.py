@@ -152,7 +152,7 @@ def test_action_space_beat_pair(sample_hand_and_combis):
     action_space = build_action_space(combis, trick_figure, 0)
 
     # Passen muss möglich sein
-    assert ([], (CombinationType.SINGLE, 1, 0)) in action_space
+    assert ([], (CombinationType.PASS, 0, 0)) in action_space
     # Höhere Paare (Paar 5, Paar 6) müssen drin sein
     assert find_combination(parse_cards("S5 G5"), action_space) is not None
     assert find_combination(parse_cards("S6 B6"), action_space) is not None
@@ -171,7 +171,7 @@ def test_action_space_beat_street(sample_hand_and_combis):
     action_space = build_action_space(combis, trick_figure, 0)
 
     # Passen muss möglich sein
-    assert ([], (CombinationType.SINGLE, 1, 0)) in action_space
+    assert ([], (CombinationType.PASS, 0, 0)) in action_space
     # Nur höhere Straßen *gleicher Länge* oder Bomben sind erlaubt.
     # Unsere Straße 5-6-7-8-9 ist auch Länge 5 -> sollte erlaubt sein
     assert find_combination(parse_cards("S9 S8 S7 B6 G5"), action_space) is not None

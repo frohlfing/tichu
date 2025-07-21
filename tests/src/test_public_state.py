@@ -128,7 +128,6 @@ def test_reset_round(initial_pub_state):
     pub.is_double_victory = True
 
     pub.game_score = [60, 10], [40, 90]
-    pub.round_counter  = 2
     pub.trick_counter = 3
 
     # Reset durchführen (reset_public_state_for_round ist static)
@@ -166,7 +165,6 @@ def test_reset_game(initial_pub_state):
     pub.table_name = "Tisch1"
     pub.player_names = ["Anton", "Bea", "Charlie", "Doris"]
     pub.game_score = [60, 10], [40, 90]
-    pub.round_counter  = 2
     pub.trick_counter = 3
 
     # Reset durchführen (reset_public_state_for_round ist static)

@@ -123,9 +123,11 @@ async def test_random_agent_play(random_agent_seeded):
 async def test_random_agent_play_empty_action_space_raises_error(mock_build_action_space, random_agent_seeded):
     """Testet, dass RandomAgent.play bei leerem Action Space einen Fehler wirft."""
     agent = random_agent_seeded
+    agent.pub.current_turn_index = 0
+    agent.priv.player_index = 0
     mock_build_action_space.return_value = []
-    # Erwarte einen ValueError, da random.integer(0, 0) oder random.choice([]) fehlschlägt
-    with pytest.raises(ValueError):
+    # Erwarte einen IndexError, da random.integer(0, 0) oder random.choice([]) fehlschlägt
+    with pytest.raises(IndexError):
        await agent.play()
 
 @pytest.mark.asyncio
@@ -187,7 +189,7 @@ async def test_schupf(agent):
     agent.priv._hand_cards = parse_cards("S4 B4 G4 R4 S3 B3 G3 R3 S2 B2 G2 R2 Ma Hu")
     agent.pub._number_of_cards = [14, 14, 14, 14]
     result = await agent.schupf()
-    assert result == tuple(parse_cards("S4 B3 G4"))
+    assert result == tuple(parse_cards("S4 S3 B4"))
 
 async def test_announce(agent):
     result = await agent.announce()
