@@ -848,18 +848,12 @@ web/fonts/architect-s-daughter
     ```
 4.  Abhängigkeiten installieren:
     ```bash
-    # veraltet:
-    # pip pip install -r requirements.txt
+    pip pip install -r requirements.txt
      
-    # moderner, die Abhängigkeiten stehen jetzt in der `pyproject.toml`-Datei: 
-    # -e: Editable, src wird verlinkt, nicht kopiert.
-    # .: Das Zielverzeichnis ist das aktuellen Verzeichnis.
-    # [dev]: Auch die optionale Abhängigkeitsgruppe namens dev installieren.
+    # oder mit Hilfe der `pyproject.toml`-Datei (-e steht für "editable": src wird verlinkt, nicht kopiert):
     pip install -e .
-    # bzw mit alle [dev]-Abhängigkeiten:
-    pip install -e ".[dev]"
     ```
-    Mit `pip freeze` können die aktuellen Abhängigkeiten ermittelt werden.
+    Mit `pip freeze > requirements.txt` kann die Liste der Abhängigkeiten aktualisiert werden.
 
 5.  **Arena starten:**
     ```bash

@@ -9,34 +9,10 @@ version = "0.2.0"
 [tool.setuptools]
 packages = ["src"]
 
-# Abhängigkeiten
-# Mit `pip freeze` können die aktuellen Abhängigkeiten ermittelt werden.
-dependencies = [
-    "aiohappyeyeballs>=2.6.0",
-    "aiohttp>=3.9.0",
-    "aiosignal>=1.3.0",
-    "attrs>=23.0.0",
-    "colorama",
-    "coverage>=7.0.0",
-    "coverage-badge",
-    "frozenlist",
-    "idna",
-    "iniconfig",
-    "multidict",
-    "packaging",
-    "pluggy",
-    "propcache",
-    "pytest>=8.0.0",
-    "pytest-asyncio",
-    "pytest-mock",
-    "python-dotenv>=1.0.0",
-    "websockets>=12.0",
-    "yarl"
-]
+dynamic = ["dependencies"]  # auf requirements.txt verweisen
 
-# Optionale Abhängigkeiten
-[project.optional-dependencies]
-dev = []
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }  # Datei aktualisieren: `pip freeze > requirements.txt`
 
 # ------------------------------------------------------
 # Konfiguration für pytest (ersetzt pytest.ini)
