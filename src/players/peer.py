@@ -208,9 +208,9 @@ class Peer(Player):
         :raises PlayerInterruptError: Wenn die Anfrage durch ein Interrupt-Event abgebrochen wurde.
         """
         # sicherstellen, dass der Client noch verbunden ist
-        if self._websocket.closed:
-            logger.warning(f"[{self._name}] Keine Verbindung. Anfrage '{action}' nicht möglich.")
-            return None
+        # if self._websocket.closed:
+        #     logger.warning(f"[{self._name}] Keine Verbindung. Anfrage '{action}' nicht möglich.")
+        #     return None
 
         # Future erstellen und registrieren
         loop = asyncio.get_running_loop()
@@ -233,13 +233,10 @@ class Peer(Player):
         except asyncio.CancelledError as e_cancel:  # Shutdown
             raise e_cancel
         except (ConnectionResetError, RuntimeError, ConnectionAbortedError) as e:
-            logger.warning(f"[{self._name}] Verbindungsfehler. Senden der Anfrage '{action}' fehlgeschlagen: {e}.")
-            # noinspection PyAsyncCall
-            self._pending_request = None  # Future wieder entfernen
-            return None
+            logger.warning(f"[{self._name}] Verbindungsfehler. Senden der Anfrage '{action}' fehlgeschlagen: {e}. Warte auf Reconnect.")
+            # Wir warten trotzdem auf das Future. Sobald der Client wieder verbunden ist, erhält er mit dem Status auch diese Anfrage.
         except Exception as e:
             logger.exception(f"[{self._name}] Unerwarteter Fehler. Senden der Anfrage '{action}' fehlgeschlagen: {e}")
-            # noinspection PyAsyncCall
             self._pending_request = None  # Future wieder entfernen
             return None
 
@@ -284,7 +281,7 @@ class Peer(Player):
         except PlayerInterruptError as e:
             raise e
         except Exception as e:
-            logger.exception(f"[{self._name}] Unerwarteter Fehler. Wartens auf Antwort '{action}' abgebrochen: {e}")
+            logger.exception(f"[{self._name}] Unerwarteter Fehler. Warten auf Antwort '{action}' abgebrochen: {e}")
             return None
         finally:
             logger.debug(f"[{self._name}] Räume Warte-Task für '{action}' auf.")
@@ -580,7 +577,7 @@ class Peer(Player):
         :param context: (Optional) Zusätzliche Informationen zum Ereignis.
         """
         if self._websocket.closed:
-            logger.debug(f"[{self._name}] Keine Verbindung. Ereignis '{event}' konnte nicht gesendet werden.")
+            #logger.debug(f"[{self._name}] Keine Verbindung. Ereignis '{event}' konnte nicht gesendet werden.")
             return
 
         if event == "player_joined":
@@ -622,7 +619,9 @@ class Peer(Player):
         try:
             logger.debug(f"[{self._name}] Sende Ereignis '{event}'.")
             await self._websocket.send_json(notification_message)
-        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+        except asyncio.CancelledError as e_cancel:  # Shutdown
+            raise e_cancel
+        except (ConnectionResetError, RuntimeError, ConnectionAbortedError) as e:
             logger.warning(f"[{self._name}] Verbindungsabbruch. Ereignis '{event}' konnte nicht gesendet werden: {e}")
         except Exception as e:
             logger.exception(f"[{self._name}] Unerwarteter Fehler. Ereignis '{event}' konnte nicht gesendet werden': {e}")
@@ -638,7 +637,7 @@ class Peer(Player):
         :param context: (Optional) Zusätzliche Informationen.
         """
         if self._websocket.closed:
-            logger.debug(f"[{self._name}] Keine Verbindung. Fehler {code} konnte nicht gesendet werden.")
+            #logger.debug(f"[{self._name}] Keine Verbindung. Fehler {code} konnte nicht gesendet werden.")
             return
 
         error_message = {
@@ -653,7 +652,9 @@ class Peer(Player):
         try:
             logger.debug(f"[{self._name}] Sende Fehler {code}.")
             await self._websocket.send_json(error_message)
-        except (ConnectionResetError, asyncio.CancelledError, RuntimeError, ConnectionAbortedError) as e:
+        except asyncio.CancelledError as e_cancel:  # Shutdown
+            raise e_cancel
+        except (ConnectionResetError, RuntimeError, ConnectionAbortedError) as e:
             logger.warning(f"[{self._name}] Verbindungsabbruch. Fehler {code} konnte nicht gesendet werden: {e}")
         except Exception as e:
             logger.exception(f"[{self._name}] Unerwarteter Fehler. Fehler {code} konnte nicht gesendet werden: {e}")

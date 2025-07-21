@@ -16,6 +16,7 @@ import os
 import signal
 import sys
 from aiohttp import WSMsgType, WSCloseCode, WSMessage
+#from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.web import Application, AppRunner, Request, WebSocketResponse, TCPSite
 from src import config
 from src.common.git_utils import get_release
@@ -88,6 +89,7 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
                     msg_type = data.get("type")  # Nachrichtentyp
                     payload = data.get("payload", {})  # die Nutzdaten
                     logger.debug(f"[{remote_addr}] Nachricht '{msg_type}' empfangen.")
+
                     if msg_type == "leave":  # der Client verlässt den Tisch.
                         break # aus der Message-Loop springen
 
@@ -126,15 +128,24 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
 
             elif msg.type == WSMsgType.ERROR:
                 logger.error(f"[{remote_addr}] WebSocket-Fehler: {ws.exception()}.")
-                break
+                break  # Message-Loop verlassen, da die Verbindung gestört ist
 
             elif msg.type == WSMsgType.CLOSE:  # der Client hat die Verbindung aktiv geschlossen (normaler Vorgang)
                 logger.debug(f"[{remote_addr}] '{peer.name}' hat die Verbindung geschlossen.")
-                break
+                break  # Message-Loop verlassen
                 
     except asyncio.CancelledError:  # der Server wird heruntergefahren (z.B. durch Signal)
         logger.debug(f"[{remote_addr}] Server Shutdown. WebSocket-Handler abgebrochen.")
         raise  # Wichtig: CancelledError weitergeben für sauberes Beenden.
+
+    # except ConnectionResetError as e:
+    #     # Dies fängt den "[WinError 10054] Eine vorhandene Verbindung wurde vom Remotehost geschlossen" sauber ab!
+    #     logger.info(f"[{remote_addr}] Verbindung von '{peer.name}' abrupt zurückgesetzt. Client hat wahrscheinlich den Browser geschlossen.")
+
+    # except ClientConnectorError as e:
+    #     # aiohttp kann auch andere, höherlevelige Verbindungsfehler werfen.
+    #     logger.info(f"[{remote_addr}] aiohttp-Verbindungsfehler bei '{peer.name}': {e}")
+
     except Exception as e:  # fängt unerwartete Fehler während der Verbindung oder im Handler ab
         logger.exception(f"[{remote_addr}] Unerwarteter Fehler. WebSocket-Handler abgebrochen: {e}")
 
@@ -165,6 +176,22 @@ async def websocket_handler(request: Request) -> WebSocketResponse | None:
     return ws
 
 
+def handle_exception(_loop: asyncio.AbstractEventLoop, context: dict):
+    """
+    Exception-Handler für asyncio-Transportschicht (_ProactorBasePipeTransport auf Windows).
+
+    :param _loop: Asyncio Event Loop
+    :param context: Ergänzende Informationen zum Fehler
+    :return:
+    """
+    message = context.get("message")
+    exception = context.get("exception")
+    if isinstance(exception, ConnectionResetError):
+        logger.warning(f"Verbindung durch Client abrupt zurückgesetzt: {message}")
+    else:
+        logger.error(f"Nicht abgefangener Fehler im asyncio-Loop: {message}", exc_info=exception)
+
+
 async def main(args: argparse.Namespace):
     """
     Haupt-Einstiegspunkt zum Starten des aiohttp Servers.
@@ -186,6 +213,10 @@ async def main(args: argparse.Namespace):
     # Route für das Frontend hinzufügen
     app.router.add_static('/', path=os.path.join(config.BASE_PATH, "web"), name='web_root')
 
+    # Setze den benutzerdefinierten Exception-Handler
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(handle_exception)
+
     # Plattformspezifisches Signal-Handling
     # Notwendig, um auf Strg+C (SIGINT) und Terminate-Signale (SIGTERM) zu reagieren und einen geordneten Shutdown einzuleiten.
     if sys.platform == 'win32':
@@ -196,7 +227,7 @@ async def main(args: argparse.Namespace):
     else:
         # Unter POSIX-Systemen (Linux, macOS) wird loop.add_signal_handler bevorzugt. Es integriert sich besser in die asyncio Event-Schleife.
         try:
-            loop = asyncio.get_running_loop()
+            #loop = asyncio.get_running_loop()
             for sig in (signal.SIGINT, signal.SIGTERM):
                 # Registriert die Shutdown-Funktion für SIGINT und SIGTERM.
                 loop.add_signal_handler(sig, shutdown, sig) # Übergibt Signalnummer an shutdown
@@ -205,6 +236,7 @@ async def main(args: argparse.Namespace):
             # Fallback für seltene Fälle, wo add_signal_handler nicht verfügbar ist.
             logger.warning("loop.add_signal_handler nicht implementiert, verwende signal.signal().")
             signal.signal(signal.SIGINT, shutdown)
+
 
     # Server starten (mit AppRunner und TCPSite, das bietet mehr Kontrolle)
     runner = AppRunner(app)

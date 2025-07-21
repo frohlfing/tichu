@@ -35,7 +35,7 @@
  * @property {number} wish_value - Gewünschter Kartenwert (2–14, 0 = kein Wunsch, negativ = erfüllt).
  * @property {number} dragon_recipient - Index des Spielers, der den Drachen geschenkt bekommen hat (-1 = noch niemand).
  * @property {number} trick_owner_index - Index des Spielers, der den Stich besitzt (-1 = leerer Stich).
- * @property {Cards} trick_cards - Karten der letzten Kombination im Stich.
+ * @property {Cards} trick_cards - Die letzten Karten im Stich (nicht Passen).
  * @property {Combination} trick_combination - Typ, Länge und Rang des aktuellen Stichs ([0,0,0] = leerer Stich).
  * @property {number} trick_points - Punkte des aktuellen Stichs.
  * @property {Array<Trick>} tricks - Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen.
@@ -479,18 +479,18 @@ const State = (() => {
         _publicState.current_turn_index = turn[0];
         if (turn[2][0] !== CombinationType.PASS) {
             _publicState.trick_owner_index = turn[0];
+            _publicState.trick_cards = turn[1];
+            if (turn[0] === _privateState.player_index) { // Der Benutzer hat Karten ausgespielt.
+                const handCards = _privateState.hand_cards.filter(handCard => !Lib.includesCard(handCard, turn[1]));
+                setHandCards(handCards);
+            }
+            else { // Ein Mitspieler hat Karten ausgespielt.
+                const coundHandCards = _publicState.count_hand_cards[turn[0]] - turn[1].length;
+                setCountHandCards(turn[0], coundHandCards);
+            }
+            _publicState.played_cards = _publicState.played_cards.concat(turn[1]);
+            _publicState.trick_combination = turn[2];
         }
-        _publicState.trick_cards = turn[1];
-        if (turn[0] === _privateState.player_index) { // Der Benutzer hat Karten ausgespielt.
-            const handCards = _privateState.hand_cards.filter(handCard => !Lib.includesCard(handCard, turn[1]));
-            setHandCards(handCards);
-        }
-        else { // Ein Mitspieler hat Karten ausgespielt.
-            const coundHandCards = _publicState.count_hand_cards[turn[0]] - turn[1].length;
-            setCountHandCards(turn[0], coundHandCards);
-        }
-        _publicState.played_cards = _publicState.played_cards.concat(turn[1]);
-        _publicState.trick_combination = turn[2];
     }
 
     /**

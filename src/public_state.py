@@ -31,11 +31,11 @@ class PublicState:
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest; es wurde noch nicht geschupft).
     :ivar count_hand_cards: Anzahl der Handkarten pro Spieler.
     :ivar played_cards: Bereits gespielte Karten in der aktuellen Runde [Card, ...].
-    :ivar announcements: Angekündigtes Tichu pro Spieler (0 == keine Ansage, 1 == einfaches, 2 == großes Tichu)
-    :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt)
+    :ivar announcements: Angekündigtes Tichu pro Spieler (0 == keine Ansage, 1 == einfaches, 2 == großes Tichu).
+    :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt).
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == noch niemand).
     :ivar trick_owner_index: Index des Spielers, der die letzte Kombination gespielt hat, also Besitzer des Stichs ist (-1 == leerer Stich).
-    :ivar trick_cards: Die Karten der letzten Kombination im Stich [Card, ...].
+    :ivar trick_cards: Die letzten Karten im Stich (nicht Passen) [Card, ...].
     :ivar trick_combination: Typ, Länge und Rang des aktuellen Stichs ((0,0,0) == leerer Stich)
     :ivar trick_points: Punkte des aktuellen Stichs.
     :ivar tricks: Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen (wenn der Stich noch nicht einkassiert wurde).
@@ -79,8 +79,8 @@ class PublicState:
     # todo Berechnung:
     #  1) is_round_over = count_active_players == 1 or is_double_victory  # nur noch eine Spieler im Spiel oder Doppelsieg
     #  2) is_double_victory = count_active_players == 2 and count_hand_cards[(winner_index + 2) % 4] == 0  # die beiden Spieler eine Teams sind fertig, die anderen 2 Spieler noch nicht
-    #  3) trick_points = sum_card_points(??)  # kann aus tricks berechnet werden
-    #  5) trick_owner_index, trick_cards, trick_combination bilden den letzten Eintrag aus tricks, der nicht Passen ist.
+    #  3) trick_points = sum_card_points(cards)  # kann aus allen Karten in tricks berechnet werden
+    #  4) trick_owner_index, trick_cards, trick_combination bilden den letzten Eintrag aus tricks, der nicht Passen ist.
 
     def __post_init__(self):
         if not self.table_name.strip():
