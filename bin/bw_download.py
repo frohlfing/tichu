@@ -33,34 +33,33 @@ def download(path: str, y1: int, m1: int, y2: int, m2: int):
     """
     for y in range(y1, y2 + 1):
         # Unterordner für das Jahr anlegen
-        folder = path + '/{0:04d}'.format(y)
-        if not os.path.exists(folder):
-            os.makedirs(folder)
+        if not os.path.exists(f"{path}/{y:04d}"):
+            os.makedirs(f"{path}/{y:04d}")
 
         # Jahr herunterladen
         a = m1 if y == y1 else 1
         b = m2 if y == y2 else 12
         for m in range(a, b + 1):
-            print('Download {0:04d}-{1:02d}...'.format(y, m))
+            print(f"Download {y:04d}-{m:02d}...")
 
             # Unterordner für den Monat anlegen
-            folder = path + '/{0:04d}/{1:04d}{2:02d}'.format(y, y, m)
-            if not os.path.exists(folder):
-                os.makedirs(folder)
+            subfolder = f"{y:04d}/{y:04d}{m:02d}"
+            if not os.path.exists(f"{path}/{subfolder}"):
+                os.makedirs(f"{path}/{subfolder}")
 
             # Index herunterladen (sofern nicht vorhanden) bzw. letzten Monat aktualisieren
-            file = folder + '/index.html'
+            file = f"{path}/{subfolder}/index.html"
             if not os.path.exists(file) or (y == y2 and m == m2):
-                url = 'http://tichulog.brettspielwelt.de/{0:04d}{1:02d}'.format(y, m)
+                url = f"http://tichulog.brettspielwelt.de/{y:04d}{m:02d}"
                 r = requests.get(url)
                 if r.status_code != 200:
-                    raise Exception('Download fehlgeschlagen:' + url)
-                with open(file, 'wb') as fp:
+                    raise Exception(f"Download fehlgeschlagen: {url}")
+                with open(file, "wb") as fp:
                     fp.write(r.content)
 
             # Dateien zw. 2014-09 und 2018-01 werfen ein UnicodeDecodeError :-(
             ok = True
-            with open(file, 'r') as fp:
+            with open(file, "r") as fp:
                 # noinspection PyBroadException
                 try:
                     for line in fp:
@@ -68,10 +67,10 @@ def download(path: str, y1: int, m1: int, y2: int, m2: int):
                 except:
                     ok = False
             if not ok:
-                print('Repariere ' + file)
-                with codecs.open(file, 'r', 'utf-8', errors="ignore") as fp:
+                print(f"Repariere {file}")
+                with codecs.open(file, "r", "utf-8", errors="ignore") as fp:
                     contents = fp.read()
-                with codecs.open(file + '.txt', 'w', 'utf-8') as fp:
+                with codecs.open(f"{file}.txt", "w", "utf-8") as fp:
                     fp.write(contents)
 
             # Ersten und letzten Eintrag aus Index entnehmen
@@ -88,24 +87,26 @@ def download(path: str, y1: int, m1: int, y2: int, m2: int):
 
             # Log-Dateien runterladen (sofern nicht vorhanden)
             for i in tqdm(range(i1, i2 + 1)):
-                file = folder + '/{0}.tch'.format(i)
+                file = f"{path}/{subfolder}/{i}.tch"
                 if not os.path.exists(file):
-                    url = 'http://tichulog.brettspielwelt.de/{0}.tch'.format(i)
+                    url = f"http://tichulog.brettspielwelt.de/{i}.tch"
                     r = requests.get(url)
                     if r.status_code != 200:
-                        raise Exception('Download fehlgeschlagen:' + url)
-                    with open(file, 'wb') as fp:
+                        raise Exception(f"Download fehlgeschlagen: {url}")
+                    with open(file, "wb") as fp:
                         fp.write(r.content)
 
         # Jahr zippen
-        with zipfile.ZipFile(path + '/{0:04d}.zip'.format(y), 'w', zipfile.ZIP_DEFLATED) as target:
-            for m in range(a, b + 1):
-                folder = path + '/{0:04d}/{1:04d}{2:02d}'.format(y, y, m)
-                files = sorted(os.listdir(folder))
-                for file in files:
-                    target.write(folder + '/' + file, '{0:04d}/{1:04d}{2:02d}/'.format(y, y, m) + file)
+        if not os.path.exists(f"{path}/{y:04d}.zip"):
+            with zipfile.ZipFile(f"{path}/{y:04d}.zip", 'w', zipfile.ZIP_DEFLATED) as target:
+                for m in range(a, b + 1):
+                    subfolder = f"{y:04d}/{y:04d}{m:02d}"
+                    files = sorted(os.listdir(f"{path}/{subfolder}"))
+                    for file in files:
+                        target.write(f"{path}/{subfolder}/{file}", f"{subfolder}/{file}")
 
-    print('fertig')
+    print("fertig")
+
 
 
 def main(args: argparse.Namespace):
