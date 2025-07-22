@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Dieses Modul öffnet eine Arena und lässt Agenten gegeneinander spielen.
+Dieses Skript öffnet eine Arena und lässt Agenten gegeneinander spielen.
 
 **Start des Wettkampfes**:
    ```

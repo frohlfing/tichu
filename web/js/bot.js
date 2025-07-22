@@ -129,12 +129,6 @@ const Bot = (() => {
     function _performLobbyAction() {
         _testUILobby()
 
-        if (Config.BOT_MAX_GAMES > 0 && _gameCounter >= Config.BOT_MAX_GAMES) {
-            console.log(`🤖 Bot: Maximale Anzahl von ${Config.BOT_MAX_GAMES} Partien erreicht. Stoppe.`);
-            setEnabled(false);
-            return;
-        }
-
         if (State.isHost()) {
             // Zufällige Position der Spieler ändern
             if (Random.boolean()) {

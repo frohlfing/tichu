@@ -234,6 +234,7 @@ Diese Struktur trennt klar zwischen:
     │   │   │   ├── statistic.py
     │   │   │   ├── tables_hi.py
     │   │   │   └── tables_lo.py
+    │   │   ├── bw.py                # Bibliothek für Brettspielwelt-Logdateien
     │   │   ├── cards.py             # Definition von Karten, dem Deck, Punktwerten und Hilfsfunktionen zur Kartenmanipulation
     │   │   ├── combinations.py      # Definition von Kombinationstypen, Logik zur Erkennung, Generierung und Validierung von Kartenkombinationen
     │   │   ├── errors.py            # Definition anwendungsspezifischer Exception-Klassen
@@ -250,8 +251,9 @@ Diese Struktur trennt klar zwischen:
     │   ├── config.py                # Konfigurationsvariablen für das Projekt (z.B. Loglevel, Arena-Einstellungen).
     │   ├── game_engine.py           # `GameEngine`-Klasse, die die Hauptspiellogik für einen Tisch steuert
     │   ├── game_factory.py
-    │   ├── private_state.py         #  öffentlichen Spielzustand
-    │   └── public_state.py          # privaten Spielzustand eines Spielers 
+    │   ├── private_state.py         # öffentlichen Spielzustand
+    │   └── public_state.py          # Privaten Spielzustand eines Spielers 
+    │   └── ws_handler.py            # Websocket-Handler für den Server 
     ├── tests/                       # Unit-Tests für die Module in `src/`, geschrieben mit `pytest` 
     │   ├── common/                 
     │   │   ├── test_git_utils.py    

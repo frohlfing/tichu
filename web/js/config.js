@@ -22,7 +22,4 @@ const Config = {
 
     // Verzögerung des Bots (von/bis) in ms.
     BOT_DELAY: [500, 1500],
-
-    // Anzahl Partien, die der Bot spielt (0 für unendlich)
-    BOT_MAX_GAMES: 10,
 };
