@@ -2,21 +2,25 @@
 Dieses Modul stellt Funktionen bereit, die mit Tichu-Logdateien vom Spiele-Portal "Brettspielwelt" umgehen können.
 """
 
-__all__ = "download_logfiles_from_bw", "bw_logfiles", "BWParserError", "BWParserErrorCode", "parse_bw_logfile"
-
+__all__ = "download_logfiles_from_bw", "bw_logfiles", "bw_count_logfiles", "BWParserError", "parse_bw_logfile"
 
 import enum
 import os
 import requests
+from dataclasses import dataclass, field
 from datetime import datetime
+from src.lib.cards import validate_card, validate_cards #, parse_card, parse_cards
 from tqdm import tqdm
-from typing import Optional
+from typing import List, Tuple, Union, Optional
 from zipfile import ZipFile, ZIP_DEFLATED
 
 
 def download_logfiles_from_bw(path: str, y1: int, m1: int, y2: int, m2: int):
     """
     Lädt Tichu-Logdateien vom Spiele-Portal "Brettspielwelt" herunter.
+
+    Der erste existierende Eintrag ist 2007-01-09 19:03 (siehe http://tichulog.brettspielwelt.de/200701),
+    der letzte ist unter http://tichulog.brettspielwelt.de/ verlinkt.
 
     :param path: Das Zielverzeichnis.
     :param y1: ab Jahr
@@ -98,7 +102,7 @@ def bw_logfiles(path: str, y1: Optional[int] = None, m1: Optional[int] = None, y
     :yield: (context, Inhalt der *.tch-Datei)
     """
     for zip_name in sorted(os.listdir(path)):
-        if not zip_name.endswith('.zip'):
+        if not zip_name.endswith(".zip"):
             continue
 
         # Zip-Archiv außerhalb des Jahresbereichs überspringen
@@ -113,7 +117,7 @@ def bw_logfiles(path: str, y1: Optional[int] = None, m1: Optional[int] = None, y
         zip_path = os.path.join(path, zip_name)
         with ZipFile(zip_path, 'r') as zf:
             for name in sorted(zf.namelist()):  # z.B. "2025/202507/2410688.tch"
-                if not name.endswith('.tch'):
+                if not name.endswith(".tch"):
                     continue
 
                 # Logdatei außerhalb des Zeitraums überspringen
@@ -125,6 +129,47 @@ def bw_logfiles(path: str, y1: Optional[int] = None, m1: Optional[int] = None, y
 
                 # Logdatei öffnen und Inhalt zurückgeben
                 yield game_id, year, month, zf.read(name).decode()
+
+
+def bw_count_logfiles(path: str, y1: Optional[int] = None, m1: Optional[int] = None, y2: Optional[int] = None, m2: Optional[int] = None) -> int:
+    """
+    Ermittelt die Anzahl der Logdateien im angegebenen Zeitraum.
+
+    :param path: Das Verzeichnis, in dem die Zip-Archive liegen.
+    :param y1: (Optional) ab Jahr
+    :param m1: (Optional) ab Monat
+    :param y2: (Optional) bis Jahr (einschließlich)
+    :param m2: (Optional) bis Monat (einschließlich)
+    :return: Anzahl der Logdateien.
+    """
+    count = 0
+    for zip_name in sorted(os.listdir(path)):
+        if not zip_name.endswith(".zip"):
+            continue
+
+        # Zip-Archiv außerhalb des Jahresbereichs überspringen
+        try:
+            year = int(zip_name[:4])
+        except ValueError:
+            continue
+        if (y1 and year < y1) or (y2 and year > y2):
+            continue
+
+        # Zip-Archiv öffnen und alle Logdateien durchlaufen
+        zip_path = os.path.join(path, zip_name)
+        with ZipFile(zip_path, 'r') as zf:
+            for name in zf.namelist():  # z.B. "2025/202507/2410688.tch"
+                if not name.endswith(".tch"):
+                    continue
+
+                # Logdatei außerhalb des Zeitraums überspringen
+                parts = name.split("/")
+                month = int(parts[1][4:])
+                if (y1 and m1 and year == y1 and month < m1) or (y2 and m2 and year == y2 and month > m2):
+                    continue
+
+                count += 1
+    return count
 
 
 class BWParserError(Exception):
@@ -145,37 +190,328 @@ class BWParserErrorCode(enum.IntEnum):
     """Runde wurde nicht zu Ende gespielt."""
 
 
-def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> dict | None:
-    lines = [line.strip() for line in content.splitlines() if line.strip()]
+@dataclass
+class BWRoundData:
+    """
+    Datencontainer für eine einzelne Runde.
+
+    :ivar player_names: Die Namen der 4 Spieler dieser Runde.
+    :ivar grand_tichu_hands: Die ersten 8 Handkarten der vier Spieler zu Beginn der Runde.
+    :ivar start_hands: Die 14 Handkarten der Spieler vor dem Schupfen.
+    :ivar tichu_positions: Position in der Historie, an der ein Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor Schupfen).
+    :ivar given_schupf_cards: Abgegebene Tauschkarten (an rechten Gegner, Partner, linken Gegner).
+    :ivar bomb_owners: Gibt für jeden Spieler an, ob eine Bombe auf der Hand ist.
+    :ivar wish_value: Wunsch (2 bis 14; 0 == kein Wunsch geäußert).
+    :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde bis zum Schluss nicht verschenkt).
+    :ivar score_entry: Punkte dieser Runde pro Team (Team20, Team31).
+    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple aus Spieler-Index und Karten, oder beim Passen nur der Spieler-Index.
+    :ivar aborted: Wenn True, wurde die Runde nicht zu Ende gespielt.
+    """
+    player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    grand_tichu_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    start_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    tichu_positions: List[int] = field(default_factory=lambda: [-3, -3, -3, -3])
+    given_schupf_cards: List[Tuple[str, str, str]] = field(default_factory=lambda: [("", "", ""), ("", "", ""), ("", "", ""), ("", "", "")])
+    bomb_owners: List[bool] = field(default_factory=lambda: [False, False, False, False])
+    wish_value: int = 0
+    dragon_recipient: int = -1
+    score_entry: Tuple[int, int] = (0, 0)
+    history: List[Union[Tuple[int, str], int]] = field(default_factory=list)
+    aborted: bool = False
+
+
+# Type-Alias für Daten einer Partie
+# BWGameData = List[BWRoundData]
+
+
+def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Optional[List[BWRoundData]]:
+    """
+    Parst eine Tichu-Logdatei vom Spiele-Portal "Brettspielwelt".
+
+    Die Logdatei hält genau eine Partie fest. Zurückgegeben wird eine Liste mit Daten jeder Runde der Partie.
+    Wenn die List syntaktisch fehlerhaft, also nicht wie erwartet aufgebaut ist, wird None zurückgegeben.
+
+    :param game_id: Die ID der Partie.
+    :param year: Das Jahr der Logdatei.
+    :param month: Der Monat der Logdatei.
+    :param content: Der Inhalt der Logdatei.
+    :return: Die Daten der Partie oder False, wenn die Logdatei syntaktisch fehlerhaft, also nicht wie erwartet aufgebaut ist
+    """
+    result = []
+    lines = content.splitlines()
     n = len(lines)  # Anzahl Zeilen
+    i = 0 # Zeilenindex
+    while i < n:
+        # Datencontainer für eine Runde
+        round_data = BWRoundData()
+        try:
+            # Jede Runde beginnt mir der Zeile "---------------Gr.Tichukarten------------------"
 
-    data = {
-        "game_id": game_id,
-        "year": year,
-        "month": month,
-        "player_names": [],
-        "rounds": [],
-    }
-
-    # Start- und Endezeile jeder Runde finden
-    sections = []
-    separator = "---------------Gr.Tichukarten------------------"
-    if lines[0] != separator:
-        print(f"{game_id}, Zeile 1: {lines[0]}\n'{separator}' erwartet")
-        return None
-    i1 = 0
-    for i2 in range(1, n):
-        if lines[i2] == separator:
-            if not lines[i2-1].startswith('Ergebnis: '):
-                print(f"{game_id}, Zeile {n}: {lines[-1]}\n'Ergebnis:' erwartet")
+            round_separator = "---------------Gr.Tichukarten------------------"
+            line = lines[i].strip()
+            i += 1
+            if line != round_separator:
+                print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{round_separator}' erwartet")
                 return None
-            sections.append((i1, i2))
-            i1 = i2
 
-    # Alle Runden durchlaufen und parsen
-    for _section in sections:
-        # todo
-        pass
+            # Es folgt die Aufzählung der 4 Spieler mit ihren ersten 8 Handkarten, z.B.:
+            # (0)Smocker Dr BD R9 G8 B6 G5 G4 Hu
+            # (1)charliexyz GD BB R10 S9 G9 S6 B5 S4
+            # (2)Amb4lamps23 B10 B9 R8 B7 B4 S3 G3 S2
+            # (3)Andreavorn GK SD RB G7 R7 G6 R4 G2
 
-    return data
+            # Nach der Trennzeile "---------------Startkarten------------------"
+            # werden die Spiele nochmals genauso aufgeführt, diesmal aber mit 14 Handkarten.
+
+            for k in [8, 14]:
+                if k == 14:
+                    separator = "---------------Startkarten------------------"
+                    line = lines[i].strip()
+                    i += 1
+                    if line != separator:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{separator}' erwartet")
+                        return None
+                for player_index in range(0, 4):
+                    line = lines[i].strip()
+                    i += 1
+                    # Index des Spielers prüfen
+                    if line[:3] != f"({player_index})":
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nIndex des Spielers erwartet")
+                        return None
+                    j = line.find(" ")
+                    if j == -1:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nLeerzeichen erwartet")
+                        return None
+                    name = line[3:j].strip()
+                    # if name == "":
+                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers erwartet")
+                    #     return None
+                    # Handkarten prüfen
+                    cards = line[j + 1:].replace("10", "Z")
+                    if not validate_cards(cards):
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nMindesten eine Karte ist ungültig")
+                        return None
+                    # Name des Spielers und Handkarten übernehmen
+                    if k == 8:
+                        round_data.player_names[player_index] = name
+                        round_data.grand_tichu_hands[player_index] = cards
+                    else:
+                        # if name != round_data.player_names[player_index]:
+                        #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
+                        #     round_data.player_names[player_index] = name
+                        round_data.start_hands[player_index] = cards
+
+            # Es folgen Zeilen mit "Grosses Tichu:", danach mit "Tichu:", sofern Tichu angesagt wurde, z.B.:
+            # Tichu: (1)charliexyz
+
+            for grand in [True, False]:
+                while lines[i].strip().startswith("Grosses Tichu: " if grand else "Tichu: "):
+                    line = lines[i].strip()
+                    i += 1
+                    # Index des Spielers prüfen
+                    s = line[15:] if grand else line[7:]
+                    if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
+                        return None
+                    player_index = int(s[1])
+                    # if s[3:] != round_data.player_names[player_index]:
+                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
+                    #     round_data.player_names[player_index] = s[3:]
+                    # Tichu-Ansage übernehmen
+                    round_data.tichu_positions[player_index] = -2 if grand else -1
+
+            # Es folgt die Zeile "Schupfen:".
+
+            line = lines[i].strip()
+            i += 1
+            if line != "Schupfen:":
+                print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'Schupfen:' erwartet")
+                return None
+
+            # Jetzt werden die 4 Spieler mit den Tauschkarten aufgelistet, z.B.:
+            # (0)Smocker gibt: charliexyz: Hu - Amb4lamps23: BD - Andreavorn: R9 -
+            # (1)charliexyz gibt: Amb4lamps23: S4 - Andreavorn: GA - Smocker: B3 -
+            # (2)Amb4lamps23 gibt: Andreavorn: B2 - Smocker: G3 - charliexyz: S2 -
+            # (3)Andreavorn gibt: Smocker: R7 - charliexyz: RB - Amb4lamps23: G2 -
+
+            for player_index in range(0, 4):
+                line = lines[i].strip()
+                i += 1
+                # Index des Spielers prüfen
+                if line[:3] != f"({player_index})":
+                    print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nIndex des Spielers erwartet")
+                    return None
+                j = line.find(" gibt: ")
+                if j == -1:
+                    print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n' gibt:' erwartet")
+                    return None
+                # if line[3:j] != round_data.player_names[player_index]:
+                #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
+                #     round_data.player_names[player_index] = line[3:j]
+                # Anzahl der Tauschkarten prüfen
+                s = line[j + 7:].rstrip(" -").split(" - ")
+                j = len(s)
+                if j != 3:
+                    print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nDrei Tauschkarten erwartet")
+                    return None
+                cards = ["", "", ""]
+                for k in range(0, 2):
+                    _player_name, card = s[k].split(": ")
+                    # # Empfänger der Tauschkarte prüfen
+                    # if player_name != round_data.player_names[(player_index + k + 1) % 4]:
+                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nReihenfolge der Empfänger ist nicht relativ zum Spieler (Spielerwechsel?)")
+                    #     return None
+                    # Tauschkarte prüfen
+                    cards[k] = card.replace("10", "Z")
+                    if not validate_card(cards[k]):
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nKarte {card} ist ungültig")
+                        return None
+                # Tauschkarte übernehmen
+                round_data.given_schupf_cards[player_index] = cards[0], cards[1], cards[2]
+
+            # Die Spieler, die eine Bombe haben, werden nun aufgeführt, z.B
+            # BOMBE: (0)Smocker (2)Amb4lamps23 (3)Andreavorn
+
+            while lines[i].strip().startswith("BOMBE: "):
+                line = lines[i].strip()
+                i += 1
+                for s in line[7:].split(" "):
+                    # Index des Spielers prüfen
+                    if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
+                        return None
+                    player_index = int(s[1])
+                    # if s[3:] != round_data.player_names[player_index]:
+                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
+                    #     round_data.player_names[player_index] = s[3:]
+                    # Bomben-Besitzer übernehmen
+                    round_data.bomb_owners[player_index] = True
+
+            # Es folgt die Trennzeile "---------------Rundenverlauf------------------".
+
+            separator = "---------------Rundenverlauf------------------"
+            line = lines[i].strip()
+            i += 1
+            if line != separator:
+                print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{separator}' erwartet")
+                return None
+
+            # Nun werden die Spielzüge gezeigt. Entweder ein Spieler spielt Karten oder er passt, z.B.:
+            # (1)charliexyz passt.
+            # (2)Amb4lamps23: R8 S8 B8 G8
+            # Im Rundenverlauf können noch Zeilen stehen, die mit "Wunsch:", "Tichu: " oder "Drache an: " beginnen.
+            # Die Runde endet mit der Zeile, die mit "Ergebnis: " beginnt.
+
+            while True:  # Rundenverlauf
+                line = lines[i].strip()
+                i += 1
+
+                if line[:3] in ["(0)", "(1)", "(2)", "(3)"]:  # z.B. "(1)charliexyz passt." oder "(2)Amb4lamps23: R8 S8"
+                    # Index des Spielers prüfen
+                    player_index = int(line[1])
+                    j = line.find(" ")
+                    if j == -1:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nLeerzeichen erwartet")
+                        return None
+                    # if line[3:j].rstrip(":") != round_data.player_names[player_index]:
+                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
+                    #     round_data.player_names[player_index] = line[3:j].rstrip(":")
+                    # Aktion prüfen
+                    action = line[j + 1:]
+                    if action == "passt.":
+                        # Spielzug übernehmen
+                        round_data.history.append(player_index)
+                    else:
+                        # Karten prüfen
+                        cards = action.replace("10", "Z")
+                        if not validate_cards(cards):
+                            print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nMindesten eine Karte ist ungültig")
+                            return None
+                        # Spielzug übernehmen
+                        round_data.history.append((player_index, cards))
+
+                elif line.startswith("Wunsch:"):  # z.B. "Wunsch:2"
+                    wish = line[7:]
+                    if wish not in ["2", "3", "4", "5", "6", "7", "8", "9", "10", "B", "D", "K", "A"]:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nWunsch: zwischen 2 und 14 erwartet")
+                        return None
+                    # Wunsch übernehmen
+                    round_data.wish_value = 14 if wish == "A" else 13 if wish == "K" else 12 if wish == "D" else 11 if wish == "B" else int(wish)
+
+                elif line.startswith("Tichu: "):  # "Tichu: (3)Andreavorn"
+                    # Index des Spielers prüfen
+                    s = line[7:]
+                    if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
+                        return None
+                    player_index = int(s[1])
+                    # if s[3:] != round_data.player_names[player_index]:
+                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
+                    #     round_data.player_names[player_index] = s[3:]
+                    # Tichu-Ansage übernehmen
+                    round_data.tichu_positions[player_index] = len(round_data.history)
+
+                elif line.startswith("Drache an: "):  # z.B. "Drache an: (1)charliexyz"
+                    # Index des Spielers prüfen
+                    s = line[11:]
+                    if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
+                        return None
+                    player_index = int(s[1])
+                    # if s[3:] != round_data.player_names[player_index]:
+                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
+                    #     round_data.player_names[player_index] = s[3:]
+                    # Empfänger des Drachens übernehmen
+                    round_data.dragon_recipient = player_index
+
+                elif line.startswith("Ergebnis: "):  # z.B. "Ergebnis: 40 - 60"
+                    values = line[10:].split(" - ")
+                    if len(values) != 2:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nZwei Werte getrennt mit ' - ' erwartet")
+                        return None
+                    try:
+                        round_data.score = int(values[0]), int(values[1])
+                    except ValueError:
+                        print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nZwei Integer erwartet")
+                        return None
+                    # While-Schleife für Rundenverlauf verlassen
+                    break
+
+                else:
+                    print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpielzug erwartet")
+                    return None
+
+            # Rundenverlauf Ende
+
+        except IndexError as e:
+            if i >= n: #  hätten wir ein Ergebnis, wäre der Zeilenindex valide
+                round_data.aborted = True
+            else: # Runde wurde zu Ende gespielt, der Fehler liegt woanders
+                print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {lines[i]}\nUnbekannter Fehler: {e}")
+                return None
+
+        except Exception as e:
+            print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {lines[i]}\nUnbekannter Fehler: {e}")
+            return None
+
+        # Runde ist beendet
+        while i < n and lines[i].strip() == "":
+            i += 1  # Leerzeilen überspringen
+
+        # Runde in die Rückgabeliste hinzufügen
+        result.append(round_data)
+
+    return result
+
+
+def validate_bw_data(_data: List[BWRoundData]) -> bool:
+    """
+    Prüft, ob die Daten der gegebenen Partie laut Regelwerk plausibel sind.
+
+    Bei Bedarf werden die Daten korrigiert, sofern möglich.
+
+    :param _data: Die Daten der Partie (mutable).
+    :return: True, wenn die Daten laut Regelwerk plausibel sind oder korrigiert werden konnten, ansonst False.
+    """
+    pass
 

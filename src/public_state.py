@@ -31,7 +31,7 @@ class PublicState:
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest; es wurde noch nicht geschupft).
     :ivar count_hand_cards: Anzahl der Handkarten pro Spieler.
     :ivar played_cards: Bereits gespielte Karten in der aktuellen Runde [Card, ...].
-    :ivar announcements: Angekündigtes Tichu pro Spieler (0 == keine Ansage, 1 == einfaches, 2 == großes Tichu).
+    :ivar announcements: Angekündigtes Tichu pro Spieler (0 == keine Ansage, 1 == einfaches Tichu, 2 == großes Tichu).
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt).
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == noch niemand).
     :ivar trick_owner_index: Index des Spielers, der die letzte Kombination gespielt hat, also Besitzer des Stichs ist (-1 == leerer Stich).
@@ -63,7 +63,7 @@ class PublicState:
     dragon_recipient: int = -1
     trick_owner_index: int = -1
     trick_cards: Cards = field(default_factory=lambda: [])
-    trick_combination: Combination = field(default_factory=lambda: (CombinationType.PASS, 0, 0))
+    trick_combination: Combination = (CombinationType.PASS, 0, 0)
     trick_points: int = 0
     tricks: List[Trick] = field(default_factory=list)
     points: List[int] = field(default_factory=lambda: [0, 0, 0, 0])

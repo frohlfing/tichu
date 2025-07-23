@@ -5,10 +5,18 @@ Dieses Modul importiert die vom Spiele-Portal "Brettspielwelt" heruntergeladenen
 """
 
 import argparse
-from datetime import datetime
 import os
+from datetime import datetime
 from src import config
-from src.lib.bw import bw_logfiles, parse_bw_logfile
+from src.lib.bw import bw_logfiles, parse_bw_logfile, bw_count_logfiles
+from tqdm import tqdm
+
+
+def save_dirty_logfile(game_id, year, month, content):
+    file = os.path.join(config.DATA_PATH, f"bw/dirty/{year:04d}{month:02d}/{game_id}.tch")
+    os.makedirs(os.path.dirname(file), exist_ok=True)
+    with open(file, "w") as f:
+        f.write(content)
 
 
 def main(args: argparse.Namespace):
@@ -19,10 +27,19 @@ def main(args: argparse.Namespace):
     path = args.path
 
     # Import starten
-    for game_id, year, month, content in bw_logfiles(path, y1, m1, y2, m2):
-        print(parse_bw_logfile(game_id, year, month, content))
+    print(f"Ab Datum: {y1:04d}-{m1:02d}")
+    print(f"Bis Datum: {y2:04d}-{m2:02d}")
+    total = bw_count_logfiles(path, y1, m1, y2, m2)
+    ok = True
+    for game_id, year, month, content in tqdm(bw_logfiles(path, y1, m1, y2, m2), total=total, desc="Parse Logdateien", unit=" Datei"):
+        result = parse_bw_logfile(game_id, year, month, content)
+        if result is None:
+            ok = False
+            save_dirty_logfile(game_id, year, month, content)
+            break
 
-    print("fertig")
+    if ok:
+        print("fertig")
 
 
 if __name__ == "__main__":

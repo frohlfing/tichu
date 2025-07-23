@@ -18,13 +18,14 @@ class PrivateState:
 
     :ivar player_index: Pflichtargument. Der Index dieses Spielers am Tisch (zwischen 0 und 3).
     :ivar hand_cards: Die aktuellen Handkarten des Spielers (absteigend sortiert, z.B. [(8,3), (2,4), (0,1)].
-    :ivar given_schupf_cards: Die drei Karten, die der Spieler zum Schupfen an den rechten Gegner, Partner und linken Gegner abgegeben hat.
-    :ivar received_schupf_cards: Die drei Karten, die der Spieler beim Schupfen vom rechten Gegner, Partner und linken Gegner erhalten hat.
+    :ivar given_schupf_cards: Die drei Karten, die der Spieler zum Schupfen an den rechten Gegner, Partner und linken Gegner abgegeben hat (None, falls noch nicht geschupft).
+    :ivar received_schupf_cards: Die drei Karten, die der Spieler beim Schupfen vom rechten Gegner, Partner und linken Gegner erhalten hat (None, falls noch nicht geschupft).
     """
     # --- Spielerinformationen ---
     player_index: int  # muss im Konstruktor angegeben werden
 
     # --- Information über die aktuelle Runde ---
+    # todo Startkarten merken, dann kann man zusammen mit tricks die Runde nochmal spielen, ohne Tricks erst einmal rückwärts laufen lassen zu müssen.
     _hand_cards: Cards = field(default_factory=list)
     given_schupf_cards: Optional[Tuple[Card, Card, Card]] = None
     received_schupf_cards: Optional[Tuple[Card, Card, Card]] = None

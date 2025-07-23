@@ -532,6 +532,8 @@ class GameEngine:
                 # Runde ist beendet
 
                 # Endwertung der Runde
+                #todo in der Endwertung pub.points nicht ändern (dann kann man besser nachrechnen, ob der Score richtig ist
+
                 assert pub.is_round_over
                 if pub.is_double_victory:
                     # Doppelsieg! Das Gewinnerteam kriegt 200 Punkte. Die Gegner nichts.
