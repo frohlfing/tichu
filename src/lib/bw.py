@@ -48,7 +48,7 @@ def download_logfiles_from_bw(path: str, y1: int, m1: int, y2: int, m2: int):
         # Jahr herunterladen
         with ZipFile(zip_path, 'a' if os.path.exists(zip_path) else 'w', ZIP_DEFLATED) as zf:
             for m in range(a, b + 1):
-                zip_folder = f"{y:04d}/{y:04d}{m:02d}"
+                zip_folder = f"{y:04d}{m:02d}"
 
                 # Index einlesen
                 index_name = f"{zip_folder}/index.html"
@@ -63,10 +63,10 @@ def download_logfiles_from_bw(path: str, y1: int, m1: int, y2: int, m2: int):
                     if r.status_code != 200:
                         raise Exception(f"Download fehlgeschlagen: {url}")
                     # Index-Dateien zw. 2014-09 und 2018-01 haben ungültige UTF-8-Zeichen. decode().encode() bereinigt das.
-                    content = r.content.decode(errors="ignore").encode()
+                    index_content = r.content.decode(errors="ignore")
                     # Index speichern, sofern der Monat in der Vergangenheit liegt (ansonst kommen ja u.U. noch weitere Einträge hinzu).
                     if y < now.year or (y == now.year and m < now.month):
-                        zf.writestr(index_name, content)
+                        zf.writestr(index_name, index_content.encode())
 
                 # Ersten und letzten Eintrag aus Index entnehmen
                 i1 = 0
@@ -116,16 +116,16 @@ def bw_logfiles(path: str, y1: Optional[int] = None, m1: Optional[int] = None, y
         # Zip-Archiv öffnen und alle Logdateien durchlaufen
         zip_path = os.path.join(path, zip_name)
         with ZipFile(zip_path, 'r') as zf:
-            for name in sorted(zf.namelist()):  # z.B. "2025/202507/2410688.tch"
+            for name in sorted(zf.namelist()):  # z.B. "202507/2410688.tch"
                 if not name.endswith(".tch"):
                     continue
 
                 # Logdatei außerhalb des Zeitraums überspringen
                 parts = name.split("/")
-                month = int(parts[1][4:])
+                month = int(parts[0][4:])
                 if (y1 and m1 and year == y1 and month < m1) or (y2 and m2 and year == y2 and month > m2):
                     continue
-                game_id = int(parts[2][:-4])
+                game_id = int(parts[1][:-4])
 
                 # Logdatei öffnen und Inhalt zurückgeben
                 yield game_id, year, month, zf.read(name).decode()
@@ -158,13 +158,13 @@ def bw_count_logfiles(path: str, y1: Optional[int] = None, m1: Optional[int] = N
         # Zip-Archiv öffnen und alle Logdateien durchlaufen
         zip_path = os.path.join(path, zip_name)
         with ZipFile(zip_path, 'r') as zf:
-            for name in zf.namelist():  # z.B. "2025/202507/2410688.tch"
+            for name in zf.namelist():  # z.B. "202507/2410688.tch"
                 if not name.endswith(".tch"):
                     continue
 
                 # Logdatei außerhalb des Zeitraums überspringen
                 parts = name.split("/")
-                month = int(parts[1][4:])
+                month = int(parts[0][4:])
                 if (y1 and m1 and year == y1 and month < m1) or (y2 and m2 and year == y2 and month > m2):
                     continue
 
@@ -493,5 +493,6 @@ def validate_bw_data(_data: List[BWRoundData]) -> bool:
     :param _data: Die Daten der Partie (mutable).
     :return: True, wenn die Daten laut Regelwerk plausibel sind oder korrigiert werden konnten, ansonst False.
     """
+    #todo
     pass
 
