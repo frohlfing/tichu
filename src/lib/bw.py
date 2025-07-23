@@ -205,7 +205,6 @@ class BWRoundData:
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde bis zum Schluss nicht verschenkt).
     :ivar score_entry: Punkte dieser Runde pro Team (Team20, Team31).
     :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple aus Spieler-Index und Karten, oder beim Passen nur der Spieler-Index.
-    :ivar aborted: Wenn True, wurde die Runde nicht zu Ende gespielt.
     """
     player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
     grand_tichu_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
@@ -217,25 +216,25 @@ class BWRoundData:
     dragon_recipient: int = -1
     score_entry: Tuple[int, int] = (0, 0)
     history: List[Union[Tuple[int, str], int]] = field(default_factory=list)
-    aborted: bool = False
 
 
 # Type-Alias für Daten einer Partie
 # BWGameData = List[BWRoundData]
 
 
-def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Optional[List[BWRoundData]]:
+def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List[BWRoundData]:
     """
     Parst eine Tichu-Logdatei vom Spiele-Portal "Brettspielwelt".
 
-    Die Logdatei hält genau eine Partie fest. Zurückgegeben wird eine Liste mit Daten jeder Runde der Partie.
-    Wenn die List syntaktisch fehlerhaft, also nicht wie erwartet aufgebaut ist, wird None zurückgegeben.
+    Die Logdatei hält genau eine Partie fest. Zurückgegeben wird eine Liste mit den Rundendaten der Partie.
+    Wenn die List syntaktisch fehlerhaft, also nicht wie erwartet aufgebaut ist, wird der Vorgang abgebrochen
+    und nur die fehlerfrei eingelesenen Runden zurückgegeben.
 
     :param game_id: Die ID der Partie.
     :param year: Das Jahr der Logdatei.
     :param month: Der Monat der Logdatei.
     :param content: Der Inhalt der Logdatei.
-    :return: Die Daten der Partie oder False, wenn die Logdatei syntaktisch fehlerhaft, also nicht wie erwartet aufgebaut ist
+    :return: Die erfolgreich eingelesenen Rundendaten der Partie.
     """
     result = []
     lines = content.splitlines()
@@ -247,12 +246,12 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
         try:
             # Jede Runde beginnt mir der Zeile "---------------Gr.Tichukarten------------------"
 
-            round_separator = "---------------Gr.Tichukarten------------------"
+            separator = "---------------Gr.Tichukarten------------------"
             line = lines[i].strip()
             i += 1
-            if line != round_separator:
-                print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{round_separator}' erwartet")
-                return None
+            if line != separator:
+                print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{separator}' erwartet")
+                return result
 
             # Es folgt die Aufzählung der 4 Spieler mit ihren ersten 8 Handkarten, z.B.:
             # (0)Smocker Dr BD R9 G8 B6 G5 G4 Hu
@@ -270,35 +269,29 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
                     i += 1
                     if line != separator:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{separator}' erwartet")
-                        return None
+                        return result
                 for player_index in range(0, 4):
                     line = lines[i].strip()
                     i += 1
                     # Index des Spielers prüfen
                     if line[:3] != f"({player_index})":
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nIndex des Spielers erwartet")
-                        return None
+                        return result
                     j = line.find(" ")
                     if j == -1:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nLeerzeichen erwartet")
-                        return None
+                        return result
                     name = line[3:j].strip()
-                    # if name == "":
-                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers erwartet")
-                    #     return None
                     # Handkarten prüfen
                     cards = line[j + 1:].replace("10", "Z")
                     if not validate_cards(cards):
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nMindesten eine Karte ist ungültig")
-                        return None
+                        return result
                     # Name des Spielers und Handkarten übernehmen
                     if k == 8:
                         round_data.player_names[player_index] = name
                         round_data.grand_tichu_hands[player_index] = cards
                     else:
-                        # if name != round_data.player_names[player_index]:
-                        #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
-                        #     round_data.player_names[player_index] = name
                         round_data.start_hands[player_index] = cards
 
             # Es folgen Zeilen mit "Grosses Tichu:", danach mit "Tichu:", sofern Tichu angesagt wurde, z.B.:
@@ -312,11 +305,8 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
                     s = line[15:] if grand else line[7:]
                     if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
-                        return None
+                        return result
                     player_index = int(s[1])
-                    # if s[3:] != round_data.player_names[player_index]:
-                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
-                    #     round_data.player_names[player_index] = s[3:]
                     # Tichu-Ansage übernehmen
                     round_data.tichu_positions[player_index] = -2 if grand else -1
 
@@ -325,8 +315,14 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
             line = lines[i].strip()
             i += 1
             if line != "Schupfen:":
+                if game_id <= 2215951 and line == "---------------Gr.Tichukarten------------------":
+                    # Es wird abrupt eine neue Runde gestartet.
+                    # In 201202/1045639.tch trat dieser Fehler erstmalig in Zeile 734 auf.
+                    # Zwischen 2014-08 (ab 1792439.tch) und 2018-09 (bis 2215951.tch) trat er insgesamt 34 mal auf, und
+                    # zwar immer in der ersten Runde (Zeile 11). Der Fehler wurde wohl gefixt und wird nicht mehr erwartet.
+                    return result
                 print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'Schupfen:' erwartet")
-                return None
+                return result
 
             # Jetzt werden die 4 Spieler mit den Tauschkarten aufgelistet, z.B.:
             # (0)Smocker gibt: charliexyz: Hu - Amb4lamps23: BD - Andreavorn: R9 -
@@ -340,50 +336,40 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
                 # Index des Spielers prüfen
                 if line[:3] != f"({player_index})":
                     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nIndex des Spielers erwartet")
-                    return None
+                    return result
                 j = line.find(" gibt: ")
                 if j == -1:
                     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n' gibt:' erwartet")
-                    return None
-                # if line[3:j] != round_data.player_names[player_index]:
-                #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
-                #     round_data.player_names[player_index] = line[3:j]
+                    return result
                 # Anzahl der Tauschkarten prüfen
                 s = line[j + 7:].rstrip(" -").split(" - ")
                 j = len(s)
                 if j != 3:
                     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nDrei Tauschkarten erwartet")
-                    return None
+                    return result
                 cards = ["", "", ""]
                 for k in range(0, 2):
                     _player_name, card = s[k].split(": ")
-                    # # Empfänger der Tauschkarte prüfen
-                    # if player_name != round_data.player_names[(player_index + k + 1) % 4]:
-                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nReihenfolge der Empfänger ist nicht relativ zum Spieler (Spielerwechsel?)")
-                    #     return None
                     # Tauschkarte prüfen
                     cards[k] = card.replace("10", "Z")
                     if not validate_card(cards[k]):
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nKarte {card} ist ungültig")
-                        return None
+                        return result
                 # Tauschkarte übernehmen
                 round_data.given_schupf_cards[player_index] = cards[0], cards[1], cards[2]
 
             # Die Spieler, die eine Bombe haben, werden nun aufgeführt, z.B
             # BOMBE: (0)Smocker (2)Amb4lamps23 (3)Andreavorn
 
-            while lines[i].strip().startswith("BOMBE: "):
+            if lines[i].strip().startswith("BOMBE: "):
                 line = lines[i].strip()
                 i += 1
                 for s in line[7:].split(" "):
                     # Index des Spielers prüfen
                     if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
-                        return None
+                        return result
                     player_index = int(s[1])
-                    # if s[3:] != round_data.player_names[player_index]:
-                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
-                    #     round_data.player_names[player_index] = s[3:]
                     # Bomben-Besitzer übernehmen
                     round_data.bomb_owners[player_index] = True
 
@@ -394,7 +380,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
             i += 1
             if line != separator:
                 print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{separator}' erwartet")
-                return None
+                return result
 
             # Nun werden die Spielzüge gezeigt. Entweder ein Spieler spielt Karten oder er passt, z.B.:
             # (1)charliexyz passt.
@@ -412,13 +398,10 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
                     j = line.find(" ")
                     if j == -1:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nLeerzeichen erwartet")
-                        return None
-                    # if line[3:j].rstrip(":") != round_data.player_names[player_index]:
-                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
-                    #     round_data.player_names[player_index] = line[3:j].rstrip(":")
+                        return result
                     # Aktion prüfen
-                    action = line[j + 1:]
-                    if action == "passt.":
+                    action = line[j + 1:].rstrip(".")  # 201205/1150668.tch endet in dieser Zeile, sodass der Punkt fehlt
+                    if action == "passt":
                         # Spielzug übernehmen
                         round_data.history.append(player_index)
                     else:
@@ -426,7 +409,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
                         cards = action.replace("10", "Z")
                         if not validate_cards(cards):
                             print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nMindesten eine Karte ist ungültig")
-                            return None
+                            return result
                         # Spielzug übernehmen
                         round_data.history.append((player_index, cards))
 
@@ -434,7 +417,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
                     wish = line[7:]
                     if wish not in ["2", "3", "4", "5", "6", "7", "8", "9", "10", "B", "D", "K", "A"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nWunsch: zwischen 2 und 14 erwartet")
-                        return None
+                        return result
                     # Wunsch übernehmen
                     round_data.wish_value = 14 if wish == "A" else 13 if wish == "K" else 12 if wish == "D" else 11 if wish == "B" else int(wish)
 
@@ -443,11 +426,8 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
                     s = line[7:]
                     if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
-                        return None
+                        return result
                     player_index = int(s[1])
-                    # if s[3:] != round_data.player_names[player_index]:
-                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
-                    #     round_data.player_names[player_index] = s[3:]
                     # Tichu-Ansage übernehmen
                     round_data.tichu_positions[player_index] = len(round_data.history)
 
@@ -456,11 +436,8 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
                     s = line[11:]
                     if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
-                        return None
+                        return result
                     player_index = int(s[1])
-                    # if s[3:] != round_data.player_names[player_index]:
-                    #     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nName des Spielers stimmt nicht mit dem Index überein (wird ignoriert)")
-                    #     round_data.player_names[player_index] = s[3:]
                     # Empfänger des Drachens übernehmen
                     round_data.dragon_recipient = player_index
 
@@ -468,38 +445,41 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
                     values = line[10:].split(" - ")
                     if len(values) != 2:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nZwei Werte getrennt mit ' - ' erwartet")
-                        return None
+                        return result
                     try:
                         round_data.score = int(values[0]), int(values[1])
                     except ValueError:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nZwei Integer erwartet")
-                        return None
-                    # While-Schleife für Rundenverlauf verlassen
-                    break
+                        return result
+                    break  # While-Schleife für Rundenverlauf verlassen
 
                 else:
                     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpielzug erwartet")
-                    return None
+                    return result
 
             # Rundenverlauf Ende
 
         except IndexError as e:
-            if i >= n: #  hätten wir ein Ergebnis, wäre der Zeilenindex valide
-                round_data.aborted = True
+            if i >= n:
+                # Abruptes Ende der Logdatei, d.h., die Runde wurde nicht zu Ende gespielt.
+                # Das ist normal und wird nicht als Fehler betrachtet.
+                return result
             else: # Runde wurde zu Ende gespielt, der Fehler liegt woanders
                 print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {lines[i]}\nUnbekannter Fehler: {e}")
-                return None
+                return result
 
         except Exception as e:
             print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {lines[i]}\nUnbekannter Fehler: {e}")
-            return None
+            return result
 
-        # Runde ist beendet
-        while i < n and lines[i].strip() == "":
-            i += 1  # Leerzeilen überspringen
+        # Runde ist beendet.
 
         # Runde in die Rückgabeliste hinzufügen
         result.append(round_data)
+
+        # Leerzeilen überspringen
+        while i < n and lines[i].strip() == "":
+            i += 1
 
     return result
 

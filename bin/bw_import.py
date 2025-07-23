@@ -36,7 +36,7 @@ def main(args: argparse.Namespace):
         if result is None:
             ok = False
             save_dirty_logfile(game_id, year, month, content)
-            break
+            #break
 
     if ok:
         print("fertig")
