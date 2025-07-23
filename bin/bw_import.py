@@ -42,7 +42,44 @@ def main(args: argparse.Namespace):
         print("fertig")
 
 
+import os
+import zipfile
+
+def flatten_zip_archives(path: str, dest: str):
+    """
+    Entfernt das erste Verzeichniselement innerhalb jeder ZIP-Datei (z. B. '2024/')
+    und schreibt eine neue ZIP ohne diese Struktur ins Zielverzeichnis.
+
+    :param path: Quellverzeichnis mit ZIP-Dateien
+    :param dest: Zielverzeichnis für bereinigte ZIP-Dateien
+    """
+    os.makedirs(dest, exist_ok=True)
+
+    for fname in sorted(os.listdir(path)):
+        if not fname.endswith(".zip"):
+            continue
+
+        src_zip_path = os.path.join(path, fname)
+        dst_zip_path = os.path.join(dest, fname)
+
+        with zipfile.ZipFile(src_zip_path, 'r') as src_zip:
+            with zipfile.ZipFile(dst_zip_path, 'w', zipfile.ZIP_DEFLATED) as dst_zip:
+                for name in src_zip.namelist():
+                    # Entferne das erste Verzeichnislevel (Jahr)
+                    new_name = name[5:]
+                    # Inhalt kopieren
+                    data = src_zip.read(name)
+                    dst_zip.writestr(new_name, data)
+
+        print(f"✔ Archiv '{fname}' verarbeitet → {dst_zip_path}")
+
+
+
+
 if __name__ == "__main__":
+    flatten_zip_archives(os.path.join(config.DATA_PATH, "bw/tichulog"), os.path.join(config.DATA_PATH, "bw/tichulog2"))
+    exit(0)
+
     print(f"BW Importer")
 
     # Argumente parsen
