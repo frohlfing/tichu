@@ -260,7 +260,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
             # (3)Andreavorn GK SD RB G7 R7 G6 R4 G2
 
             # Nach der Trennzeile "---------------Startkarten------------------"
-            # werden die Spiele nochmals genauso aufgeführt, diesmal aber mit 14 Handkarten.
+            # werden die Spieler nochmals genauso aufgeführt, diesmal aber mit 14 Handkarten.
 
             for k in [8, 14]:
                 if k == 14:
@@ -358,7 +358,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                 # Tauschkarte übernehmen
                 round_data.given_schupf_cards[player_index] = cards[0], cards[1], cards[2]
 
-            # Die Spieler, die eine Bombe haben, werden nun aufgeführt, z.B
+            # Nun werden die Spieler mit einer Bombe aufgelistet, z.B
             # BOMBE: (0)Smocker (2)Amb4lamps23 (3)Andreavorn
 
             if lines[i].strip().startswith("BOMBE: "):
