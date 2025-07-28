@@ -4,25 +4,6 @@
 
 **ANHANG**
 
-A1.  [Spielzustand für die Game-Engine](#a1-spielzustand-für-die-game-engine)
-    1.  [PublicState](#a11-publicstate)
-    2.  [PrivateState](#a12-privatestate)
-A2.  [Typ-Definitionen](#a2-typ-definitionen)
-A3.  [Kombinationen](#a3-kombinationen)
-A4.  [Glossar für Tichu](#a4-glossar-für-tichu)
-A5.  [Glossar für Deep Learning](#a5-glossar-für-deep-learning)
-A6.  [Was sind kategoriale, diskrete und stetige Variablen?](#a6-was-sind-kategoriale-diskrete-und-stetige-variablen)
-    1.  [Binäre Variable (Boolean)](#binäre-variable-boolean)
-    2.  [Kategoriale Variable (One-Hot-Kodierung)](#kategoriale-variable-one-hot-kodierung)
-    3.  [Stetige Variable (Float-Wert)](#stetige-variable-float-wert)
-    4.  [Diskrete Variable (Int-Wert, "Thermometer"-Kodierung)](#diskrete-variable-int-wert-thermometer-kodierung)
-A7. [Klassifikationsaufgaben](#a7-klassifikationsaufgaben)
-    1.  [Binary-Class](#binary-class)
-    2.  [Multi-Class](#multi-class)
-    3.  [Single-Label](#single-label)
-    4.  [Multi-Label](#multi-label)
-
-
 ## 1. Ziel
 
 Das Ziel ist es, Agenten für das Tichu-Spiel zu entwickeln, die neuronale Netze verwenden. 
@@ -39,7 +20,7 @@ Die Basisklasse hierfür ist `NNetAgent` (für "Neural Network Agent"). Folgende
 
 Wir konzentrieren uns zunächst auf "play".
 
-## 2. Geplante Trainingsstufen, Netze und Agents
+## 2. Geplante Trainingsstufen, Netze und Agenten
 
 Basisklasse: 
 
@@ -244,7 +225,7 @@ Vorteil dieser Variante:
 
 Dieser Aufbau ist der Standard für die Integration von neuronalen Netzen in regelbasierte Spiele wie Schach, Go und eben auch Tichu.
 
-Der Agent berechnet für jeden möglichen Zug (aus action_space) einen "desirability score" (Wünschenswertigkeits-Score).
+Der Agent berechnet für jeden möglichen Zug (aus action_space) einen "desirability score" (Attraktivitätsbewertung).
 *  Für "Passen" ist der Score einfach der Output des 57. Neurons.
 *  Für einen Kartenzug ist der Score die Summe der Wahrscheinlichkeiten aller Karten, die zu diesem Zug gehören. 
 
@@ -390,7 +371,7 @@ Legende:
 * Auswahl des letzten Tokens: Für die Vorhersage der nächsten Aktion und des aktuellen RTG verwenden wir 
   typischerweise nur den Output-Vektor des Transformers, der dem letzten Zustand in der Input-Sequenz entspricht.
 
-## 6. Aufbereitung der Trainingsdaten 
+## 6. Aufbereitung der Daten 
  
 ### 6.1 Datenbestand
 
@@ -427,27 +408,50 @@ Der Datencontainer `BWRoundData` stellt alle aus der Logdatei verfügbaren Daten
 - `dragon_recipient: int` - Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde bis zum Schluss nicht verschenkt).
 - `score_entry: Tuple[int, int]` - Punkte dieser Runde pro Team (Team20, Team31).
 - `history: List[Union[Tuple[int, str], int]]` - Spielzüge. Jeder Spielzug ist ein Tuple aus Spieler-Index und Karten, oder beim Passen nur der Spieler-Index.
+- `year: int` - Jahr der Logdatei.
+- `month: int` - Monat der Logdatei.
 
-#### 6.2.1 Replay-Simulator
+### 6.3 Replay-Simulator
 
-Der Replay-Simulator nimmt die Daten einer Runde und spielt sie Zug für Zug nach. 
+Der Replay-Simulator durchläuft alle Spielzüge einer Runde. 
+
+Er benötigt für den gesamten Datenbestand TODO Minuten, durchschnittlich also TODO Sekunden pro Partie und TODO Sekunden pro Runde.
 
 ### 6.3 Daten analysieren
 
-Die Analyse-Fragen sind:
+Um die Daten analysieren zu können, sammeln wir die relevanten Daten in einer DB. 
+
+Dazu durchlaufen wir mit dem **Replay-Simulator** einmal den gesamten Datenbestand. Der Durchlauf hat TODO Minuten gedauert.
+
+#### 6.3.1 Analyse-Fragen
 
 Um die Trainingszeit und den Speicherbedarf abzuschätzen:
 *   Anzahl Partien, Runden, Stiche und Spielzüge insgesamt.
+        SELECT COUNT(*) FROM games; -> Anzahl Partien
+        SELECT COUNT(*) FROM rounds; == SELECT SUM(num_rounds) FROM games; -> Anzahl Runden
+        SELECT SUM(num_tricks) FROM rounds; -> Anzahl Stiche
+        SELECT SUM(num_turns) FROM rounds; -> Anzahl Spielzüge
 
 Um die Anzahl der Features zu bestimmen, die notwendig wären, würde man historische Daten hinzufügen:
-*   Pro Partie die Anzahl Runden, Stiche und Spielzüge (min, max, mean, stddev).
+*   Pro Partie die Anzahl Runden (min, max, mean, stddev).
+        SELECT MIN(num_rounds), MAX(num_rounds), AVG(num_rounds), STDEV(num_rounds) FROM games;
+        
 *   Pro Runde die Anzahl Stiche und Spielzüge (min, max, mean, stddev).
-*   Pro Stich die Anzahl Spielzüge (min, max, mean, stddev).
+        SELECT MIN(num_tricks), MAX(num_tricks), AVG(num_tricks), STDEV(num_tricks) FROM rounds;
+    
+*   Pro Runde die Anzahl Spielzüge (min, max, mean, stddev).
+        SELECT MIN(num_turns), MAX(num_turns), AVG(num_turns), STDEV(num_turns) FROM rounds;
 
 Zum Skalieren der kontinuierlichen Werte:
-*   trick_point: Summe der Punkte im Stich 
-*   points: Bisher kassierte Punkte in der Runde pro Spieler 
+*   trick_point: Summe der Punkte im Stich
+
+*   points: Bisher kassierte Punkte in der Runde pro Spieler
+        SELECT MIN(min_points), MAX(max_points), SUM(avg_points * num_turns)/SUM(num_turns) AS avg_avg_points, STDEV(score_20) FROM rounds;
+   
 *   game_score: Einträge der Punktetabelle, d.h. Endergebnis jeder Runde 
+        SELECT MIN(score_20), MAX(score_20), AVG(score_20), STDEV(score_20) FROM rounds;
+        SELECT MIN(score_31), MAX(score_31), AVG(score_31), STDEV(score_31) FROM rounds;
+        SELECT MIN(score_diff), MAX(score_diff), AVG(score_diff), STDEV(score_diff) FROM rounds;
 
 Ausgewogenheit der Daten:
 *   Runde mit Doppelsieg beendet
@@ -477,44 +481,6 @@ Gute Spieler finden
 *   Finde die Spieler mit viel Spielerfahrung
 *   Finde die Top 10% der Spieler basierend auf avg_score_diff.
 
-Um diese Fragen beantworten zu können, müssen wir die relevanten Daten in einer DB sammeln.
-
-#### 6.3.1 Analyse-Datenbank anlegen
- 
-Mithilfe des Replay-Simulators wird eine Datenbank mit statischen Angaben aufgebaut.
-
-Struktur:
-
-Datei: data/bw/analysis.sqlite
-
-Tabellen:
-*   games: Tabelle mit den Partien
-    * id (INTEGER, PRIMARY KEY): Die eindeutige ID der Partie.
-    * player_name_0 (VARCHAR(255)): Name des Spielers an Sitzplatz 0.
-    * player_name_1 (VARCHAR(255)): Name des Spielers an Sitzplatz 1.
-    * player_name_2 (VARCHAR(255)): Name des Spielers an Sitzplatz 2.
-    * player_name_3 (VARCHAR(255)): Name des Spielers an Sitzplatz 3.
-    * score_20 (INTEGER): Endpunktestand von Team 20 (Spieler 0 & 2).
-    * score_31 (INTEGER): Endpunktestand von Team 31 (Spieler 3 & 1).
-    * num_rounds (INTEGER): Anzahl der Runden in dieser Partie.
- 
-*   rounds: Tabelle mit den Runden
-    * id (INTEGER, PRIMARY KEY): Eindeutige ID der Runde (z.B. {game_id}_{round_index}).
-    * game_id (INTEGER, FOREIGN KEY -> games.id): Verweis auf die Partie.
-    * index (INTEGER): Die Nummer der Runde innerhalb der Partie (0, 1, 2...).
-    * score20 (INTEGER): Der Score, den Team 20 in dieser Runde erzielt hat.
-    * score31 (INTEGER): Der Score, den Team 31 in dieser Runde erzielt hat.
-    * score_diff (INTEGER): score20 - score31. Die Haupt-Zielvariable für das Value-Netz.
-    * double_victory (BOOLEAN): 1, wenn die Runde mit einem Doppelsieg beendet wurde, sonst 0.
-    * num_tricks (INTEGER): Gesamtzahl der Stiche in der Runde.
-    * num_turns (INTEGER): Gesamtzahl der Züge (inkl. Passen) in der Runde.
-
-*   players: Tabelle mit den Spielern
-    * name (VARCHAR(255), PRIMARY KEY): Eindeutiger Name des Spielers.
-    * num_games (INTEGER): In wie vielen Partien der Spieler in dieser Datenbank vorkommt.
-    * avg_score_diff (FLOAT): Die durchschnittliche Runden-Score-Differenz dieses Spielers.
-    * winrate (FLOAT): Gewinnrate des Spielers.
-
 #### 6.3.2 Analyse-Ergebnis
 
 Die Analyse der Datenbank ist im Jupyter Notebook [Datenanalyse.ipynb](../jpynb/Datenanalyse.ipynb) dokumentiert.
@@ -523,9 +489,9 @@ Hier sind die Ergebnisse zusammengefasst:
 
 TODO
 
-### 6.4 Trainingsdaten erzeugen
+### 6.4 Feature- und Label-Vektoren speichern
 
-Auf Basis der Datenanalyse werden ausgewogene Trainingsdaten (Feature- und Label-Vektoren) im HDF5-Format gespeichert. 
+Auf Basis der Datenanalyse werden ausgewogene Datensätze mit den Feature- und Label-Vektoren im HDF5-Format gespeichert. 
 Dabei werden die Ausreißer entsprechend behandelt und kontinuierliche Daten skaliert.   
 
 Folgende Features sind kontinuierlich und werden skaliert:
@@ -533,17 +499,11 @@ Folgende Features sind kontinuierlich und werden skaliert:
 *   `points: [int, int, int, int]`
 *   `game_score: Tuple[List[int], List[int]]`
 
-**Anzahl der Datensätze:**
-TODO
+### 6.5 Datensätze in Trainings-, Validierungs- und Testdaten aufteilen
 
 ## 7. Training
 
-### 7.1. Verlustfunktion
-
-*   Das Policy-Netz ist eine Multi-Label-Klassifikation, also nehmen wir **Binary Cross-Entropy (BCE)**.
-*   Das Value-Netz ist eine Regression, also nehmen wir **Mean Squared Error (MSE)**.
-
-### 7.2 Geschätzter Rechenaufwand
+### 7.1 Geschätzter Rechenaufwand
 
 Als Hardware steht eine RTX 2080 (8 GB VRAM) zur Verfügung.
 
@@ -579,6 +539,33 @@ Selfplay:
     *   Training: Parallel dazu müssen die neu generierten Spieldaten verwendet werden, um das Netz regelmäßig neu zu trainieren.
     *   => Sehr, sehr anspruchsvoll. Professionelle Self-Play-Trainingsläufe für Spiele wie Schach oder Go nutzen oft ganze Cluster von GPUs und CPUs.
 * Trainingszeit Wochen bis Monate (bis signifikante Verbesserungen zu sehen sind).
+
+### 7.2. Verlustfunktion
+
+*   Das Policy-Netz ist eine Multi-Label-Klassifikation, also nehmen wir **Binary Cross-Entropy (BCE)**.
+*   Das Value-Netz ist eine Regression, also nehmen wir **Mean Squared Error (MSE)**.
+ 
+### 7.3 Trainingsdurchlauf
+
+Folgende Versuche mit folgenden Hyperparametern und Modifikationen an der Architektur haben wir durchgeführt:
+
+TODO
+
+### 7.4 Leistung des Modells bewerten
+
+Hierzu werden die Validierungsdaten benötigt.
+
+Vergleich zw. den Modellvarianten:
+
+TODO
+
+## 8. Finale Bewertung des Modells
+
+Hierzu werden die Testdaten benötigt.
+
+TODO
+
+### 8.1 Treffergenauigkeit
 
 # Anhang
 
@@ -950,5 +937,3 @@ Dem Input wird ein kontinuierlicher numerischer Wert zugeordnet.
 *   **Policy Network:** (Policy - engl. Strategie) Ist ein neuronales Netz, das entscheidet, welche Aktion ein Agent in einem bestimmten Zustand ausführen sollte. 
 *   **Value Network:** Ist ein neuronales Netz, das bewertet, wie gut ein Zustand ist – also den erwarteten zukünftigen Belohnungswert.
 *   **Goal-conditioned Policy:** Eine Strategie, die das Ziel berücksichtigt.
- 
-

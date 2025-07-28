@@ -2,7 +2,7 @@
 Dieses Modul stellt Funktionen bereit, die mit Tichu-Logdateien vom Spiele-Portal "Brettspielwelt" umgehen können.
 """
 
-__all__ = "download_logfiles_from_bw", "bw_logfiles", "bw_count_logfiles", "BWParserError", "parse_bw_logfile"
+__all__ = "download_logfiles_from_bw", "bw_logfiles", "bw_count_logfiles", "BWRoundData", "parse_bw_logfile",
 
 import copy
 import enum
@@ -18,11 +18,67 @@ from tqdm import tqdm
 from typing import List, Tuple, Union, Optional, Generator, Dict, Any
 from zipfile import ZipFile, ZIP_DEFLATED
 
-# Type-Alias für eine strukturierte Aktion
-Action = Dict[str, Any]
+
+@dataclass
+class BWRoundData:
+    """
+    Datencontainer für eine einzelne Runde.
+
+    :ivar game_id: ID der Partie.
+    :ivar round_index: Index der Runde innerhalb der Partie.
+    :ivar player_names: Die Namen der 4 Spieler dieser Runde.
+    :ivar grand_tichu_hands: Die ersten 8 Handkarten der vier Spieler zu Beginn der Runde.
+    :ivar start_hands: Die 14 Handkarten der Spieler vor dem Schupfen.
+    :ivar tichu_positions: Position in der Historie, an der ein Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor Schupfen).
+    :ivar given_schupf_cards: Abgegebene Tauschkarten (an rechten Gegner, Partner, linken Gegner).
+    :ivar bomb_owners: Gibt für jeden Spieler an, ob eine Bombe auf der Hand ist.
+    :ivar wish_value: Wunsch (2 bis 14; 0 == kein Wunsch geäußert).
+    :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde bis zum Schluss nicht verschenkt).
+    :ivar score_entry: Punkte dieser Runde pro Team (Team20, Team31).
+    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple aus Spieler-Index und Karten, oder beim Passen nur der Spieler-Index.
+    :ivar year: Jahr der Logdatei.
+    :ivar month: Monat der Logdatei.
+    """
+    game_id: int = -1
+    round_index: int = -1
+    player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    grand_tichu_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    start_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    tichu_positions: List[int] = field(default_factory=lambda: [-3, -3, -3, -3])
+    given_schupf_cards: List[Tuple[str, str, str]] = field(default_factory=lambda: [("", "", ""), ("", "", ""), ("", "", ""), ("", "", "")])
+    bomb_owners: List[bool] = field(default_factory=lambda: [False, False, False, False])
+    wish_value: int = 0
+    dragon_recipient: int = -1
+    score_entry: Tuple[int, int] = (0, 0)
+    history: List[Union[Tuple[int, str], int]] = field(default_factory=list)
+    year: int = -1
+    month: int = -1
+
 
 # Type-Alias für Daten einer Partie
 # BWGameData = List[BWRoundData]
+
+
+# Type-Alias für eine strukturierte Aktion
+Action = Dict[str, Any]
+
+
+# class BWParserError(Exception):
+#     """
+#     Fehler, die beim Parsen auftreten können.
+#     """
+#     pass
+
+
+# class BWParserErrorCode(enum.IntEnum):
+#     """
+#     Enum für Errorcodes (Auskommentierte Codes werden noch nicht benutzt!)
+#     """
+#     UNKNOWN_ERROR = 100
+#     """Ein unbekannter Fehler ist aufgetreten."""
+#
+#     NO_RESULT = 101
+#     """Runde wurde nicht zu Ende gespielt."""
 
 
 def download_logfiles_from_bw(path: str, y1: int, m1: int, y2: int, m2: int):
@@ -182,52 +238,6 @@ def bw_count_logfiles(path: str, y1: Optional[int] = None, m1: Optional[int] = N
     return count
 
 
-class BWParserError(Exception):
-    """
-    Fehler, die beim Parsen auftreten können.
-    """
-    pass
-
-
-class BWParserErrorCode(enum.IntEnum):
-    """
-    Enum für Errorcodes (Auskommentierte Codes werden noch nicht benutzt!)
-    """
-    UNKNOWN_ERROR = 100
-    """Ein unbekannter Fehler ist aufgetreten."""
-
-    NO_RESULT = 101
-    """Runde wurde nicht zu Ende gespielt."""
-
-
-@dataclass
-class BWRoundData:
-    """
-    Datencontainer für eine einzelne Runde.
-
-    :ivar player_names: Die Namen der 4 Spieler dieser Runde.
-    :ivar grand_tichu_hands: Die ersten 8 Handkarten der vier Spieler zu Beginn der Runde.
-    :ivar start_hands: Die 14 Handkarten der Spieler vor dem Schupfen.
-    :ivar tichu_positions: Position in der Historie, an der ein Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor Schupfen).
-    :ivar given_schupf_cards: Abgegebene Tauschkarten (an rechten Gegner, Partner, linken Gegner).
-    :ivar bomb_owners: Gibt für jeden Spieler an, ob eine Bombe auf der Hand ist.
-    :ivar wish_value: Wunsch (2 bis 14; 0 == kein Wunsch geäußert).
-    :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde bis zum Schluss nicht verschenkt).
-    :ivar score_entry: Punkte dieser Runde pro Team (Team20, Team31).
-    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple aus Spieler-Index und Karten, oder beim Passen nur der Spieler-Index.
-    """
-    player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
-    grand_tichu_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
-    start_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
-    tichu_positions: List[int] = field(default_factory=lambda: [-3, -3, -3, -3])
-    given_schupf_cards: List[Tuple[str, str, str]] = field(default_factory=lambda: [("", "", ""), ("", "", ""), ("", "", ""), ("", "", "")])
-    bomb_owners: List[bool] = field(default_factory=lambda: [False, False, False, False])
-    wish_value: int = 0
-    dragon_recipient: int = -1
-    score_entry: Tuple[int, int] = (0, 0)
-    history: List[Union[Tuple[int, str], int]] = field(default_factory=list)
-
-
 def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Optional[List[BWRoundData]]:
     """
     Parst eine Tichu-Logdatei vom Spiele-Portal "Brettspielwelt".
@@ -248,7 +258,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
     i = 0 # Zeilenindex
     while i < n:
         # Datencontainer für eine Runde
-        round_data = BWRoundData()
+        round_data = BWRoundData(game_id=game_id, round_index=len(result), year=year, month=month)
         try:
             # Jede Runde beginnt mir der Zeile "---------------Gr.Tichukarten------------------"
 
@@ -490,17 +500,17 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Opti
     return result
 
 
-def validate_bw_data(_datas: List[BWRoundData]) -> bool:
-    """
-    Prüft, ob die Daten der gegebenen Partie laut Regelwerk plausibel sind.
-
-    Bei Bedarf werden die Daten korrigiert, sofern möglich.
-
-    :param _datas: Die Daten der Partie (mutable).
-    :return: True, wenn die Daten laut Regelwerk plausibel sind oder korrigiert werden konnten, ansonst False.
-    """
-    #todo
-    pass
+# def validate_bw_data(_datas: List[BWRoundData]) -> bool:
+#     """
+#     Prüft, ob die Daten der gegebenen Partie laut Regelwerk plausibel sind.
+#
+#     Bei Bedarf werden die Daten korrigiert, sofern möglich.
+#
+#     :param _datas: Die Daten der Partie (mutable).
+#     :return: True, wenn die Daten laut Regelwerk plausibel sind oder korrigiert werden konnten, ansonst False.
+#     """
+#     #todo
+#     pass
 
 
 # todo Funktion überarbeiten
