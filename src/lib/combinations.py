@@ -28,6 +28,42 @@ class CombinationType(enum.IntEnum):
     STREET = 6  # Straße
     BOMB = 7  # Vierer-Bombe oder Farbbombe
 
+class CombinationTypeAndLength(enum.IntEnum):
+    """
+    Enum für Kombinationstypen inkl. Länge
+    """
+    PASS = 0  # Passen
+    SINGLE = 1  # Einzelkarte
+    PAIR = 2  # Paar
+    TRIPLE = 3  # Drilling
+    STAIR_04 = 4  # 2er-Treppe
+    STAIR_06 = 5  # 3er-Treppe
+    STAIR_08 = 6  # 4er-Treppe
+    STAIR_10 = 7  # 5er-Treppe
+    STAIR_12 = 8  # 6er-Treppe
+    STAIR_14 = 9  # 7er-Treppe
+    FULLHOUSE = 10  # Fullhouse
+    STREET_05 = 11  # 5er-Straße
+    STREET_06 = 12  # 6er-Straße
+    STREET_07 = 13  # 7er-Straße
+    STREET_08 = 14  # 8er-Straße
+    STREET_09 = 15  # 9er-Straße
+    STREET_10 = 16  # 10er-Straße
+    STREET_11 = 17  # 11er-Straße
+    STREET_12 = 18  # 12er-Straße
+    STREET_13 = 19  # 13er-Straße
+    STREET_14 = 20  # 14er-Straße
+    BOMB_04 = 21  # 4er-Bombe
+    BOMB_05 = 22  # 5er-Farbbombe
+    BOMB_06 = 23  # 6er-Farbbombe
+    BOMB_07 = 24  # 7er-Farbbombe
+    BOMB_08 = 25  # 8er-Farbbombe
+    BOMB_09 = 26  # 9er-Farbbombe
+    BOMB_10 = 27  # 10er-Farbbombe
+    BOMB_11 = 28  # 11er-Farbbombe
+    BOMB_12 = 29  # 12er-Farbbombe
+    BOMB_13 = 30  # 13er-Farbbombe
+
 
 Combination = Tuple[CombinationType, int, int]  # (Typ, Länge, Rang)
 """

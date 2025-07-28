@@ -25,7 +25,6 @@ class PrivateState:
     player_index: int  # muss im Konstruktor angegeben werden
 
     # --- Information über die aktuelle Runde ---
-    # todo Startkarten merken, dann kann man zusammen mit tricks die Runde nochmal spielen, ohne Tricks erst einmal rückwärts laufen lassen zu müssen.
     _hand_cards: Cards = field(default_factory=list)
     given_schupf_cards: Optional[Tuple[Card, Card, Card]] = None
     received_schupf_cards: Optional[Tuple[Card, Card, Card]] = None
@@ -38,21 +37,6 @@ class PrivateState:
     def __post_init__(self):
         if not (0 <= self.player_index <= 3):
             raise ValueError(f"player_index muss zwischen 0 und 3 liegen, nicht {self.player_index}")
-
-    @property
-    def hand_cards(self) -> Cards:
-        """Die aktuellen Handkarten des Spielers (absteigend sortiert, z.B. [(8,3), (2,4), (0,1)]."""
-        return self._hand_cards
-
-    @hand_cards.setter
-    def hand_cards(self, value: Cards):
-        """Setzt die Handkarten und leert den Combination-Cache."""
-        # Karten absteigend sortieren
-        self._hand_cards = value
-        self._hand_cards.sort(reverse=True)
-        self._combination_cache = []
-        self._partition_cache = []
-        self._partitions_aborted = True
 
     def reset_round(self):
         """Status für eine neue Runde zurücksetzen."""
@@ -76,6 +60,21 @@ class PrivateState:
             "given_schupf_cards": self.given_schupf_cards,
             "received_schupf_cards": self.received_schupf_cards,
         }
+
+    @property
+    def hand_cards(self) -> Cards:
+        """Die aktuellen Handkarten des Spielers (absteigend sortiert, z.B. [(8,3), (2,4), (0,1)]."""
+        return self._hand_cards
+
+    @hand_cards.setter
+    def hand_cards(self, value: Cards):
+        """Setzt die Handkarten und leert den Combination-Cache."""
+        # Karten absteigend sortieren
+        self._hand_cards = value
+        self._hand_cards.sort(reverse=True)
+        self._combination_cache = []
+        self._partition_cache = []
+        self._partitions_aborted = True
 
     @property
     def partner_index(self) -> int:

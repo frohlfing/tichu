@@ -8,7 +8,7 @@ import argparse
 import os
 from datetime import datetime
 from src import config
-from src.lib.bw import bw_logfiles, parse_bw_logfile, bw_count_logfiles
+from src.lib.bw import bw_logfiles, parse_bw_logfile, bw_count_logfiles, validate_bw_data
 from tqdm import tqdm
 
 
@@ -32,11 +32,10 @@ def main(args: argparse.Namespace):
     total = bw_count_logfiles(path, y1, m1, y2, m2)
     ok = True
     for game_id, year, month, content in tqdm(bw_logfiles(path, y1, m1, y2, m2), total=total, desc="Parse Logdateien", unit=" Datei"):
-        result = parse_bw_logfile(game_id, year, month, content)
-        if result is None:
+        bw_round_datas = parse_bw_logfile(game_id, year, month, content)
+        if bw_round_datas is None:
             ok = False
             save_dirty_logfile(game_id, year, month, content)
-            #break
 
     if ok:
         print("fertig")

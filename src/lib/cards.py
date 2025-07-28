@@ -55,7 +55,7 @@ deck = (  # const
     (13, CardSuit.SWORD), (13, CardSuit.PAGODA), (13, CardSuit.JADE), (13, CardSuit.STAR),  # König
     (14, CardSuit.SWORD), (14, CardSuit.PAGODA), (14, CardSuit.JADE), (14, CardSuit.STAR),  # As
     (15, CardSuit.SPECIAL),  # Drache
-    (16, CardSuit.SPECIAL),                                                                    # Phönix
+    (16, CardSuit.SPECIAL),  # Phönix
 )
 """
 Kartendeck (56 Karten)

@@ -27,7 +27,7 @@
 
 6.  [Arena-Betrieb (erste Ausbaustufe)](#6-arena-betrieb-erste-ausbaustufe)
     1.  [Zweck](#61-zweck)
-    2.  [Agenten (KI-gesteuerter Spieler)](#62-agenten-ki-gesteuerter-spieler)
+    2.  [Basisklassen für die Spieler](#62-basisklassen-für-die-spieler)
     3.  [Implementierung](#63-implementierung)
 
 7.  [Server-Betrieb (zweite Ausbaustufe)](#7-server-betrieb-zweite-ausbaustufe)
@@ -93,7 +93,7 @@ Die detaillierten Spielregeln für Tichu sind hier zu finden:
     *   Wird der MahJong gespielt, muss der Spieler, der den Mahjong ausgelegt hat, einen Kartenwert wünschen. Dieser Wunsch muss erfüllt werden, sobald die Regeln es zulassen.
     *   Wird der Hund gespielt, bekommt der Partner das Zugrecht.
     *   Der nächste Spieler wird aufgefordert, Karten abzulegen oder zu Passen.
-    *   Dies wird wiederholt, bis alle Mitspieler hintereinander gepasst haben, sodass der Spieler, der die letzten Karten gespielt hat, wieder an der Reihe ist.
+    *   Dies wird wiederholt, bis alle Mitspieler hintereinander gepasst haben, sodass der Spieler, der die obersten Karten gespielt hat, wieder an der Reihe ist.
 8.  **Stich kassieren:** Dieser Spieler darf die Karten kassieren. Falls der Stich mit dem Drachen gewonnen wurde, muss der Spieler den Stich an einen der Gegner verschenken.
 9. **Spieler scheidet aus:** Wenn ein Spieler keine Handkarten mehr hat, kann er in die Karten der (noch aktiven) Mitspieler schauen (die Karten sind für ihn nicht mehr verdeckt).
 10. **Runden-Ende:** Die Runde endet, wenn nur noch ein Spieler Karten hat oder ein Doppelsieg erzielt wird. Punkte werden vergeben. Wenn die Partie noch nicht entschieden ist (kein Team hat 1000 Punkte erreicht), startet eine neue Runde ein (beginnend bei Punkt 2: Kartenausgabe).
@@ -130,6 +130,7 @@ Diese Punkte stammen aus dem offiziellen Regelwerk:
 *   **Testing:** `pytest`, `coverage`.
 *   **Server:** `aiohttp`.
 *   **Frontend:** HTML, CSS, Vanilla-JavaScript.
+*   ** Jupyter Notebook:** Ausschließlich für einmalige Vorgänge, z.B. Datenanalyse.
 
 ### 3.2 Klassenhierarchie
 
@@ -389,26 +390,24 @@ Der Arena-Betrieb (`arena.py` gestartet über `bin/run_arena.py`) dient dazu, KI
 *   Sammeln von Spieldaten für das Training von Machine-Learning-Agenten.
 *   Performance-Benchmarking.
 
-### 6.2 Agenten (KI-gesteuerter Spieler)
-
-#### 6.2.1 Basisklassen
+### 6.2 Basisklassen für die Spieler
 
 *   `Player`: Definiert die Schnittstelle, die jeder Spieler (Mensch oder KI) implementieren muss (Methoden `schupf`, `announce`, `play`, `wish`, `choose_dragon_recipient`, `cleanup`).
 *   `Agent`: Erbt von `Player` und dient als Basis für alle KI-Implementierungen.
+*   `Peer`: Erbt von `Player`. Serverseitiger WebSocket-Endpunkt (für Ausbaustufe 2, siehe [Kapitel 7](#7-server-betrieb-zweite-ausbaustufe)).
+ 
+#### 6.2.1 Agenten (KI-gesteuerter Spieler)
 
-#### 6.2.2 Agenten-Typen
+*   **`RandomAgent`**: Wählt zufällige, aber regelkonforme Züge. Dient als Baseline/Referenz und zum Testen.
+*   **`RuleAgent`**: Regelbasierter Agent. Befolgt festgelegte Regeln aus empirischem Wissen.
+*   **`HeuristicAgent`**: Heuristischer Agent. Eine Weiterentwicklung des `RuleAgents`, der zusätzlich Wahrscheinlichkeiten einbezieht.
+*   **`NNetAgent`**: ("Neural Network Agent") Überbegriff für Agenten, die neuronale Netze verwenden. Lernt die Spielstrategie durch Trainingsdaten.
+    *   **`BehaviorAgent`**: ("Behavioral Cloning"). Lernt durch überwachtes Lernen aus Log-Daten (von bettspielwelt.de), menschliche Spielweisen zu imitieren.
+    *   **`AlphaZeroAgent`**: Verwendet den AlphaZero-Algorithmus, um durch selbständiges Spielen das vortrainierte Netz von `BehaviorAgent` zu optimieren.
+    *   **`MCTSAgent`**: Verwendet den Monte-Carlo Tree Search (MCTS), um durch selbständiges Spielen das vortrainierte Netz von `BehaviorAgent` zu optimieren.
+    *   **`DTAgent`**: Verwendet einen Decision Translator (DT), um auch den Verlauf einer Runde zu berücksichtigen.
 
-*   **`RandomAgent`**: Wählt zufällige, aber regelkonforme Züge. Dient als Baseline und zum Testen.
-*   **`RuleAgent`**: (Geplant/Konzept) Befolgt festgelegte Regeln.
-*   **`HeuristicAgent`**: (Geplant/Konzept) Berechnet (exakte oder durch Erfahrungswerte geschätzte) Wahrscheinlichkeiten für die Entscheidungsfindung.
-*   **`NNetAgent`**: Überbegriff für Agenten, die neuronale Netze verwenden.
-    *   **`BehaviorAgent`**: (Konzept) Lernt durch überwachtes Lernen aus Log-Daten (von bettspielwelt.de), menschliche Spielweisen zu imitieren.
-    *   **`AlphaZeroAgent`**: (Konzept) Verwendet Monte-Carlo Tree Search (MCTS) in Kombination mit neuronalen Netzen, um durch selbständiges Spielen das vortrainierte Netz von `BehaviorAgent` zu optimieren.
-
-Während ein **regelbasierter Agent** feste Regeln befolgt und ein **heuristischer Agent** zusätzlich Wahrscheinlichkeiten 
-einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
-
-#### 6.2.3 Zu treffende Entscheidungen
+#### 6.2.2 Zu treffende Entscheidungen
 
 | Action                  | Beschreibung                                                                                              | Welche Werte benötigt der Spieler für eine valide Antwort? | Bedingung (wann die Engine diese Anfrage stellt)                                                                                                                                                                                                                                             |
 |-------------------------|-----------------------------------------------------------------------------------------------------------|------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -417,7 +416,6 @@ einbezieht, lernt ein **NNetAgent** die Spielstrategie durch Trainingsdaten.
 | "play"                  | Der Spieler muss Karten ausspielen oder passen. Diese Aktion kann durch ein Interrupt abgebrochen werden. | `hand_cards`, `trick_combination`, `wish_value`            | `pub.current_turn_index == priv.player_index or priv.has_bomb`                                                                                                                                                                                                                               |
 | "wish"                  | Der Spieler muss sich einen Kartenwert wünschen.                                                          |                                                            | `pub.current_turn_index == priv.player_index and pub.wish_value == 0 and (1,0) in pub.trick_cards`                                                                                                                                                                                           |
 | "give_dragon_away"      | Die Engine fragt den Spieler, welcher Gegner den Drachen bekommen soll.                                   |                                                            | `pub.current_turn_index == priv.player_index and pub.dragon_recipient == -1 and pub.trick_combination == (1,1,15)`                                                                                                                                                                           |
-
 
 ### 6.3 Implementierung
 
@@ -428,8 +426,6 @@ Die `Arena`-Klasse:
 *   Unterstützt "Early Stopping", um den Wettkampf zu beenden, wenn eine bestimmte Gewinnrate erreicht oder uneinholbar wird.
 
 ## 7. Server-Betrieb (zweite Ausbaustufe)
-
-(in Entwicklung)
 
 ### 7.1 Query-Parameter der WebSocket-URL
 

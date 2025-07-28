@@ -31,13 +31,13 @@
  * @property {number} start_player_index - Index des Spielers mit Mahjong (-1 = steht noch nicht fest).
  * @property {Array<number>} count_hand_cards - Anzahl der Handkarten pro Spieler.
  * @property {Cards} played_cards - Bereits gespielte Karten in der Runde.
- * @property {Array<number>} announcements - Angekündigtes Tichu pro Spieler (0 = keine Ansage, 1 = einfaches, 2 = großes).
+ * @property {Array<number>} announcements - Tichu-Ansagen pro Spieler (0 = keine Ansage, 1 = einfaches, 2 = großes).
  * @property {number} wish_value - Gewünschter Kartenwert (2–14, 0 = kein Wunsch, negativ = erfüllt).
  * @property {number} dragon_recipient - Index des Spielers, der den Drachen geschenkt bekommen hat (-1 = noch niemand).
  * @property {number} trick_owner_index - Index des Spielers, der den Stich besitzt (-1 = leerer Stich).
- * @property {Cards} trick_cards - Die letzten Karten im Stich (nicht Passen).
+ * @property {Cards} trick_cards - Die obersten Karten im Stich.
  * @property {Combination} trick_combination - Typ, Länge und Rang des aktuellen Stichs ([0,0,0] = leerer Stich).
- * @property {number} trick_points - Punkte des aktuellen Stichs.
+ * @property {number} trick_points - Punkte im aktuellen Stich.
  * @property {Array<Trick>} tricks - Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen.
  * @property {Array<number>} points - Bisher kassierte Punkte in der aktuellen Runde pro Spieler.
  * @property {number} winner_index - Index des ersten Spielers, der fertig wurde (-1 = Runde läuft).
@@ -418,12 +418,12 @@ const State = (() => {
         _publicState.trick_combination = combination;
     }
     
-    /** @returns {number} trick_points - Punkte des aktuellen Stichs. */
+    /** @returns {number} trick_points - Punkte im aktuellen Stich. */
     function getTrickPoints(){
         return _publicState.trick_points;
     }
 
-    /** @param {number} points - Punkte des aktuellen Stichs. */
+    /** @param {number} points - Punkte im aktuellen Stich. */
     function setTrickPoints(points) {
         _publicState.trick_points = points;
     }

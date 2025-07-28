@@ -7,14 +7,16 @@ from src.lib.cards import Card, Cards, other_cards
 from src.lib.combinations import Combination, CombinationType
 from typing import List, Tuple, Dict, Any
 
-# Type-Alias für einen Spielzug (inkl. Passen)
+
 Turn = Tuple[int, Cards, Combination]  # Index des Spielers, Karten, Kombination (Typ, Länge, Rang)
+"""Type-Alias für einen Spielzug (inkl. Passen)"""
 
-# Type-Alias für einen Stich (Liste von Spielzügen)
 Trick = List[Turn]
+"""Type-Alias für einen Stich (Liste von Spielzügen)"""
 
-# Type-Alias für die Punktetabelle
 GameScore = Tuple[List[int], List[int]]
+"""Type-Alias für die Punktetabelle"""
+
 
 @dataclass
 class PublicState:
@@ -31,13 +33,13 @@ class PublicState:
     :ivar start_player_index: Index des Spielers, der den Mahjong hat oder hatte (-1 == steht noch nicht fest; es wurde noch nicht geschupft).
     :ivar count_hand_cards: Anzahl der Handkarten pro Spieler.
     :ivar played_cards: Bereits gespielte Karten in der aktuellen Runde [Card, ...].
-    :ivar announcements: Angekündigtes Tichu pro Spieler (0 == keine Ansage, 1 == einfaches Tichu, 2 == großes Tichu).
-    :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt).
+    :ivar announcements: Tichu-Ansagen pro Spieler (0 == keine Ansage, 1 == einfaches Tichu, 2 == großes Tichu).
+    :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt). todo umkodieren: -1 = "kein Wunsch geäußert", 0 = "Wunsch bereits erfüllt"
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == noch niemand).
     :ivar trick_owner_index: Index des Spielers, der die letzte Kombination gespielt hat, also Besitzer des Stichs ist (-1 == leerer Stich).
-    :ivar trick_cards: Die letzten Karten im Stich (nicht Passen) [Card, ...].
-    :ivar trick_combination: Typ, Länge und Rang des aktuellen Stichs ((0,0,0) == leerer Stich)
-    :ivar trick_points: Punkte des aktuellen Stichs.
+    :ivar trick_cards: Die obersten Karten im Stich [Card, ...].
+    :ivar trick_combination: Typ, Länge und Rang des aktuellen Stichs ((0,0,0) == leerer Stich).
+    :ivar trick_points: Punkte im aktuellen Stich.
     :ivar tricks: Liste der Stiche der aktuellen Runde. Der letzte Eintrag ist u.U. noch offen (wenn der Stich noch nicht einkassiert wurde).
     :ivar points: Bisher kassierte Punkte in der aktuellen Runde pro Spieler.
     :ivar winner_index: Index des Spielers, der zuerst in der aktuellen Runde fertig wurde (-1 == alle Spieler sind noch dabei).

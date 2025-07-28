@@ -4,15 +4,25 @@ Dieses Modul stellt Funktionen bereit, die mit Tichu-Logdateien vom Spiele-Porta
 
 __all__ = "download_logfiles_from_bw", "bw_logfiles", "bw_count_logfiles", "BWParserError", "parse_bw_logfile"
 
+import copy
 import enum
 import os
 import requests
 from dataclasses import dataclass, field
 from datetime import datetime
-from src.lib.cards import validate_card, validate_cards #, parse_card, parse_cards
+from src.lib.cards import validate_card, validate_cards, parse_card, parse_cards, Cards, CARD_MAH
+from src.lib.combinations import get_combination
+from src.public_state import PublicState
+from src.private_state import PrivateState
 from tqdm import tqdm
-from typing import List, Tuple, Union, Optional
+from typing import List, Tuple, Union, Optional, Generator, Dict, Any
 from zipfile import ZipFile, ZIP_DEFLATED
+
+# Type-Alias für eine strukturierte Aktion
+Action = Dict[str, Any]
+
+# Type-Alias für Daten einer Partie
+# BWGameData = List[BWRoundData]
 
 
 def download_logfiles_from_bw(path: str, y1: int, m1: int, y2: int, m2: int):
@@ -218,23 +228,19 @@ class BWRoundData:
     history: List[Union[Tuple[int, str], int]] = field(default_factory=list)
 
 
-# Type-Alias für Daten einer Partie
-# BWGameData = List[BWRoundData]
-
-
-def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List[BWRoundData]:
+def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> Optional[List[BWRoundData]]:
     """
     Parst eine Tichu-Logdatei vom Spiele-Portal "Brettspielwelt".
 
     Die Logdatei hält genau eine Partie fest. Zurückgegeben wird eine Liste mit den Rundendaten der Partie.
     Wenn die List syntaktisch fehlerhaft, also nicht wie erwartet aufgebaut ist, wird der Vorgang abgebrochen
-    und nur die fehlerfrei eingelesenen Runden zurückgegeben.
+    und None zurückgegeben. Bekannte Fehler werden abgefangen.
 
     :param game_id: Die ID der Partie.
     :param year: Das Jahr der Logdatei.
     :param month: Der Monat der Logdatei.
     :param content: Der Inhalt der Logdatei.
-    :return: Die erfolgreich eingelesenen Rundendaten der Partie.
+    :return: Die eingelesenen Rundendaten der Partie oder None bei unbekannten Fehlern.
     """
     result = []
     lines = content.splitlines()
@@ -251,7 +257,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
             i += 1
             if line != separator:
                 print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{separator}' erwartet")
-                return result
+                return None
 
             # Es folgt die Aufzählung der 4 Spieler mit ihren ersten 8 Handkarten, z.B.:
             # (0)Smocker Dr BD R9 G8 B6 G5 G4 Hu
@@ -269,24 +275,24 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     i += 1
                     if line != separator:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{separator}' erwartet")
-                        return result
+                        return None
                 for player_index in range(0, 4):
                     line = lines[i].strip()
                     i += 1
                     # Index des Spielers prüfen
                     if line[:3] != f"({player_index})":
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nIndex des Spielers erwartet")
-                        return result
+                        return None
                     j = line.find(" ")
                     if j == -1:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nLeerzeichen erwartet")
-                        return result
+                        return None
                     name = line[3:j].strip()
                     # Handkarten prüfen
                     cards = line[j + 1:].replace("10", "Z")
                     if not validate_cards(cards):
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nMindesten eine Karte ist ungültig")
-                        return result
+                        return None
                     # Name des Spielers und Handkarten übernehmen
                     if k == 8:
                         round_data.player_names[player_index] = name
@@ -305,7 +311,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     s = line[15:] if grand else line[7:]
                     if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
-                        return result
+                        return None
                     player_index = int(s[1])
                     # Tichu-Ansage übernehmen
                     round_data.tichu_positions[player_index] = -2 if grand else -1
@@ -322,7 +328,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     # zwar immer in der ersten Runde (Zeile 11). Der Fehler wurde wohl gefixt und wird nicht mehr erwartet.
                     return result
                 print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'Schupfen:' erwartet")
-                return result
+                return None
 
             # Jetzt werden die 4 Spieler mit den Tauschkarten aufgelistet, z.B.:
             # (0)Smocker gibt: charliexyz: Hu - Amb4lamps23: BD - Andreavorn: R9 -
@@ -336,17 +342,17 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                 # Index des Spielers prüfen
                 if line[:3] != f"({player_index})":
                     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nIndex des Spielers erwartet")
-                    return result
+                    return None
                 j = line.find(" gibt: ")
                 if j == -1:
                     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n' gibt:' erwartet")
-                    return result
+                    return None
                 # Anzahl der Tauschkarten prüfen
                 s = line[j + 7:].rstrip(" -").split(" - ")
                 j = len(s)
                 if j != 3:
                     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nDrei Tauschkarten erwartet")
-                    return result
+                    return None
                 cards = ["", "", ""]
                 for k in range(0, 2):
                     _player_name, card = s[k].split(": ")
@@ -354,7 +360,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     cards[k] = card.replace("10", "Z")
                     if not validate_card(cards[k]):
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nKarte {card} ist ungültig")
-                        return result
+                        return None
                 # Tauschkarte übernehmen
                 round_data.given_schupf_cards[player_index] = cards[0], cards[1], cards[2]
 
@@ -368,7 +374,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     # Index des Spielers prüfen
                     if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
-                        return result
+                        return None
                     player_index = int(s[1])
                     # Bomben-Besitzer übernehmen
                     round_data.bomb_owners[player_index] = True
@@ -380,7 +386,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
             i += 1
             if line != separator:
                 print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\n'{separator}' erwartet")
-                return result
+                return None
 
             # Nun werden die Spielzüge gezeigt. Entweder ein Spieler spielt Karten oder er passt, z.B.:
             # (1)charliexyz passt.
@@ -398,7 +404,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     j = line.find(" ")
                     if j == -1:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nLeerzeichen erwartet")
-                        return result
+                        return None
                     # Aktion prüfen
                     action = line[j + 1:].rstrip(".")  # 201205/1150668.tch endet in dieser Zeile, sodass der Punkt fehlt
                     if action == "passt":
@@ -409,7 +415,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                         cards = action.replace("10", "Z")
                         if not validate_cards(cards):
                             print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nMindesten eine Karte ist ungültig")
-                            return result
+                            return None
                         # Spielzug übernehmen
                         round_data.history.append((player_index, cards))
 
@@ -417,7 +423,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     wish = line[7:]
                     if wish not in ["2", "3", "4", "5", "6", "7", "8", "9", "10", "B", "D", "K", "A"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nWunsch: zwischen 2 und 14 erwartet")
-                        return result
+                        return None
                     # Wunsch übernehmen
                     round_data.wish_value = 14 if wish == "A" else 13 if wish == "K" else 12 if wish == "D" else 11 if wish == "B" else int(wish)
 
@@ -426,7 +432,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     s = line[7:]
                     if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
-                        return result
+                        return None
                     player_index = int(s[1])
                     # Tichu-Ansage übernehmen
                     round_data.tichu_positions[player_index] = len(round_data.history)
@@ -436,7 +442,7 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     s = line[11:]
                     if s[:3] not in ["(0)", "(1)", "(2)", "(3)"]:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpieler-Index erwartet")
-                        return result
+                        return None
                     player_index = int(s[1])
                     # Empfänger des Drachens übernehmen
                     round_data.dragon_recipient = player_index
@@ -445,17 +451,17 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                     values = line[10:].split(" - ")
                     if len(values) != 2:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nZwei Werte getrennt mit ' - ' erwartet")
-                        return result
+                        return None
                     try:
                         round_data.score = int(values[0]), int(values[1])
                     except ValueError:
                         print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nZwei Integer erwartet")
-                        return result
+                        return None
                     break  # While-Schleife für Rundenverlauf verlassen
 
                 else:
                     print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nSpielzug erwartet")
-                    return result
+                    return None
 
             # Rundenverlauf Ende
 
@@ -466,11 +472,11 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
                 return result
             else: # Runde wurde zu Ende gespielt, der Fehler liegt woanders
                 print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {lines[i]}\nUnbekannter Fehler: {e}")
-                return result
+                return None
 
         except Exception as e:
             print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {lines[i]}\nUnbekannter Fehler: {e}")
-            return result
+            return None
 
         # Runde ist beendet.
 
@@ -484,15 +490,126 @@ def parse_bw_logfile(game_id: int,  year: int, month: int, content: str) -> List
     return result
 
 
-def validate_bw_data(_data: List[BWRoundData]) -> bool:
+def validate_bw_data(_datas: List[BWRoundData]) -> bool:
     """
     Prüft, ob die Daten der gegebenen Partie laut Regelwerk plausibel sind.
 
     Bei Bedarf werden die Daten korrigiert, sofern möglich.
 
-    :param _data: Die Daten der Partie (mutable).
+    :param _datas: Die Daten der Partie (mutable).
     :return: True, wenn die Daten laut Regelwerk plausibel sind oder korrigiert werden konnten, ansonst False.
     """
     #todo
     pass
 
+
+# todo Funktion überarbeiten
+def replay_round(round_data: BWRoundData) -> Generator[Tuple[PublicState, List[PrivateState], Action], None, None]:
+    """
+    Spielt eine Runde aus BWRoundData nach und gibt für jeden Entscheidungspunkt
+    den Zustand (PublicState, List[PrivateState]) und die ausgeführte Aktion zurück.
+
+    :param round_data: Die geparsten Daten einer einzelnen Runde.
+    :return: Ein Generator, der (pub_state, priv_states, action) Tupel liefert.
+    """
+
+    # 1. Initialisiere die Zustände aus den Start-Daten der Runde
+    # -----------------------------------------------------------
+
+    pub = PublicState(
+        table_name="bw_replay",
+        player_names=round_data.player_names,
+        game_score=(round_data.score_entry, (0, 0))  # Simulierter Spielstand
+    )
+    privs = [PrivateState(player_index=i) for i in range(4)]
+
+    # Setze die Handkarten vor dem Schupfen
+    for i in range(4):
+        privs[i].hand_cards = parse_cards(round_data.start_hands[i])
+        pub.count_hand_cards[i] = len(privs[i].hand_cards)
+        if CARD_MAH in privs[i].hand_cards:
+            pub.start_player_index = i
+            pub.current_turn_index = i
+
+    # TODO: Grand-Tichu Entscheidung als erste Aktion yielden (optional)
+
+    # 2. Simuliere das Schupfen
+    # --------------------------
+    # TODO: Schupfen als Aktion yielden (optional, aber gut für ein Schupf-Modell)
+
+    given_cards = [parse_cards(" ".join(c)) for c in round_data.given_schupf_cards]
+    received_cards = [[], [], [], []]
+    # Berechne, wer welche Karten erhält
+    for giver_idx, cards_given in enumerate(given_cards):
+        if not cards_given: continue  # Manchmal fehlen Schupf-Daten
+        # [an rechten Gegner, an Partner, an linken Gegner]
+        privs[giver_idx].given_schupf_cards = tuple(cards_given)
+        received_cards[(giver_idx + 1) % 4].append(cards_given[0])  # Rechter Gegner
+        received_cards[(giver_idx + 2) % 4].append(cards_given[1])  # Partner
+        received_cards[(giver_idx + 3) % 4].append(cards_given[2])  # Linker Gegner
+
+    # Aktualisiere die Handkarten nach dem Schupfen
+    for i in range(4):
+        privs[i].hand_cards = [card for card in privs[i].hand_cards if card not in given_cards[i]]
+        privs[i].hand_cards.extend(received_cards[i])
+        privs[i].hand_cards.sort(reverse=True)
+        privs[i].received_schupf_cards = tuple(received_cards[i])
+        pub.count_hand_cards[i] = len(privs[i].hand_cards)
+
+    # 3. Spiele die History Zug für Zug nach
+    # ---------------------------------------
+
+    trick_owner = -1
+
+    for move in round_data.history:
+        player_index = -1
+
+        # Zustand vor dem Zug sichern
+        pub_before_move = copy.deepcopy(pub)
+        privs_before_move = copy.deepcopy(privs)
+
+        # Aktion extrahieren und Zustand aktualisieren
+        action: Action = {}
+
+        if isinstance(move, int):  # Passen
+            player_index = move
+            pub.current_turn_index = (player_index + 1) % 4
+            action = {'type': 'pass', 'player_index': player_index}
+
+        elif isinstance(move, tuple):  # Karten spielen
+            player_index, cards_str = move
+            played_cards = parse_cards(cards_str)
+
+            # Kombination ermitteln
+            combination = get_combination(list(played_cards), pub.trick_combination[2])
+
+            action = {'type': 'play', 'player_index': player_index, 'cards': played_cards, 'combination': combination}
+
+            # Update States
+            privs[player_index].hand_cards = [c for c in privs[player_index].hand_cards if c not in played_cards]
+            pub.count_hand_cards[player_index] -= len(played_cards)
+            pub.played_cards.extend(played_cards)
+
+            # Stich-Logik
+            if trick_owner == player_index or trick_owner == -1:  # Neuer Stich
+                trick_owner = player_index
+            else:  # Stich wird fortgesetzt
+                pass  # trick_owner bleibt
+
+            all_passed = True  # Annahme für die Rekonstruktion
+            # TODO: Hier muss die Logik zur Stich-Erkennung verfeinert werden.
+            # Aus den Logs allein ist schwer zu sehen, wann ein Stich abgeräumt wird.
+            # Wir nehmen an: Wenn der `trick_owner` wieder an der Reihe ist, räumt er ab.
+            # Für die Rekonstruktion des Zustands *vor* dem Zug ist das aber weniger wichtig.
+
+            pub.trick_owner_index = player_index
+            pub.trick_combination = combination
+            pub.current_turn_index = (player_index + 1) % 4
+
+        if player_index != -1:
+            # Gib den Zustand VOR der Aktion und die Aktion selbst zurück
+            yield (pub_before_move, privs_before_move, action)
+
+    # TODO: Dragon-Geschenk und Tichu als Aktionen einbauen.
+    # Man muss die `tichu_positions` und `dragon_recipient` Felder auswerten
+    # und an der richtigen Stelle in der History einfügen.
