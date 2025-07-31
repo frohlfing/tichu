@@ -82,7 +82,7 @@ Input-Sequenz: [(RTG_0, Zustand_1, Aktion_1), (RTG_1, Zustand_2, Aktion_2), ...,
    *   **Aktion_t:** Dies wäre der Label-Vektor (57 Features), der beschreibt, welche Aktion zum Zeitpunkt t ausgeführt wurde.
 
 Was ändert sich?
-1.  **Datenaufbereitung:** Anstatt einzelne (Zustand, Aktion)-Paare zu speichern, müssten wir ganze **Runden-Trajektorien** speichern: eine Liste von (Zustand, Aktion, Return-to-Go)-Tupeln für jede Runde. Deine BWRoundData ist dafür perfekt. Wir müssten nur den replay_round-Simulator so anpassen, dass er diese Trajektorien erzeugt.
+1.  **Datenaufbereitung:** Anstatt einzelne (Zustand, Aktion)-Paare zu speichern, müssten wir ganze **Runden-Trajektorien** speichern: eine Liste von (Zustand, Aktion, Return-to-Go)-Tupeln für jede Runde. Deine BWRoundData ist dafür perfekt. Wir müssten nur den Replay-Round-Simulator so anpassen, dass er diese Trajektorien erzeugt.
 2.  **Modellarchitektur:** Wir würden den MLP durch eine Transformer-Architektur ersetzen.
 
 Das Netz nennen wir im Python-Code `DTNet`, den Agenten `DTAgent`.
@@ -406,7 +406,7 @@ Der Datencontainer `BWRoundData` stellt alle aus der Logdatei verfügbaren Daten
 - `bomb_owners: List[str]` - Gibt für jeden Spieler an, ob eine Bombe auf der Hand ist.
 - `wish_value: int` - Wunsch (2 bis 14; 0 == kein Wunsch geäußert).
 - `dragon_recipient: int` - Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde bis zum Schluss nicht verschenkt).
-- `score_entry: Tuple[int, int]` - Punkte dieser Runde pro Team (Team20, Team31).
+- `score: Tuple[int, int]` - Punkte dieser Runde pro Team (Team20, Team31).
 - `history: List[Union[Tuple[int, str], int]]` - Spielzüge. Jeder Spielzug ist ein Tuple aus Spieler-Index und Karten, oder beim Passen nur der Spieler-Index.
 - `year: int` - Jahr der Logdatei.
 - `month: int` - Monat der Logdatei.
@@ -483,7 +483,7 @@ Gute Spieler finden
 
 #### 6.3.2 Analyse-Ergebnis
 
-Die Analyse der Datenbank ist im Jupyter Notebook [Datenanalyse.ipynb](../jpynb/Datenanalyse.ipynb) dokumentiert.
+Die Analyse der Datenbank ist im Jupyter Notebook [BW_Analyse.ipynb](../notebooks/BW_Analyse.ipynb) dokumentiert.
 
 Hier sind die Ergebnisse zusammengefasst:
 

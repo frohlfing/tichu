@@ -127,7 +127,7 @@ def stringify_type(t: CombinationType, m: int = None) -> str:
     return label
 
 
-def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False) -> Combination:
+def get_combination(cards: Cards, trick_rank: int, shift_phoenix: bool = False) -> Combination:
     """
     Ermittelt die Kombination der gegebenen Karten.
 
@@ -136,7 +136,7 @@ def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False)
     Wenn `shift_phoenix` gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
 
     :param cards: Karten der Kombination; werden absteigend sortiert (mutable!).
-    :param trick_value: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist).
+    :param trick_rank: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist).
     :param shift_phoenix: Wenn True, wird der Phönix eingereiht (kostet etwas Zeit).
     :return: Die Kombination (Typ, Länge, Rang).
     """
@@ -168,8 +168,8 @@ def get_combination(cards: Cards, trick_value: int, shift_phoenix: bool = False)
     # Rang ermitteln
     if t == CombinationType.SINGLE:
         if cards[0] == CARD_PHO:
-            assert 0 <= trick_value <= 15
-            v = trick_value if trick_value else 1  # ist um 0.5 größer als der Stich (wir runden ab, da egal)
+            assert 0 <= trick_rank <= 15
+            v = trick_rank if trick_rank else 1  # ist um 0.5 größer als der Stich (wir runden ab, da egal)
         else:
             v = cards[0][0]
     elif t == CombinationType.FULLHOUSE:

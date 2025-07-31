@@ -133,6 +133,9 @@ if __name__ == "__main__":
        asyncio.run(main(parser.parse_args()), debug=config.DEBUG)
     except Exception as e_top:
         logger.exception(f"Unerwarteter Fehler auf Top-Level: {e_top}")
+        if config.DEBUG:
+            import traceback
+            traceback.print_exc()
         sys.exit(1) # Beenden mit Fehlercode
     finally:
         logger.debug("Server-Prozess beendet.")

@@ -356,6 +356,7 @@ class GameEngine:
                         pub.start_player_index = player_index
                         pub.current_turn_index = player_index
                         break
+                assert 0 <= pub.start_player_index <= 3
 
                 if clients_joined:
                     await self._broadcast("start_playing", {"start_player_index": pub.start_player_index})  # wird nur einmal gesendet!
@@ -366,18 +367,17 @@ class GameEngine:
                 assert check_deck == list(deck), f"{stringify_cards(check_deck)} != {stringify_cards(deck)}"
 
                 # Los geht's - das eigentliche Spiel kann beginnen.
-                assert 0 <= pub.current_turn_index <= 3
                 while not pub.is_round_over:
                     assert 0 <= pub.count_hand_cards[pub.current_turn_index] <= 14
 
                     # Wenn kein Anspiel, und falls der aktuelle Spieler den Stich kassieren darf oder aktiv an der Runde beteiligt ist (noch Handkarten hat),
-                    # jeden Mitspieler fragen, ob er eine Bombe werfen will.
+                    # jeden Mitspieler fragen, ob er eine Bombe werfen will. Wenn der Drache liegt, bekommt auch der aktuelle Spieler die Möglichkeit, eine Bombe zu werfen.
                     bomb: Optional[Tuple[Cards, Combination]] = None
                     if pub.trick_combination[2] > 0 and (pub.trick_owner_index == pub.current_turn_index or pub.count_hand_cards[pub.current_turn_index] > 0):
                         first = self._random.integer(0, 4)  # zufällige Zahl zwischen 0 und 3
                         for i in range(4):
                             player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
-                            if player_index != pub.current_turn_index and self._private_states[player_index].has_bomb:
+                            if (player_index != pub.current_turn_index or pub.trick_combination == (CombinationType.SINGLE, 1, 15)) and self._private_states[player_index].has_bomb:
                                 bomb = await self._players[player_index].play()
                                 if bomb[1][0] == CombinationType.PASS:
                                     bomb = None
@@ -530,9 +530,7 @@ class GameEngine:
                         await self._broadcast("player_turn_changed", {"current_turn_index": pub.current_turn_index})
 
                 # Runde ist beendet
-
                 # Endwertung der Runde
-                #todo in der Endwertung pub.points nicht ändern (dann kann man besser nachrechnen, ob der Score richtig ist
 
                 assert pub.is_round_over
                 if pub.is_double_victory:
@@ -681,7 +679,7 @@ class GameEngine:
         if clients_joined:
             await self._broadcast("hand_cards_dealt", {"player_index": player_index, "count": n})
 
-        # Möchte ein Spieler ein großes Tichu ansagen?
+        # Möchte der Spieler ein großes Tichu ansagen?
         if not pub.announcements[player_index]:
             if await player.announce():
                 pub.announcements[player_index] = 2

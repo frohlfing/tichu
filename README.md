@@ -25,12 +25,13 @@ Tichu ist ein Kartenspiel, das ursprünglich aus China stammt und Ähnlichkeiten
 
 ## Aktueller Status
 
-*   **Kern-Spiellogik:** Weitgehend implementiert und durch Unit-Tests abgedeckt.
-*   **Arena-Modus:** Funktional und wird für die Entwicklung und das Testen von Agenten verwendet. Kann Spiele parallel ausführen.
+*   **Kern-Spiellogik:** Implementiert.
+*   **Arena-Modus:** Implementiert.
 *   **Agenten:**
-    *   `RandomAgent`: Implementiert (spielt zufällige, gültige Züge).
-    *   Weitere Agenten (heuristisch, neuronal) sind geplant.
-*   **Server-Modus (Live-Spiel):** Weitgehend implementiert.
+    *   RandomAgent: Implementiert.
+    *   HeuristicAgent: In der Umsetzung.
+    *   NNetAgent: In der Umsetzung.
+*   **Server-Modus (Live-Spiel):** Implementiert.
 *   **Frontend:** Weitgehend implementiert.
 
 ## Systemanforderungen
@@ -38,9 +39,9 @@ Tichu ist ein Kartenspiel, das ursprünglich aus China stammt und Ähnlichkeiten
 *   **Entwicklung:** Getestet auf Windows 11.
 *   **Zielplattform (Server):** Raspberry Pi 5 (Bookworm OS).
 
-## Technische Dokumentation
+## Projektdokumentation
 
-Eine detailliertere technische Dokumentation zur Architektur, den Modulen und dem Spielablauf befindet sich in [Technische_Dokumentation.md](docs/Technische_Dokumentation.md).
+Eine detailliertere technische Dokumentation zur Architektur, den Modulen und dem Spielablauf befindet sich in [Projektdokumentation.md](docs/Projektdokumentation.md).
 
 ## Quellen
 

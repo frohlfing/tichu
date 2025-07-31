@@ -379,11 +379,11 @@ const Lib = (() => {
      * Wenn `shiftPhoenix` gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
      *
      * @param {Cards} cards - Karten der Kombination; werden absteigend sortiert (mutable!).
-     * @param {number} trickValue - Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist).
+     * @param {number} trickRank - Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist).
      * @param {boolean} [shiftPhoenix] - Wenn True, wird der Phönix eingereiht.
      * @returns {Combination} Die Kombination (Typ, Länge, Rang).
      */
-    function getCombination(cards, trickValue, shiftPhoenix = false) {
+    function getCombination(cards, trickRank, shiftPhoenix = false) {
         const n = cards.length;
         if (n === 0) {
             return /** @type Combination */ [CombinationType.PASS, 0, 0];
@@ -423,7 +423,7 @@ const Lib = (() => {
         let /** @type number */ v;
         if (t === CombinationType.SINGLE) {
             if (isCardEqual(cards[0], CARD_PHO)) {
-                v = trickValue ? trickValue : 1;  // ist um 0.5 größer als der Stich (wir runden ab, da egal)
+                v = trickRank ? trickRank : 1;  // ist um 0.5 größer als der Stich (wir runden ab, da egal)
             }
             else {
                 v = cards[0][0];

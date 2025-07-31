@@ -212,12 +212,13 @@ Diese Struktur trennt klar zwischen:
     │   ├── assets.py               # statische Assets (z.B. Bilder) für die Dokumentation
     │   │   └── coverage.svg
     │   ├── .gitkeep
-    │   ├── benchmark.txt
-    │   ├── Technische_Dokumentation.md
+    │   ├── Benchmark.txt
+    │   ├── Projektdokumentation.md
     │   ├── Tichu_Pocket_Regeln.md
-    │   ├── Todos.md
-    │   └── Zustandsänderung bei Ereignis.xlsx
-    ├── poc/                        # Enthält Proof-of-Concept-Skripte
+    │   └── Todos.md
+    ├── notebooks/                  # Jupyter Notebooks, z.B. für Datenanalyse oder PoC
+    │   └── BW_01_Analyse.jpynb
+    ├── poc/                        # Proof-of-Concept-Skripte
     │   ├── arena_sync/
     │   │   └── main.py
     │   ├── benchmark.py
@@ -846,11 +847,12 @@ web/fonts/architect-s-daughter
     ```
 4.  Abhängigkeiten installieren:
     ```bash
-    pip pip install -r requirements.txt
-     
-    # oder mit Hilfe der `pyproject.toml`-Datei (-e steht für "editable": src wird verlinkt, nicht kopiert):
     pip install -e .
-    ```
+      ```
+    "-e" steht für "editable": `src` wird verlinkt, nicht kopiert
+    
+    Dabei wird die Projektkonfiguration aus `pyproject.toml`-Datei gelesen. Diese wiederrum referenziert auf die Abhängigkeitsliste `requirements.txt`.  
+    
     Mit `pip freeze > requirements.txt` kann die Liste der Abhängigkeiten aktualisiert werden.
 
 5.  **Arena starten:**
@@ -971,6 +973,11 @@ Zur Dokumentation von JavaScript wird [JSDoc](https://jsdoc.app/) angewendet.
 Interne Funktionen und Variablen werden mit einem führenden Unterstrich gekennzeichnet.
 
 Aufzählungen (Enum) sind singular (`ErrorCode`, nicht `ErrorCodes`) 
+
+#### Dokumentation und Jupyter Notebooks
+
+*   Die Dateinamen sind in Title_Case geschrieben. 
+*   Zusammenhängende Dokumente und Notebooks bekommen sofern sinnvoll ein Präfix und eine Nummerierung, z.B. `BW_01_Analyse.jpynb`.
 
 ### A4.3 Type-Hints
 

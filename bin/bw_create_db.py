@@ -10,11 +10,9 @@ import sqlite3
 from datetime import datetime
 from src import config
 from src.lib.cards import parse_card
-from src.lib.bw import bw_logfiles, parse_bw_logfile, bw_count_logfiles, BWRoundData
+from src.lib.bw import BWRoundData, BWReplayError, bw_logfiles, bw_count_logfiles, parse_bw_logfile, replay_play
 from typing import List
 from tqdm import tqdm
-
-DB_PATH = os.path.join(config.DATA_PATH, "bw", "bw_analysis.sqlite")
 
 
 def create_tables(conn: sqlite3.Connection):
@@ -265,10 +263,132 @@ def process_and_insert_data(cursor: sqlite3.Cursor, all_rounds_data: List[BWRoun
 
 def save_dirty_logfile(game_id, year, month, content):
     """Speichert Log-Dateien, die nicht geparst werden konnten."""
-    file_path = os.path.join(config.DATA_PATH, f"bw/dirty/{year:04d}{month:02d}/{game_id}.tch")
+    file_path = os.path.join(config.DATA_PATH, f"bw/dirty/{year:04d}{month:02d}-{game_id}.tch")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "w") as f:
         f.write(content)
+
+
+def run_bw_parser(args: argparse.Namespace):
+    """Testdurchlauf für den BW-Parser"""
+
+    # Argumente auswerten
+    y1, m1 = map(int, args.ym1.split("-"))
+    y2, m2 = map(int, args.ym2.split("-"))
+    path = args.path # Pfad zu den heruntergeladenen Log-Archiven
+
+    print(f"Testdurchlauf für den BW-Parser von {y1:04d}-{m1:02d} bis {y2:04d}-{m2:02d}")
+
+    # Fortschrittsbalken
+    progress_bar = tqdm(
+        bw_logfiles(path, y1, m1, y2, m2),
+        total=bw_count_logfiles(path, y1, m1, y2, m2),
+        desc="Verarbeite Log-Dateien",
+        unit=" Datei"
+    )
+
+    error_counters = {}
+
+    c = 0
+    fails = 0
+    for game_id, year, month, content in progress_bar:
+        # if game_id not in [2067904]: continue
+
+        c += 1
+        all_rounds_data: List[BWRoundData] = parse_bw_logfile(game_id, year, month, content)
+        if all_rounds_data is None:
+            save_dirty_logfile(game_id, year, month, content)
+            return
+
+        for round_data in all_rounds_data:
+            if round_data.parser_error:
+                if round_data.parser_error not in error_counters:
+                    error_counters[round_data.parser_error] = 0
+                error_counters[round_data.parser_error] += 1
+
+        try:
+            #all_rounds_data = [all_rounds_data[5]]
+            for _action in replay_play(all_rounds_data):
+                pass
+            progress_bar.set_postfix({
+                "Partien": c,
+                "Fehler": fails,
+                "Fehlerrate": f"{fails/c:.2%}"
+            })
+        except BWReplayError as e:
+            error = str(e)
+            if error not in error_counters:
+                error_counters[error] = 0
+            error_counters[error] += 1
+            #print(e)
+            save_dirty_logfile(game_id, year, month, content)
+            fails += 1
+
+    print("fertig")
+    print(error_counters)
+
+
+
+
+
+def run_replay_play(args: argparse.Namespace):
+    """Testdurchlauf für den Replay-Round-Simulator"""
+
+    # Argumente auswerten
+    y1, m1 = map(int, args.ym1.split("-"))
+    y2, m2 = map(int, args.ym2.split("-"))
+    path = args.path # Pfad zu den heruntergeladenen Log-Archiven
+
+    print(f"Testdurchlauf für den Replay-Round-Simulator von {y1:04d}-{m1:02d} bis {y2:04d}-{m2:02d}")
+
+    # Fortschrittsbalken
+    progress_bar = tqdm(
+        bw_logfiles(path, y1, m1, y2, m2),
+        total=bw_count_logfiles(path, y1, m1, y2, m2),
+        desc="Verarbeite Log-Dateien",
+        unit=" Datei"
+    )
+
+    error_counters = {}
+
+    c = 0
+    fails = 0
+    for game_id, year, month, content in progress_bar:
+        # if game_id not in [2067904]: continue
+
+        all_rounds_data: List[BWRoundData] = parse_bw_logfile(game_id, year, month, content)
+        if all_rounds_data is None:
+            print("Parserfehler!")
+            save_dirty_logfile(game_id, year, month, content)
+            return
+
+        for round_data in all_rounds_data:
+            if round_data.parser_error:
+                if round_data.parser_error not in error_counters:
+                    error_counters[round_data.parser_error] = 0
+                error_counters[round_data.parser_error] += 1
+
+        c += 1
+        try:
+            #all_rounds_data = [all_rounds_data[5]]
+            for _action in replay_play(all_rounds_data):
+                pass
+            progress_bar.set_postfix({
+                "Partien": c,
+                "Fehler": fails,
+                "Fehlerrate": f"{fails/c:.2%}"
+            })
+        except BWReplayError as e:
+            error = str(e)
+            if error not in error_counters:
+                error_counters[error] = 0
+            error_counters[error] += 1
+            #print(e)
+            save_dirty_logfile(game_id, year, month, content)
+            fails += 1
+
+    print("fertig")
+    print(error_counters)
 
 
 def main(args: argparse.Namespace):
@@ -276,26 +396,23 @@ def main(args: argparse.Namespace):
     # Argumente auswerten
     y1, m1 = map(int, args.ym1.split("-"))
     y2, m2 = map(int, args.ym2.split("-"))
-    path = args.path
+    path = args.path  # Pfad zu den heruntergeladenen Log-Archiven
+    db_file = os.path.join(config.DATA_PATH, "bw", "bw_analysis.sqlite")
 
     # Import starten
     print(f"Importiere Log-Dateien von {y1:04d}-{m1:02d} bis {y2:04d}-{m2:02d}")
-    print(f"Datenbank-Datei: {DB_PATH}")
-
-    # Stelle sicher, dass das DB-Verzeichnis existiert
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    print(f"Datenbank-Datei: {db_file}")
 
     # Verbindung zur Datenbank herstellen und Tabellen einrichten
-    conn = sqlite3.connect(DB_PATH)
+    os.makedirs(os.path.dirname(db_file), exist_ok=True)
+    conn = sqlite3.connect(db_file)
     create_tables(conn)
     cursor = conn.cursor()
 
-    total_files = bw_count_logfiles(path, y1, m1, y2, m2)
-
-    # Verwende tqdm für den Fortschrittsbalken
+    # Fortschrittsbalken
     progress_bar = tqdm(
         bw_logfiles(path, y1, m1, y2, m2),
-        total=total_files,
+        total=bw_count_logfiles(path, y1, m1, y2, m2),
         desc="Verarbeite Log-Dateien",
         unit=" Datei"
     )
@@ -303,15 +420,15 @@ def main(args: argparse.Namespace):
     log_file_counter = 0
     try:
         for game_id, year, month, content in progress_bar:
-            # 1. Log-Datei parsen
+            # Log-Datei parsen
             all_rounds_data: List[BWRoundData] = parse_bw_logfile(game_id, year, month, content)
             if all_rounds_data is None:
+                print("Parserfehler!")
                 save_dirty_logfile(game_id, year, month, content)
                 continue
 
-            # 2. Daten verarbeiten und in DB einfügen
-            log_filepath = f"{year:04d}{month:02d}/{game_id}.tch"
-            process_and_insert_data(cursor, all_rounds_data, log_filepath)
+            # Daten verarbeiten und in DB einfügen
+            process_and_insert_data(cursor, all_rounds_data)
 
             # Transaktion alle 1000 Dateien committen, um die Performance zu verbessern
             log_file_counter += 1
@@ -343,4 +460,6 @@ if __name__ == "__main__":
     parser.add_argument("--path", default=path_, help="Pfad zu den heruntergeladenen Log-Archiven")
 
     # Main-Routine starten
-    main(parser.parse_args())
+    run_bw_parser(parser.parse_args())
+    run_replay_play(parser.parse_args())
+    #main(parser.parse_args())
