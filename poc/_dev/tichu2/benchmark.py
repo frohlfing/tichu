@@ -4,9 +4,10 @@ from tichu.cards import *
 from tichu.combinations import *
 from timeit import timeit
 
+# from time import time
+# time_start = time()
+# print(f"{(time() - time_start) * 1000:.3f} ms")  # duration
 
-# time_start = time.time()
-# delay = time.time() - time_start
 
 #
 # Cards

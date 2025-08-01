@@ -82,7 +82,7 @@ Input-Sequenz: [(RTG_0, Zustand_1, Aktion_1), (RTG_1, Zustand_2, Aktion_2), ...,
    *   **Aktion_t:** Dies wäre der Label-Vektor (57 Features), der beschreibt, welche Aktion zum Zeitpunkt t ausgeführt wurde.
 
 Was ändert sich?
-1.  **Datenaufbereitung:** Anstatt einzelne (Zustand, Aktion)-Paare zu speichern, müssten wir ganze **Runden-Trajektorien** speichern: eine Liste von (Zustand, Aktion, Return-to-Go)-Tupeln für jede Runde. Deine BWRoundData ist dafür perfekt. Wir müssten nur den Replay-Round-Simulator so anpassen, dass er diese Trajektorien erzeugt.
+1.  **Datenaufbereitung:** Anstatt einzelne (Zustand, Aktion)-Paare zu speichern, müssten wir ganze **Runden-Trajektorien** speichern: eine Liste von (Zustand, Aktion, Return-to-Go)-Tupeln für jede Runde. Deine BWRoundData ist dafür perfekt. Wir müssten nur den Replay-Simulator so anpassen, dass er diese Trajektorien erzeugt.
 2.  **Modellarchitektur:** Wir würden den MLP durch eine Transformer-Architektur ersetzen.
 
 Das Netz nennen wir im Python-Code `DTNet`, den Agenten `DTAgent`.
