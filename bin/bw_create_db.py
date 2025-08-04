@@ -52,14 +52,14 @@ def run_bw_validator(args: argparse.Namespace):
         try:
             bw_log = parse_bw_logfile(game_id, year, month, content)
             rounds += len(bw_log)
-            datasets = validate_bw_log(bw_log)
-            if any(ds.error_code != BWErrorCode.NO_ERROR for ds in datasets):
-                fails += 1
-            for ds in datasets:
-                if ds.error_code != BWErrorCode.NO_ERROR:
-                    if ds.error_code not in error_summary:
-                        error_summary[ds.error_code] = 0
-                    error_summary[ds.error_code] += 1
+            # datasets = validate_bw_log(bw_log)
+            # if any(ds.error_code != BWErrorCode.NO_ERROR for ds in datasets):
+            #     fails += 1
+            # for ds in datasets:
+            #     if ds.error_code != BWErrorCode.NO_ERROR:
+            #         if ds.error_code not in error_summary:
+            #             error_summary[ds.error_code] = 0
+            #         error_summary[ds.error_code] += 1
         except BWParserError as e:
             print(e)
             save_dirty_logfile(game_id, year, month, content)

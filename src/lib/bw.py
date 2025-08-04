@@ -12,9 +12,6 @@ import os
 import requests
 from dataclasses import dataclass, field
 from datetime import datetime
-
-from scipy.special import log_expit
-
 from src.lib.cards import validate_card, validate_cards, parse_card, parse_cards, Cards, CARD_MAH, CARD_DRA, deck, stringify_cards, sum_card_points, is_wish_in, other_cards, stringify_card
 from src.lib.combinations import get_trick_combination, Combination, CombinationType, build_action_space, build_combinations
 from src.public_state import PublicState
@@ -197,7 +194,7 @@ class BWErrorCode(enum.IntEnum):
     # 1) Karten
 
     INVALID_CARD_LABEL = 20
-    """Ungültiges Karten-Label."""
+    """Unbekanntes Kartenlabel."""
 
     INVALID_CARD_COUNT = 21
     """Anzahl der Karten ist fehlerhaft."""
@@ -217,7 +214,7 @@ class BWErrorCode(enum.IntEnum):
     """Passen nicht möglich."""
 
     WISH_NOT_FOLLOWED = 31
-    """Wunsch nicht beachtet (hätte erfüllt werden können)."""
+    """Wunsch nicht beachtet."""
 
     COMBINATION_NOT_PLAYABLE = 32
     """Kombination nicht spielbar."""
@@ -232,7 +229,7 @@ class BWErrorCode(enum.IntEnum):
     """Es fehlen Einträge in der Historie."""
 
     HISTORY_TOO_LONG = 36
-    """Karten ausgespielt, obwohl die Runde vorbei ist (wird ignoriert)."""
+    """Karten ausgespielt, obwohl die Runde vorbei ist (wurde korrigiert)."""
 
     # 3) Drache verschenken
 
@@ -260,16 +257,20 @@ class BWErrorCode(enum.IntEnum):
 
     # 8) Tichu-Ansage
 
+    ANNOUNCEMENT_WRONG_ORDER = 70
+    """Tichu-Ansage und Karten ausspielen in falscher Reihenfolge (wurde korrigiert)."""
+
     ANNOUNCEMENT_NOT_POSSIBLE = 70
     """Tichu-Ansage an der geloggten Position nicht möglich (wurde korrigiert)."""
 
     # 6) Endergebnis
 
     SCORE_MISMATCH = 80
-    """Rundenergebnis stimmt nicht."""
+    """Geloggtes Rundenergebnis stimmt nicht mit dem berechneten Ergebnis überein (wurde korrigiert)."""
 
-    SCORE_MISMATCH_AT_2_GRANDS = 81
-    """Bekannter Rechenfehler bei zwei Grand Tichus im selben Team."""
+    SCORE_NOT_POSSIBLE = 81
+    """Rechenfehler! Geloggtes Rundenergebnis ist nicht möglich (wurde korrigiert)."""
+
 
 class BWParserError(Exception):
     """
@@ -306,6 +307,7 @@ class BWLogEntry:
     :ivar game_id: ID der Partie.
     :ivar round_index: Index der Runde innerhalb der Partie.
     :ivar line_index: Zeilenindex der Logdatei, in der die Runde beginnt.
+    :ivar content: Abschnitt aus der Logdatei mit dieser Runde.
     :ivar player_names: Die Namen der 4 Spieler dieser Runde.
     :ivar grand_tichu_hands: Die ersten 8 Handkarten der vier Spieler zu Beginn der Runde.
     :ivar start_hands: Die 14 Handkarten der Spieler vor dem Schupfen.
@@ -314,14 +316,16 @@ class BWLogEntry:
     :ivar bomb_owners: Gibt für jeden Spieler an, ob eine Bombe auf der Hand ist.
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, -1 == kein Eintrag).
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == kein Eintrag).
-    :ivar score: Geloggtes Ergebnis dieser Runde pro Team (Team20, Team31)
+    :ivar score: Rundenergebnis (Team20, Team31)
     :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index + gespielte Karten + Zeilenindex der Logdatei.
     :ivar year: Jahr der Logdatei.
     :ivar month: Monat der Logdatei.
+
     """
     game_id: int = -1
     round_index: int = -1
     line_index: int = -1
+    content: str = ""
     player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
     grand_tichu_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
     start_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
@@ -563,6 +567,9 @@ def parse_bw_logfile(game_id: int, year: int, month: int, content: str) -> Optio
 
         # Runde ist beendet.
 
+        # Ausschnitt der Logdatei für Debug-Zwecke übernehmen
+        log_entry.content = "\n".join(lines[log_entry.line_index:line_index])
+
         # Runde in die Rückgabeliste hinzufügen
         bw_log.append(log_entry)
 
@@ -573,28 +580,22 @@ def parse_bw_logfile(game_id: int, year: int, month: int, content: str) -> Optio
     return bw_log
 
 
-def _validate_score(log_entry: BWLogEntry) -> bool:
+def can_score_be_ok(score: Tuple[int, int], announcements: List[int]) -> bool:
     """
     Prüft, ob der Skore plausibel ist.
 
-    :param log_entry: Die geparsten Rundendaten.
+    :param score: Rundenergebnis (Team20, Team31)
+    :param announcements: Tichu-Ansagen pro Spieler (0 == keine Ansage, 1 == einfaches Tichu, 2 == großes Tichu).
     :return: True, wenn der Skore plausibel ist, sonst False.
     """
     # Punktzahl muss durch 5 teilbar sein.
-    if log_entry.score[0] % 5 != 0 or log_entry.score[1] % 5 != 0:
+    if score[0] % 5 != 0 or score[1] % 5 != 0:
         return False
 
-    sum_score = log_entry.score[0] + log_entry.score[1]
-
-    # Wer hat Tichu angesagt?
-    tichus = [0, 0, 0, 0]
-    for player_index in range(4):
-        if log_entry.tichu_positions[player_index] != -3:
-            tichus[player_index] = 2 if log_entry.tichu_positions[player_index] == -2 else 1
-
     # Fälle durchspielen, wer zuerst fertig wurde
+    sum_score = score[0] + score[1]
     for winner_index in range(4):
-        bonus = sum([(100 if winner_index == i else -100) * tichus[i] for i in range(4)])
+        bonus = sum([(100 if winner_index == i else -100) * announcements[i] for i in range(4)])
         if sum_score == bonus or sum_score == bonus + 200:  # normaler Sieg (die Karten ergeben in der Summe 0 Punkte) oder Doppelsieg
             return True
     return False
@@ -606,7 +607,9 @@ class BWDataset:
     Datencontainer für eine validierte Runde.
 
     :ivar game_id: ID der Partie.
+    :ivar game_faulty: True, wenn mindestens eine Runde fehlerhaft ist, sonst False.
     :ivar round_index: Index der Runde innerhalb der Partie.
+    :ivar total_score: Gesamtergebnis der Partie zu Beginn dieser Runde (Team20, Team31).
     :ivar player_names: Die Namen der 4 Spieler dieser Runde.
     :ivar start_hands: Handkarten der Spieler vor dem Schupfen (zuerst die 8 Grand-Tichu-Karten, danach die restlichen).
     :ivar given_schupf_cards: Abgegebene Tauschkarten (an rechten Gegner, Partner, linken Gegner).
@@ -616,17 +619,19 @@ class BWDataset:
     :ivar winner_index: Index des Spielers, der zuerst in der aktuellen Runde fertig wurde (-1 == kein Spieler).
     :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == kein Spieler).
     :ivar is_double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
-    :ivar score: Berechnetes Rundenergebnis (Team20, Team31).
+    :ivar score: Rundenergebnis (Team20, Team31).
     :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index + gespielte Karten + Index des Spielers, der den Stich nach dem Zug kassiert (-1 == Stich nicht kassiert).
     :ivar year: Jahr der Logdatei.
     :ivar month: Monat der Logdatei.
     :ivar error_code: Fehlercode.
-    :ivar error_line_index: Index der fehlerhaften Zeile in der Logdatei (-1 == fehlerlos).
-    :ivar score_logged: Geloggtes Rundenergebnis (Team20, Team31), falls es vom berechneten Rundenergebnis abweicht, sonst None.
+    :ivar error_line_index: Im Fehlerfall der Index der fehlerhaften Zeile in der Logdatei, sonst None.
+    :ivar error_content: Im Fehlerfall der betroffene Abschnitt aus der Logdatei, sonst None.
     """
     game_id: int = -1
+    game_faulty: bool = False
     round_index: int = -1
     player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    total_score: Tuple[int, int] = (0, 0)
     start_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
     given_schupf_cards: List[str] = field(default_factory=lambda: ["", "", "", ""])
     tichu_positions: List[int] = field(default_factory=lambda: [-3, -3, -3, -3])
@@ -641,7 +646,7 @@ class BWDataset:
     month: int = -1
     error_code: BWErrorCode = BWErrorCode.NO_ERROR
     error_line_index: int = -1
-    score_logged: Optional[Tuple[int, int]] = None
+    error_content: Optional[str] = None
 
 
 def _schupf(start_hands: List[List[str]], given_schupf_cards: List[List[str]]) -> List[List[str]]:
@@ -688,14 +693,11 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
     :return: Die validierten Daten.
     """
     datasets = []
+    game_faulty = False
     total_score = [0, 0]
     for log_entry in bw_log:
         error_code = BWErrorCode.NO_ERROR
         error_line_index = -1
-
-        if total_score[0] >= 1000 or total_score[1] >= 1000:
-            error_code = BWErrorCode.PLAYED_AFTER_GAME_OVER
-            error_line_index = log_entry.line_index
 
         # Karten aufsplitten
         grand_tichu_hands: List[List[str]] = []
@@ -707,61 +709,60 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
             given_schupf_cards.append(log_entry.given_schupf_cards[player_index].split(" "))
 
         # Handkarten prüfen
-        if error_code == BWErrorCode.NO_ERROR:
-            for player_index in range(4):
-                grand_cards = grand_tichu_hands[player_index]
-                start_cards = start_hands[player_index]
-                given_cards = given_schupf_cards[player_index]
+        for player_index in range(4):
+            grand_cards = grand_tichu_hands[player_index]
+            start_cards = start_hands[player_index]
+            given_cards = given_schupf_cards[player_index]
 
-                # Grand-Hand-Karten
-                if not validate_cards(log_entry.grand_tichu_hands[player_index]):  # Kartenlabel
-                    error_code = BWErrorCode.INVALID_CARD_LABEL
-                    error_line_index = log_entry.line_index + 1 + player_index
-                    break
-                elif len(grand_cards) != 8:  # Anzahl
-                    error_code = BWErrorCode.INVALID_CARD_COUNT
-                    error_line_index = log_entry.line_index + 1 + player_index
-                    break
-                elif len(set(grand_cards)) != 8:  # Duplikate
-                    error_code = BWErrorCode.DUPLICATE_CARD
-                    error_line_index = log_entry.line_index + 1 + player_index
-                    break
-                elif any(label not in start_cards for label in grand_cards):  # sind Handkarten?
-                    error_code = BWErrorCode.CARD_NOT_IN_HAND
-                    error_line_index = log_entry.line_index + 1 + player_index
-                    break
+            # Grand-Hand-Karten
+            if not validate_cards(log_entry.grand_tichu_hands[player_index]):  # Kartenlabel
+                error_code = BWErrorCode.INVALID_CARD_LABEL
+                error_line_index = log_entry.line_index + 1 + player_index
+                break
+            elif len(grand_cards) != 8:  # Anzahl
+                error_code = BWErrorCode.INVALID_CARD_COUNT
+                error_line_index = log_entry.line_index + 1 + player_index
+                break
+            elif len(set(grand_cards)) != 8:  # Duplikate
+                error_code = BWErrorCode.DUPLICATE_CARD
+                error_line_index = log_entry.line_index + 1 + player_index
+                break
+            elif any(label not in start_cards for label in grand_cards):  # sind Handkarten?
+                error_code = BWErrorCode.CARD_NOT_IN_HAND
+                error_line_index = log_entry.line_index + 1 + player_index
+                break
 
-                # Startkarten
-                elif not validate_cards(log_entry.start_hands[player_index]):  # Kartenlabel
-                    error_code = BWErrorCode.INVALID_CARD_LABEL
-                    error_line_index = log_entry.line_index + 6 + player_index
-                    break
-                elif len(start_cards) != 14:  # Anzahl
-                    error_code = BWErrorCode.INVALID_CARD_LABEL
-                    error_line_index = log_entry.line_index + 6 + player_index
-                    break
-                elif len(set(start_cards)) != 14:  # Duplikate
-                    error_code = BWErrorCode.DUPLICATE_CARD
-                    error_line_index = log_entry.line_index + 6 + player_index
-                    break
+            # Startkarten
+            elif not validate_cards(log_entry.start_hands[player_index]):  # Kartenlabel
+                error_code = BWErrorCode.INVALID_CARD_LABEL
+                error_line_index = log_entry.line_index + 6 + player_index
+                break
+            elif len(start_cards) != 14:  # Anzahl
+                error_code = BWErrorCode.INVALID_CARD_LABEL
+                error_line_index = log_entry.line_index + 6 + player_index
+                break
+            elif len(set(start_cards)) != 14:  # Duplikate
+                error_code = BWErrorCode.DUPLICATE_CARD
+                error_line_index = log_entry.line_index + 6 + player_index
+                break
 
-                # Tauschkarten
-                elif not validate_cards(log_entry.given_schupf_cards[player_index]):  # Kartenlabel
-                    error_code = BWErrorCode.INVALID_CARD_LABEL
-                    error_line_index = log_entry.line_index + 11 + player_index
-                    break
-                elif len(given_cards) != 3:  # Anzahl
-                    error_code = BWErrorCode.INVALID_CARD_LABEL
-                    error_line_index = log_entry.line_index + 11 + player_index
-                    break
-                elif len(set(given_cards)) != 3:  # Duplikate
-                    error_code = BWErrorCode.DUPLICATE_CARD
-                    error_line_index = log_entry.line_index + 11 + player_index
-                    break
-                elif any(label not in start_cards for label in given_cards):  # sind Handkarten?
-                    error_code = BWErrorCode.CARD_NOT_IN_HAND
-                    error_line_index = log_entry.line_index + 11 + player_index
-                    break
+            # Tauschkarten
+            elif not validate_cards(log_entry.given_schupf_cards[player_index]):  # Kartenlabel
+                error_code = BWErrorCode.INVALID_CARD_LABEL
+                error_line_index = log_entry.line_index + 11 + player_index
+                break
+            elif len(given_cards) != 3:  # Anzahl
+                error_code = BWErrorCode.INVALID_CARD_LABEL
+                error_line_index = log_entry.line_index + 11 + player_index
+                break
+            elif len(set(given_cards)) != 3:  # Duplikate
+                error_code = BWErrorCode.DUPLICATE_CARD
+                error_line_index = log_entry.line_index + 11 + player_index
+                break
+            elif any(label not in start_cards for label in given_cards):  # sind Handkarten?
+                error_code = BWErrorCode.CARD_NOT_IN_HAND
+                error_line_index = log_entry.line_index + 11 + player_index
+                break
 
         # Sind alle Karten verteilt und keine mehrfach vergeben?
         if error_code == BWErrorCode.NO_ERROR:
@@ -1073,7 +1074,7 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
         for player_index in range(4):
             if tichu_positions[player_index] > first_pos[player_index]:
                 if error_code == BWErrorCode.NO_ERROR:
-                    error_code = BWErrorCode.ANNOUNCEMENT_NOT_POSSIBLE
+                    error_code = BWErrorCode.ANNOUNCEMENT_WRONG_ORDER if tichu_positions[player_index] - 1 == first_pos[player_index] else BWErrorCode.ANNOUNCEMENT_NOT_POSSIBLE
                     error_line_index = log_entry.line_index
                 tichu_positions[player_index] = first_pos[player_index]
 
@@ -1109,13 +1110,19 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
         score = points[2] + points[0], points[3] + points[1]
         if score != log_entry.score:
             if error_code == BWErrorCode.NO_ERROR:
-                if (tichu_positions[0] == -2 and tichu_positions[2] == -2) or (tichu_positions[1] == -2 and tichu_positions[3] == -2):
-                    error_code = BWErrorCode.SCORE_MISMATCH_AT_2_GRANDS
-                else:
-                    error_code = BWErrorCode.SCORE_MISMATCH
+                # Wer hat Tichu angesagt?
+                announcements = [0, 0, 0, 0]
+                for player_index in range(4):
+                    if log_entry.tichu_positions[player_index] != -3:
+                        announcements[player_index] = 2 if log_entry.tichu_positions[player_index] == -2 else 1
+                error_code = BWErrorCode.SCORE_MISMATCH if can_score_be_ok(log_entry.score, announcements) else BWErrorCode.SCORE_NOT_POSSIBLE
                 error_line_index = log_entry.line_index
 
         # Gesamt-Punktestand der Partie aktualisieren
+        if total_score[0] >= 1000 or total_score[1] >= 1000:
+            if error_code == BWErrorCode.NO_ERROR:
+                error_code = BWErrorCode.PLAYED_AFTER_GAME_OVER
+                error_line_index = log_entry.line_index
         total_score[0] += score[0]
         total_score[1] += score[1]
 
@@ -1133,10 +1140,15 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
                 remaining_cards = [stringify_card(card) for card in cards]
             sorted_start_hands.append(" ".join(grand_cards + remaining_cards))
 
+        if error_code != BWErrorCode.NO_ERROR:
+            game_faulty = True
+
         datasets.append(BWDataset(
             game_id=log_entry.game_id,
+            game_faulty=game_faulty,
             round_index=log_entry.round_index,
             player_names=player_names,
+            total_score=(total_score[0], total_score[1]),
             start_hands=sorted_start_hands,
             given_schupf_cards=log_entry.given_schupf_cards,
             tichu_positions=tichu_positions,
@@ -1150,8 +1162,8 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
             year=log_entry.year,
             month=log_entry.month,
             error_code=error_code,
-            error_line_index=error_line_index,
-            score_logged=log_entry.score if log_entry.score != score else None
+            error_line_index=error_line_index if error_code != BWErrorCode.NO_ERROR else None,
+            error_content=log_entry.content if error_code != BWErrorCode.NO_ERROR else None,
         ))
     return datasets
 
