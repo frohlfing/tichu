@@ -24,15 +24,15 @@ def save_dirty_logfile(game_id, year, month, content):
         f.write(content)
 
 
-def run_bw_parser(args: argparse.Namespace):
-    """Testdurchlauf für den BW-Parser"""
+def run_bw_validator(args: argparse.Namespace):
+    """Testdurchlauf für den BW-Validator"""
 
     # Argumente auswerten
     y1, m1 = map(int, args.ym1.split("-"))
     y2, m2 = map(int, args.ym2.split("-"))
     path = args.path # Pfad zu den heruntergeladenen Log-Archiven
 
-    print(f"Testdurchlauf für den BW-Parser von {y1:04d}-{m1:02d} bis {y2:04d}-{m2:02d}")
+    print(f"Testdurchlauf für den BW-Validator von {y1:04d}-{m1:02d} bis {y2:04d}-{m2:02d}")
 
     # Fortschrittsbalken
     progress_bar = tqdm(
@@ -43,22 +43,28 @@ def run_bw_parser(args: argparse.Namespace):
     )
 
     c = 0
-    fails = 0
     rounds = 0
+    fails = 0
+    error_summary = {}
     time_start = time()
     for game_id, year, month, content in progress_bar:
         c += 1
         try:
             bw_log = parse_bw_logfile(game_id, year, month, content)
             rounds += len(bw_log)
-            error = validate_bw_log(bw_log)
-
+            datasets = validate_bw_log(bw_log)
+            if any(ds.error_code != BWErrorCode.NO_ERROR for ds in datasets):
+                fails += 1
+            for ds in datasets:
+                if ds.error_code != BWErrorCode.NO_ERROR:
+                    if ds.error_code not in error_summary:
+                        error_summary[ds.error_code] = 0
+                    error_summary[ds.error_code] += 1
         except BWParserError as e:
             print(e)
-            fails += 1
             save_dirty_logfile(game_id, year, month, content)
-            exit(1)
-
+            fails += 1
+            #exit(1)
         progress_bar.set_postfix({
             "Partien": c,
             "Fehlerhaft": fails,
@@ -71,6 +77,8 @@ def run_bw_parser(args: argparse.Namespace):
     print(f"Anzahl Partien: {c}")
     print(f"Gesamtzeit: {duration / 60:.0f} Minuten")
     print(f"Zeit pro Partie: {duration * 1000 / c:.3f} ms")
+    for code, count in error_summary.items():
+        print(f"{code.name}: {count} Fehler")
 
 
 def main(args: argparse.Namespace):
@@ -142,5 +150,5 @@ if __name__ == "__main__":
     parser.add_argument("--path", default=path_, help="Pfad zu den heruntergeladenen Log-Archiven")
 
     # Main-Routine starten
-    run_bw_parser(parser.parse_args())
+    run_bw_validator(parser.parse_args())
     #main(parser.parse_args())

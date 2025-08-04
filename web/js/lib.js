@@ -372,18 +372,18 @@ const Lib = (() => {
     }
 
     /**
-     * Ermittelt die Kombination der gegebenen Karten.
+     * Ermittelt die neue Kombination des Stiches, wenn er durch die gegebenen Karten gestochen wird.
      *
      * Es wird vorausgesetzt, dass `cards` eine gültige Kombination darstellt.
      *
      * Wenn `shiftPhoenix` gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
      *
-     * @param {Cards} cards - Karten der Kombination; werden absteigend sortiert (mutable!).
-     * @param {number} trickRank - Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist).
+     * @param {Cards} cards - Die ausgespielten Karten; werden absteigend sortiert (mutable!).
+     * @param {number} trickRank - Bisheriger Rang des Stichs (0, wenn keine Karten ausgelegt sind).
      * @param {boolean} [shiftPhoenix] - Wenn True, wird der Phönix eingereiht.
-     * @returns {Combination} Die Kombination (Typ, Länge, Rang).
+     * @returns {Combination} Die neue Kombination des Stichs (Typ, Länge, Rang).
      */
-    function getCombination(cards, trickRank, shiftPhoenix = false) {
+    function getTrickCombination(cards, trickRank, shiftPhoenix = false) {
         const n = cards.length;
         if (n === 0) {
             return /** @type Combination */ [CombinationType.PASS, 0, 0];
@@ -751,17 +751,21 @@ const Lib = (() => {
             result = combis;
         }
 
-        // Falls ein Wunsch offen ist, muss der Spieler diesen erfüllen, wenn er kann.
+        // Falls ein Wunsch offen ist, muss der Spieler diesen erfüllen, wenn er kann (oder Bombe werfen).
         if (wishValue > 0) {
-            //const mandatory = result.filter(combi => isWishIn(wishValue, combi[0]));
             const mandatory = [];
+            let foundWish = false;
             for (let combi of result ) {
                 if (isWishIn(wishValue, combi[0])) {
+                    foundWish = true;
                     mandatory.push(combi);
                 }
+                else if (combi[1][0] === CombinationType.BOMB) {
+                    mandatory.push(combi)
+                }
             }
-            if (mandatory.length > 0) {
-                // Der Spieler kann und muss den Wunsch erfüllen.
+            if (foundWish) {
+                // Der Spieler kann und muss den Wunsch erfüllen (oder Bombe werfen).
                 result = mandatory;
             }
         }
@@ -822,7 +826,7 @@ const Lib = (() => {
         parseCard, parseCards, stringifyCard, stringifyCards,
         isWishIn, sumCardPoints, otherCards,
         isCombinationEqual,
-        getCombination, buildCombinations, removeCombinations, buildActionSpace,
+        getTrickCombination, buildCombinations, removeCombinations, buildActionSpace,
         findBombs, getPlayableBombs,
     };
 })();

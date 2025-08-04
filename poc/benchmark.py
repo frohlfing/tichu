@@ -35,11 +35,11 @@ from src.public_state import PublicState
 
 def benchmark_get_figure():
     cards = parse_cards('Ph R8 R9 BZ RB RD RK')
-    print(f'get_figure(): {timeit(lambda: get_combination(cards, 10, shift_phoenix=True), number=1000000):5.3f} µs per loop')
+    print(f'get_figure(): {timeit(lambda: get_trick_combination(cards, 10, shift_phoenix=True), number=1000000):5.3f} µs per loop')
     # 2.970 µs per loop
 
     cards = parse_cards('Ph R8 R9 BZ RB RD RK')
-    print(f'get_figure(): {timeit(lambda: get_combination(cards, 10), number=1000000):5.3f} µs per loop')
+    print(f'get_figure(): {timeit(lambda: get_trick_combination(cards, 10), number=1000000):5.3f} µs per loop')
     # 2.167 µs per loop
 
 #

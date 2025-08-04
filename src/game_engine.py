@@ -371,13 +371,14 @@ class GameEngine:
                     assert 0 <= pub.count_hand_cards[pub.current_turn_index] <= 14
 
                     # Wenn kein Anspiel, und falls der aktuelle Spieler den Stich kassieren darf oder aktiv an der Runde beteiligt ist (noch Handkarten hat),
-                    # jeden Mitspieler fragen, ob er eine Bombe werfen will. Wenn der Drache liegt, bekommt auch der aktuelle Spieler die Möglichkeit, eine Bombe zu werfen.
+                    # jeden Mitspieler fragen, ob er eine Bombe werfen will. Wenn der Drache liegt, bekommt auch der aktuelle Spieler die Möglichkeit, eine
+                    # Bombe zu werfen, damit er den Drachen nicht verschenken muss.
                     bomb: Optional[Tuple[Cards, Combination]] = None
                     if pub.trick_combination[2] > 0 and (pub.trick_owner_index == pub.current_turn_index or pub.count_hand_cards[pub.current_turn_index] > 0):
                         first = self._random.integer(0, 4)  # zufällige Zahl zwischen 0 und 3
                         for i in range(4):
                             player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
-                            if (player_index != pub.current_turn_index or pub.trick_combination == (CombinationType.SINGLE, 1, 15)) and self._private_states[player_index].has_bomb:
+                            if (player_index != pub.current_turn_index or (player_index == pub.trick_owner_index and pub.trick_combination == (CombinationType.SINGLE, 1, 15))) and self._private_states[player_index].has_bomb:
                                 bomb = await self._players[player_index].play()
                                 if bomb[1][0] == CombinationType.PASS:
                                     bomb = None

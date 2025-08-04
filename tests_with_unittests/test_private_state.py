@@ -55,7 +55,7 @@ class TestPrivateState(unittest.TestCase):
         self.assertEqual(config.PARTITIONS_MAXLEN, len(partitions))
         # der Agent spielt 3erTreppe4
         cards = parse_cards("B4 R4 B3 G3 S2 G2")
-        combi = cards, get_combination(cards, 0)
+        combi = cards, get_trick_combination(cards, 0)
         self.priv.play(combi)
         self.pub.play(combi)
         self.pub.turn()
@@ -81,7 +81,7 @@ class TestPrivateState(unittest.TestCase):
 
     def test_done(self):
         cards = parse_cards("S7")
-        combi = cards, get_combination(cards, 0)
+        combi = cards, get_trick_combination(cards, 0)
         self.priv._hand = cards
         self.pub._number_of_cards = [1, 5, 0, 0]
         self.pub._number_of_players = 2
@@ -93,7 +93,7 @@ class TestPrivateState(unittest.TestCase):
 
     def test_wish(self):
         cards = parse_cards("Ma")
-        combi = cards, get_combination(cards, 0)
+        combi = cards, get_trick_combination(cards, 0)
         self.priv._hand = cards
         self.pub._number_of_cards = [1, 14, 14, 14]
         self.pub.current_turn_index = 0

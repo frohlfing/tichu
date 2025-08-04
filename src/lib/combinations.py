@@ -3,7 +3,7 @@ Dieses Modul definiert die Logik zur Erkennung und Verarbeitung von Kartenkombin
 """
 
 __all__ = "CombinationType", "Combination",  \
-    "validate_combination", "stringify_combination", "stringify_type", "get_combination", \
+    "validate_combination", "stringify_combination", "stringify_type", "get_trick_combination", \
     "build_combinations", "remove_combinations", \
     "build_action_space",
 
@@ -127,18 +127,18 @@ def stringify_type(t: CombinationType, m: int = None) -> str:
     return label
 
 
-def get_combination(cards: Cards, trick_rank: int, shift_phoenix: bool = False) -> Combination:
+def get_trick_combination(cards: Cards, trick_rank: int, shift_phoenix: bool = False) -> Combination:
     """
-    Ermittelt die Kombination der gegebenen Karten.
+    Ermittelt die neue Kombination des Stiches, wenn er durch die gegebenen Karten gestochen wird.
 
     Es wird vorausgesetzt, dass `cards` eine gültige Kombination darstellt.
 
     Wenn `shift_phoenix` gesetzt ist, wird der Phönix der Kombi entsprechend eingereiht.
 
-    :param cards: Karten der Kombination; werden absteigend sortiert (mutable!).
-    :param trick_rank: Rang des aktuellen Stichs (0, wenn kein Stich ausgelegt ist).
+    :param cards: Die ausgespielten Karten; werden absteigend sortiert (mutable!).
+    :param trick_rank: Bisheriger Rang des Stichs (0, wenn keine Karten ausgelegt sind).
     :param shift_phoenix: Wenn True, wird der Phönix eingereiht (kostet etwas Zeit).
-    :return: Die Kombination (Typ, Länge, Rang).
+    :return: Die neue Kombination des Stichs (Typ, Länge, Rang).
     """
     n = len(cards)
     if n == 0:
@@ -372,7 +372,7 @@ def build_combinations(hand: Cards) -> List[Tuple[Cards, Combination]]:
             if t == CombinationType.STREET and cards[0] == CARD_PHO:
                 v = cards[1][0] + 1  # Phönix == Rang der zweiten Karte + 1
             else:
-                v = cards[0][0]  # Rang der ersten Karte
+                v = cards[0][0]  # Rang der Kombination = Wert der ersten Karte
             # Kombination speichern
             result.append((cards, (CombinationType(t), len(cards), v)))
 
@@ -421,15 +421,19 @@ def build_action_space(combis: List[Tuple[Cards, Combination]], trick_combinatio
         # result = combis.copy()  so, wenn combis eine Liste wäre
         result = combis
 
-    # Falls ein Wunsch offen ist, muss der Spieler diesen erfüllen, wenn er kann.
+    # Falls ein Wunsch offen ist, muss der Spieler diesen erfüllen, wenn er kann (oder Bombe werfen).
     if wish_value > 0:
         assert 2 <= wish_value <= 14
         mandatory = []
+        found_wish = False
         for combi in result:
             if is_wish_in(wish_value, combi[0]):
+                found_wish = True
                 mandatory.append(combi)
-        if mandatory:
-            # Der Spieler kann und muss den Wunsch erfüllen.
+            elif combi[1][0] == CombinationType.BOMB:
+                mandatory.append(combi)
+        if found_wish:
+            # Der Spieler kann und muss den Wunsch erfüllen (oder Bombe werfen).
             result = mandatory
 
     return result

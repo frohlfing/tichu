@@ -12,8 +12,11 @@ import os
 import requests
 from dataclasses import dataclass, field
 from datetime import datetime
-from src.lib.cards import validate_card, validate_cards, parse_card, parse_cards, Cards, CARD_MAH, deck, stringify_cards, sum_card_points, is_wish_in, other_cards, CARD_DRA
-from src.lib.combinations import get_combination, Combination, CombinationType, build_action_space
+
+from scipy.special import log_expit
+
+from src.lib.cards import validate_card, validate_cards, parse_card, parse_cards, Cards, CARD_MAH, CARD_DRA, deck, stringify_cards, sum_card_points, is_wish_in, other_cards, stringify_card
+from src.lib.combinations import get_trick_combination, Combination, CombinationType, build_action_space, build_combinations
 from src.public_state import PublicState
 from src.private_state import PrivateState
 from tqdm import tqdm
@@ -182,98 +185,91 @@ class BWErrorCode(enum.IntEnum):
     """
     Fehlercodes für Logs der Brettspielwelt.
 
-    Der erste Fehler wird in `BWLog` festgehalten.
+    Der erste zutreffende Fehler wird in `BWLog` festgehalten.
     """
     NO_ERROR = 0
     """Kein Fehler"""
 
-    # Prio 1: Schwerwiegende Fehler
+    # 1) Gesamt-Punktestand der Partie
+    PLAYED_AFTER_GAME_OVER  = 10
+    """Runde gespielt, obwohl die Partie bereits entschieden ist."""
 
     # 1) Karten
 
-    INVALID_CARD_DISTRIBUTION = 10
-    """Eine oder mehrere Karten wurden nicht korrekt verteilt."""
-
-    INVALID_CARD_LABEL = 11
+    INVALID_CARD_LABEL = 20
     """Ungültiges Karten-Label."""
 
-    INVALID_CARD_COUNT = 12
+    INVALID_CARD_COUNT = 21
     """Anzahl der Karten ist fehlerhaft."""
 
-    DUPLICATE_CARD = 13
+    DUPLICATE_CARD = 22
     """Karten mehrmals vorhanden."""
 
-    CARD_NOT_IN_HAND = 14
+    CARD_NOT_IN_HAND = 23
     """Karte gehört nicht zu den Handkarten."""
 
-    CARD_ALREADY_PLAYED = 15
+    CARD_ALREADY_PLAYED = 24
     """Karte bereits gespielt."""
 
-    # 2) Zugwechsel
+    # 2) Spielzüge
 
-    PLAYER_NOT_ON_TURN = 20
-    """Der Spieler ist nicht am Zug."""
-
-    # 3) Spielzug
-
-    INVALID_COMBINATION = 30
-    """Ungültige Kombination."""
-
-    COMBINATION_NOT_PLAYABLE = 31
-    """Kombination nicht spielbar."""
-
-    PASS_NOT_POSSIBLE = 32
+    PASS_NOT_POSSIBLE = 30
     """Passen nicht möglich."""
 
-    TURN_MISSING = 33
+    WISH_NOT_FOLLOWED = 31
+    """Wunsch nicht beachtet (hätte erfüllt werden können)."""
+
+    COMBINATION_NOT_PLAYABLE = 32
+    """Kombination nicht spielbar."""
+
+    SMALLER_OF_AMBIGUOUS_RANK = 33
+    """Es wurde der kleinere Rang bei einem mehrdeutigen Rang gewählt."""
+
+    PLAYER_NOT_ON_TURN = 34
+    """Der Spieler ist nicht am Zug."""
+
+    HISTORY_TOO_SHORT = 35
     """Es fehlen Einträge in der Historie."""
+
+    HISTORY_TOO_LONG = 36
+    """Karten ausgespielt, obwohl die Runde vorbei ist (wird ignoriert)."""
+
+    # 3) Drache verschenken
+
+    DRAGON_NOT_GIVEN = 40
+    """Drache hat den Stich nicht gewonnen, wurde aber nicht verschenkt."""
+
+    DRAGON_GIVEN_TO_OWN_TEAM = 41
+    """Drache an eigenes Team verschenkt."""
+
+    DRAGON_GIVEN_WITHOUT_BEAT = 42
+    "Drache verschenkt, aber niemand hat durch den Drachen ein Stich gewonnen."
 
     # 4) Wunsch
 
-    WISH_WITHOUT_MAHJONG = 40
+    WISH_WITHOUT_MAHJONG = 50
     """Wunsch geäußert, aber kein Mahjong gespielt."""
-
-    WISH_NOT_FOLLOWED = 41
-    """Wunsch nicht beachtet (hätte erfüllt werden können)."""
-
-    # 5) Drache verschenken
-
-    DRAGON_GIVEN_WITHOUT_BEAT = 50
-    "Drache verschenkt, aber Drache hat den Stich nicht gewonnen."
-
-    DRAGON_NOT_GIVEN = 51
-    """Drache hat den Stich nicht gewonnen, wurde aber nicht verschenkt."""
-
-    DRAGON_GIVEN_TO_TEAM = 52
-    """Drache an eigenes Team verschenkt."""
-
-    # Prio 2: Korrigierte oder vernachlässigbare Fehler
 
     # 6) Spielerliste
 
     PLAYER_NAME_MISSING = 60
-    """Name des Spielers fehlt (wurde korrigiert)."""
+    """Name des Spieler fehlt (wurde korrigiert)."""
 
-    # 7) Endergebnis
+    DUPLICATE_PLAYER_NAME = 61
+    """Name des Spieler ist nicht eindeutig (wurde korrigiert)."""
 
-    SCORE_MISMATCH = 70
+    # 8) Tichu-Ansage
+
+    ANNOUNCEMENT_NOT_POSSIBLE = 70
+    """Tichu-Ansage an der geloggten Position nicht möglich (wurde korrigiert)."""
+
+    # 6) Endergebnis
+
+    SCORE_MISMATCH = 80
     """Rundenergebnis stimmt nicht."""
 
-    # 8) Überflüssige Spielzüge
-
-    PASSED_AFTER_ROUND_OVER = 81
-    """Gepasst, obwohl die Runde vorbei ist (wird ignoriert)."""
-
-    PLAYED_AFTER_ROUND_OVER = 82
-    """Karten ausgespielt, obwohl die Runde vorbei ist (wird ignoriert)."""
-
-    PLAYED_AFTER_GAME_OVER  = 83
-    """Runde gespielt, obwohl die Partie bereits entschieden ist (wird ignoriert)."""
-
-    # 9) Tichu-Ansage
-
-    ANNOUNCEMENT_NOT_POSSIBLE = 90
-    """Tichu-Ansage an der geloggten Position nicht möglich (wurde korrigiert)."""
+    SCORE_MISMATCH_AT_2_GRANDS = 81
+    """Bekannter Rechenfehler bei zwei Grand Tichus im selben Team."""
 
 class BWParserError(Exception):
     """
@@ -305,7 +301,7 @@ class BWParserError(Exception):
 @dataclass
 class BWLogEntry:
     """
-    Datencontainer für eine einzelne Runde in der Logdatei.
+    Datencontainer für eine geparste Runde aus der Logdatei.
 
     :ivar game_id: ID der Partie.
     :ivar round_index: Index der Runde innerhalb der Partie.
@@ -314,18 +310,14 @@ class BWLogEntry:
     :ivar grand_tichu_hands: Die ersten 8 Handkarten der vier Spieler zu Beginn der Runde.
     :ivar start_hands: Die 14 Handkarten der Spieler vor dem Schupfen.
     :ivar given_schupf_cards: Abgegebene Tauschkarten (an rechten Gegner, Partner, linken Gegner).
-    :ivar tichu_positions: Position in der Historie, an der ein Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor Schupfen).
+    :ivar tichu_positions: Position in der Historie, an der Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor oder während des Schupfens).
     :ivar bomb_owners: Gibt für jeden Spieler an, ob eine Bombe auf der Hand ist.
-    :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == ohne Wunsch, -1 == kein Wunscheintrag).
-    :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde nicht verschenkt).
+    :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, -1 == kein Eintrag).
+    :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == kein Eintrag).
     :ivar score: Geloggtes Ergebnis dieser Runde pro Team (Team20, Team31)
-    :ivar score_expected: Erwartetes Ergebnis pro Team (Team20, Team31). Wird beim Validieren berechnet.
-    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index, gespielte Karten, Zeilenindex der Logdatei.
-    :ivar adjusted_history: Bereinigte Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index, gespielte Karten, Index des Spielers, der den Stich nach dem Zug kassiert, Zeilenindex der Logdatei. Wird beim Validieren gesetzt.
+    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index + gespielte Karten + Zeilenindex der Logdatei.
     :ivar year: Jahr der Logdatei.
     :ivar month: Monat der Logdatei.
-    :ivar error_code: Fehlercode.
-    :ivar error_line_index: Index der fehlerhaften Zeile in der Logdatei (-1 == fehlerlos).
     """
     game_id: int = -1
     round_index: int = -1
@@ -339,16 +331,12 @@ class BWLogEntry:
     wish_value: int = 0
     dragon_recipient: int = -1
     score: Tuple[int, int] = (0, 0)
-    score_expected: Tuple[int, int] = (0, 0)
     history: List[Tuple[int, str, int]] = field(default_factory=list)
-    adjusted_history: List[Tuple[int, str, int]] = field(default_factory=list)
     year: int = -1
     month: int = -1
-    error_code: BWErrorCode = BWErrorCode.NO_ERROR
-    error_line_index: int = -1
 
 
-# Type-Alias für Daten einer Partie
+# Type-Alias für die geparsten Daten einer Logdatei (einer Partie)
 BWLog = List[BWLogEntry]
 
 
@@ -371,7 +359,7 @@ def parse_bw_logfile(game_id: int, year: int, month: int, content: str) -> Optio
     num_lines = len(lines)  # Anzahl Zeilen
     line_index = 0 # Zeilenindex
     while line_index < num_lines:
-        # Datencontainer für eine Runde in der Logdatei
+        # Datencontainer für eine Runde aus der Logdatei
         log_entry = BWLogEntry(game_id=game_id, round_index=len(bw_log), line_index=line_index, year=year, month=month)
         try:
             # Jede Runde beginnt mir der Zeile "---------------Gr.Tichukarten------------------"
@@ -398,7 +386,7 @@ def parse_bw_logfile(game_id: int, year: int, month: int, content: str) -> Optio
                     if line != separator:
                         raise BWParserError(f"Seperator 'Startkarten' erwartet", game_id, len(bw_log), line_index, line, year, month)
                     line_index += 1
-                for player_index in range(0, 4):
+                for player_index in range(4):
                     line = lines[line_index].strip()
                     # Index des Spielers prüfen
                     if line[:3] != f"({player_index})":
@@ -450,7 +438,7 @@ def parse_bw_logfile(game_id: int, year: int, month: int, content: str) -> Optio
             # (2)Amb4lamps23 gibt: Andreavorn: B2 - Smocker: G3 - charliexyz: S2 -
             # (3)Andreavorn gibt: Smocker: R7 - charliexyz: RB - Amb4lamps23: G2 -
 
-            for player_index in range(0, 4):
+            for player_index in range(4):
                 line = lines[line_index].strip()
                 # Index des Spielers prüfen
                 if line[:3] != f"({player_index})":
@@ -466,8 +454,8 @@ def parse_bw_logfile(game_id: int, year: int, month: int, content: str) -> Optio
                 cards = ["", "", ""]
                 # Tauschkarten ermitteln
                 for k in range(0, 3):
-                    _player_name, card = s[k].split(": ")
-                    cards[k] = card.replace("10", "Z")
+                    _player_name, card_label = s[k].split(": ")
+                    cards[k] = card_label.replace("10", "Z")
                 # Tauschkarten übernehmen
                 log_entry.given_schupf_cards[player_index] = " ".join(cards)
                 line_index += 1
@@ -600,19 +588,91 @@ def _validate_score(log_entry: BWLogEntry) -> bool:
 
     # Wer hat Tichu angesagt?
     tichus = [0, 0, 0, 0]
-    for player_index in range(0, 4):
+    for player_index in range(4):
         if log_entry.tichu_positions[player_index] != -3:
             tichus[player_index] = 2 if log_entry.tichu_positions[player_index] == -2 else 1
 
     # Fälle durchspielen, wer zuerst fertig wurde
-    for winner_index in range(0, 4):
-        bonus = sum([(100 if winner_index == i else -100) * tichus[i] for i in range(0, 4)])
+    for winner_index in range(4):
+        bonus = sum([(100 if winner_index == i else -100) * tichus[i] for i in range(4)])
         if sum_score == bonus or sum_score == bonus + 200:  # normaler Sieg (die Karten ergeben in der Summe 0 Punkte) oder Doppelsieg
             return True
     return False
 
 
-def validate_bw_log(bw_log: BWLog) -> bool:
+@dataclass
+class BWDataset:
+    """
+    Datencontainer für eine validierte Runde.
+
+    :ivar game_id: ID der Partie.
+    :ivar round_index: Index der Runde innerhalb der Partie.
+    :ivar player_names: Die Namen der 4 Spieler dieser Runde.
+    :ivar start_hands: Handkarten der Spieler vor dem Schupfen (zuerst die 8 Grand-Tichu-Karten, danach die restlichen).
+    :ivar given_schupf_cards: Abgegebene Tauschkarten (an rechten Gegner, Partner, linken Gegner).
+    :ivar tichu_positions: Position in der Historie, an der Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor oder während des Schupfens).
+    :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == ohne Wunsch, -1 == kein Mahjong gespielt).
+    :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde nicht verschenkt).
+    :ivar winner_index: Index des Spielers, der zuerst in der aktuellen Runde fertig wurde (-1 == kein Spieler).
+    :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == kein Spieler).
+    :ivar is_double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
+    :ivar score: Berechnetes Rundenergebnis (Team20, Team31).
+    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index + gespielte Karten + Index des Spielers, der den Stich nach dem Zug kassiert (-1 == Stich nicht kassiert).
+    :ivar year: Jahr der Logdatei.
+    :ivar month: Monat der Logdatei.
+    :ivar error_code: Fehlercode.
+    :ivar error_line_index: Index der fehlerhaften Zeile in der Logdatei (-1 == fehlerlos).
+    :ivar score_logged: Geloggtes Rundenergebnis (Team20, Team31), falls es vom berechneten Rundenergebnis abweicht, sonst None.
+    """
+    game_id: int = -1
+    round_index: int = -1
+    player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    start_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    given_schupf_cards: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    tichu_positions: List[int] = field(default_factory=lambda: [-3, -3, -3, -3])
+    wish_value: int = 0
+    dragon_recipient: int = -1
+    winner_index: int = -1,
+    loser_index: int = -1,
+    is_double_victory: bool = False,
+    score: Tuple[int, int] = (0, 0)
+    history: List[Tuple[int, str, int]] = field(default_factory=list)
+    year: int = -1
+    month: int = -1
+    error_code: BWErrorCode = BWErrorCode.NO_ERROR
+    error_line_index: int = -1
+    score_logged: Optional[Tuple[int, int]] = None
+
+
+def _schupf(start_hands: List[List[str]], given_schupf_cards: List[List[str]]) -> List[List[str]]:
+    """
+    Ermittelt die Handkarten nach dem Schupfen.
+
+    :param start_hands: Handkarten der vier Spieler vor dem Schupfen.
+    :param given_schupf_cards: Die abgegebenen Tauschkarten der vier Spieler (an rechten Gegner, Partner, linken Gegner).
+    :return: Die neuen Handkarten der vier Spieler nach dem Schupfen.
+    """
+    hands = []
+    for player_index in range(4):  # Geber
+        # Tauschkarten abgeben.
+        start_cards = start_hands[player_index]
+        given_cards = given_schupf_cards[player_index]
+        remaining_cards = [label for label in start_cards if label not in given_cards]
+        assert len(remaining_cards) == 11
+        # Tauscharten aufnehmen.
+        received_cards = [
+            given_schupf_cards[(player_index + 1) % 4][2],
+            given_schupf_cards[(player_index + 2) % 4][1],
+            given_schupf_cards[(player_index + 3) % 4][0],
+        ]
+        cards = remaining_cards + received_cards
+        assert len(cards) == 14
+        assert len(set(cards)) == 14
+        hands.append(cards)
+    return hands
+
+
+def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
     """
     Validiert die geparste Logdatei auf Plausibilität.
 
@@ -625,250 +685,475 @@ def validate_bw_log(bw_log: BWLog) -> bool:
     nur der erste wird in `bw_log` festgehalten.
 
     :param bw_log: Die geparsten Rundendaten der Partie (mutable).
-    :return: True, wenn kein Prio1-Fehler in der gesamten Partie valide gefunden wurde, sonst False.
+    :return: Die validierten Daten.
     """
+    datasets = []
+    total_score = [0, 0]
     for log_entry in bw_log:
+        error_code = BWErrorCode.NO_ERROR
+        error_line_index = -1
 
-        # ------------------------------------------------------
-        # Prio 1: Schwerwiegende Fehler
-        # ------------------------------------------------------
+        if total_score[0] >= 1000 or total_score[1] >= 1000:
+            error_code = BWErrorCode.PLAYED_AFTER_GAME_OVER
+            error_line_index = log_entry.line_index
 
-        # Einzelne Handkarten vor dem Schupfen
-        start_hands = []
-        for player_index in range(0, 4):
-            hand = log_entry.start_hands[player_index]
-            start_hands.append(hand.split(" "))
+        # Karten aufsplitten
+        grand_tichu_hands: List[List[str]] = []
+        start_hands: List[List[str]] = []
+        given_schupf_cards: List[List[str]] = []
+        for player_index in range(4):
+            grand_tichu_hands.append(log_entry.grand_tichu_hands[player_index].split(" "))
+            start_hands.append(log_entry.start_hands[player_index].split(" "))
+            given_schupf_cards.append(log_entry.given_schupf_cards[player_index].split(" "))
 
-        # 1) Karten validieren
+        # Handkarten prüfen
+        if error_code == BWErrorCode.NO_ERROR:
+            for player_index in range(4):
+                grand_cards = grand_tichu_hands[player_index]
+                start_cards = start_hands[player_index]
+                given_cards = given_schupf_cards[player_index]
+
+                # Grand-Hand-Karten
+                if not validate_cards(log_entry.grand_tichu_hands[player_index]):  # Kartenlabel
+                    error_code = BWErrorCode.INVALID_CARD_LABEL
+                    error_line_index = log_entry.line_index + 1 + player_index
+                    break
+                elif len(grand_cards) != 8:  # Anzahl
+                    error_code = BWErrorCode.INVALID_CARD_COUNT
+                    error_line_index = log_entry.line_index + 1 + player_index
+                    break
+                elif len(set(grand_cards)) != 8:  # Duplikate
+                    error_code = BWErrorCode.DUPLICATE_CARD
+                    error_line_index = log_entry.line_index + 1 + player_index
+                    break
+                elif any(label not in start_cards for label in grand_cards):  # sind Handkarten?
+                    error_code = BWErrorCode.CARD_NOT_IN_HAND
+                    error_line_index = log_entry.line_index + 1 + player_index
+                    break
+
+                # Startkarten
+                elif not validate_cards(log_entry.start_hands[player_index]):  # Kartenlabel
+                    error_code = BWErrorCode.INVALID_CARD_LABEL
+                    error_line_index = log_entry.line_index + 6 + player_index
+                    break
+                elif len(start_cards) != 14:  # Anzahl
+                    error_code = BWErrorCode.INVALID_CARD_LABEL
+                    error_line_index = log_entry.line_index + 6 + player_index
+                    break
+                elif len(set(start_cards)) != 14:  # Duplikate
+                    error_code = BWErrorCode.DUPLICATE_CARD
+                    error_line_index = log_entry.line_index + 6 + player_index
+                    break
+
+                # Tauschkarten
+                elif not validate_cards(log_entry.given_schupf_cards[player_index]):  # Kartenlabel
+                    error_code = BWErrorCode.INVALID_CARD_LABEL
+                    error_line_index = log_entry.line_index + 11 + player_index
+                    break
+                elif len(given_cards) != 3:  # Anzahl
+                    error_code = BWErrorCode.INVALID_CARD_LABEL
+                    error_line_index = log_entry.line_index + 11 + player_index
+                    break
+                elif len(set(given_cards)) != 3:  # Duplikate
+                    error_code = BWErrorCode.DUPLICATE_CARD
+                    error_line_index = log_entry.line_index + 11 + player_index
+                    break
+                elif any(label not in start_cards for label in given_cards):  # sind Handkarten?
+                    error_code = BWErrorCode.CARD_NOT_IN_HAND
+                    error_line_index = log_entry.line_index + 11 + player_index
+                    break
 
         # Sind alle Karten verteilt und keine mehrfach vergeben?
-        check_deck = start_hands[0] + start_hands[1] + start_hands[2] + start_hands[3]
-        if len(check_deck) != 56 or list(deck) != len(set(check_deck)):
-            log_entry.error_code = BWErrorCode.INVALID_CARD_DISTRIBUTION
-            log_entry.error_line_index = log_entry.line_index
-            break
-
-        # Grand-Tichu-Karten prüfen
-        for player_index in range(0, 4):
-            # Kartenlabel
-            card_str = log_entry.grand_tichu_hands[player_index]
-            if not validate_cards(card_str):
-                log_entry.error_code = BWErrorCode.INVALID_CARD_LABEL
-                log_entry.error_line_index = log_entry.line_index + 1 + player_index
-                break
-
-            # Anzahl
-            cards = card_str.split(" ")
-            if len(cards) != 8:
-                log_entry.error_code = BWErrorCode.INVALID_CARD_COUNT
-                log_entry.error_line_index = log_entry.line_index + 1 + player_index
-                break
-
-            # Duplikate
-            if len(set(cards)) != 8:
-                log_entry.error_code = BWErrorCode.DUPLICATE_CARD
-                log_entry.error_line_index = log_entry.line_index + 1 + player_index
-                break
-
-            # Ist Handkarte
-            if any(card not in start_hands[player_index] for card in cards):
-                log_entry.error_code = BWErrorCode.CARD_NOT_IN_HAND
-                log_entry.error_line_index = log_entry.line_index + 1 + player_index
-                break
-
-        # Startkarten prüfen
-        for player_index in range(0, 4):
-            # Kartenlabel
-            card_str = log_entry.start_hands[player_index]
-            if not validate_cards(card_str):
-                log_entry.error_code = BWErrorCode.INVALID_CARD_LABEL
-                log_entry.error_line_index = log_entry.line_index + 6 + player_index
-                break
-
-            # Anzahl
-            cards = card_str.split(" ")
-            if len(cards) != 14:
-                log_entry.error_code = BWErrorCode.INVALID_CARD_COUNT
-                log_entry.error_line_index = log_entry.line_index + 6 + player_index
-                break
-
-            # Duplikate
-            if len(set(cards)) != 14:
-                log_entry.error_code = BWErrorCode.DUPLICATE_CARD
-                log_entry.error_line_index = log_entry.line_index + 6 + player_index
-                break
-
-        # Schupfkarten prüfen
-        for player_index in range(0, 4):
-            # Kartenlabel
-            card_str = log_entry.given_schupf_cards[player_index]
-            if not validate_cards(card_str):
-                log_entry.error_code = BWErrorCode.INVALID_CARD_LABEL
-                log_entry.error_line_index = log_entry.line_index + 11 + player_index
-                break
-
-            # Anzahl
-            cards = card_str.split(" ")
-            if len(cards) != 3:
-                log_entry.error_code = BWErrorCode.INVALID_CARD_COUNT
-                log_entry.error_line_index = log_entry.line_index + 11 + player_index
-                break
-
-            # Duplikate
-            if len(set(cards)) != 3:
-                log_entry.error_code = BWErrorCode.DUPLICATE_CARD
-                log_entry.error_line_index = log_entry.line_index + 11 + player_index
-                break
-
-            # Ist Handkarte
-            if any(card not in start_hands[player_index] for card in cards):
-                log_entry.error_code = BWErrorCode.CARD_NOT_IN_HAND
-                log_entry.error_line_index = log_entry.line_index + 11 + player_index
-                break
+        if error_code == BWErrorCode.NO_ERROR:
+            if len(set(start_hands[0] + start_hands[1] + start_hands[2] + start_hands[3])) != 56:
+                error_code = BWErrorCode.DUPLICATE_CARD
+                error_line_index = log_entry.line_index
 
         # Handkarten nach dem Schupfen ermitteln
-        hand_cards = []
-        for player_index in range(4):  # Geber
-            # Tauschkarten abgeben.
-            given_schupf_cards = log_entry.given_schupf_cards[player_index].split(" ")
-            remaining_cards = [card for card in start_hands[player_index] if card not in given_schupf_cards]
-            assert len(remaining_cards) == 11
-            # Tauscharten aufnehmen.
-            received_schupf_cards = [
-                log_entry.given_schupf_cards[(player_index + 1) % 4].split(" ")[2],
-                log_entry.given_schupf_cards[(player_index + 2) % 4].split(" ")[1],
-                log_entry.given_schupf_cards[(player_index + 3) % 4].split(" ")[0],
-            ]
-            cards = remaining_cards + received_schupf_cards
-            assert len(cards) == 14
-            assert len(set(cards)) == 14, "Es sind doppelte Karten im Spiel."
-            hand_cards.append(cards)
+        hands = _schupf(start_hands, given_schupf_cards)
+        num_hand_cards = [14, 14, 14, 14]
 
-        # Gespielte Karten prüfen
-        for history_index, (player_index, card_str, line_index) in enumerate(log_entry.history):
-            if card_str:
-                # Kartenlabel
-                if not validate_cards(card_str):
-                    log_entry.error_code = BWErrorCode.INVALID_CARD_LABEL
-                    log_entry.error_line_index = line_index
+        # Kombinationsmöglichkeiten berechnen
+        combinations = []
+        for player_index in range(4):
+            cards = hands[player_index]
+            combinations.append(build_combinations([parse_card(label) for label in cards]))
+
+        # Startspieler ermitteln
+        current_turn_index = -1
+        for player_index in range(4):
+            if "Ma" in hands[player_index]:
+                current_turn_index = player_index
+                break
+
+        # Histore bereinigen.
+
+        # Leider wird nicht geloggt, wer den Stich kassiert. Stattdessen "passt" der Spieler in dem Moment des Kassierens :-(
+        # Daher bauen wir eine neue Historie auf, die festhält, wer den Stich kassiert, ohne überflüssiges Passen.
+        history = []
+
+        trick_owner_index = -1
+        trick_combination = CombinationType.PASS, 0, 0
+        trick_points = 0
+        points = [0, 0, 0, 0]
+        played_cards = []
+        first_pos = [-1, -1, -1, -1]  # die erste Position in der Historie, in der der Spieler Karten ausspielt
+        tichu_positions = [log_entry.tichu_positions[i] for i in range(4)]
+        is_trick_rank_ambiguous = False  # True, wenn der Rang des Tricks mehrdeutig ist
+        wish_value = -1
+        dragon_giver= -1  # Index des Spielers, der den Drachen verschenkt hat
+        winner_index = -1
+        loser_index = -1
+        is_round_over = False
+        is_double_victory = False
+        history_too_long = False
+        for player_index, card_str, line_index in log_entry.history:
+            assert 0 <= player_index <= 3
+
+            if is_round_over:
+                # Runde ist vorbei, aber es gibt noch weitere Einträge in der Historie
+                if card_str == "":
+                    continue  # Passen am Ende der Runde ignorieren wir
+                history_too_long = True
+                break
+
+            if card_str == "":
+                # Falls alle Mitspieler zuvor gepasst haben, schaut der Spieler jetzt auf seinen eigenen Stich und kann diesen abräumen.
+                if player_index == trick_owner_index and trick_combination != (CombinationType.SINGLE, 1, 0):  # der Hund bleibt liegen
+                    # Stich kassieren
+                    assert len(history) > 0 and history[-1][2] == -1
+                    if trick_combination[2] == 15:  # der Drache hat den Stich gewonnen
+                        dragon_giver = trick_owner_index
+                        trick_collector_index = log_entry.dragon_recipient
+                    else:
+                        trick_collector_index = trick_owner_index
+                    history[-1] = history[-1][0], history[-1][1], trick_collector_index
+                    points[trick_collector_index] += trick_points
+                    assert -25 <= points[trick_owner_index] <= 125
+                    trick_points = 0
+                    trick_combination = CombinationType.PASS, 0, 0
+                    trick_owner_index = -1
+                    # tichu_positions anpassen, da wir diesen Eintrag nicht übernehmen
+                    for i in range(4):
+                        if tichu_positions[i] >= len(history):
+                            tichu_positions[i] -= 1
+                    continue # nächsten Eintrag in der Historie lesen
+
+                # Spieler hat gepasst.
+                history.append((player_index, "", -1))
+
+                # Im Anspiel gepasst?
+                if trick_owner_index == -1:
+                    error_code = BWErrorCode.PASS_NOT_POSSIBLE
+                    error_line_index = line_index
                     break
 
-                # Duplikate
+                # Wunsch beachtet?
+                if wish_value > 0:
+                    action_space = build_action_space(combinations[player_index], trick_combination, wish_value)
+                    if action_space[0][1][0] != CombinationType.PASS:  # Wunsch wurde nicht beachtet!
+                        error_code = BWErrorCode.WISH_NOT_FOLLOWED
+                        error_line_index = line_index
+                        break
+
+                # Prüfen, ob der Spieler dran war
+                if player_index != current_turn_index:
+                    if error_code == BWErrorCode.NO_ERROR:
+                        error_code = BWErrorCode.PLAYER_NOT_ON_TURN
+                        error_line_index = line_index
+                    break
+            else:
+                # Spieler hat Karten gespielt
+                history.append((player_index, card_str, -1))
+
+                # Die erste Position für jeden Spieler merken
+                if first_pos[player_index] == -1:
+                    first_pos[player_index] = len(history) - 1
+
+                # Karten prüfen
                 cards = card_str.split(" ")
-                if len(set(cards)) != len(cards):
-                    log_entry.error_code = BWErrorCode.DUPLICATE_CARD
-                    log_entry.error_line_index = line_index
+                if not validate_cards(card_str):  # Kartenlabel bekannt?
+                    if error_code == BWErrorCode.NO_ERROR:
+                        error_code = BWErrorCode.INVALID_CARD_LABEL
+                        error_line_index = line_index
+                    break
+                elif len(cards) != len(set(cards)):  # Duplikate?
+                    if error_code == BWErrorCode.NO_ERROR:
+                        error_code = BWErrorCode.DUPLICATE_CARD
+                        error_line_index = line_index
+                    break
+                elif any(label not in hands[player_index] for label in cards):  # gehören die Karten zur Hand?
+                    if error_code == BWErrorCode.NO_ERROR:
+                        error_code = BWErrorCode.CARD_NOT_IN_HAND
+                        error_line_index = line_index
+                    break
+                elif any(label in played_cards for label in cards):  # bereits gespielt?
+                    if error_code == BWErrorCode.NO_ERROR:
+                        error_code = BWErrorCode.CARD_ALREADY_PLAYED
+                        error_line_index = line_index
                     break
 
-                # Ist Handkarte
-                if any(card not in log_entry.start_hands[player_index].split(" ") for card in cards):
-                    log_entry.error_code = BWErrorCode.CARD_NOT_IN_HAND
-                    log_entry.error_line_index = line_index
+                # Gespielte Karten merken
+                played_cards += cards
+
+                # Kombination prüfen
+                parsed_cards = [parse_card(label) for label in cards]
+                combination = get_trick_combination(parsed_cards, trick_combination[2], shift_phoenix=True)
+                action_space = build_action_space(combinations[player_index], trick_combination, wish_value)
+                if not any(set(parsed_cards) == set(playable_cards) for playable_cards, _playable_combination in action_space):
+                    if error_code == BWErrorCode.NO_ERROR:
+                        if wish_value > 0 and is_wish_in(wish_value, action_space[0][0]):
+                            error_code = BWErrorCode.WISH_NOT_FOLLOWED  # Wunsch wurde nicht beachtet
+                        elif is_trick_rank_ambiguous:
+                            error_code = BWErrorCode.SMALLER_OF_AMBIGUOUS_RANK  # es wurde der kleinere Rang bei einem mehrdeutigen Stich angenommen
+                        else:
+                            error_code = BWErrorCode.COMBINATION_NOT_PLAYABLE
+                        error_line_index = line_index
                     break
 
-        # 2) Zugwechsel
-        for history_index, (player_index, card_str, line_index) in enumerate(log_entry.history):
-            pass
+                # Wenn kein Anspiel ist, kann das Zugrecht durch eine Bombe erobert werden
+                if trick_owner_index != -1 and combination[0] == CombinationType.BOMB:
+                    current_turn_index = player_index
 
-            # PLAYER_NOT_ON_TURN = 20
-            # Der Spieler ist nicht am Zug.
+                # Prüfen, ob der Spieler dran war
+                if player_index != current_turn_index:
+                    if error_code == BWErrorCode.NO_ERROR:
+                        error_code = BWErrorCode.PLAYER_NOT_ON_TURN
+                        error_line_index = line_index
+                    break
 
-        # 3) Spielzug
+                # Handkarten aktualisieren
+                hands[player_index] = [label for label in hands[player_index] if label not in cards]
+                num_hand_cards[player_index] -= len(cards)
+                assert len(hands[player_index]) == num_hand_cards[player_index]  # todo raus
+                combinations[player_index] = build_combinations([parse_card(label) for label in hands[player_index]])
 
-        # CARD_ALREADY_PLAYED = 14
-        # Karte bereits gespielt.
+                # Stich aktualisieren
+                trick_points += sum_card_points(parsed_cards)
+                assert -25 <= trick_points <= 125
+                trick_combination = combination
+                trick_owner_index = player_index
+                # Der Rang ist nicht eindeutig, wenn beim Fullhouse der Phönix in der Mitte liegt oder bei der Straße am Ende bzw. Ende.
+                is_trick_rank_ambiguous = (
+                      (combination[0] == CombinationType.FULLHOUSE and parsed_cards[2][0] == 16) or
+                      (combination[0] == CombinationType.STREET and parsed_cards[0][0] == 16)
+                )
 
-        # INVALID_COMBINATION = 30
-        # Ungültige Kombination.
+                # Wunsch erfüllt?
+                if wish_value > 0 and is_wish_in(wish_value, parsed_cards):
+                    assert "Ma" in played_cards
+                    wish_value = 0
 
-        # COMBINATION_NOT_PLAYABLE = 31
-        # Kombination nicht spielbar.
+                # Runde vorbei?
+                if num_hand_cards[player_index] == 0:
+                    finished_players = num_hand_cards.count(0)
+                    if finished_players == 1:
+                        assert winner_index == -1
+                        winner_index = player_index
+                    elif finished_players == 2:
+                        assert winner_index != -1
+                        if num_hand_cards[(player_index + 2) % 4] == 0:
+                            is_double_victory = True
+                            is_round_over = True
+                    else:
+                        assert finished_players == 3
+                        for i in range(4):
+                            if num_hand_cards[i] > 0:
+                                loser_index = i
+                                break
+                        assert loser_index != -1
+                        is_round_over = True
+                    # Falls die Runde vorbei ist, zum nächsten Eintrag in der Historie springen.
+                    # Dürfte es nicht mehr geben ud somit den Schleifendurchlauf beenden.
+                    if is_round_over:
+                        continue
 
-        # PASS_NOT_POSSIBLE = 32
-        # Passen nicht möglich.
+                # Falls ein MahJong ausgespielt wurde, kann der Spieler sich einen Kartenwert wünschen.
+                if 'Ma' in cards:
+                    wish_value = log_entry.wish_value
 
-        # TURN_MISSING = 33
-        # Es fehlen Einträge in der Historie."""
+            # Nächsten Spieler ermitteln
+            assert 0 <= current_turn_index <= 3
+            if trick_combination == (CombinationType.SINGLE, 1, 0) and trick_owner_index == current_turn_index:
+                current_turn_index = (current_turn_index + 2) % 4
+            else:
+                current_turn_index = (current_turn_index + 1) % 4
 
-        # 4) Wunsch
+            # Spieler ohne Handkarten überspringen (für diese gibt es keine Logeinträge)
+            while num_hand_cards[current_turn_index] == 0:
+                # Wenn der Spieler auf seinen eigenen Stich schaut, kassiert er ihn, selbst wenn er keine Handkarten mehr hat.
+                if current_turn_index == trick_owner_index and trick_combination != (CombinationType.SINGLE, 1, 0):  # der Hund bleibt liegen
+                    # Stich kassieren
+                    assert len(history) > 0 and history[-1][2] == -1
+                    if trick_combination[2] == 15:  # der Drache hat den Stich gewonnen
+                        dragon_giver = trick_owner_index
+                        trick_collector_index = log_entry.dragon_recipient
+                    else:
+                        trick_collector_index = trick_owner_index
+                    history[-1] = history[-1][0], history[-1][1], trick_collector_index
+                    points[trick_collector_index] += trick_points
+                    assert -25 <= points[trick_owner_index] <= 125
+                    trick_points = 0
+                    trick_combination = CombinationType.PASS, 0, 0
+                    trick_owner_index = -1
+                current_turn_index = (current_turn_index + 1) % 4
+            assert num_hand_cards[current_turn_index] > 0
 
-        # WISH_WITHOUT_MAHJONG = 40
-        # Wunsch geäußert, aber kein Mahjong gespielt.
+        # Historie zu kurz oder zu lang?
+        if not is_round_over:
+            if error_code == BWErrorCode.NO_ERROR:
+                error_code = BWErrorCode.HISTORY_TOO_SHORT
+                error_line_index = log_entry.line_index
+        elif history_too_long:
+            if error_code == BWErrorCode.NO_ERROR:
+                error_code = BWErrorCode.HISTORY_TOO_LONG
+                error_line_index = log_entry.line_index
 
-        # WISH_NOT_FOLLOWED = 41
-        # Wunsch nicht beachtet (hätte erfüllt werden können).
+        # Runde ist beendet
 
-        # Korrektur: "ohne Wunsch" (0) eintragen, wenn der Mahjong gespielt wurde, aber kein Wunsch geäußert wurde (was legitim ist).
-        if log_entry.wish_value == -1:
-            if any(card == "Ma" for card in cards.split(" ")):
+        # letzten Stich kassieren
+        assert len(history) > 0 and history[-1][2] == -1
+        if trick_combination[2] == 15:  # der Drache hat den Stich gewonnen
+            dragon_giver = trick_owner_index
+            trick_collector_index = log_entry.dragon_recipient
+        else:
+            trick_collector_index = trick_owner_index
+        history[-1] = history[-1][0], history[-1][1], trick_collector_index
+        points[trick_collector_index] += trick_points
+        assert -25 <= points[trick_owner_index] <= 125
+
+        # Empfänger des Drachens prüfen
+        if dragon_giver != -1 and log_entry.dragon_recipient == -1:
+            # Drache hat Stich gewonnen, wurde aber nicht verschenkt
+            if not (history[-1][1] == "Dr" and is_double_victory):  # Ausnahme: Drache im letzten Stich führt zum Doppelsieg (dann wird der Drache nicht verschenkt, weil egal)
+                if error_code == BWErrorCode.NO_ERROR:
+                    error_code = BWErrorCode.DRAGON_NOT_GIVEN
+                    error_line_index = log_entry.line_index
+        elif dragon_giver != -1 and log_entry.dragon_recipient not in [(dragon_giver + 1) % 4, (dragon_giver + 3) % 4]:
+            # Drache hat Stich gewonnen, wurde aber an das eigene Team verschenkt
+            if error_code == BWErrorCode.NO_ERROR:
+                error_code = BWErrorCode.DRAGON_GIVEN_TO_OWN_TEAM
+                error_line_index = log_entry.line_index
+        elif dragon_giver == -1 and log_entry.dragon_recipient != -1:
+            # Drache hat keinen Stich gewonnen, wurde aber verschenkt
+            if error_code == BWErrorCode.NO_ERROR:
+                error_code = BWErrorCode.DRAGON_GIVEN_WITHOUT_BEAT
+                error_line_index = log_entry.line_index
+
+        # Falls der Mahjong gespielt wurde, aber kein Wunsch geäußert wurde (was legitim ist), 0 für "ohne Wunsch" eintragen.
+        wish_value = log_entry.wish_value
+        if wish_value == -1:
+            if "Ma" in played_cards:
                 log_entry.wish_value = 0
+            else:
+                error_code = BWErrorCode.WISH_WITHOUT_MAHJONG
+                error_line_index = log_entry.line_index
 
-        # 5) Drache verschenken
+        # Spielerliste prüfen
+        player_names = []
+        for player_index in range(4):
+            # Spielernamen generieren, wenn er nicht vorhanden ist (oder nur aus Leerzeichen besteht)
+            name = log_entry.player_names[player_index]
+            if name == "":
+                name = f"Noname-{log_entry.game_id}"
+                if error_code == BWErrorCode.NO_ERROR:
+                    error_code = BWErrorCode.PLAYER_NAME_MISSING
+                    error_line_index = log_entry.line_index + 1 + player_index
+            # Sicherstellen, dass der Name eindeutig ist.
+            i = 1
+            while name in player_names:
+                i += 1
+                name = f"{log_entry.player_names[player_index]} ({i})"
+                if error_code == BWErrorCode.NO_ERROR:
+                    error_code = BWErrorCode.DUPLICATE_PLAYER_NAME
+                    error_line_index = log_entry.line_index + 1 + player_index
+            player_names.append(name)
 
-        # DRAGON_GIVEN_WITHOUT_BEAT = 50
-        # Drache verschenkt, aber Drache hat den Stich nicht gewonnen.
+        # Position der Tichu-Ansage prüfen und korrigieren
+        for player_index in range(4):
+            if tichu_positions[player_index] > first_pos[player_index]:
+                if error_code == BWErrorCode.NO_ERROR:
+                    error_code = BWErrorCode.ANNOUNCEMENT_NOT_POSSIBLE
+                    error_line_index = log_entry.line_index
+                tichu_positions[player_index] = first_pos[player_index]
 
-        # DRAGON_NOT_GIVEN = 51
-        # Drache hat den Stich nicht gewonnen, wurde aber nicht verschenkt.
+        # Endwertung der Runde
+        if is_double_victory:
+            # Doppelsieg! Das Gewinnerteam kriegt 200 Punkte. Die Gegner nichts.
+            points = [0, 0, 0, 0]
+            points[winner_index] = 200
+        elif loser_index >= 0:
+            assert winner_index >= 0
+            # a) Der letzte Spieler gibt seine Handkarten an das gegnerische Team.
+            leftover_points = 100 - sum_card_points([parse_card(label) for label in played_cards])
+            assert leftover_points == sum_card_points(other_cards([parse_card(label) for label in played_cards]))  # todo raus
+            points[(loser_index + 1) % 4] += leftover_points
+            # b) Der letzte Spieler übergibt seine Stiche an den Spieler, der zuerst fertig wurde.
+            points[winner_index] += points[loser_index]
+            points[loser_index] = 0
+            if sum(points) != 100:
+                assert sum(points) == 100, points
+                assert all(-25 <= p <= 125 for p in points), points
+        else:
+            # Rundenergebnis aufgrund Fehler im Spielverlauf nicht berechenbar
+            assert error_code != BWErrorCode.NO_ERROR
+            points = [0, 0, 0, 0]
 
-        # DRAGON_GIVEN_TO_TEAM = 52
-        # Drache an eigenes Team verschenkt.
+        # Bonus für Tichu-Ansage
+        for player_index in range(4):
+            if tichu_positions[player_index] != -3:
+                bonus = 200 if tichu_positions[player_index] == -2 else 100
+                points[player_index] += bonus if player_index == winner_index else -bonus
 
-        # Drache an sich selbst oder an den Partner verschenkt?
-        # Das kommt immer wieder mal vor.
-        if round_data.dragon_recipient != -1:
-            if dragon_giver == -1:
-                print(f"{year:04d}{month:02d}/{game_id}.tch, Zeile {i}: {line}\nDrache wurde verschenkt, aber niemals gespielt")
-                return None
-            if round_data.dragon_recipient not in [(dragon_giver + 1) % 4, (dragon_giver + 3) % 4]:
-                round_data.parser_error = "DRAGON_RECIPIENT_ERROR"
-                result.append(round_data)
-                return result
+        # Rundenergebnis mit dem geloggten Eintrag vergleichen
+        score = points[2] + points[0], points[3] + points[1]
+        if score != log_entry.score:
+            if error_code == BWErrorCode.NO_ERROR:
+                if (tichu_positions[0] == -2 and tichu_positions[2] == -2) or (tichu_positions[1] == -2 and tichu_positions[3] == -2):
+                    error_code = BWErrorCode.SCORE_MISMATCH_AT_2_GRANDS
+                else:
+                    error_code = BWErrorCode.SCORE_MISMATCH
+                error_line_index = log_entry.line_index
 
-        # ------------------------------------------------------
-        # Prio 2: Korrigierte oder vernachlässigbare Fehler
-        # ------------------------------------------------------
+        # Gesamt-Punktestand der Partie aktualisieren
+        total_score[0] += score[0]
+        total_score[1] += score[1]
 
-        # 6) Spielerliste
+        # Startkarten so sortieren, dass erst die Grand-Tichu-Karten aufgelistet sind
+        sorted_start_hands = []
+        for player_index in range(4):
+            grand_cards = grand_tichu_hands[player_index]
+            start_cards = start_hands[player_index]
+            remaining_cards = [label for label in start_cards if label not in grand_cards]
+            assert len(remaining_cards) == 6
+            if error_code != BWErrorCode.INVALID_CARD_LABEL:
+                cards = sorted([parse_card(label) for label in grand_cards], reverse=True)
+                grand_cards = [stringify_card(card) for card in cards]
+                cards = sorted([parse_card(label) for label in remaining_cards], reverse=True)
+                remaining_cards = [stringify_card(card) for card in cards]
+            sorted_start_hands.append(" ".join(grand_cards + remaining_cards))
 
-        # Falls der Name eines Spielers fehlt (oder nur aus Leerzeichen besteht), generieren wir einen eindeutigen Namen.
-        for player_index in range(0, 4):
-            if log_entry.player_names[player_index] != "":
-                log_entry.player_names[player_index] = f"Noname-{log_entry.game_id}-{player_index}"
-                log_entry.error_code = BWErrorCode.PLAYER_NAME_MISSING
-                log_entry.error_line_index = log_entry.line_index + 1 + player_index
-
-        # 7) Endergebnis
-
-        # SCORE_MISMATCH = 60
-        # Rundenergebnis stimmt nicht (wurde korrigiert).
-
-        # Rechenfehler? Auch das kommt immer wieder mal vor. Bis 2010 ständig, mittlerweile nur noch selten.
-        if not _validate_score(round_data):
-            round_data.parser_error = "SCORE_ERROR"
-            result.append(round_data)
-            return result
-
-        # 8) Überflüssige Spielzüge
-
-        # PASSED_AFTER_ROUND_END = 91
-        # Gepasst, obwohl die Runde vorbei ist (wird ignoriert).
-
-        # PLAYED_AFTER_ROUND_END = 92
-        # Karten ausgespielt, obwohl die Runde vorbei ist (wird ignoriert).
-
-        # PLAYED_AFTER_GAME_OVER  = 93
-        # Runde gespielt, obwohl die Partie bereits entschieden ist (wird ignoriert)."""
-
-        # 9) Tichu-Ansage
-
-        # ANNOUNCEMENT_NOT_POSSIBLE = 80
-        # Tichu-Ansage an der geloggten Position nicht möglich (wurde korrigiert).
-
-
-
-
-    return True
+        datasets.append(BWDataset(
+            game_id=log_entry.game_id,
+            round_index=log_entry.round_index,
+            player_names=player_names,
+            start_hands=sorted_start_hands,
+            given_schupf_cards=log_entry.given_schupf_cards,
+            tichu_positions=tichu_positions,
+            wish_value=wish_value,
+            dragon_recipient=log_entry.dragon_recipient,
+            winner_index = winner_index,
+            loser_index = loser_index,
+            is_double_victory = is_double_victory,
+            score=score,
+            history=history,
+            year=log_entry.year,
+            month=log_entry.month,
+            error_code=error_code,
+            error_line_index=error_line_index,
+            score_logged=log_entry.score if log_entry.score != score else None
+        ))
+    return datasets
 
 
 class BWReplayError(Exception):
@@ -883,41 +1168,6 @@ class BWReplayError(Exception):
         super().__init__(message, *args)
 
 
-def _take_trick(pub: PublicState, round_data: BWLogEntry, history_index: int):
-    """
-    Räumt den Stich ab.
-
-    :param pub: Der öffentliche Spielzustand.
-    :param round_data: Die geparsten Daten einer Runde.
-    """
-    assert pub.trick_combination[0] != CombinationType.PASS
-    assert pub.trick_owner_index == pub.current_turn_index
-    if pub.trick_combination == (CombinationType.SINGLE, 1, 15) and not pub.is_double_victory:  # Drache kassiert? Muss verschenkt werden, wenn kein Doppelsieg!
-        # Stich verschenken
-        recipient = round_data.dragon_recipient
-        if recipient == -1:
-            raise BWReplayError("'dragon_recipient' fehlt", round_data, history_index)
-        if not recipient in ((1, 3) if pub.current_turn_index in (0, 2) else (0, 2)):
-            raise BWReplayError(f"Spieler {pub.current_turn_index} muss Drache an Gegner verschenken, gibt ihn aber an Spieler {recipient}", round_data, history_index)
-        assert CARD_DRA in pub.played_cards
-        assert pub.dragon_recipient == -1
-        pub.dragon_recipient = recipient
-    else:
-        # Stich selbst kassieren
-        recipient = pub.trick_owner_index
-
-    # Punkte im Stich dem Spieler Gut schreiben.
-    pub.points[recipient] += pub.trick_points
-    assert -25 <= pub.points[recipient] <= 125
-
-    # Stich zurücksetzen
-    pub.trick_owner_index = -1
-    pub.trick_cards = []
-    pub.trick_combination = (CombinationType.PASS, 0, 0)
-    pub.trick_points = 0
-    pub.trick_counter += 1
-
-
 def replay_play(all_round_data: List[BWLogEntry]) -> Generator[Tuple[PublicState, List[PrivateState], Tuple[Cards, Combination]]]:
     """
     Spielt eine geloggte Partie nach und gibt jeden Entscheidungspunkt für das Ausspielen der Karten zurück.
@@ -928,287 +1178,7 @@ def replay_play(all_round_data: List[BWLogEntry]) -> Generator[Tuple[PublicState
     if len(all_round_data) == 0:
         return None
 
-    # Spielzustand initialisieren
-    pub = PublicState(table_name="bw_replay", player_names=all_round_data[0].player_names)
-    privs = [PrivateState(player_index=i) for i in range(4)]
-    pub.is_running = True
 
-    # Partie spielen
-    for round_data in all_round_data:
-        if round_data.parser_error:
-            continue
-
-        # Neue Runde...
-        pub.player_names = round_data.player_names
-
-        # Spielzustand für eine neue Runde zurücksetzen.
-        pub.reset_round()
-        for priv in privs:
-            priv.reset_round()
-
-        # Die ersten 8 Karten aufnehmen.
-        for player_index in range(4):
-            privs[player_index].hand_cards = parse_cards(round_data.grand_tichu_hands[player_index])
-            assert len(privs[player_index].hand_cards) == 8, f"'grand_tichu_hands' müssen 8 Karten sein. Es sind nur {len(privs[player_index].hand_cards)}."
-            pub.count_hand_cards[player_index] = 8
-
-        # Hat ein Spieler ein großes Tichu angesagt?
-        for player_index in range(4):
-            if round_data.tichu_positions[player_index] == -2:
-                pub.announcements[player_index] = 2
-
-        # Die restlichen Karten aufnehmen.
-        for player_index in range(4):
-            privs[player_index].hand_cards = parse_cards(round_data.start_hands[player_index])
-            assert len(privs[player_index].hand_cards) == 14, f"'start_hands' müssen 14 Karten sein. Es sind nur {len(privs[player_index].hand_cards)}."
-            pub.count_hand_cards[player_index] = 14
-
-        # Hat ein Spieler ein normales Tichu angesagt?
-        for player_index in range(4):
-            if round_data.tichu_positions[player_index] == -1:
-                pub.announcements[player_index] = 1
-
-        # Jetzt müssen die Spieler schupfen (Tauschkarten abgeben).
-        for player_index in range(4):
-            cards = round_data.given_schupf_cards[player_index].split(" ")
-            privs[player_index].given_schupf_cards = parse_card(cards[0]), parse_card(cards[1]), parse_card(cards[2])
-            privs[player_index].hand_cards = [card for card in privs[player_index].hand_cards if card not in privs[player_index].given_schupf_cards]
-            if len(privs[player_index].hand_cards) != 11:
-                raise BWReplayError("11 Handkarten erwartet", round_data)
-            pub.count_hand_cards[player_index] = 11
-
-        # Tauscharten aufnehmen.
-        for player_index in range(4):  # Nehmer
-            priv = privs[player_index]
-            priv.received_schupf_cards = (
-                privs[(player_index + 1) % 4].given_schupf_cards[2],
-                privs[(player_index + 2) % 4].given_schupf_cards[1],
-                privs[(player_index + 3) % 4].given_schupf_cards[0],
-            )
-            assert not set(priv.received_schupf_cards).intersection(priv.hand_cards), "Es sind doppelte Karten im Spiel."
-            priv.hand_cards += priv.received_schupf_cards
-            assert len(priv.hand_cards) == 14
-            pub.count_hand_cards[player_index] = 14
-
-        # Startspieler bekannt geben
-        for player_index in range(4):
-            if CARD_MAH in privs[player_index].hand_cards:
-                assert pub.start_player_index == -1
-                pub.start_player_index = player_index
-                pub.current_turn_index = player_index
-                break
-        assert 0 <= pub.start_player_index <= 3, "Der Mahjong fehlt."
-
-        # Sicherstellen, dass alle Karten verteilt und keine doppelt vergeben sind.
-        check_deck = sorted(privs[0].hand_cards + privs[1].hand_cards + privs[2].hand_cards + privs[3].hand_cards)
-        assert check_deck == list(deck), "Es wurden nicht alle Karten verteilt oder es sind welche doppelt."
-
-        # Los geht's - das eigentliche Spiel kann beginnen.
-        # Spiele die History Zug für Zug nach
-        for history_index, (player_index, card_labels, line_index) in enumerate(round_data.history):
-            if pub.is_round_over:
-                # Falls ein Spieler nach Rundenende gepasst hat, ignorieren wir es einfach.
-                if card_labels == "":
-                    continue
-                raise BWReplayError(f"Die Historie hat noch Einträge, aber die Runde {round_data.round_index + 1} ist beendet.", round_data, history_index)
-
-            assert 0 <= pub.count_hand_cards[pub.current_turn_index] <= 14
-
-            # Hat ein Spieler ein normales Tichu angesagt?
-            for i in range(4):
-                if round_data.tichu_positions[i] == history_index:
-                    assert pub.announcements[i] == 0, "Der Spieler hat bereits ein Tichu angesagt."
-                    if pub.count_hand_cards[i] != 14:
-                        raise BWReplayError("Spieler kann kein Tichu ansagen, hat bereits Karten ausgespielt", round_data, history_index)
-                    assert pub.count_hand_cards[i] == 14, "Der Spieler kann kein Tichu mehr ansagen. Er hat bereits Karten ausgespielt."
-                    pub.announcements[i] = 1
-
-            if card_labels == "":
-                # Passen
-                cards = []
-                combination = CombinationType.PASS, 0, 0
-            else:
-                # Karten spielen
-                cards = parse_cards(card_labels)
-                combination = get_combination(cards, pub.trick_combination[2])
-                if combination[0] == CombinationType.BOMB:
-                    pub.current_turn_index = player_index
-
-            # Ist der Spieler in der Historie auch der aktuelle Spieler?
-            if player_index != pub.current_turn_index:
-                raise BWReplayError("Spieler ist nicht am Zug", round_data, history_index)
-
-            if combination[0] == CombinationType.PASS:
-                # Falls alle gepasst haben, schaut der Spieler auf seinen eigenen Stich und kann diesen abräumen.
-                if pub.trick_owner_index == pub.current_turn_index and pub.trick_combination != (CombinationType.SINGLE, 1, 0):  # der Hund bleibt liegen
-                    _take_trick(pub, round_data, history_index)
-                    #if combination[0] == CombinationType.PASS:
-                    # Falls hier ein Passen-Eintrag in der History steht, können wir den einfach überspringen.
-                    continue
-
-                assert pub.trick_owner_index != -1 and len(pub.tricks) > 0, "Beim Anspiel darf nicht gepasst werden."
-
-                if pub.wish_value > 0:
-                    # Wird der Wunsch beachtet?
-                    action_space = build_action_space(privs[player_index].combinations, pub.trick_combination, pub.wish_value)
-                    if action_space[0][1][0] != CombinationType.PASS:
-                        raise BWReplayError("Wunsch wurde nicht beachtet", round_data, history_index)
-
-                # Entscheidungspunkt für "play"
-                yield pub, privs, (cards, combination)
-
-                # Entscheidung des Spielers festhalten
-                pub.tricks[-1].append((player_index, cards, combination))
-            else:
-                # Karten spielen
-                if any(card not in privs[player_index].hand_cards for card in cards):
-                    raise BWReplayError("Ausgespielte Karten waren nicht auf der Hand", round_data, history_index)
-
-                ok = False
-                action_space = build_action_space(privs[player_index].combinations, pub.trick_combination, pub.wish_value)
-                for playable_cards, playable_combination in action_space:
-                    if set(cards) == set(playable_cards):
-                        ok = True
-                        break
-                if not ok:
-                    if pub.wish_value > 0:
-                        if action_space[0][1][0] != CombinationType.PASS:
-                            if is_wish_in(pub.wish_value, action_space[0][0]):
-                                raise BWReplayError("Wunsch wurde nicht beachtet", round_data, history_index)
-                    raise BWReplayError("Ausgespielte Karten sind nicht spielbar", round_data, history_index)
-
-                # Entscheidungspunkt für "play"
-                yield pub, privs, (cards, combination)
-
-                # Entscheidung des Spielers festhalten
-                if pub.trick_owner_index == -1:  # neuer Stich?
-                    pub.tricks.append([(player_index, cards, combination)])
-                else:
-                    assert len(pub.tricks) > 0
-                    pub.tricks[-1].append((player_index, cards, combination))
-
-                # Handkarten aktualisieren
-                privs[player_index].hand_cards = [card for card in privs[player_index].hand_cards if card not in cards]
-                pub.count_hand_cards[player_index] -= combination[1]
-                assert pub.count_hand_cards[player_index] == len(privs[player_index].hand_cards)
-
-                # Stich aktualisieren
-                pub.trick_owner_index = player_index
-                pub.trick_cards = cards
-                if combination == (CombinationType.SINGLE, 1, 16):
-                    assert pub.trick_combination[0] == CombinationType.PASS or pub.trick_combination[0] == CombinationType.SINGLE
-                    assert pub.trick_combination != (CombinationType.SINGLE, 1, 15)  # Phönix auf Drachen geht nicht
-                    # Der Phönix ist eigentlich um 0.5 größer als der Stich, aber gleichsetzen geht auch (Anspiel == 1).
-                    if pub.trick_combination[2] == 0:  # Anspiel oder Hund?
-                        pub.trick_combination = (CombinationType.SINGLE, 1, 1)
-                else:
-                    pub.trick_combination = combination
-                pub.trick_points += sum_card_points(cards)
-                assert -25 <= pub.trick_points <= 125
-
-                # Gespielte Karten merken
-                assert not set(cards).intersection(pub.played_cards), f"cards: {stringify_cards(cards)},  played_cards: {stringify_cards(pub.played_cards)}"  # darf keine Schnittmenge bilden
-                pub.played_cards += cards
-
-                # Ist der erste Spieler fertig?
-                if pub.count_hand_cards[pub.current_turn_index] == 0:
-                    n = pub.count_active_players
-                    assert 1 <= n <= 3
-                    if n == 3:
-                        assert pub.winner_index == -1
-                        pub.winner_index = pub.current_turn_index
-
-                # Wunsch erfüllt?
-                assert pub.wish_value == -1 or pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
-                if pub.wish_value > 0 and is_wish_in(pub.wish_value, cards):
-                    assert CARD_MAH in pub.played_cards
-                    pub.wish_value = -pub.wish_value
-
-                # Ist die Runde beendet?
-                if pub.count_hand_cards[pub.current_turn_index] == 0:
-                    n = pub.count_active_players
-                    assert 1 <= n <= 3
-                    if n == 2:
-                        assert 0 <= pub.winner_index <= 3
-                        if (pub.current_turn_index + 2) % 4 == pub.winner_index:  # Doppelsieg?
-                            pub.is_round_over = True
-                            pub.is_double_victory = True
-                    elif n == 1:
-                        pub.is_round_over = True
-                        for loser_index in range(4):
-                            if pub.count_hand_cards[loser_index] > 0:
-                                assert pub.loser_index == -1
-                                pub.loser_index = loser_index
-                                break
-
-                # Runde vorbei?
-                if pub.is_round_over:
-                    # Runde ist vorbei; letzten Stich abräumen und die Schleife für Kartenausspielen beenden
-                    _take_trick(pub, round_data, history_index)
-                    continue  # Nächsten Eintrag aus der Historie holen (sollte nicht mehr vorhanden sein, also endet der Schleifendurchlauf)
-
-                # Falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden.
-                if CARD_MAH in cards:
-                    assert pub.wish_value == 0
-                    pub.wish_value = round_data.wish_value if round_data.wish_value > 0 else -1  # todo umkodieren
-                    assert 2 <= pub.wish_value <= 14 or pub.wish_value == -1
-
-            # Nächsten Spieler ermitteln
-            assert 0 <= pub.current_turn_index <= 3
-            if pub.trick_combination == (CombinationType.SINGLE, 1, 0) and pub.trick_owner_index == pub.current_turn_index:
-                pub.current_turn_index = (pub.current_turn_index + 2) % 4
-            else:
-                pub.current_turn_index = (pub.current_turn_index + 1) % 4
-
-            # Spieler ohne Handkarten überspringen (für diese gibt es keine Logeinträge)
-            while pub.count_hand_cards[pub.current_turn_index] == 0:
-                if pub.trick_owner_index == pub.current_turn_index and pub.trick_combination != (CombinationType.SINGLE, 1, 0):  # der Hund bleibt liegen
-                    _take_trick(pub, round_data, history_index)  # Der Spieler hat zwar keine Karten mehr, den Stich räumt er aber dennoch ab.
-                pub.current_turn_index = (pub.current_turn_index + 1) % 4
-            assert pub.count_hand_cards[pub.current_turn_index] > 0
-
-        # Runde ist beendet
-        # Endwertung der Runde
-
-        assert pub.is_round_over, "Die Historie hat keine Einträge mehr, aber die Runde läuft noch."
-        if pub.is_double_victory:
-            # Doppelsieg! Das Gewinnerteam kriegt 200 Punkte. Die Gegner nichts.
-            assert sum(1 for n in pub.count_hand_cards if n > 0) == 2
-            assert 0 <= pub.winner_index <= 3
-            pub.points = [0, 0, 0, 0]
-            pub.points[pub.winner_index] = 200
-        else:
-            # a) Der letzte Spieler gibt seine Handkarten an das gegnerische Team.
-            assert 0 <= pub.loser_index <= 3
-            leftover_points = 100 - sum_card_points(pub.played_cards)
-            assert leftover_points == sum_card_points(other_cards(pub.played_cards))
-            pub.points[(pub.loser_index + 1) % 4] += leftover_points
-            # b) Der letzte Spieler übergibt seine Stiche an den Spieler, der zuerst fertig wurde.
-            assert pub.winner_index >= 0
-            pub.points[pub.winner_index] += pub.points[pub.loser_index]
-            pub.points[pub.loser_index] = 0
-            assert sum(pub.points) == 100, pub.points
-            assert -25 <= pub.points[0] <= 125
-            assert -25 <= pub.points[1] <= 125
-            assert -25 <= pub.points[2] <= 125
-            assert -25 <= pub.points[3] <= 125
-
-        # Bonus für Tichu-Ansage
-        for player_index in range(4):
-            if pub.announcements[player_index]:
-                if player_index == pub.winner_index:
-                    pub.points[player_index] += 100 * pub.announcements[player_index]
-                else:
-                    pub.points[player_index] -= 100 * pub.announcements[player_index]
-
-        # Ergebnis der Runde in die Punktetabelle der Partie eintragen.
-        if pub.points[2] + pub.points[0] != round_data.score[0] or pub.points[3] + pub.points[1] != round_data.score[1]:
-            raise BWReplayError(f"Ergebnis der Runde stimmt nicht: {pub.points} != {round_data.score}", round_data)
-        pub.game_score[0].append(round_data.score[0])
-        pub.game_score[1].append(round_data.score[1])
-
-    # Partie ist beendet
-    pub.is_running = False
     return None
 
 

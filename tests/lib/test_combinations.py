@@ -64,13 +64,13 @@ def test_get_combination(cards_str, trick_value, expected_figure):
     """Testet die Ermittlung der Kombination (Typ, Länge, Rang) für verschiedene Kartensets."""
     cards = parse_cards(cards_str)
     # get_figure sortiert in-place, daher Kopie übergeben, falls Original benötigt wird
-    assert get_combination(list(cards), trick_value) == expected_figure
+    assert get_trick_combination(list(cards), trick_value) == expected_figure
 
 # Spezieller Test für Farbbombe, da get_figure Farbe nicht prüft
 def test_get_combination_color_bomb_type():
      """Testet, dass get_figure bei einer potentiellen Farbbombe BOMB zurückgibt (ohne Farbcheck)."""
      cards = parse_cards("S5 S6 S7 S8 S9") # 5 Karten aufsteigend, gleiche Farbe
-     assert get_combination(list(cards), 0) == (CombinationType.BOMB, 5, 9)
+     assert get_trick_combination(list(cards), 0) == (CombinationType.BOMB, 5, 9)
 
 def test_build_combinations_simple():
     """Testet die Generierung von Kombinationen für eine einfache Hand."""
@@ -269,7 +269,7 @@ def test_stringify_type():
     (parse_cards("R8 R9 RZ RB RD RK"), (CombinationType.BOMB, 6, 13)),
 ])
 def test_get_combination2(cards, expected):
-    assert get_combination(cards, 10) == expected
+    assert get_trick_combination(cards, 10) == expected
 
 def test_phoenix_sorting():
     tests = [
@@ -284,7 +284,7 @@ def test_phoenix_sorting():
     ]
     for card_str, expected in tests:
         cards = parse_cards(card_str)
-        get_combination(cards, 10, shift_phoenix=True)
+        get_trick_combination(cards, 10, shift_phoenix=True)
         assert stringify_cards(cards) == expected
 
 def test_build_combinations_counts():

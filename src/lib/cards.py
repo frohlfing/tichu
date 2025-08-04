@@ -108,24 +108,24 @@ _card_points = (
 """Zuordnung von Kartenwert zu Punkten."""
 
 
-def validate_card(s: str) -> bool:
+def validate_card(label: str) -> bool:
     """
-    Validiert die Karte im String.
+    Validiert das Label der Karte.
 
-    :param s: z.B. "R6"
-    :return: True, wenn die Karte valide ist, sonst False.
+    :param label: Das Label der Karte, z.B. "R6".
+    :return: True, wenn das Label bekannt ist, sonst False.
     """
-    return s in _card_labels
+    return label in _card_labels
 
 
-def validate_cards(s: str) -> bool:
+def validate_cards(labels: str) -> bool:
     """
     Validiert die Karten im String.
 
-    :param s: z.B. "R6 B5 G4"
-    :return: True, wenn alle Karten validiert sind, sonst False.
+    :param labels: Die Kartenlabels, z.B. "R6 B5 G4"
+    :return: True, wenn alle Karten bekannt sind, sonst False.
     """
-    return all(c in _card_labels for c in s.split(" ")) if s else True
+    return all(label in _card_labels for label in labels.split(" ")) if labels else True
 
 
 def parse_card(label: str) -> Card:
