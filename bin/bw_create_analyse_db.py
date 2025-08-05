@@ -400,6 +400,7 @@ def main(args: argparse.Namespace):
     print(f"Datenbank-Datei: {db_file}")
 
     # Verbindung zur Datenbank herstellen und Tabellen einrichten
+    db_file = os.path.join(config.DATA_PATH, "bw", "bw_analysis.sqlite")
     os.makedirs(os.path.dirname(db_file), exist_ok=True)
     conn = sqlite3.connect(db_file)
     create_tables(conn)

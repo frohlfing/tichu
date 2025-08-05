@@ -375,21 +375,30 @@ Legende:
  
 ### 6.1 Datenbestand
 
-Für das Training stehen 2.411.330 Logdateien (ca. 7 GB) vom Spiele-Portal "Brettspielwelt" zur Verfügung (Stand 26.07.2025 08:00, Letzter Eintrag: 2025/202507/2411377.tch).   
+#### Anzahl der Logdateien
+
+Es stehen **2.411.514 Logdateien** (ca. 7 GB) vom Spiele-Portal "Brettspielwelt" zur Verfügung (alle Logdateien bis 2025-07, einschließlich).   
 Jede Logdatei hat die Daten einer Partie. 
 
-Mit dem Datenbestand bis 2022/04 lagen 2.352.727 Partien mit insgesamt 22.042.274 Runden vor.
-Im Schnitt wurden demnach 9,37 Runden pro Partie gespielt.
+Das Parsen der Dateien dauert insgesamt 40 Minuten (1ms / Datei). 
 
-Damit haben wir im aktuellen Datenbestand ca. 22.591.315 Runden. 
+#### Anzahl der Runden
 
-Da wir 4 Spieler haben, haben wir 4 verschiedene Perspektiven und somit die 4-fache Datenmenge: 90.365.260 "Perspektiv-Runden".
+TODO Wenn genaue Rundenanzahl bekannt ist, nachrechnen.
+
+Es liegen **ca. 22.500.000 Runden** vor. 
+
+Im Schnitt wurden demnach 9,33 Runden pro Partie gespielt.  
+
+Da es 4 Spieler gibt, gibt es 4 verschiedene Perspektiven und somit die 4-fache Datenmenge: **ca. 90.000.000 "Perspektiv-Runden"**.
+
+#### Anzahl der Stiche und Spielzüge
 
 Im Spiel mit 4 HeuristicAgents fallen ca. 10.8 Stiche/Runde (so häufig wurden Karten kassiert). 
 
 Ich schätze 6 Spielzüge (Kartenlegen oder Passen) pro Stich. Das ergibt 64.8 Spielzüge pro Runde.
 
-Bezogen auf die Perspektiv-Runden haben wir ca. 975.944.808 Stiche bzw. 5.855.668.848 Spielzüge.
+Bezogen auf die Perspektiv-Runden haben wir ca. **972.000.000 Stiche** bzw. **5.832.000.000 Spielzüge**.
 
 ### 6.2 BWRoundData
 

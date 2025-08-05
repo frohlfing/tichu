@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     # Argumente parsen
     today_ = datetime.today().strftime("%Y-%m")
-    path_ = os.path.join(config.DATA_PATH, "bw/tichulog")
+    path_ = os.path.join(config.DATA_PATH, "bw", "tichulog")
     parser = argparse.ArgumentParser(description="BW Downloader")
     parser.add_argument("--ym1", default="2007-01", help=f"ab Datum im Format yyyy-mm (Default: 2007-01")
     parser.add_argument("--ym2", default=f"{today_}", help=f"bis Datum im Format yyyy-mm (Default: heute)")
