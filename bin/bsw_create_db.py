@@ -6,16 +6,14 @@ Dieses Modul importiert die vom Spiele-Portal "Brettspielwelt" heruntergeladenen
 
 import argparse
 import os
+import traceback
 from datetime import datetime
 from src import config
-from src.lib.bw import update_bw_database, BWValidationStats, migrate
+from src.lib.bsw.database import BSWUpdateStats, update_database
 
 
 def main(args: argparse.Namespace):
     """Main-Routine"""
-    migrate(database=args.database)
-    exit(0)
-
     # Argumente auswerten
     y1, m1 = map(int, args.ym1.split("-"))
     y2, m2 = map(int, args.ym2.split("-"))
@@ -27,13 +25,14 @@ def main(args: argparse.Namespace):
     print(f"Bis Datum: {y2:04d}-{m2:02d}")
     print(f"Zip-Archiven: {path}")
     print(f"SQLite-Datenbank: {database}")
-    stats: BWValidationStats = {"games_total": 0, "games_fails": 0, "rounds_total": 0, "rounds_fails": 0, "error_summary": {}, "duration": 0}
+    stats: BSWUpdateStats = {"games_total": 0, "games_fails": 0, "rounds_total": 0, "rounds_fails": 0, "error_summary": {}, "duration": 0}
     try:
-        stats = update_bw_database(database, path, y1, m1, y2, m2)
+        stats = update_database(database, path, y1, m1, y2, m2)
     except KeyboardInterrupt:
         print("\nUpdate durch Benutzer abgebrochen.")
     except Exception as e:
         print(f"\nEin Fehler ist aufgetreten: {e}")
+        traceback.print_exc()
 
     print(f"Anzahl Partien gesamt: {stats.get("games_total")}")
     print(f"Anzahl Partien fehlerhaft: {stats.get("games_fails")}")
@@ -51,8 +50,8 @@ if __name__ == "__main__":
 
     # Argumente parsen
     today_ = datetime.today().strftime("%Y-%m")
-    path_ = os.path.join(config.DATA_PATH, "bw", "tichulog")
-    database_ = os.path.join(config.DATA_PATH, "bw", "bw.sqlite")
+    path_ = os.path.join(config.DATA_PATH, "bsw", "tichulog")
+    database_ = os.path.join(config.DATA_PATH, "bsw", "bsw.sqlite")
     parser = argparse.ArgumentParser(description="Aktualisiert die SQLite-Datenbank für Tichu-Logs.")
     parser.add_argument("--ym1", default="2007-01", help="Start-Datum im Format YYYY-MM")
     parser.add_argument("--ym2", default=today_, help="End-Datum im Format YYYY-MM")

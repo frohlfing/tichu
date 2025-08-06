@@ -181,18 +181,17 @@ Diese Struktur trennt klar zwischen:
     ├── .idea
     ├── .venv
     ├── bin/                        # ausführbare Skripte und Dateien
-    │   ├── bw_download.py          # Lädt Tichu-Logdateien von Brettspielwelt herunter
-    │   ├── bw_import.py            # Importiert die Logdateien von Brettspielwelt in eine Sqlite-DB
+    │   ├── bsw_download.py         # Lädt Tichu-Logdateien von Brettspielwelt herunter
+    │   ├── bsw_import.py           # Importiert die Logdateien von Brettspielwelt in eine Sqlite-DB
     │   ├── cov.ps1                 # führt eine Code-Coverage-Analyse durch
     │   ├── run_arena.py            # Startet die `Arena` mit 4 Agenten
     │   ├── serve.py                # Startet den Server für den Live-Betrieb
     │   └── wsclient.py             # Startet einen WebSocket-Client für Testzwecke
     ├── data/                       # alle generierten Daten (von Git ignoriert!)
-    │   ├── bw/                     # Daten von Brettspielwelt
-    │   │   ├── tichulog
-    │   │   │   ├── 2007.zip
-    │   │   │   └── 2022.zip
-    │   │   └── Logs_runterladen.ipynb
+    │   ├── bsw/                    # Daten von Brettspielwelt
+    │   │   └── tichulog
+    │   │       ├── 2007.zip
+    │   │       └── 2022.zip
     │   ├── cov/                    # Coverage-Daten
     │   │   ├── htmlcov/
     │   │   │   └── index.html
@@ -236,7 +235,7 @@ Diese Struktur trennt klar zwischen:
     │   │   │   ├── statistic.py
     │   │   │   ├── tables_hi.py
     │   │   │   └── tables_lo.py
-    │   │   ├── bw.py                # Bibliothek für Brettspielwelt-Logdateien
+    │   │   ├── bsw/                 # Bibliothek für Brettspielwelt-Logdateien
     │   │   ├── cards.py             # Definition von Karten, dem Deck, Punktwerten und Hilfsfunktionen zur Kartenmanipulation
     │   │   ├── combinations.py      # Definition von Kombinationstypen, Logik zur Erkennung, Generierung und Validierung von Kartenkombinationen
     │   │   ├── errors.py            # Definition anwendungsspezifischer Exception-Klassen

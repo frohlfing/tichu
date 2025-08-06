@@ -263,7 +263,7 @@ def process_and_insert_data(cursor: sqlite3.Cursor, all_rounds_data: List[BWLogE
 
 def save_dirty_logfile(game_id, year, month, content):
     """Speichert Log-Dateien, die nicht geparst werden konnten."""
-    file_path = os.path.join(config.DATA_PATH, f"bw/dirty/{year:04d}{month:02d}-{game_id}.tch")
+    file_path = os.path.join(config.DATA_PATH, f"bsw/dirty/{year:04d}{month:02d}-{game_id}.tch")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "w") as f:
         f.write(content)
@@ -393,14 +393,14 @@ def main(args: argparse.Namespace):
     y1, m1 = map(int, args.ym1.split("-"))
     y2, m2 = map(int, args.ym2.split("-"))
     path = args.path  # Pfad zu den heruntergeladenen Log-Archiven
-    db_file = os.path.join(config.DATA_PATH, "bw", "bw_analysis.sqlite")
+    db_file = os.path.join(config.DATA_PATH, "bsw", "bw_analysis.sqlite")
 
     # Import starten
     print(f"Importiere Log-Dateien von {y1:04d}-{m1:02d} bis {y2:04d}-{m2:02d}")
     print(f"Datenbank-Datei: {db_file}")
 
     # Verbindung zur Datenbank herstellen und Tabellen einrichten
-    db_file = os.path.join(config.DATA_PATH, "bw", "bw_analysis.sqlite")
+    db_file = os.path.join(config.DATA_PATH, "bsw", "bw_analysis.sqlite")
     os.makedirs(os.path.dirname(db_file), exist_ok=True)
     conn = sqlite3.connect(db_file)
     create_tables(conn)
@@ -450,7 +450,7 @@ if __name__ == "__main__":
 
     # Argumente parsen
     today_ = datetime.today().strftime("%Y-%m")
-    path_ = os.path.join(config.DATA_PATH, "bw/tichulog")
+    path_ = os.path.join(config.DATA_PATH, "bsw/tichulog")
     parser = argparse.ArgumentParser(description="Importiert BSW Tichu Logs in eine SQLite-Analyse-Datenbank.")
     parser.add_argument("--ym1", default="2007-01", help="Start-Datum im Format YYYY-MM")
     parser.add_argument("--ym2", default=today_, help="End-Datum im Format YYYY-MM")
