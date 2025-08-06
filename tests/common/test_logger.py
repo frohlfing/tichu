@@ -84,7 +84,7 @@ def test_logger_instance_created():
 
 def test_logger_level_set_from_config():
     """Prüft, ob das Logger-Level dem Wert aus config entspricht."""
-    # Wir können nicht garantieren, was in config steht, aber wir können prüfen,
+    # Ich kann nicht garantieren, was in config steht, aber ich kann prüfen,
     # ob der gesetzte Level dem entspricht, was beim Import gelesen wurde.
     assert logger.level == config.LOG_LEVEL
 

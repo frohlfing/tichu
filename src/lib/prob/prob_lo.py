@@ -28,7 +28,7 @@ from time import time
 # Berechnet die Wahrscheinlichkeit, dass die Hand die gegebene Kombination anspielen kann
 #
 # Sonderkarte Phönix:
-# Wir gehen davon aus, dass die gegebene Kombination den aktuellen Stich und somit den Phönix überstechen kann.
+# Ich gehe davon aus, dass die gegebene Kombination den aktuellen Stich und somit den Phönix überstechen kann.
 # Ausnahme: Der Mahjong kann den Phönix nicht überstechen (im Anspiel hat der Phönix den Rang 1.5).
 #
 # Sonderkarte Hund:
@@ -73,7 +73,7 @@ def prob_of_lower_combi(cards: Cards, k: int, combination: Combination) -> float
         # Rang des Phönix anpassen (der Phönix schlägt das Ass, aber nicht den Drachen)
         r = 15  # 14.5 aufgerundet
         # Der verfügbare Phönix hat den Rang 1 (1.5 abgerundet); er würde von sich selbst geschlagen werden.
-        # Daher degradieren wir den verfügbaren Phönix zu einer Noname-Karte (n bleibt gleich, aber es gibt kein Phönix mehr!).
+        # Daher degradiere ich den verfügbaren Phönix zu einer Noname-Karte (n bleibt gleich, aber es gibt kein Phönix mehr!).
         h[16] = 0
 
     # Hilfstabellen laden

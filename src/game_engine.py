@@ -283,7 +283,7 @@ class GameEngine:
         assert not pub.is_running
         pub.is_running = True
 
-        # aus Performance-Gründen für die Arena wollen wir so wenig wie möglich await aufrufen, daher ermitteln wir, ob überhaupt Clients im Spiel sind
+        # aus Performance-Gründen für die Arena will ich so wenig wie möglich await aufrufen, daher ermittle ich, ob überhaupt Clients im Spiel sind
         clients_joined = any(isinstance(player, Peer) for player in self._players)
 
         logger.info(f"[{self.table_name}] Starte neue Partie...")
@@ -396,7 +396,7 @@ class GameEngine:
                     # Hat der Spieler noch Karten?
                     if pub.count_hand_cards[pub.current_turn_index] > 0:
                         if bomb:
-                            # Der Spieler hat bereits die Bombe geworfen, wir müssen nicht nochmal nach einer Kombination fragen.
+                            # Der Spieler hat bereits die Bombe geworfen, es muss nicht nochmal nach einer Kombination gefragt werden.
                             cards, combination = bomb
                         else:
                             # Falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden.
@@ -412,7 +412,7 @@ class GameEngine:
                                 cards, combination = await self._players[pub.current_turn_index].play(interruptable=True)
                             except PlayerInterruptError as e:
                                 # Ein Client möchte eine Bombe werfen.
-                                # Wir wiederholen den aktuellen Schleifendurchlauf, so dass nochmal danach gefragt wird, bevor es hier weitergeht.
+                                # Ich wiederhole den aktuellen Schleifendurchlauf, so dass nochmal danach gefragt wird, bevor es hier weitergeht.
                                 continue  # while not pub.is_round_over
                             if clients_joined:
                                 delay = round((time() - time_start) * 1000)  # in ms

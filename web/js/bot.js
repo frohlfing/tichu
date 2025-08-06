@@ -161,7 +161,7 @@ const Bot = (() => {
 
         if (State.getReceivedSchupfCards() && !State.isConfirmedReceivedSchupfCards()) {
             if (document.querySelectorAll('#schupf-zone-bottom .schupf-subzone .card:not(.back-site)').length) {
-                // Wir haben geschupfte Karten erhalten und müssen sie bestätigen
+                // Ich habe geschupfte Karten erhalten und muss sie bestätigen.
                 console.log("🤖 Bot: Bestätige erhaltene Schupf-Karten.");
                 _clickButton('#play-button[data-mode="RECEIVE"]');
             }

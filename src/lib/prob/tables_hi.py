@@ -267,8 +267,8 @@ def create_table_hi(t: CombinationType, m: int):
     r_start = 1 if t == CombinationType.SINGLE else int(m/2) + 1 if t == CombinationType.STAIR else m if t == CombinationType.STREET else m + 1 if t == CombinationType.BOMB and m >= 5 else 2
     r_end = 16 if t == CombinationType.SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
 
-    # Wir suchen höhere Kombinationen, also brauchen wir den kleinstmöglichen Rang nicht zu speichern.
-    # Nur für Bomben brauchen wir alle Ränge.
+    # Ich suche höhere Kombinationen, also brauche ich den kleinstmöglichen Rang nicht zu speichern.
+    # Nur für Bomben brauche ich alle Ränge.
     if t != CombinationType.BOMB:
         r_start += 1
 

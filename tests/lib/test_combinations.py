@@ -162,7 +162,7 @@ def test_action_space_beat_pair(sample_hand_and_combis):
     assert find_combination(parse_cards("Dr"), action_space) is None
     # Treppen, Straßen, Fullhouses dürfen nicht drin sein
     assert find_combination(parse_cards("S5 G5 S6 B6"), action_space) is None
-    # Bomben dürften drin sein (hier haben wir keine)
+    # Bomben dürften drin sein (hier habe ich keine)
 
 def test_action_space_beat_street(sample_hand_and_combis):
     """Testet Action Space, wenn eine Straße geschlagen werden muss."""

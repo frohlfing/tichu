@@ -18,7 +18,7 @@ Die Basisklasse hierfür ist `NNetAgent` (für "Neural Network Agent"). Folgende
 | "wish"                  | Einen Kartenwert zw. 2 und 14 wünschen.                                  |
 | "give_dragon_away"      | Den Drachen an den rechten oder an den linken Gegner verschenken.        |
 
-Wir konzentrieren uns zunächst auf "play".
+Ich konzentriere mich zunächst auf "play".
 
 ## 2. Geplante Trainingsstufen, Netze und Agenten
 
@@ -28,9 +28,9 @@ Basisklasse:
 
 ### 2.1 Supervised Learning (SL) 
 
-In der ersten Phase der Entwicklung werden wir einem neuronalen Netz mit Supervised Learning (SL) beibringen, menschliches Verhalten zu imitieren. 
+In der ersten Phase der Entwicklung werde ich einem neuronalen Netz mit Supervised Learning (SL) beibringen, menschliches Verhalten zu imitieren. 
 
-Dazu nutzen wir einen riesigen Datensatz des Spiele-Portals "Brettspielwelt", um das Netz zu trainieren und zu validieren.
+Dazu nutze ich einen riesigen Datensatz des Spiele-Portals "Brettspielwelt", um das Netz zu trainieren und zu validieren.
 
 **Vorteil:**
 *   Perfekter Einstieg. Es ist ein Standardproblem des überwachten Lernens.
@@ -40,13 +40,13 @@ Dazu nutzen wir einen riesigen Datensatz des Spiele-Portals "Brettspielwelt", um
 
 #### 2.1.1 Policy Network (PN)
 
-Wir beginnen mit einem einfachen Multi-Layer Perceptron (MLP).
-Dieses Netz nennen wir im Python-Code `PolicyNet`, weil es eine Strategie lernt, die beste Aktion auszuwählen. 
-Den Agenten nennen wir entsprechend `PolicyAgent`. 
+Ich beginne mit einem einfachen Multi-Layer Perceptron (MLP).
+Dieses Netz nenne ich im Python-Code `PolicyNet`, weil es eine Strategie lernt, die beste Aktion auszuwählen. 
+Den Agenten nenne ich entsprechend `PolicyAgent`. 
 
-Nach dem Training vergleichen wir die Leistung mit dem `RandomAgent` und dem `HeuristikAgent`.
+Nach dem Training vergleiche ich die Leistung mit dem `RandomAgent` und dem `HeuristikAgent`.
 
-So sammeln wir erste Erkenntnisse und Erfahrungen.
+So sammele ich erste Erkenntnisse und Erfahrungen.
 
 #### 2.1.2 Goal-Conditioned Policy Network (GCPN) und Value Network (VN)
 
@@ -56,18 +56,18 @@ Unser `PolicyNet` ist für dei Beantwortung dieser Frage trainiert:
 Es würde enorm helfen, wenn das Netz wissen würde, wie viele Punkte noch zusätzlich bis zum Ende der Runde erzielt werden. 
 Beispiel: "Es werden ab jetzt noch 80 Punkte dazuverdient, das kann ich nur erreichen, wenn ich ein Tichu ansage."
 
-Dieser Wert nennt sich **Return-to-Go (RTG)**. Wir fügen ihn als weiteres Feature zum Input hinzu.  
+Dieser Wert nennt sich **Return-to-Go (RTG)**. Ich füge ihn als weiteres Feature zum Input hinzu.  
 
 Das MLP, welches RTG als Feature nutzt, kann eine zielorientierte Frage beantworten:
 "Welche Aktion wird ein Mensch wohl bei diesem Spielzustand wählen, damit er am Ende der Runde mit X Punktedifferenz gewinnt?"
-Dieses Netz nennen wir im Python-Code `GCPolicyNet`, weil es eine Strategie lernt, die das Ziel berücksichtigt.
+Dieses Netz nenne ich im Python-Code `GCPolicyNet`, weil es eine Strategie lernt, die das Ziel berücksichtigt.
 
-Problem: Bei der Inferenz (eine Vorhersage im echten Spiel treffen) kennen wir das Endergebnis und somit den RTG noch nicht!
-Lösung: Wir trainieren ein weiteres Netz, das das Endergebnis vorhersagt. Es beantwortet die Frage: 
-"Wie gut ist dieser Spielzustand?" Dieses Netz nennen wir `ValueNet`. Es lernt, die "Güte" vorherzusagen. 
+Problem: Bei der Inferenz (eine Vorhersage im echten Spiel treffen) kenne ich das Endergebnis und somit den RTG noch nicht!
+Lösung: Ich trainiere ein weiteres Netz, das das Endergebnis vorhersagt. Es beantwortet die Frage: 
+"Wie gut ist dieser Spielzustand?" Dieses Netz nenne ich `ValueNet`. Es lernt, die "Güte" vorherzusagen. 
 Die Güte ist die Punkte-Differenz der beiden Teams am Ende der Runde.
 
-Der Agent, der `GCPolicyNet` (inkl. `ValueNet`) einsetzt, nennen wir `GCPolicyAgent`.
+Der Agent, der `GCPolicyNet` (inkl. `ValueNet`) einsetzt, nenne ich `GCPolicyAgent`.
 
 #### 2.1.3 Decision Transformer (DT)
 
@@ -78,29 +78,29 @@ Der Input für den DT wäre nicht ein einzelner Vektor, sondern eine Sequenz von
 
 Input-Sequenz: [(RTG_0, Zustand_1, Aktion_1), (RTG_1, Zustand_2, Aktion_2), ..., (RTG_(T-1), Zustand_T, Aktion_T)]
    *   **Return-to-Go (RTG_(t-1):** Ein Skalar für jeden Zeitschritt, der angibt: "Wie viele Punkte wurden ab diesem Zug bis zum Ende der Runde noch erzielt?". RTG_t = Score_t + Score_{t+1} + ... + Score_{Ende}.
-   *   **Zustand_t:** Dies wäre exakt der Feature-Vektor (375 Features), den wir gerade entworfen haben, für den Zeitpunkt t.
+   *   **Zustand_t:** Dies wäre exakt der Feature-Vektor (375 Features), den ich gerade entworfen habe, für den Zeitpunkt t.
    *   **Aktion_t:** Dies wäre der Label-Vektor (57 Features), der beschreibt, welche Aktion zum Zeitpunkt t ausgeführt wurde.
 
 Was ändert sich?
-1.  **Datenaufbereitung:** Anstatt einzelne (Zustand, Aktion)-Paare zu speichern, müssten wir ganze **Runden-Trajektorien** speichern: eine Liste von (Zustand, Aktion, Return-to-Go)-Tupeln für jede Runde. Deine BWRoundData ist dafür perfekt. Wir müssten nur den Replay-Simulator so anpassen, dass er diese Trajektorien erzeugt.
-2.  **Modellarchitektur:** Wir würden den MLP durch eine Transformer-Architektur ersetzen.
+1.  **Datenaufbereitung:** Anstatt einzelne (Zustand, Aktion)-Paare zu speichern, müsste ich ganze **Runden-Trajektorien** speichern: eine Liste von (Zustand, Aktion, Return-to-Go)-Tupeln für jede Runde. Deine BWRoundData ist dafür perfekt. Ich müsste nur den Replay-Simulator so anpassen, dass er diese Trajektorien erzeugt.
+2.  **Modellarchitektur:** Ich würde den MLP durch eine Transformer-Architektur ersetzen.
 
-Das Netz nennen wir im Python-Code `DTNet`, den Agenten `DTAgent`.
+Das Netz nenne ich im Python-Code `DTNet`, den Agenten `DTAgent`.
 
 #### 2.1.4 Monte-Carlo Tree Search (MCTS) mit Upper Confidence Bound for Trees (UCB):
 
-Hier führen wir eine tiefe Suche durch, bevor ein Zug gemacht wird.
+Hier führe ich eine tiefe Suche durch, bevor ein Zug gemacht wird.
 
 Das beste Policy-Netz (`PolicyNet`, `GCPolicyNet` oder `DTNet`) leitet die Suche an ("welche Züge sehen vielversprechend aus?"), 
 und das Value-Netz (`ValueNet`) bewertet die Endpunkte der simulierten Pfade ("wie gut ist diese Position?").
 
-Den Agenten nennen wir `MCTSAgent`. 
+Den Agenten nenne ich `MCTSAgent`. 
 
 BehaviorAgent
 
 ## 2.2 Reinforcement Learning (RL)
 
-In der zweiten Phase lassen wir das beste im vorherigen Schritt trainierte Netz Millionen von Partien gegen sich selbst spielen. 
+In der zweiten Phase lasse ich das beste im vorherigen Schritt trainierte Netz Millionen von Partien gegen sich selbst spielen. 
 Das Netz lernt durch Versuch und Irrtum, welche Züge zu Siegen führen.
 
 Theoretisch könnte man auch mit einem untrainierten Netz beginnen. Das würde aber eine enorme Menge an Rechenleistung und Zeit benötigen, um auf ein hohes Niveau zu kommen.
@@ -115,17 +115,17 @@ Theoretisch könnte man auch mit einem untrainierten Netz beginnen. Das würde a
 
 Die durch RL trainieren Netze erhalten die Kennung `RL`, also `PolicyRLNet`, `GCPolicyRLNet`, `DTRLNet`.
 
-Die Agenten nennen wir entsprechend `PolicyRLAgent`, `GCPolicyRLAgent`, `DTRLAgent`, `MCTSRLAgent`.
+Die Agenten nenne ich entsprechend `PolicyRLAgent`, `GCPolicyRLAgent`, `DTRLAgent`, `MCTSRLAgent`.
 
 ## 3. Feature Engineering 
 
-Wie repräsentieren wir den Input (Zustand -> Feature-Vektor)?
+Wie repräsentiere ich den Input (Zustand -> Feature-Vektor)?
 
 ### 3.1 Feature-Vektor für PolicyNet und ValueNet
 
 Der von einem Spieler beobachtbare Spielzustand setzt sich aus dem öffentlichen Spielzustand (`PublicState`) und dem privaten Spielzustand (`PrivateState`) zusammen.
 
-Daraus bilden wir den Feature-Vektor (Input für das NN).
+Daraus bilde ich den Feature-Vektor (Input für das NN).
 
 | Variable                | Typ                                                    | Beschreibung                                                                                                                                     | Default-Wert      | Klasse         | Features (Input für das NN)                                                                                                                                                                          | Anmerkung zum Feature-Vektor                                                                                                                           |
 |-------------------------|--------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -154,7 +154,7 @@ Daraus bilden wir den Feature-Vektor (Input für das NN).
 | `trick_counter`         | `int`                                                  | Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie (nur für statistische Zwecke).                                               | `0`               | `PublicState`  | Nicht relevant.                                                                                                                                                                                      |                                                                                                                                                        |
 | `player_index`          | `int`                                                  | Der Index dieses Spielers am Tisch (zwischen 0 und 3).                                                                                           | (Pflichtargument) | `PrivateState` | Nicht relevant.                                                                                                                                                                                      |                                                                                                                                                        |
 | `hand_cards`            | `Cards` = `List[Card]`                                 | Die aktuellen Handkarten des Spielers (absteigend sortiert).                                                                                     | `[]`              | `PrivateState` | 56 Features: Multi-Hot-Vektor der Länge 56. 1 für jede Karte auf der Hand, sonst 0.                                                                                                                  |                                                                                                                                                        |
-| `given_schupf_cards`    | `Optional[Tuple[Card, Card, Card]]`                    | Die drei Karten, die der Spieler zum Schupfen an den rechten Gegner, Partner und linken Gegner abgegeben hat (None, falls noch nicht geschupft). | `None`            | `PrivateState` | 51 Features (3 * 17): Für rechten Gegner, Partner, linken Gegner (relative Anordnung!) jeweils ein One-Hot-Vektor der Länge 17 zur Kodierung des Kartenwerts (Labels: "0", "1", ..., "16")           | Um drei große dünn besetzte Vektoren zu vermeiden, die nur wenig bis gar keine relevanten Informationen mitführen, betrachten wir nur die Kartenwerte. |
+| `given_schupf_cards`    | `Optional[Tuple[Card, Card, Card]]`                    | Die drei Karten, die der Spieler zum Schupfen an den rechten Gegner, Partner und linken Gegner abgegeben hat (None, falls noch nicht geschupft). | `None`            | `PrivateState` | 51 Features (3 * 17): Für rechten Gegner, Partner, linken Gegner (relative Anordnung!) jeweils ein One-Hot-Vektor der Länge 17 zur Kodierung des Kartenwerts (Labels: "0", "1", ..., "16")           | Um drei große dünn besetzte Vektoren zu vermeiden, die nur wenig bis gar keine relevanten Informationen mitführen, betrachten ich nur die Kartenwerte. |
 | `received_schupf_cards` | `Optional[Tuple[Card, Card, Card]]`                    | Die drei Karten, die der Spieler beim Schupfen vom rechten Gegner, Partner und linken Gegner erhalten hat (None, falls noch nicht geschupft).    | `None`            | `PrivateState` | 51 Features (3 * 17): Für rechten Gegner, Partner, linken Gegner (relative Anordnung!) jeweils ein One-Hot-Vektor der Länge 17 zur Kodierung des Kartenwerts (Labels: "0", "1", ..., "16")           | Auch hier reicht es aus, nur die Kartenwerte zu betrachten.                                                                                            |
 
 Anzahl Features gesamt: 5 + 5 + 56 + 56 +12 + 15 +5 + 5 + 46 + 1 + 4 + 5 + 2 + 56 + 51 + 51 = **375 Features**.
@@ -184,13 +184,13 @@ Falls die Runde mit Doppelsieg endet: `RTG_t = FinalScoreEigen - FinalScoreGegne
     *   Nachteil: **Sparse Reward Problem**: Das Modell muss aus einer langen Kette von Aktionen lernen, welcher Zug am Anfang wirklich zum Sieg am Ende beigetragen hat. Das ist schwierig.
  
 Falls die Runde ohne Doppelsieg endet: `RTG_t = (FinalScoreEigen - FinalScoreGegner) - (KassiertePunkteEigen_bis_t - KassiertePunkteGegner_bis_t)`
-*   **Reward Shaping**: Eine "Zwischenbelohnung", die dem Modell hilft, die richtige Aktion zu wählen, den FinalScore zu erreichen.
+*   **Reward Shaping**: Eine "Zwischenbelohnung", die dem Modell hilft, die richtige Aktion zu wählen, um den FinalScore zu erreichen.
 
-Wir normalisieren RTG mit Faktor 1/100.
+Ich normalisiere RTG mit Faktor 1/100.
 
 ## 4. Label Engineering 
 
-Wie repräsentieren wir den Output (Aktion -> Label-Vektor)?
+Wie repräsentiere ich den Output (Aktion -> Label-Vektor)?
 
 ### 4.1 Label-Vektor für PolicyNet, GCPolicyNet und DTNet
 
@@ -203,7 +203,7 @@ Ebenso für das Passen.
 
 **Aktivierungsfunktion:**
 Es können mehrere Labels gleichzeitig klassifiziert werden, es ist eine **Multi-Label-Klassifikation**.
-Daher muss `Sigmoid` als Aktivierungsfunktion  gewählt werden.
+Daher muss `Sigmoid` als Aktivierungsfunktion gewählt werden.
 
 Diese Variante ist:
 *   der Industriestandard für Multi-Label-Probleme.
@@ -239,15 +239,15 @@ Der Output des Value-Netzes hat ein Label. Es ist die Punkte-Differenz der beide
 also ein kontinuierlicher Zahlenwert (Float, Skalar).
 
 Das Netz ordnet dem Input einen kontinuierlichen numerischen Wert zu. Dies ist eine **Regression**. 
-Wir brauchen daher die `lineare` Aktivierungsfunktion.
+Ich brauche daher die `lineare` Aktivierungsfunktion.
 
 #### 4.2.1 Interpretation
 
-Der Output bei der Regression muss nicht interpretiert werden. Wir können ihn 1:1 als RGB übernehmen.
+Der Output bei der Regression muss nicht interpretiert werden. Ich kann ihn 1:1 als RGB übernehmen.
 
 ## 5. Modelldesign / Architektur
 
-Welches Netz-Design verwenden wir, um vom Input zum Output zu gelangen?
+Welches Netz-Design verwende ich, um vom Input zum Output zu gelangen?
 
 Grundannahmen für alle Modelle:
 *   Input-Dimension (Zustand): 375 Features
@@ -368,23 +368,23 @@ Dies ist eine Multi-Head-Architektur mit geteiltem Körper.
 
 Legende:
 * Transformer Backbone: Der Hauptteil, der die Sequenz verarbeitet.
-* Auswahl des letzten Tokens: Für die Vorhersage der nächsten Aktion und des aktuellen RTG verwenden wir 
+* Auswahl des letzten Tokens: Für die Vorhersage der nächsten Aktion und des aktuellen RTG verwende ich 
   typischerweise nur den Output-Vektor des Transformers, der dem letzten Zustand in der Input-Sequenz entspricht.
 
-## 6. Aufbereitung der Daten 
+## 6. Daten 
  
-### 6.1 Datenbestand
+### 6.1 Datenquelle
 
-#### Anzahl der Logdateien
+#### 6.1.1 Anzahl der Logdateien
 
 Es stehen **2.411.514 Logdateien** (ca. 7 GB) vom Spiele-Portal "Brettspielwelt" zur Verfügung (alle Logdateien bis 2025-07, einschließlich).   
 Jede Logdatei hat die Daten einer Partie. 
 
 Das Parsen der Dateien dauert insgesamt 40 Minuten (1ms / Datei). 
 
-#### Anzahl der Runden
+#### 6.1.2 Anzahl der Runden
 
-TODO Wenn genaue Rundenanzahl bekannt ist, nachrechnen.
+TODO: Wenn genaue Rundenanzahl bekannt ist, nachrechnen.
 
 Es liegen **ca. 22.500.000 Runden** vor. 
 
@@ -392,45 +392,29 @@ Im Schnitt wurden demnach 9,33 Runden pro Partie gespielt.
 
 Da es 4 Spieler gibt, gibt es 4 verschiedene Perspektiven und somit die 4-fache Datenmenge: **ca. 90.000.000 "Perspektiv-Runden"**.
 
-#### Anzahl der Stiche und Spielzüge
+#### 6.1.3 Anzahl der Stiche und Spielzüge
 
 Im Spiel mit 4 HeuristicAgents fallen ca. 10.8 Stiche/Runde (so häufig wurden Karten kassiert). 
 
 Ich schätze 6 Spielzüge (Kartenlegen oder Passen) pro Stich. Das ergibt 64.8 Spielzüge pro Runde.
 
-Bezogen auf die Perspektiv-Runden haben wir ca. **972.000.000 Stiche** bzw. **5.832.000.000 Spielzüge**.
+Bezogen auf die Perspektiv-Runden habe ich ca. **972.000.000 Stiche** bzw. **5.832.000.000 Spielzüge**.
 
-### 6.2 BWRoundData
+### 6.2 Datenaufbereitung
 
-Ein Parser überführt jede Logdatei in eine Liste von `BWRoundData`-Objekten. 
+Nach dem Download wurde jede Logdatei geparst (in ein Objekt eingelesen), validiert und in eine SQLite-DB gepumpt. 
 
-Der Datencontainer `BWRoundData` stellt alle aus der Logdatei verfügbaren Daten eine Runde bereit:
-- `game_id: int` - Eindeutige ID der Partie.
-- `round_index: int` - Index der Runde innerhalb der Partie.
-- `player_names: List[str]` - Die Namen der 4 Spieler dieser Runde.
-- `grand_tichu_hands: List[str]` - Die ersten 8 Handkarten der vier Spieler zu Beginn der Runde.
-- `start_hands: List[str]` - Die 14 Handkarten der Spieler vor dem Schupfen.
-- `tichu_positions: List[str]` - Position in der Historie, an der ein Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor Schupfen).
-- `given_schupf_cards: List[str]` - Schupf-Karten (an rechten Gegner, Partner, linken Gegner).
-- `bomb_owners: List[str]` - Gibt für jeden Spieler an, ob eine Bombe auf der Hand ist.
-- `wish_value: int` - Wunsch (2 bis 14; 0 == kein Wunsch geäußert).
-- `dragon_recipient: int` - Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde bis zum Schluss nicht verschenkt).
-- `score: Tuple[int, int]` - Punkte dieser Runde pro Team (Team20, Team31).
-- `history: List[Union[Tuple[int, str], int]]` - Spielzüge. Jeder Spielzug ist ein Tuple aus Spieler-Index und Karten, oder beim Passen nur der Spieler-Index.
-- `year: int` - Jahr der Logdatei.
-- `month: int` - Monat der Logdatei.
+Dieser Vorgang hat TODO Stunden gedauert, durchschnittlich also TODO Sekunden pro Partie.
 
-### 6.3 Replay-Simulator
-
-Der Replay-Simulator durchläuft alle Spielzüge einer Runde. 
+Mit dem **Replay-Simulator** kann eine in der Datenbank gespeicherte Runde nachgespielt werden. 
 
 Er benötigt für den gesamten Datenbestand TODO Minuten, durchschnittlich also TODO Sekunden pro Partie und TODO Sekunden pro Runde.
 
-### 6.3 Daten analysieren
+### 6.3 Datenanalyse
 
-Um die Daten analysieren zu können, sammeln wir die relevanten Daten in einer DB. 
+Um die Daten analysieren zu können, sammele ich die relevanten Daten in einer DB. 
 
-Dazu durchlaufen wir mit dem **Replay-Simulator** einmal den gesamten Datenbestand. Der Durchlauf hat TODO Minuten gedauert.
+Dazu durchlaufe ich mit dem **Replay-Simulator** einmal den gesamten Datenbestand. Der Durchlauf hat TODO Minuten gedauert.
 
 #### 6.3.1 Analyse-Fragen
 
@@ -492,7 +476,7 @@ Gute Spieler finden
 
 #### 6.3.2 Analyse-Ergebnis
 
-Die Analyse der Datenbank ist im Jupyter Notebook [BW_Analyse.ipynb](../notebooks/BW_Analyse.ipynb) dokumentiert.
+Die Analyse der Datenbank ist im Jupyter Notebook [BSW_01_Analyse.ipynb](../notebooks/BSW_01_Analyse.ipynb) dokumentiert.
 
 Hier sind die Ergebnisse zusammengefasst:
 
@@ -530,7 +514,7 @@ Als Hardware steht eine RTX 2080 (8 GB VRAM) zur Verfügung.
 
 *   Modellgröße: Transformer sind deutlich größer und komplexer als MLPs. Selbst ein "kleiner" DT hat oft mehr Parameter.
 *   GPU-Anforderung:
-    *   Sequenzlänge: Der VRAM-Bedarf eines Transformers skaliert quadratisch mit der Länge der Input-Sequenz (O(L²)). Eine Tichu-Runde kann 30-50 Züge haben. Wie wir besprochen haben, besteht jeder Zug aus 3 Tokens (Zustand, Aktion, RTG). Eine lange Runde könnte also eine Sequenzlänge von 50 * 3 = 150 haben. Das ist für einen Transformer schon recht lang.
+    *   Sequenzlänge: Der VRAM-Bedarf eines Transformers skaliert quadratisch mit der Länge der Input-Sequenz (O(L²)). Eine Tichu-Runde kann 30-50 Züge haben. Jeder Zug besteht aus 3 Tokens (Zustand, Aktion, RTG). Eine lange Runde könnte also eine Sequenzlänge von 50 * 3 = 150 haben. Das ist für einen Transformer schon recht lang.
     *   Batch-Größe: Wegen der langen Sequenzen musst du die Batch-Größe drastisch reduzieren. Anstatt Tausende von Beispielen auf einmal zu verarbeiten, kannst du vielleicht nur Batches von 16, 32 oder 64 Runden-Trajektorien in den 8 GB VRAM unterbringen.
     *   "Attention"-Mechanismus: Die Berechnungen im Transformer sind rechenintensiver als bei einem MLP.
     *   => Die RTX 2080 (8 GB VRAM): Es ist an der Grenze, aber machbar. Man müsste:
@@ -540,7 +524,7 @@ Als Hardware steht eine RTX 2080 (8 GB VRAM) zur Verfügung.
         * eventuell Mixed-Precision-Training (float16) einsetzen, um VRAM zu sparen.
 *   Trainingszeit: Mehrere Tage bis Wochen (durch die kleineren Batches und die komplexeren Berechnungen dauert es länger). 
 
-Selfplay:
+Self-play:
 
 *   Aufgabe: Das System muss gleichzeitig Spiele simulieren (GameEngine auf der CPU) und das neuronale Netz für Vorhersagen nutzen (NNetAgent auf der GPU).
 *   Rechenaufwand:
@@ -551,12 +535,12 @@ Selfplay:
 
 ### 7.2. Verlustfunktion
 
-*   Das Policy-Netz ist eine Multi-Label-Klassifikation, also nehmen wir **Binary Cross-Entropy (BCE)**.
-*   Das Value-Netz ist eine Regression, also nehmen wir **Mean Squared Error (MSE)**.
+*   Das Policy-Netz ist eine Multi-Label-Klassifikation, also nehme ich **Binary Cross-Entropy (BCE)**.
+*   Das Value-Netz ist eine Regression, also nehme ich **Mean Squared Error (MSE)**.
  
 ### 7.3 Trainingsdurchlauf
 
-Folgende Versuche mit folgenden Hyperparametern und Modifikationen an der Architektur haben wir durchgeführt:
+Folgende Versuche mit folgenden Hyperparametern und Modifikationen an der Architektur habe ich durchgeführt:
 
 TODO
 
@@ -662,7 +646,7 @@ Gesamtanzahl = 226 Kombinationsmöglichkeiten
     - [0, 0, 0, 1] = grün
 
 **Stetige Variable (Float-Wert):**
-*   sind numerische Variablen, die zwischen zwei beliebigen Werten eine unendliche Anzahl von Werten aufweisen.
+*   dies sind numerische Variablen, die zwischen zwei beliebigen Werten eine unendliche Anzahl von Werten aufweisen.
 *   die Daten weisen eine logische Reihenfolge auf (sind logisch sortierbar).
 *   Beispiel: physikalische Messwerte, Zeitstempel 
 *   eine Normalisierung des Wertes in den Bereich [0, 1] bzw. [-1, 1] gehört zu den Standardpraktiken
@@ -676,7 +660,7 @@ Gesamtanzahl = 226 Kombinationsmöglichkeiten
 **"Thermometer"-kodierter Vektor**
 *   ist für ein NN oft besser als nur eine einzelne Zahl.
 *   gehört zu den Standardpraktiken
-*   Beispiel für ein "Thermometer"-kodierter Vektor der Länge 14: 
+*   Beispiel für einen" Thermometer"-kodierten Vektor der Länge 14: 
     - [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0 ,0 ,0] = 5
 
 ### A2.1 Wann bevorzugt man "Thermometer" vs. normalisierter Float?
@@ -692,22 +676,18 @@ Beide kodieren ordinale (geordnete) Daten.
 *	**"Thermometer"-kodierter Vektor (fachlich: Cumulative Encoding oder Ordinal Encoding)**:
 	*	**Wann verwenden?**
 		*	Wenn die Variable **diskret** ist und eine **überschaubare Anzahl an Stufen** hat (z.B. Kartenanzahl 0-14, Rang 0-15).
-		*	Wenn die Beziehung zwischen den Werten **nicht rein linear** ist. Ein Neuronales Netz kann durch die unterschiedliche Gewichtung der einzelnen "Stufen" im Thermometer lernen, dass bestimmte Schwellenwerte wichtiger sind. Z.B. ist der Unterschied zwischen 1 und 0 Handkarten (jemand wird fertig) strategisch viel wichtiger als der zwischen 13 und 12 Handkarten. Ein Thermometer gibt dem Netz mehr Flexibilität, solche nicht-linearen Beziehungen zu lernen.
+		*	Wenn die Beziehung zwischen den Werten **nicht rein linear** ist. Ein neuronales Netz kann durch die unterschiedliche Gewichtung der einzelnen "Stufen" im Thermometer lernen, dass bestimmte Schwellenwerte wichtiger sind. Z.B. ist der Unterschied zwischen 1 und 0 Handkarten (jemand wird fertig) strategisch viel wichtiger als der zwischen 13 und 12 Handkarten. Ein Thermometer gibt dem Netz mehr Flexibilität, solche nicht-linearen Beziehungen zu lernen.
 	*	**Beispiele:** count_hand_cards, trick_combination_rank. Hier ist es die bessere Wahl.
 
 **Faustregel:** Für "Zählungen" mit wenigen Stufen (wie Kartenanzahl) ist Thermometer oft überlegen. Für "Messwerte" mit vielen Stufen (wie Punkte) ist ein normalisierter Float besser.
 
 ### A2.2 Wann sollte man Redundanz in Kauf nehmen?
 
-Zu count_hand_cards sagst du es könnte nützlich sein, eigene Kartenanzahl hinzufügen. [...] Wann sollte man trotzdem Redundanz in Kauf nehmen?
+**Aus folgenden Gründen nimmt man Redundanz in Kauf:**
 
-Das ist eine hohe Kunst im Feature Engineering. Redundanz ist nicht immer schlecht.
-
-**Man nimmt Redundanz in Kauf, wenn:**
-
-1.	ein Feature für das Netz schwer zu "lernen" ist: Die Anzahl der eigenen Handkarten ist zwar aus dem 56-dimensionalen hand_cards-Vektor exakt berechenbar (sum(hand_cards_vector)), aber das erfordert, dass das Netz lernt, über 56 Inputs zu summieren. Das ist eine zusätzliche Aufgabe. Wenn du ihm die Summe als separates Feature (z.B. als 14-dim Thermometer) gibst, **erleichterst du dem Netz die Arbeit**. Es muss diese grundlegende Information nicht mehr selbst ableiten.
-2.	das Feature eine hohe strategische Bedeutung hat: Die eigene Kartenanzahl ist extrem wichtig (z.B. für Tichu-Ansagen). Indem man sie explizit macht, gibt man ihr mehr "Gewicht" und stellt sicher, dass das Netz sie nicht übersieht.
-3.	**die Redundanz unterschiedliche Aspekte beleuchtet:** Der hand_cards-Vektor sagt: "**Welche** Karten habe ich?". Das redundante count_hand_cards_own-Thermometer sagt: "**Wie viele** Karten habe ich?". Das sind zwei unterschiedliche, wenn auch korrelierte, Informationen.
+1.	Wenn ein Feature für das Netz schwer zu "lernen" ist: Die Anzahl der eigenen Handkarten ist zwar aus dem 56-dimensionalen hand_cards-Vektor exakt berechenbar (sum(hand_cards_vector)), aber das erfordert, dass das Netz lernt, über 56 Inputs zu summieren. Das ist eine zusätzliche Aufgabe. Wenn du ihm die Summe als separates Feature (z.B. als 14-dim Thermometer) gibst, **erleichterst du dem Netz die Arbeit**. Es muss diese grundlegende Information nicht mehr selbst ableiten.
+2.	Wenn das Feature eine hohe strategische Bedeutung hat: Die eigene Kartenanzahl ist extrem wichtig (z.B. für Tichu-Ansagen). Indem man sie explizit macht, gibt man ihr mehr "Gewicht" und stellt sicher, dass das Netz sie nicht übersieht.
+3.	Wenn die Redundanz unterschiedliche Aspekte beleuchtet: Der hand_cards-Vektor sagt: "**Welche** Karten habe ich?". Das redundante count_hand_cards_own-Thermometer sagt: "**Wie viele** Karten habe ich?". Das sind zwei unterschiedliche, wenn auch korrelierte, Informationen.
 
 ## A3. Nummerische kontinuierliche Features skalieren
 
@@ -765,7 +745,7 @@ Interpretation:
 Statistische Kennwerte berechnen
 
 Lade alle Score-Differenzen aus den 25 Millionen Runden in ein NumPy-Array und berechne 
-*   Minimal- und Maximal-Wert, 
+*   Minimal- und Maximal-Werte, 
 *   Mittelwert und Standardabweichung
 *   0.5-Perzentil (q=0.005) und 99.5-Perzentil (q=0.995).
 
@@ -773,7 +753,7 @@ Der Mittelwert ist der Durchschnitt aller Werte in einem Datensatz: `mean = sum(
 
 Die Standardabweichung misst, wie stark die Werte um den Mittelwert streuen: `std_dev = math.sqrt(sum((value - mean) ** 2 for value in values) / (n - 1))`  (`** 2` = ^2)  
 
-Die Perzentile sagen dir, unterhalb welches Wertes ein bestimmter Prozentsatz deiner Daten liegt.
+Die Perzentile sagen dir, unterhalb welchen Wertes ein bestimmter Prozentsatz deiner Daten liegt.
 *   Das 0.5-Perzentil: Der Wert, unter dem die niedrigsten 0.5% aller Scores liegen.
 *   Das 99.5-Perzentil: Der Wert, unter dem 99.5% aller Scores liegen.
 
@@ -785,14 +765,15 @@ Besser und der Standard für numerische Daten ist NumPy:
 ```python
 import numpy as np
 
-scores_array = np.array(scores)
+values = [80, 60, 55]
 
+scores_array = np.array(values)
 min_val = np.min(scores_array)
 max_val = np.max(scores_array)
 mean_val = np.mean(scores_array)
-std_dev_val = np.std(scores_array, ddof=1)  # ddof=1 bedeutet, wir haben eine Stichprobe und teilen daher durch n-1 (statt durch n)
+std_dev_val = np.std(scores_array, ddof=1)  # ddof=1 bedeutet, es ist eine Stichprobe; es wird daher durch n-1 geteilt (statt durch n)
 
-# Perzentile berechnen (q ist der Quantilwert von 0 bis 1)
+# Perzentile berechnen (q ist der Quantil-Wert von 0 bis 1)
 p_0_5 = np.quantile(scores_array, 0.005)
 p_99_5 = np.quantile(scores_array, 0.995)
 
@@ -878,7 +859,7 @@ Wenn das Histogramm eine Normalverteilung zeigt (Glockenkurve), ist die Z-Score-
 **Binary Classification (Binäre Klassifikation):**
 
 Es gibt nur zwei mögliche Klassen, und genau eine muss gewählt werden.
-*   Beispiel: Ist diese E-Mail Spam oder kein Spam?
+*   Beispiel: Ist diese E-Mail ein Spam oder kein Spam?
 *   Output: 1 Neuron
 *   Aktivierungsfunktion: `Sigmoid`. Quetscht den Wert in den Bereich zwischen 0 und 1.
 *   Verlustfunktion: `Binary Cross-Entropy (BCE)`. Misst den Fehler (Abstand) des Outputs. Es bestraft das Modell stark, wenn es sich sehr sicher ist, aber falsch liegt (z.B. sagt 0.99 voraus, aber die Wahrheit war 0) und weniger stark, wenn es unsicher ist (sagt 0.6 voraus, Wahrheit war 0).
@@ -935,7 +916,7 @@ Dem Input wird ein kontinuierlicher numerischer Wert zugeordnet.
 *   **Feature:** Eine einzelne, quantifizierbare Eigenschaft des Spielzustands, die dem neuronalen Netz als Input dient. Ein Feature ist eine "Zahl", die einen Aspekt des Spiels beschreibt. Beispiel: Die Anzahl der Handkarten des Partners (z.B. 10) oder ein Flag, ob der Wunsch aktiv ist (1).
 *   **Feature-Vektor:** Ein geordnetes Array (oder Vektor) von Zahlen, das den gesamten Spielzustand zu einem bestimmten Zeitpunkt repräsentiert. Es ist die Sammlung aller Features, die das neuronale Netz "sieht", um eine Entscheidung zu treffen. Beispiel: Unser 360-dimensionaler Vektor, der alles von den Handkarten bis zum Punktestand kodiert.
 *   **Label:** Die "richtige Antwort" oder das Ziel, das das neuronale Netz während des Trainings lernen soll. In unserem Fall ist das Label die Aktion, die ein menschlicher Spieler in einer bestimmten Situation ausgeführt hat. Beispiel: "Spiele das Paar Achten" oder "Passe".
-*   **Label-Vektor:** Die numerische Repräsentation des Labels. Da ein neuronales Netz nur mit Zahlen arbeiten kann, wandeln wir die Aktion (das Label) in einen Vektor um, den das Netz vorhersagen kann. Beispiel: Unser 57-dimensionaler Vektor, bei dem zwei Positionen für die Achten auf 1 gesetzt sind.
+*   **Label-Vektor:** Die numerische Repräsentation des Labels. Da ein neuronales Netz nur mit Zahlen arbeiten kann, wandel ich die Aktion (das Label) in einen Vektor um, den das Netz vorhersagen kann. Beispiel: Unser 57-dimensionaler Vektor, bei dem zwei Positionen für die Achten auf 1 gesetzt sind.
 *   **Empirie / empirisch**: Bezieht sich auf Erkenntnisse, die durch Beobachtung und Experimente gewonnen werden.
 *   **Heuristik:** Bezeichnet eine erfahrungsbasierte Methode zur schnellen Lösungsfindung, die mit begrenztem Wissen arbeitet und nicht zwingend zur optimalen, aber oft zu einer praktikablen Lösung führt.
 *   **Daten-Augmentierung (engl. Data Augmentation):** Ist eine Technik, bei der vorhandene Daten künstlich erweitert werden.

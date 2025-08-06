@@ -38,9 +38,9 @@ def build_partitions(partitions: List[Partition], combis: List[Tuple[Cards, Comb
     :return: True, wenn alle möglichen Partitionen berechnet wurden. False, wenn es mehr als partitions_max_len Partitionen gibt.
     """
     if len(partitions) == maxlen:
-        return False  # es gibt zu viele Möglichkeiten, wir brechen ab
+        return False  # es gibt zu viele Möglichkeiten, ich breche ab
 
-    # Sobald alle Karten in der aktuellen Partition enthalten sind, können wir die Partition in unserer Liste
+    # Sobald alle Karten in der aktuellen Partition enthalten sind, kann ich die Partition in unserer Liste
     # ablegen und wieder aus der rekursiven Suche eine Ebene zurückspringen.
     assert counter >= 0
     if counter == 0:
@@ -48,7 +48,7 @@ def build_partitions(partitions: List[Partition], combis: List[Tuple[Cards, Comb
         partitions.append(curr)
         return True
 
-    # Wir suchen rekursiv weiter...
+    # Ich suche rekursiv weiter...
     if curr is None:
         curr = []
     completed = True

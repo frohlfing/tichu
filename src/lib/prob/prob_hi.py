@@ -182,7 +182,7 @@ def prob_of_higher_combi(cards: Cards, k: int, combination: Combination) -> floa
         # Rang des Phönix anpassen (der Phönix im Anspiel wird von der 2 geschlagen, aber nicht vom Mahjong)
         r = 1  # 1.5 abgerundet
         # Der verfügbare Phönix hat den Rang 15 (14.5 aufgerundet); er würde sich selbst schlagen.
-        # Daher degradieren wir den verfügbaren Phönix zu einer Noname-Karte (n bleibt gleich, aber es gibt kein Phönix mehr!).
+        # Daher degradiere ich den verfügbaren Phönix zu einer Noname-Karte (n bleibt gleich, aber es gibt kein Phönix mehr!).
         h[16] = 0
 
     # Hilfstabellen laden
@@ -406,7 +406,7 @@ def inspect_combination():  # pragma: no cover
 def benchmark():  # pragma: no cover
     # Test auf Geschwindigkeit
 
-    # Straße mit der Länge 5 (hat die meisten Muster, daher nehmen wir diese Länge)
+    # Straße mit der Länge 5 (hat die meisten Muster, daher nehme ich diese Länge)
     # n = 14, k = 6, combination = (6, 5, 6)
     # Gezählt:   p = 288/3003 = 0.0959040959040959 (100.065470 ms)
     # Berechnet: p = 288/3003 = 0.0959040959040959 (498.227119 ms (inkl. Daten laden))

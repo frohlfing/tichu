@@ -204,7 +204,7 @@ async def main(args: argparse.Namespace):
                                 print(f"Ungültige Nummer. Bitte zwischen 0 und {len(example_messages) - 1} wählen.")
                                 continue
 
-                            msg_to_send: dict = example_messages[msg_index].copy()  # Kopie, damit wir Payload ändern können
+                            msg_to_send: dict = example_messages[msg_index].copy()  # Kopie, damit ich Payload ändern kann
                             if msg_to_send is None:
                                 continue
                             if "payload" not in msg_to_send:

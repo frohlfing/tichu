@@ -25,7 +25,6 @@ def download_logfiles(path: str, y1: int, m1: int, y2: int, m2: int):
     :param y2: bis Jahr (einschließlich)
     :param m2: bis Monat (einschließlich)
     """
-
     # Zeitpunkt des Downloads
     now = datetime.today()
 

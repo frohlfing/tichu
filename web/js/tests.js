@@ -119,12 +119,12 @@ describe('getPlayableBombs', () => {
     
     test('Längere Bombe schlägt kürzere Bombe gleichen Rangs', () => {
         //const hand = Lib.parseCards("S8 G8 B8 R8 S9"); // Enthält eine Farbbombe 8-9 (hypothetisch, nur für Test)
-        // build_combinations würde diese Farbbombe nicht finden, aber wir können sie manuell erstellen
+        // build_combinations würde diese Farbbombe nicht finden, aber ich kann sie manuell erstellen
         const handBombs = [
             [ Lib.parseCards("S8 G8 B8 R8"), [CombinationType.BOMB, 4, 8] ],
             [ Lib.parseCards("S8 S9"), [CombinationType.BOMB, 2, 9] ] // Fake-Bombe
         ];
-        // Um diesen Test robust zu machen, mocken wir findBombs
+        // Um diesen Test robust zu machen, mocke ich findBombs.
         const originalFindBombs = Lib.findBombs;
         Lib.findBombs = () => handBombs;
     

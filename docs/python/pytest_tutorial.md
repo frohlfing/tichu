@@ -130,7 +130,7 @@ def test_process(mocker):
 
 ---
 
-## 6. Parameterisierte Tests mit `@pytest.mark.parametrize`
+## 6. Parametrisierte Tests mit `@pytest.mark.parametrize`
 
 Damit kannst du denselben Test mit verschiedenen Daten ausführen:
 

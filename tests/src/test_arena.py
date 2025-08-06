@@ -96,11 +96,10 @@ def test_arena_initialization(mock_agents):
     assert isinstance(arena._stop_event, asyncio.Event) # Für worker = 1
 
 def test_arena_initialization_multi_worker_event(mock_agents):
-    # Um Manager().Event() zu testen, ohne einen echten Manager zu starten,
-    # können wir den Typ des Events prüfen.
+    # Um Manager().Event() zu testen, ohne einen echten Manager zu starten, kann ich den Typ des Events prüfen.
     arena = Arena(mock_agents, max_games=10, worker=2)
     assert arena._worker == 2
-    # Überprüfen, ob es sich um einen Event-Typ handelt, der von multiprocessing.Manager stammt.
+    # Überprüfe, ob es sich um einen Event-Typ handelt, der von multiprocessing.Manager stammt.
     # Genauer gesagt, ist es ein EventProxy.
     assert isinstance(arena._stop_event, EventProxy)
 
@@ -247,9 +246,9 @@ def test_arena_run_single_worker(mock_play_game, mock_agents, mock_public_state_
     assert arena.rating == [max_games, 0, 0]
 
 @patch('src.arena.Pool')  # Mocke multiprocessing.Pool
-@patch('src.arena.Arena._play_game')  # _play_game wird im Pool-Prozess ausgeführt, mocken wir es hier nicht direkt, sondern was der Pool zurückgibt
+@patch('src.arena.Arena._play_game')  # _play_game wird im Pool-Prozess ausgeführt, mocke ich es hier nicht direkt, sondern was der Pool zurückgibt.
 def test_arena_run_multi_worker(_mock_arena_play_game_method_placeholder, mock_pool_cls, mock_agents, mock_public_state_win_team0):
-    # Dieser Test ist etwas komplexer, da wir Pool und Callbacks mocken müssen.
+    # Dieser Test ist etwas komplexer, da ich Pool und Callbacks mocken muss.
     # Für einen einfacheren Test könnte man `_play_game` so mocken, dass es direkt
     # ein Ergebnis liefert, und dann prüfen, ob `_update` korrekt aufgerufen wird.
 
@@ -263,10 +262,10 @@ def test_arena_run_multi_worker(_mock_arena_play_game_method_placeholder, mock_p
     # Ergebnisse, die `apply_async` über den `callback` an `_update` liefern soll.
     # Der Callback wird mit dem Ergebnis von _play_game aufgerufen
     # _play_game gibt (game_index, pub_state) zurück.
-    # Wir müssen also den Callback `arena._update` mit diesem Tupel aufrufen lassen.
+    # Ich muss also den Callback `arena._update` mit diesem Tupel aufrufen lassen.
 
     # Die `apply_async` Methode soll den `callback` mit dem Ergebnis von `_play_game` aufrufen.
-    # Wir simulieren das, indem wir `apply_async` so mocken, dass es den Callback direkt ausführt.
+    # Ich simuliere das, indem ich `apply_async` so mocke, dass es den Callback direkt ausführt.
     # Die `args` für `_play_game` (game_index) werden an `apply_async` übergeben.
 
     # Hilfsfunktion, um den apply_async-Aufruf zu simulieren, der den Callback auslöst.
@@ -288,9 +287,6 @@ def test_arena_run_multi_worker(_mock_arena_play_game_method_placeholder, mock_p
     mock_pool_instance.apply_async.side_effect = mock_apply_async
 
     arena = Arena(mock_agents, max_games=max_games, worker=num_workers, verbose=False)
-
-    # Da `_update` jetzt direkt durch `mock_apply_async` aufgerufen wird,
-    # brauchen wir `_update` nicht separat zu mocken, sondern können seine Seiteneffekte prüfen.
     arena.run()
 
     mock_pool_cls.assert_called_once_with(processes=num_workers)

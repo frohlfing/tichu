@@ -234,7 +234,7 @@ class Peer(Player):
             raise e_cancel
         except (ConnectionResetError, RuntimeError, ConnectionAbortedError) as e:
             logger.warning(f"[{self._name}] Verbindungsfehler. Senden der Anfrage '{action}' fehlgeschlagen: {e}. Warte auf Reconnect.")
-            # Wir warten trotzdem auf das Future. Sobald der Client wieder verbunden ist, erhält er mit dem Status auch diese Anfrage.
+            # Ich warte trotzdem auf das Future. Sobald der Client wieder verbunden ist, erhält er mit dem Status auch diese Anfrage.
         except Exception as e:
             logger.exception(f"[{self._name}] Unerwarteter Fehler. Senden der Anfrage '{action}' fehlgeschlagen: {e}")
             self._pending_request = None  # Future wieder entfernen
@@ -418,10 +418,10 @@ class Peer(Player):
             else:
                 if self.pub.current_turn_index != self.priv.player_index:
                     # Der Client ist nicht am Zug und kann daher nur eine Bombe dazwischenwerfen.
-                    # Das hat er nicht getan, also passen wir.
+                    # Das hat er nicht getan, also passe ich.
                     return [], (CombinationType.PASS, 0, 0)  # Passen
 
-                # Der Client ist regulär am Zug. Wir fordern ihn auf, Karten auszuwählen oder zu passen.
+                # Der Client ist regulär am Zug. Ich fordere ihn auf, Karten auszuwählen oder zu passen.
                 response_data = await self._ask("play", {
                     "hand_cards": self.priv.hand_cards,
                     "trick_combination": self.pub.trick_combination,

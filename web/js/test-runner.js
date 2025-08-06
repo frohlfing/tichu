@@ -231,7 +231,7 @@
         details.push(error.message);
         if (error.stack) {
             const stackLines = error.stack.split('\n');
-            // der letzte Stack-Eintrag is test-runner.js, wir wollen aber tests.js
+            // der letzte Stack-Eintrag is test-runner.js, ich will aber tests.js
             const relevantLine = stackLines.findLast(line => line.includes('.js') && !line.includes('test-runner.js')); // at Object.fn (http://localhost:63342/tichu/web/js/tests.js:284:28)
             //const relevantLine = stackLines[relevantIndex] || ""; // at Object.fn (http://localhost:63342/tichu/web/js/tests.js:284:28)
             const start = relevantLine.lastIndexOf('/');

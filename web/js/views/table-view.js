@@ -340,7 +340,7 @@ const TableView = (() => {
                         _schupfZones[0].classList.remove('hidden');
                         if (!_getCountHandCardsInSchupfZone()) {
                             // Die erhaltenen Tauschkarten werden noch nicht angezeigt.
-                            // Wir starten die Animation, in der die Karten unter den Spielern ausgetauscht werden.
+                            // Ich starte die Animation, in der die Karten unter den Spielern ausgetauscht werden.
                             Sound.play('schupf');
                             console.debug("Animation.schupfCards");
                             EventBus.pause();
@@ -491,7 +491,7 @@ const TableView = (() => {
             // Stich kassieren
 
             // Der Spielzustand hält die abgeräumte Situation fest. Es wird nicht festgehalten, wer den Stich bekommen hat.
-            // Wir können den Gewinner des Stichs aber an der View erkennen.
+            // Ich kann den Gewinner des Stichs aber an der View erkennen.
             let lastTurnIndex = -1; // der Index des Spielers mit dem letzten Spielzug
             for (let relativeIndex = 0; relativeIndex <= 3; relativeIndex++) {
                 const lastTurn = _trickZones[relativeIndex].querySelector(".turn.last");

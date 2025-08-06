@@ -144,7 +144,7 @@ class BSWRoundData:
     error_content: Optional[str] = None
 
 
-def can_score_be_ok(score: Tuple[int, int], announcements: List[int]) -> bool:
+def _can_score_be_ok(score: Tuple[int, int], announcements: List[int]) -> bool:
     """
     Prüft, ob der Score plausibel ist.
 
@@ -284,7 +284,7 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWRoundData]:
 
         # Historie bereinigen:
         # Leider wird nicht geloggt, wer den Stich kassiert. Stattdessen "passt" der Spieler in dem Moment des Kassierens :-(
-        # Daher bauen wir eine neue Historie auf, die festhält, wer den Stich kassiert, ohne überflüssiges Passen.
+        # Daher baue ich eine neue Historie auf, die festhält, wer den Stich kassiert, ohne überflüssiges Passen.
         history = []
 
         trick_owner_index = -1
@@ -306,7 +306,7 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWRoundData]:
             if is_round_over:
                 # Runde ist vorbei, aber es gibt noch weitere Einträge in der Historie
                 if card_str == "":
-                    continue  # Passen am Ende der Runde ignorieren wir
+                    continue  # Passen am Ende der Runde ignoriere ich
                 history_too_long = True
                 break
 
@@ -324,7 +324,7 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWRoundData]:
                     trick_points = 0
                     trick_combination = CombinationType.PASS, 0, 0
                     trick_owner_index = -1
-                    # tichu_positions anpassen, da wir diesen Eintrag nicht übernehmen
+                    # tichu_positions anpassen, da dieser Eintrag übersprungen wird
                     for i in range(4):
                         if tichu_positions[i] >= len(history):
                             tichu_positions[i] -= 1
@@ -550,7 +550,7 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWRoundData]:
                 for player_index in range(4):
                     if log_entry.tichu_positions[player_index] != -3:
                         announcements[player_index] = 2 if log_entry.tichu_positions[player_index] == -2 else 1
-                error_code = BSWErrorCode.SCORE_MISMATCH if can_score_be_ok(log_entry.score, announcements) else BSWErrorCode.SCORE_NOT_POSSIBLE
+                error_code = BSWErrorCode.SCORE_MISMATCH if _can_score_be_ok(log_entry.score, announcements) else BSWErrorCode.SCORE_NOT_POSSIBLE
 
         # Spielerliste prüfen
         player_names = []

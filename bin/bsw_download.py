@@ -8,10 +8,10 @@ der letzte ist unter http://tichulog.brettspielwelt.de/ verlinkt.
 """
 
 import argparse
-from datetime import datetime
 import os
+from datetime import datetime
 from src import config
-from src.lib.bw import download_logfiles_from_bw
+from src.lib.bsw.download import download_logfiles
 
 
 def main(args: argparse.Namespace):
@@ -25,7 +25,7 @@ def main(args: argparse.Namespace):
     print(f"Ab Datum: {y1:04d}-{m1:02d}")
     print(f"Bis Datum: {y2:04d}-{m2:02d}")
     print(f"Zielverzeichnis: {path}")
-    download_logfiles_from_bw(path, y1, m1, y2, m2)
+    download_logfiles(path, y1, m1, y2, m2)
     print("fertig")
 
 

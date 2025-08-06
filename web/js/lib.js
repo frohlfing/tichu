@@ -423,7 +423,7 @@ const Lib = (() => {
         let /** @type number */ v;
         if (t === CombinationType.SINGLE) {
             if (isCardEqual(cards[0], CARD_PHO)) {
-                v = trickRank ? trickRank : 1;  // ist um 0.5 größer als der Stich (wir runden ab, da egal)
+                v = trickRank ? trickRank : 1;  // ist um 0.5 größer als der Stich (ich runde ab, da egal)
             }
             else {
                 v = cards[0][0];
@@ -438,7 +438,7 @@ const Lib = (() => {
                     v = 14; // Phönix muss irgendwo anders eingereiht werden
                 }
                 else {
-                    v = cards[1][0] + 1; // wir nehmen erstmal an, dass der Phönix vorn eingereiht werden kann
+                    v = cards[1][0] + 1; // ich nehme erstmal an, dass der Phönix vorn eingereiht werden kann
                     for (let i = 2; i < n; i++) {
                         if (v > cards[i][0] + i) {
                             // der Phönix füllt eine Lücke
@@ -494,7 +494,7 @@ const Lib = (() => {
 
                 case CombinationType.STREET: // Phönix in die Lücke verschieben
                     // Phönix vorn annehmen
-                    let w = cards[1][0] + 1; // wir nehmen erstmal an, dass der Phönix vorn bleiben kann
+                    let w = cards[1][0] + 1; // ich nehmen erstmal an, dass der Phönix vorn bleiben kann
                     for (let i = 2; i < n; i++) {
                         if (w > cards[i][0] + i) {
                             // Lücke gefunden

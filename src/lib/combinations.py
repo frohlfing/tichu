@@ -169,7 +169,7 @@ def get_trick_combination(cards: Cards, trick_rank: int, shift_phoenix: bool = F
     if t == CombinationType.SINGLE:
         if cards[0] == CARD_PHO:
             assert 0 <= trick_rank <= 15
-            v = trick_rank if trick_rank else 1  # ist um 0.5 größer als der Stich (wir runden ab, da egal)
+            v = trick_rank if trick_rank else 1  # ist um 0.5 größer als der Stich (ich runde ab, da egal)
         else:
             v = cards[0][0]
     elif t == CombinationType.FULLHOUSE:
@@ -179,7 +179,7 @@ def get_trick_combination(cards: Cards, trick_rank: int, shift_phoenix: bool = F
             if cards[1][0] == 14:
                 v = 14  # Phönix muss irgendwo anders eingereiht werden
             else:
-                v = cards[1][0] + 1  # wir nehmen erstmal an, dass der Phönix vorn eingereiht werden kann
+                v = cards[1][0] + 1  # ich nehme erstmal an, dass der Phönix vorn eingereiht werden kann
                 for i in range(2, n):
                     if v > cards[i][0] + i:
                         # der Phönix füllt eine Lücke
@@ -212,7 +212,7 @@ def get_trick_combination(cards: Cards, trick_rank: int, shift_phoenix: bool = F
             else:  # kein Drilling komplett → Phönix in die Mitte verschieben
                 cards[0] = cards[1]; cards[1] = cards[2]; cards[2] = CARD_PHO
         elif t == CombinationType.STREET:  # Phönix in die Lücke verschieben
-            w = cards[1][0] + 1  # wir nehmen erstmal an, dass der Phönix vorn bleiben kann
+            w = cards[1][0] + 1  # ich nehme erstmal an, dass der Phönix vorn bleiben kann
             for i in range(2, n):
                 if w > cards[i][0] + i:
                     # Lücke gefunden

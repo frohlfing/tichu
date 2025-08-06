@@ -6,10 +6,9 @@ Dieses Modul importiert die vom Spiele-Portal "Brettspielwelt" heruntergeladenen
 
 import argparse
 import os
-import traceback
 from datetime import datetime
 from src import config
-from src.lib.bsw.database import BSWUpdateStats, update_database
+from src.lib.bsw.database import update_database
 
 
 def main(args: argparse.Namespace):
@@ -25,24 +24,8 @@ def main(args: argparse.Namespace):
     print(f"Bis Datum: {y2:04d}-{m2:02d}")
     print(f"Zip-Archiven: {path}")
     print(f"SQLite-Datenbank: {database}")
-    stats: BSWUpdateStats = {"games_total": 0, "games_fails": 0, "rounds_total": 0, "rounds_fails": 0, "error_summary": {}, "duration": 0}
-    try:
-        stats = update_database(database, path, y1, m1, y2, m2)
-    except KeyboardInterrupt:
-        print("\nUpdate durch Benutzer abgebrochen.")
-    except Exception as e:
-        print(f"\nEin Fehler ist aufgetreten: {e}")
-        traceback.print_exc()
-
-    print(f"Anzahl Partien gesamt: {stats.get("games_total")}")
-    print(f"Anzahl Partien fehlerhaft: {stats.get("games_fails")}")
-    print(f"Anzahl Runden gesamt: {stats.get("rounds_total")}")
-    print(f"Anzahl Runden fehlerhaft: {stats.get("rounds_fails")}")
-    print(f"Gesamtzeit: {stats.get("duration", 0) / 60:.0f} Minuten")
-    if stats.get("games_total"):
-        print(f"Zeit pro Partie: {stats.get("duration", 0) * 1000 / stats.get("games_total"):.3f} ms")
-    for code, count in stats.get("error_summary", {}).items():
-        print(f"{code.name}: {count} Fehler")
+    update_database(database, path, y1, m1, y2, m2)
+    print("fertig")
 
 
 if __name__ == "__main__":

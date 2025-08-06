@@ -78,7 +78,7 @@ def test_get_git_tag_empty_output_from_git(mock_check_output: MagicMock):
     mock_check_output.assert_called_once_with(["git", "describe", "--tags"])
     assert actual_tag == "" # strip() and decode() sollten einen leeren String ergeben
     
-# Wir können die Funktion get_git_tag innerhalb des Moduls mocken,
+# Ich kann die Funktion get_git_tag innerhalb des Moduls mocken,
 # wenn get_release sie aufruft. Das macht die Tests für get_release
 # unabhängig von der Implementierung (und den Mocks) von get_git_tag.
 @patch('src.common.git_utils.get_git_tag') # Mock get_git_tag im selben Modul

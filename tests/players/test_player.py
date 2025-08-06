@@ -34,9 +34,6 @@ def test_player_properties():
     assert player.name == "Charlie"
     assert player.class_name == "Player" # Gibt den Klassennamen zurück
 
-# Testen der abstrakten Methoden ist schwierig, da man Player nicht instanziieren sollte,
-# aber wir können prüfen, ob eine Subklasse, die sie NICHT implementiert, Fehler wirft.
-# Erstellen wir eine minimale Dummy-Subklasse nur für diesen Test:
 class IncompletePlayer(Player):
     """Eine Dummy-Klasse, die Player erbt, aber keine abstrakten Methoden implementiert."""
     # Implementiert keine der abstrakten Methoden wie schupf, play etc.

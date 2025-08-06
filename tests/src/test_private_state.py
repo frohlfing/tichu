@@ -120,9 +120,6 @@ def test_private_state_partitions_property(initial_priv_state):
     assert priv._partitions_aborted is True
 
     partitions = priv.partitions
-    # Wir können nicht leicht prüfen, ob die Partitionen *korrekt* sind,
-    # aber wir können prüfen, ob *etwas* generiert wurde (wenn die Hand gültig ist)
-    # und ob der Cache verwendet wird.
     assert isinstance(partitions, list)
     # assert len(partitions) > 0 # Erwarte mind. eine Partition für eine normale Hand
     assert priv._partition_cache is partitions

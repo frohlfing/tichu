@@ -887,12 +887,11 @@ web/fonts/architect-s-daughter
 
 ## A3. Versionsnummer
 
-Die Versionsnummer wird gemäß dem [Semantic Versioning-Schema](https://semver.org/) vergeben.
+Die Versionsnummer wird gemäß dem [Semantic Versioning-Schema](https://semver.org/) im Format MAJOR.MINOR.PATCH vergeben.
 
-Das bedeutet, wir erhöhen bei gegebener Versionsnummer MAJOR.MINOR.PATCH die:
-- MAJOR-Version, wenn wir inkompatible API-Änderungen vornehmen
-- MINOR-Version, wenn wir Funktionen abwärtskompatibel hinzufügen
-- PATCH-Version, wenn wir abwärtskompatible Fehlerbehebungen vornehmen
+- Die MAJOR-Version wird bei einer inkompatiblen API-Änderung erhöht.
+- Die MINOR-Version wird erhöht, wenn eine Funktion abwärtskompatibel hinzugefügt wurde.
+- Die PATCH-Version wird nach einer Fehlerbehebung erhöht.
 
 ### A3.1. Release auf Github erstellen
 

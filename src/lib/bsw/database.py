@@ -2,16 +2,15 @@
 Brettspielwelt-Datenbank
 """
 
-__all__ = "BSWUpdateStats", "update_database", "datasets", "count_datasets",
+__all__ = "update_database", "datasets", "count_datasets",
 
 import os
 import sqlite3
 from src.lib.bsw.download import logfiles, count_logfiles
 from src.lib.bsw.parse import parse_logfile
 from src.lib.bsw.validate import BSWErrorCode, BSWRoundData, validate_bswlog
-from time import time
 from tqdm import tqdm
-from typing import TypedDict, List, Tuple, Generator
+from typing import List, Tuple, Generator
 
 
 def _create_tables(conn: sqlite3.Connection):
@@ -41,7 +40,7 @@ def _create_tables(conn: sqlite3.Connection):
         id                INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID der Runde
         game_id           INTEGER NOT NULL,     -- ID der Partie
         round_index       INTEGER NOT NULL,     -- Index der Runde innerhalb der Partie (0, 1, 2, ...)
-        player_id_0       INTEGER NOT NULL,     -- ID des Spielers an Position 0  # todo kann raus, wenn wir nur Spiele betrachten, wenn kein Spielerwechsel statt fand
+        player_id_0       INTEGER NOT NULL,     -- ID des Spielers an Position 0  # todo kann raus, falls ich nur Spiele betrachte, wo kein Spielerwechsel statt fand
         player_id_1       INTEGER NOT NULL,     -- ID des Spielers an Position 1  # todo 
         player_id_2       INTEGER NOT NULL,     -- ID des Spielers an Position 2  # todo 
         player_id_3       INTEGER NOT NULL,     -- ID des Spielers an Position 3  # todo 
@@ -118,28 +117,9 @@ def _create_indexes(conn: sqlite3.Connection):
     conn.commit()
 
 
-class BSWUpdateStats(TypedDict):
+def _save_player(cursor: sqlite3.Cursor, player_name: str) -> int:
     """
-    Ergebniszusammenfassung der Datenbankaktualisierung.
-
-    :ivar games_total: Gesamtanzahl der Partien.
-    :ivar games_fails: Anzahl der fehlerhaften Partien.
-    :ivar rounds_total: Gesamtanzahl der Runden.
-    :ivar rounds_fails: Anzahl fehlerhafter Runden.
-    :ivar error_summary: Fehler in Runden pro Fehlercode.
-    :ivar duration: Gesamtdauer des Imports in Sekunden.
-    """
-    games_total: int
-    games_fails: int
-    rounds_total: int
-    rounds_fails: int
-    error_summary: dict[BSWErrorCode, int]
-    duration: float
-
-
-def _get_or_create_player_id(cursor: sqlite3.Cursor, player_name: str) -> int:
-    """
-    Speichert den Spieler in der Datenbank, sofern er noch nicht vorhanden ist, und gibt die ID zurück.
+    Speichert den Spieler in der Datenbank.
 
     :param cursor: Datenbank-Cursor
     :param player_name: Name des Spielers
@@ -155,7 +135,7 @@ def _get_or_create_player_id(cursor: sqlite3.Cursor, player_name: str) -> int:
     return player_id
 
 
-def _save_game(cursor: sqlite3.Cursor, game_id: int, player_ids: List[int], player_changed: bool, score: Tuple[int, int], year: int, month: int, error_code: BSWErrorCode):
+def _save_game(cursor: sqlite3.Cursor, game_id: int, player_ids: List[int], player_changed: bool, score: Tuple[int, int], year: int, month: int, error_code: BSWErrorCode) -> int:
     """
     Speichert eine Partie in der Datenbank.
 
@@ -208,6 +188,7 @@ def _save_game(cursor: sqlite3.Cursor, game_id: int, player_ids: List[int], play
                 error_code.value
             )
         )
+    return game_id
 
 
 def _save_round(cursor: sqlite3.Cursor, ds: BSWRoundData, player_ids: List[int]) -> int:
@@ -241,8 +222,6 @@ def _save_round(cursor: sqlite3.Cursor, ds: BSWRoundData, player_ids: List[int])
         round_id = result[0]
         cursor.execute("""
             UPDATE rounds SET
-                game_id=?, 
-                round_index=?, 
                 player_id_0=?, player_id_1=?, player_id_2=?, player_id_3=?,
                 hand_cards_0=?, hand_cards_1=?, hand_cards_2=?, hand_cards_3=?,
                 schupf_cards_0=?, schupf_cards_1=?, schupf_cards_2=?, schupf_cards_3=?,
@@ -257,8 +236,6 @@ def _save_round(cursor: sqlite3.Cursor, ds: BSWRoundData, player_ids: List[int])
                 error_code=?, error_content=?
             WHERE id = ?
             """, (
-                ds.game_id,
-                ds.round_index,
                 player_ids[0], player_ids[1], player_ids[2], player_ids[3],
                 hands_str[0], hands_str[1], hands_str[2], hands_str[3],
                 schupf_str[0], schupf_str[1], schupf_str[2], schupf_str[3],
@@ -314,9 +291,9 @@ def _save_round(cursor: sqlite3.Cursor, ds: BSWRoundData, player_ids: List[int])
     return round_id
 
 
-def update_database(database: str, path: str, y1: int, m1: int, y2: int, m2: int) -> BSWUpdateStats:
+def update_database(database: str, path: str, y1: int, m1: int, y2: int, m2: int):
     """
-    Aktualisiert die SQLite-Datenbank für die vom Spiele-Portal "Brettspielwelt" heruntergeladenen Logdateien.
+    Aktualisiert die SQLite-Datenbank mit den vom Spiele-Portal "Brettspielwelt" heruntergeladenen Logdateien.
 
     :param database: Die SQLite-Datenbankdatei.
     :param path: Das Verzeichnis, in dem die Zip-Archive liegen.
@@ -344,17 +321,11 @@ def update_database(database: str, path: str, y1: int, m1: int, y2: int, m2: int
         rounds_total = 0
         rounds_fails = 0
         error_summary = {}
-        time_start = time()
         for game_id, year, month, content in progress_bar:
             # Logdatei parsen und validieren
             games_total += 1
             bw_log = parse_logfile(game_id, year, month, content)
             game_data = validate_bswlog(bw_log)
-            if any(ds.error_code != BSWErrorCode.NO_ERROR for ds in game_data):
-                games_fails += 1
-
-            if game_data:
-                assert game_data[-1].round_index == len(game_data) - 1  # todo raus nehmen
 
             # Runden-übergreifende Angaben für die Partie ermitteln
             player_changed = any(round_data.player_names != game_data[0].player_names for round_data in game_data)
@@ -372,6 +343,8 @@ def update_database(database: str, path: str, y1: int, m1: int, y2: int, m2: int
                         if round_data.error_code != BSWErrorCode.NO_ERROR:
                             game_error_code = round_data.error_code
                             break
+            if game_error_code != BSWErrorCode.NO_ERROR:
+                games_fails += 1
 
             # Datenbank aktualisieren
             for round_data in game_data:
@@ -386,7 +359,7 @@ def update_database(database: str, path: str, y1: int, m1: int, y2: int, m2: int
                 # Tabelle für die Spieler aktualisieren und Spieler-IDs ermitteln
                 player_ids = []
                 for player_index in range(4):
-                    player_ids.append(_get_or_create_player_id(cursor, round_data.player_names[player_index]))
+                    player_ids.append(_save_player(cursor, round_data.player_names[player_index]))
 
                 # Partie speichern
                 if round_data.round_index == 0:
@@ -416,15 +389,6 @@ def update_database(database: str, path: str, y1: int, m1: int, y2: int, m2: int
     finally:
         conn.commit()
         conn.close()
-
-    return {
-        "games_total": games_total,
-        "games_fails": games_fails,
-        "rounds_total": rounds_total,
-        "rounds_fails": rounds_fails,
-        "error_summary": error_summary,
-        "duration": time() - time_start,
-    }
 
 
 def datasets(database: str) -> Generator[dict]:

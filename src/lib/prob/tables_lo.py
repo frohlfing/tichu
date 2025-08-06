@@ -258,7 +258,7 @@ def create_table_lo(t: CombinationType, m: int):
     r_start = 1 if t == CombinationType.SINGLE else int(m/2) + 1 if t == CombinationType.STAIR else m if t == CombinationType.STREET else 2
     r_end = 16 if t == CombinationType.SINGLE else 15  # exklusiv (Drache + 1 bzw. Ass + 1)
 
-    # Wir suchen niedrigere Kombinationen, also brauchen wir den höchstmöglichen Rang nicht zu speichern.
+    # Ich suche niedrigere Kombinationen, also brauche ich den höchstmöglichen Rang nicht zu speichern.
     r_end -= 1
 
     # Hilfstabelle
