@@ -8,11 +8,14 @@ import argparse
 import os
 from datetime import datetime
 from src import config
-from src.lib.bw import update_bw_database, BWValidationStats
+from src.lib.bw import update_bw_database, BWValidationStats, migrate
 
 
 def main(args: argparse.Namespace):
     """Main-Routine"""
+    migrate(database=args.database)
+    exit(0)
+
     # Argumente auswerten
     y1, m1 = map(int, args.ym1.split("-"))
     y2, m2 = map(int, args.ym2.split("-"))

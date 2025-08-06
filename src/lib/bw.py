@@ -5,7 +5,7 @@ Dieses Modul definiert Funktionen zum Aufbau einer Datenbank mit Tichu-Logdateie
 __all__ = "download_logfiles_from_bw", "bw_logfiles", "bw_count_logfiles", \
     "BWLog", "BWLogEntry", "BWParserError", "parse_bw_logfile", \
     "BWErrorCode", "BWValidationStats", "validate_bw_log", \
-    "update_bw_database", \
+    "migrate", "update_bw_database", \
     "replay_play"
 
 import enum
@@ -15,7 +15,9 @@ import requests
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime
-from src.lib.cards import Cards, validate_cards, parse_card, stringify_card, sum_card_points, is_wish_in, other_cards, CardSuit
+
+from src import config
+from src.lib.cards import Cards, validate_cards, parse_card, stringify_card, sum_card_points, is_wish_in, CardSuit
 from src.lib.combinations import get_trick_combination, Combination, CombinationType, build_action_space, build_combinations
 from src.public_state import PublicState
 from src.private_state import PrivateState
@@ -229,7 +231,7 @@ class BWLogEntry:
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, -1 == kein Eintrag).
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == kein Eintrag).
     :ivar score: Rundenergebnis (Team20, Team31)
-    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index + gespielte Karten + Zeilenindex der Logdatei.
+    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index + gespielte Karten.
     :ivar year: Jahr der Logdatei.
     :ivar month: Monat der Logdatei.
 
@@ -247,7 +249,7 @@ class BWLogEntry:
     wish_value: int = 0
     dragon_recipient: int = -1
     score: Tuple[int, int] = (0, 0)
-    history: List[Tuple[int, str, int]] = field(default_factory=list)
+    history: List[Tuple[int, str]] = field(default_factory=list)
     year: int = -1
     month: int = -1
 
@@ -417,7 +419,7 @@ def parse_bw_logfile(game_id: int, year: int, month: int, content: str) -> Optio
                     action = line[j + 1:].rstrip(".")  # 201205/1150668.tch endet in dieser Zeile, sodass der Punkt fehlt
                     cards = action.replace("10", "Z") if action != "passt" else ""
                     # Spielzug übernehmen
-                    log_entry.history.append((player_index, cards, line_index))
+                    log_entry.history.append((player_index, cards))
                     line_index += 1
 
                 elif line.startswith("Wunsch:"):  # Wunsch geäußert (z.B. "Wunsch:2")
@@ -571,10 +573,15 @@ class BWErrorCode(enum.IntEnum):
     SCORE_NOT_POSSIBLE = 71
     """Rechenfehler! Geloggtes Rundenergebnis ist nicht möglich (wurde korrigiert)."""
 
-    # 8) Gesamt-Punktestand der Partie
+    # 8) Endergebnis der Partie
 
     PLAYED_AFTER_GAME_OVER  = 80
     """Runde gespielt, obwohl die Partie bereits entschieden ist."""
+
+    #9) Spieler
+
+    PLAYER_CHANGED  = 90
+    """Mindestens ein Spieler hat während der Partie gewechselt."""
 
 
 @dataclass
@@ -596,11 +603,11 @@ class BWDataset:
     :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == kein Spieler).
     :ivar is_double_victory: Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.
     :ivar score: Rundenergebnis (Team20, Team31).
-    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index + gespielte Karten + Index des Spielers, der den Stich nach dem Zug kassiert (-1 == Stich nicht kassiert).
+    :ivar history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index + Karten + Spieler-Index, der den Stich nach dem Zug kassiert (-1 == Stich nicht kassiert).
+    #     history: Spielzüge. Jeder Spielzug ist ein Tuple: Spieler-Index + [optional: Karten] + [optional: Spielers-Index, der den Stich nach dem Zug kassiert].
     :ivar year: Jahr der Logdatei.
     :ivar month: Monat der Logdatei.
     :ivar error_code: Fehlercode.
-    :ivar error_line_index: Im Fehlerfall der Index der fehlerhaften Zeile in der Logdatei, sonst None.
     :ivar error_content: Im Fehlerfall der betroffene Abschnitt aus der Logdatei, sonst None.
     """
     game_id: int = -1
@@ -617,11 +624,11 @@ class BWDataset:
     loser_index: int = -1,
     is_double_victory: bool = False,
     score: Tuple[int, int] = (0, 0)
-    history: List[Tuple[int, str, int]] = field(default_factory=list)
+    history: List[Tuple[int, str, int]] = field(default_factory=list)  # z.B 3:R6R3Ph|2|3:R6R3Ph;0|2;3
+    #history: List[Tuple[int, str, Optional[int]]] = field(default_factory=list)
     year: int = -1
     month: int = -1
     error_code: BWErrorCode = BWErrorCode.NO_ERROR
-    error_line_index: Optional[int] = None
     error_content: Optional[str] = None
 
 
@@ -683,9 +690,10 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
     datasets = []
     game_faulty = False
     total_score = [0, 0]
+    prev_game_id = 0
+    prev_player_names = [None, None, None, None]
     for log_entry in bw_log:
         error_code = BWErrorCode.NO_ERROR
-        error_line_index = -1
 
         # Karten aufsplitten
         grand_tichu_hands: List[List[str]] = []
@@ -705,58 +713,46 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
             # Grand-Hand-Karten
             if not validate_cards(log_entry.grand_tichu_hands[player_index]):  # Kartenlabel
                 error_code = BWErrorCode.INVALID_CARD_LABEL
-                error_line_index = log_entry.line_index + 1 + player_index
                 break
             elif len(grand_cards) != 8:  # Anzahl
                 error_code = BWErrorCode.INVALID_CARD_COUNT
-                error_line_index = log_entry.line_index + 1 + player_index
                 break
             elif len(set(grand_cards)) != 8:  # Duplikate
                 error_code = BWErrorCode.DUPLICATE_CARD
-                error_line_index = log_entry.line_index + 1 + player_index
                 break
             elif any(label not in start_cards for label in grand_cards):  # sind Handkarten?
                 error_code = BWErrorCode.CARD_NOT_IN_HAND
-                error_line_index = log_entry.line_index + 1 + player_index
                 break
 
             # Startkarten
             elif not validate_cards(log_entry.start_hands[player_index]):  # Kartenlabel
                 error_code = BWErrorCode.INVALID_CARD_LABEL
-                error_line_index = log_entry.line_index + 6 + player_index
                 break
             elif len(start_cards) != 14:  # Anzahl
                 error_code = BWErrorCode.INVALID_CARD_LABEL
-                error_line_index = log_entry.line_index + 6 + player_index
                 break
             elif len(set(start_cards)) != 14:  # Duplikate
                 error_code = BWErrorCode.DUPLICATE_CARD
-                error_line_index = log_entry.line_index + 6 + player_index
                 break
 
             # Tauschkarten
             elif not validate_cards(log_entry.given_schupf_cards[player_index]):  # Kartenlabel
                 error_code = BWErrorCode.INVALID_CARD_LABEL
-                error_line_index = log_entry.line_index + 11 + player_index
                 break
             elif len(given_cards) != 3:  # Anzahl
                 error_code = BWErrorCode.INVALID_CARD_LABEL
-                error_line_index = log_entry.line_index + 11 + player_index
                 break
             elif len(set(given_cards)) != 3:  # Duplikate
                 error_code = BWErrorCode.DUPLICATE_CARD
-                error_line_index = log_entry.line_index + 11 + player_index
                 break
             elif any(label not in start_cards for label in given_cards):  # sind Handkarten?
                 error_code = BWErrorCode.CARD_NOT_IN_HAND
-                error_line_index = log_entry.line_index + 11 + player_index
                 break
 
         # Sind alle Karten verteilt und keine mehrfach vergeben?
         if error_code == BWErrorCode.NO_ERROR:
             if len(set(start_hands[0] + start_hands[1] + start_hands[2] + start_hands[3])) != 56:
                 error_code = BWErrorCode.DUPLICATE_CARD
-                error_line_index = log_entry.line_index
 
         # Handkarten nach dem Schupfen ermitteln
         hands = _schupf(start_hands, given_schupf_cards)
@@ -796,7 +792,7 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
         is_round_over = False
         is_double_victory = False
         history_too_long = False
-        for player_index, card_str, line_index in log_entry.history:
+        for player_index, card_str in log_entry.history:
             if is_round_over:
                 # Runde ist vorbei, aber es gibt noch weitere Einträge in der Historie
                 if card_str == "":
@@ -830,7 +826,6 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
                 # Im Anspiel gepasst?
                 if trick_owner_index == -1:
                     error_code = BWErrorCode.PASS_NOT_POSSIBLE
-                    error_line_index = line_index
                     break
 
                 # Wunsch beachtet?
@@ -838,14 +833,12 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
                     action_space = build_action_space(combinations[player_index], trick_combination, wish_value)
                     if action_space[0][1][0] != CombinationType.PASS:  # Wunsch wurde nicht beachtet!
                         error_code = BWErrorCode.WISH_NOT_FOLLOWED
-                        error_line_index = line_index
                         break
 
                 # Prüfen, ob der Spieler dran war
                 if player_index != current_turn_index:
                     if error_code == BWErrorCode.NO_ERROR:
                         error_code = BWErrorCode.PLAYER_NOT_ON_TURN
-                        error_line_index = line_index
                     break
             else:
                 # Spieler hat Karten gespielt
@@ -860,22 +853,18 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
                 if not validate_cards(card_str):  # Kartenlabel bekannt?
                     if error_code == BWErrorCode.NO_ERROR:
                         error_code = BWErrorCode.INVALID_CARD_LABEL
-                        error_line_index = line_index
                     break
                 elif len(cards) != len(set(cards)):  # Duplikate?
                     if error_code == BWErrorCode.NO_ERROR:
                         error_code = BWErrorCode.DUPLICATE_CARD
-                        error_line_index = line_index
                     break
                 elif any(label not in hands[player_index] for label in cards):  # gehören die Karten zur Hand?
                     if error_code == BWErrorCode.NO_ERROR:
                         error_code = BWErrorCode.CARD_NOT_IN_HAND
-                        error_line_index = line_index
                     break
                 elif any(label in played_cards for label in cards):  # bereits gespielt?
                     if error_code == BWErrorCode.NO_ERROR:
                         error_code = BWErrorCode.CARD_ALREADY_PLAYED
-                        error_line_index = line_index
                     break
 
                 # Gespielte Karten merken
@@ -893,7 +882,6 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
                             error_code = BWErrorCode.SMALLER_OF_AMBIGUOUS_RANK  # es wurde der kleinere Rang bei einem mehrdeutigen Stich angenommen
                         else:
                             error_code = BWErrorCode.COMBINATION_NOT_PLAYABLE
-                        error_line_index = line_index
                     break
 
                 # Wenn kein Anspiel ist, kann das Zugrecht durch eine Bombe erobert werden
@@ -904,7 +892,6 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
                 if player_index != current_turn_index:
                     if error_code == BWErrorCode.NO_ERROR:
                         error_code = BWErrorCode.PLAYER_NOT_ON_TURN
-                        error_line_index = line_index
                     break
 
                 # Handkarten aktualisieren
@@ -977,11 +964,9 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
         if not is_round_over:
             if error_code == BWErrorCode.NO_ERROR:
                 error_code = BWErrorCode.HISTORY_TOO_SHORT
-                error_line_index = log_entry.line_index
         elif history_too_long:
             if error_code == BWErrorCode.NO_ERROR:
                 error_code = BWErrorCode.HISTORY_TOO_LONG
-                error_line_index = log_entry.line_index
 
         # Runde ist beendet
 
@@ -1000,17 +985,14 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
             if not (history[-1][1] == "Dr" and is_double_victory):  # Ausnahme: Drache im letzten Stich führt zum Doppelsieg (dann wird der Drache nicht verschenkt, weil egal)
                 if error_code == BWErrorCode.NO_ERROR:
                     error_code = BWErrorCode.DRAGON_NOT_GIVEN
-                    error_line_index = log_entry.line_index
         elif dragon_giver != -1 and log_entry.dragon_recipient not in [(dragon_giver + 1) % 4, (dragon_giver + 3) % 4]:
             # Drache hat Stich gewonnen, wurde aber an das eigene Team verschenkt
             if error_code == BWErrorCode.NO_ERROR:
                 error_code = BWErrorCode.DRAGON_GIVEN_TO_OWN_TEAM
-                error_line_index = log_entry.line_index
         elif dragon_giver == -1 and log_entry.dragon_recipient != -1:
             # Drache hat keinen Stich gewonnen, wurde aber verschenkt
             if error_code == BWErrorCode.NO_ERROR:
                 error_code = BWErrorCode.DRAGON_GIVEN_WITHOUT_BEAT
-                error_line_index = log_entry.line_index
 
         # Falls der Mahjong gespielt wurde, aber kein Wunsch geäußert wurde (was legitim ist), 0 für "ohne Wunsch" eintragen.
         wish_value = log_entry.wish_value
@@ -1019,14 +1001,12 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
                 log_entry.wish_value = 0
             else:
                 error_code = BWErrorCode.WISH_WITHOUT_MAHJONG
-                error_line_index = log_entry.line_index
 
         # Position der Tichu-Ansage prüfen und korrigieren
         for player_index in range(4):
             if tichu_positions[player_index] - first_pos[player_index] > 1:
                 if error_code == BWErrorCode.NO_ERROR:
                     error_code = BWErrorCode.ANNOUNCEMENT_NOT_POSSIBLE
-                    error_line_index = log_entry.line_index
                 tichu_positions[player_index] = first_pos[player_index]
 
         # Endwertung der Runde
@@ -1061,7 +1041,13 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
                     if log_entry.tichu_positions[player_index] != -3:
                         announcements[player_index] = 2 if log_entry.tichu_positions[player_index] == -2 else 1
                 error_code = BWErrorCode.SCORE_MISMATCH if can_score_be_ok(log_entry.score, announcements) else BWErrorCode.SCORE_NOT_POSSIBLE
-                error_line_index = log_entry.line_index
+
+        # Gesamt-Punktestand der Partie aktualisieren
+        if total_score[0] >= 1000 or total_score[1] >= 1000:
+            if error_code == BWErrorCode.NO_ERROR:
+                error_code = BWErrorCode.PLAYED_AFTER_GAME_OVER
+        total_score[0] += score[0]
+        total_score[1] += score[1]
 
         # Spielerliste prüfen
         player_names = []
@@ -1076,18 +1062,16 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
             while name in player_names:
                 i += 1
                 name = f"{log_entry.player_names[player_index]} ({i})"
-                # if error_code == BWErrorCode.NO_ERROR:
-                #     error_code = BWErrorCode.DUPLICATE_PLAYER_NAME
-                #     error_line_index = log_entry.line_index + 1 + player_index
             player_names.append(name)
 
-        # Gesamt-Punktestand der Partie aktualisieren
-        if total_score[0] >= 1000 or total_score[1] >= 1000:
-            if error_code == BWErrorCode.NO_ERROR:
-                error_code = BWErrorCode.PLAYED_AFTER_GAME_OVER
-                error_line_index = log_entry.line_index
-        total_score[0] += score[0]
-        total_score[1] += score[1]
+        # Gab es einen Spielerwechsel während der Partie?
+        if prev_game_id != log_entry.game_id:
+            prev_game_id = log_entry.game_id
+        else:
+            if any(player_names[i] != prev_player_names[i] for i in range(4)):
+                if error_code == BWErrorCode.NO_ERROR:
+                    error_code = BWErrorCode.PLAYER_CHANGED
+        prev_player_names = player_names
 
         if error_code != BWErrorCode.NO_ERROR:
             game_faulty = True
@@ -1124,7 +1108,6 @@ def validate_bw_log(bw_log: BWLog) -> List[BWDataset]:
             year=log_entry.year,
             month=log_entry.month,
             error_code=error_code,
-            error_line_index=error_line_index if error_code != BWErrorCode.NO_ERROR else None,
             error_content=log_entry.content if error_code != BWErrorCode.NO_ERROR else None,
         ))
     return datasets
@@ -1139,47 +1122,67 @@ def _create_tables(conn: sqlite3.Connection):
     """
     cursor = conn.cursor()
 
-    # Tabelle "rounds" speichert alle validierten Runden
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS rounds (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,   -- Eindeutige interne ID der Runde
-        game_id INTEGER NOT NULL,               -- ID der Partie
-        game_faulty INTEGER NOT NULL,           -- 1: mindestens eine Runde fehlerhaft, 0: fehlerfrei
-        round_index INTEGER NOT NULL,           -- Index der Runde innerhalb der Partie (0, 1, 2, ...)
-        player_name_0 TEXT NOT NULL,            -- Name des Spielers an Position 0
-        player_name_1 TEXT NOT NULL,            -- Name des Spielers an Position 1
-        player_name_2 TEXT NOT NULL,            -- Name des Spielers an Position 2
-        player_name_3 TEXT NOT NULL,            -- Name des Spielers an Position 3
-        total_score_20 INTEGER NOT NULL,        -- Gesamtergebnis Team 20 zu Beginn dieser Runde
-        total_score_31 INTEGER NOT NULL,        -- Gesamtergebnis Team 31 zu Beginn dieser Runde
-        hand_cards_0 TEXT NOT NULL,             -- Handkarten von Spieler 0 vor dem Schupfen
-        hand_cards_1 TEXT NOT NULL,             -- Handkarten von Spieler 1 vor dem Schupfen
-        hand_cards_2 TEXT NOT NULL,             -- Handkarten von Spieler 2 vor dem Schupfen
-        hand_cards_3 TEXT NOT NULL,             -- Handkarten von Spieler 3 vor dem Schupfen
-        schupf_cards_0 TEXT NOT NULL,           -- Abgegebene Tauschkarten von Spieler 0
-        schupf_cards_1 TEXT NOT NULL,           -- Abgegebene Tauschkarten von Spieler 1
-        schupf_cards_2 TEXT NOT NULL,           -- Abgegebene Tauschkarten von Spieler 2
-        schupf_cards_3 TEXT NOT NULL,           -- Abgegebene Tauschkarten von Spieler 3
-        tichu_pos_0 INTEGER NOT NULL,           -- Tichu-Ansage-Position Spieler 0 (-3…-1, ≥0 = Zug-Index)
-        tichu_pos_1 INTEGER NOT NULL,           -- Tichu-Ansage-Position Spieler 1
-        tichu_pos_2 INTEGER NOT NULL,           -- Tichu-Ansage-Position Spieler 2
-        tichu_pos_3 INTEGER NOT NULL,           -- Tichu-Ansage-Position Spieler 3
-        wish_value INTEGER NOT NULL,            -- Gewünschter Kartenwert (2–14, 0 = ohne Wunsch, -1 = kein Mahjong)
-        dragon_recipient INTEGER NOT NULL,      -- Index des Spielers, der den Drachen erhielt (-1 = niemand)
-        winner_index INTEGER NOT NULL,          -- Index des Spielers, der als Erster ausspielt (-1 = niemand)
-        loser_index INTEGER NOT NULL,           -- Index des Spielers, der als Letzter übrig bleibt (-1 = niemand)
-        is_double_victory INTEGER NOT NULL,     -- 1 = Doppelsieg, 0 = normales Ende
-        score_20 INTEGER NOT NULL,              -- Rundenergebnis Team 20
-        score_31 INTEGER NOT NULL,              -- Rundenergebnis Team 31
-        history TEXT NOT NULL,                  -- Spielzüge als JSON-Array [(spieler, karten, stichnehmer), …]
-        log_year INTEGER NOT NULL,              -- Jahr der Logdatei
-        log_month INTEGER NOT NULL,             -- Monat der Logdatei
-        error_code TEXT NOT NULL,               -- Fehlercode (Enum-Wert)
-        error_line_index INTEGER,               -- Index der fehlerhaften Zeile (NULL, wenn kein Fehler)
-        error_content TEXT                      -- Betroffener Log-Abschnitt (NULL, wenn kein Fehler)
+    CREATE TABLE IF NOT EXISTS games (
+        id                INTEGER PRIMARY KEY,  -- ID der Partie
+        player_id_0       INTEGER NOT NULL,     -- ID des Spielers an Position 0
+        player_id_1       INTEGER NOT NULL,     -- ID des Spielers an Position 1
+        player_id_2       INTEGER NOT NULL,     -- ID des Spielers an Position 2
+        player_id_3       INTEGER NOT NULL,     -- ID des Spielers an Position 3
+        player_changed    INTEGER NOT NULL,     -- 1 == Spielerwechsel, 0 == kein Spielerwechsel
+        score_20          INTEGER NOT NULL,     -- Endergebnis Team 20  # todo kann raus, wenn der Replay-Simulator auf das gleiche Ergebnis kommt
+        score_31          INTEGER NOT NULL,     -- Endergebnis Team 31  # todo 
+        log_year          INTEGER NOT NULL,     -- Jahr der Logdatei
+        log_month         INTEGER NOT NULL,     -- Monat der Logdatei
+        error_code        INTEGER NOT NULL      -- Fehlercode der ersten fehlerhaften Runde (0 == kein Fehler)
     );
     """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS rounds (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID der Runde
+        game_id           INTEGER NOT NULL,     -- ID der Partie
+        round_index       INTEGER NOT NULL,     -- Index der Runde innerhalb der Partie (0, 1, 2, ...)
+        player_id_0       INTEGER NOT NULL,     -- ID des Spielers an Position 0  # todo kann raus, wenn wir nur Spiele betrachten, wenn kein Spielerwechsel statt fand
+        player_id_1       INTEGER NOT NULL,     -- ID des Spielers an Position 1  # todo 
+        player_id_2       INTEGER NOT NULL,     -- ID des Spielers an Position 2  # todo 
+        player_id_3       INTEGER NOT NULL,     -- ID des Spielers an Position 3  # todo 
+        hand_cards_0      TEXT    NOT NULL,     -- Handkarten von Spieler 0 vor dem Schupfen (ohne Leerzeichen) 
+        hand_cards_1      TEXT    NOT NULL,     -- Handkarten von Spieler 1 vor dem Schupfen (ohne Leerzeichen)
+        hand_cards_2      TEXT    NOT NULL,     -- Handkarten von Spieler 2 vor dem Schupfen (ohne Leerzeichen)
+        hand_cards_3      TEXT    NOT NULL,     -- Handkarten von Spieler 3 vor dem Schupfen (ohne Leerzeichen)
+        schupf_cards_0    TEXT    NOT NULL,     -- Abgegebene Tauschkarten von Spieler 0 (ohne Leerzeichen)
+        schupf_cards_1    TEXT    NOT NULL,     -- Abgegebene Tauschkarten von Spieler 1 (ohne Leerzeichen)
+        schupf_cards_2    TEXT    NOT NULL,     -- Abgegebene Tauschkarten von Spieler 2 (ohne Leerzeichen)
+        schupf_cards_3    TEXT    NOT NULL,     -- Abgegebene Tauschkarten von Spieler 3 (ohne Leerzeichen)
+        tichu_pos_0       INTEGER NOT NULL,     -- Tichu-Ansage-Position Spieler 0 (-3…-1, ≥0 = Zug-Index)
+        tichu_pos_1       INTEGER NOT NULL,     -- Tichu-Ansage-Position Spieler 1
+        tichu_pos_2       INTEGER NOT NULL,     -- Tichu-Ansage-Position Spieler 2
+        tichu_pos_3       INTEGER NOT NULL,     -- Tichu-Ansage-Position Spieler 3
+        wish_value        INTEGER NOT NULL,     -- Gewünschter Kartenwert (2–14, 0 = ohne Wunsch, -1 = kein Mahjong)
+        dragon_recipient  INTEGER NOT NULL,     -- Index des Spielers, der den Drachen erhielt (-1 = niemand)
+        winner_index      INTEGER NOT NULL,     -- Index des Spielers, der als Erster ausspielt (-1 = niemand)  # todo kann raus, wenn der Replay-Simulator funktioniert
+        loser_index       INTEGER NOT NULL,     -- Index des Spielers, der als Letzter übrig bleibt (-1 = niemand)  # todo
+        is_double_victory INTEGER NOT NULL,     -- 1 == Doppelsieg, 0 == normales Ende # todo
+        score_20          INTEGER NOT NULL,     -- Rundenergebnis Team 20  # todo kann raus, wenn der Replay-Simulator auf das gleiche Ergebnis kommt
+        score_31          INTEGER NOT NULL,     -- Rundenergebnis Team 31  # todo
+        history           TEXT    NOT NULL,     -- Spielzüge [(Spieler, Karten, Stichnehmer), …], z.B 3:R6R3Ph|2|3:R6R3Ph;0|2;3
+        error_code        INTEGER NOT NULL,     -- Fehlercode (Enum-Wert)
+        error_content     TEXT                  -- Betroffener Log-Abschnitt (NULL, wenn kein Fehler)
+    );
+    """)
+
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_rounds_game_id_round_index ON rounds (game_id, round_index);")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS players (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID des Spielers
+        name              TEXT    NOT NULL      -- Name des Spielers
+    );
+    """)
+
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_players_name ON players (name);")
+
     conn.commit()
 
 
@@ -1189,14 +1192,20 @@ def _create_indexes(conn: sqlite3.Connection):
     """
     cursor = conn.cursor()
 
+    # games
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_player_id_0        ON games (player_id_0);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_player_id_1        ON games (player_id_1);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_player_id_2        ON games (player_id_2);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_player_id_3        ON games (player_id_3);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_player_changed     ON games (player_changed);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_log_year_month     ON games (log_year, log_month);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_error_code         ON games (error_code);")
+
     # rounds
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_game_faulty       ON rounds (game_faulty);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_player_name_0     ON rounds (player_name_0);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_player_name_1     ON rounds (player_name_1);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_player_name_2     ON rounds (player_name_2);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_player_name_3     ON rounds (player_name_3);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_total_score_20    ON rounds (total_score_20);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_total_score_31    ON rounds (total_score_31);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_player_id_0       ON rounds (player_id_0);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_player_id_1       ON rounds (player_id_1);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_player_id_2       ON rounds (player_id_2);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_player_id_3       ON rounds (player_id_3);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_tichu_pos_0       ON rounds (tichu_pos_0);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_tichu_pos_1       ON rounds (tichu_pos_1);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_tichu_pos_2       ON rounds (tichu_pos_2);")
@@ -1206,8 +1215,8 @@ def _create_indexes(conn: sqlite3.Connection):
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_double_victory    ON rounds (is_double_victory);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_score_20          ON rounds (score_20);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_score_31          ON rounds (score_31);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_log_year_month    ON rounds (log_year, log_month);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_error_code        ON rounds (error_code);")
+
     conn.commit()
 
 
@@ -1230,6 +1239,186 @@ class BWValidationStats(TypedDict):
     duration: float
 
 
+def migrate(database: str):
+    """
+    Migriert die Datenbank auf die aktuelle Version.
+
+    :param database: Die SQLite-Datenbankdatei.
+    """
+    # Connect to database
+    conn = sqlite3.connect(database)
+    cursor = conn.cursor()
+    # Neue DB
+    database2 = os.path.join(config.DATA_PATH, "bw", "bw2.sqlite")
+    conn2 = sqlite3.connect(database2)
+    cursor2 = conn2.cursor()
+    _create_tables(conn2)
+
+    try:
+        # Find games with player_name_0 changes
+        cursor.execute("SELECT * FROM rounds ORDER BY id")
+        columns = [desc[0] for desc in cursor.description]
+        prev_game_id = 1
+        first_error_code = 0
+        first_player_ids = None
+        player_changed = False
+        total_score = [0, 0]
+        prev_year, prev_month = 0, 0
+        log_file_counter = 0
+        for row in tqdm(cursor, total=9407111):
+            dataset = dict(zip(columns, row))
+            ds = BWDataset(
+                game_id=int(dataset["game_id"]),
+                round_index=int(dataset["round_index"]),
+                player_names=[dataset["player_name_0"],dataset["player_name_1"],dataset["player_name_2"],dataset["player_name_3"]],
+                start_hands=[dataset["hand_cards_0"], dataset["hand_cards_1"], dataset["hand_cards_2"], dataset["hand_cards_3"]],
+                given_schupf_cards=[dataset["schupf_cards_0"], dataset["schupf_cards_1"], dataset["schupf_cards_2"], dataset["schupf_cards_3"]],
+                tichu_positions=[int(dataset["tichu_pos_0"]), int(dataset["tichu_pos_1"]), int(dataset["tichu_pos_2"]), int(dataset["tichu_pos_3"])],
+                wish_value=int(dataset["wish_value"]),
+                dragon_recipient= int(dataset["dragon_recipient"]),
+                winner_index = int(dataset["winner_index"]),
+                loser_index = int(dataset["loser_index"]),
+                is_double_victory = int(dataset["is_double_victory"]) == 1,
+                score=(int(dataset["score_20"]), int(dataset["score_31"])),
+                history=json.loads(dataset["history"]),
+                year=int(dataset["log_year"]),
+                month=int(dataset["log_month"]),
+                error_code=BWErrorCode(int(dataset["error_code"])),
+                error_content=dataset["error_content"]
+            )
+
+            player_ids = []
+            for i in range(4):
+                name = ds.player_names[i]
+                cursor2.execute("INSERT OR REPLACE INTO players (name) VALUES (?)", (name,))
+                id = cursor.lastrowid
+                if id == 0:
+                    cursor2.execute('SELECT id FROM players WHERE name = ?', (name,))
+                    id = int(cursor2.fetchone()[0])
+                player_ids.append(id)
+            if first_player_ids is None:
+                first_player_ids = player_ids
+
+            #  Spielzüge [(Spieler, Karten, Stichnehmer), …], z.B 3:R6R3Ph|2|3:R6R3Ph;0|2;3
+            history = []
+            for player_index, cards, trick_collector_index in ds.history:
+                turn = f"{player_index}"
+                if cards:
+                    turn += f":{"".join(cards.split(" "))}"
+                if trick_collector_index != -1:
+                    turn += f";{trick_collector_index}"
+                history.append(turn)
+
+            cursor2.execute("""
+                INSERT OR REPLACE INTO rounds (
+                    game_id, 
+                    round_index, 
+                    player_id_0, player_id_1, player_id_2, player_id_3,
+                    hand_cards_0, hand_cards_1, hand_cards_2, hand_cards_3,
+                    schupf_cards_0, schupf_cards_1, schupf_cards_2, schupf_cards_3,
+                    tichu_pos_0, tichu_pos_1, tichu_pos_2, tichu_pos_3,
+                    wish_value, 
+                    dragon_recipient, 
+                    winner_index, 
+                    loser_index, 
+                    is_double_victory, 
+                    score_20, score_31, 
+                    history,
+                    error_code, error_content
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+               (
+                   ds.game_id,
+                   ds.round_index,
+                   player_ids[0], player_ids[1], player_ids[2], player_ids[3],
+                   "".join(ds.start_hands[0].split(" ")),
+                   "".join(ds.start_hands[1].split(" ")),
+                   "".join(ds.start_hands[2].split(" ")),
+                   "".join(ds.start_hands[3].split(" ")),
+                   "".join(ds.given_schupf_cards[0].split(" ")),
+                   "".join(ds.given_schupf_cards[1].split(" ")),
+                   "".join(ds.given_schupf_cards[2].split(" ")),
+                   "".join(ds.given_schupf_cards[3].split(" ")),
+                   ds.tichu_positions[0], ds.tichu_positions[1], ds.tichu_positions[2], ds.tichu_positions[3],
+                   ds.wish_value,
+                   ds.dragon_recipient,
+                   ds.winner_index,
+                   ds.loser_index,
+                   int(ds.is_double_victory),
+                   ds.score[0], ds.score[1],
+                   "|".join(history),
+                   ds.error_code.value, ds.error_content
+                )
+            )
+
+            if prev_game_id != ds.game_id:
+                prev_game_id = ds.game_id
+                cursor2.execute("""
+                    INSERT OR REPLACE INTO games (
+                        id, 
+                        player_id_0, player_id_1, player_id_2, player_id_3,
+                        player_changed,
+                        score_20, score_31, 
+                        log_year, log_month, 
+                        error_code
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                   (
+                       prev_game_id,
+                       first_player_ids[0], first_player_ids[1], first_player_ids[2], first_player_ids[3],
+                       int(player_changed),
+                       total_score[0], total_score[1],
+                       prev_year, prev_month,
+                       first_error_code
+                   )
+                )
+                player_changed = False
+                first_error_code = BWErrorCode.NO_ERROR
+                total_score = [0, 0]
+                first_player_ids = player_ids
+            else:
+                if first_error_code == BWErrorCode.NO_ERROR:
+                    first_error_code = ds.error_code
+                if ds.error_code == BWErrorCode.PLAYER_CHANGED:
+                    player_changed = True
+
+            total_score[0] += ds.score[0]
+            total_score[1] += ds.score[1]
+
+        cursor2.execute("""
+            INSERT OR REPLACE INTO games (
+                id, 
+                player_id_0, player_id_1, player_id_2, player_id_3,
+                player_changed,
+                score_20, score_31, 
+                log_year, log_month, 
+                error_code
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                prev_game_id,
+                first_player_ids[0], first_player_ids[1], first_player_ids[2], first_player_ids[3],
+                int(player_changed),
+                total_score[0], total_score[1],
+                prev_year, prev_month,
+                first_error_code.value
+            )
+        )
+
+        # Transaktion alle 1000 Dateien committen
+        log_file_counter += 1
+        if log_file_counter % 1000 == 0:
+            conn2.commit()
+    finally:
+        conn2.commit()
+        _create_indexes(conn2)
+        conn2.close()
+        conn.close()
+
+
 def update_bw_database(database: str, path: str, y1: int, m1: int, y2: int, m2: int) -> BWValidationStats:
     """
     Aktualisiert die SQLite-Datenbank für die vom Spiele-Portal "Brettspielwelt" heruntergeladenen Logdateien.
@@ -1247,8 +1436,10 @@ def update_bw_database(database: str, path: str, y1: int, m1: int, y2: int, m2: 
     _create_tables(conn)
     cursor = conn.cursor()
 
-    game_ids = cursor.execute("SELECT DISTINCT game_id FROM rounds WHERE error_code in (80, 81, 60);").fetchall()
-    game_ids = [game_id[0] for game_id in game_ids]
+    # todo
+    #game_ids = cursor.execute("SELECT DISTINCT game_id FROM rounds WHERE error_code in (80, 81, 60);").fetchall()
+    #game_ids = [game_id[0] for game_id in game_ids]
+    game_ids = [1000]
 
     # Aktualisierung starten
     log_file_counter = 0
@@ -1302,9 +1493,9 @@ def update_bw_database(database: str, path: str, y1: int, m1: int, y2: int, m2: 
                         score_20, score_31, 
                         history,
                         log_year, log_month, 
-                        error_code, error_line_index, error_content
+                        error_code, error_content
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         ds.game_id,
@@ -1323,7 +1514,7 @@ def update_bw_database(database: str, path: str, y1: int, m1: int, y2: int, m2: 
                         ds.score[0], ds.score[1],
                         json.dumps(ds.history),
                         ds.year, ds.month,
-                        ds.error_code.value, ds.error_line_index, ds.error_content
+                        ds.error_code.value, ds.error_content
                     )
                 )
 
