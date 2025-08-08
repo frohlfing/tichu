@@ -2,7 +2,7 @@
 Validieren der geparsten Brettspielwelt-Logs.
 """
 
-__all__ = "BSWErrorCode", "BSWRoundData", "validate_bswlog",
+__all__ = "BSWErrorCode", "BSWDataset", "validate_bswlog",
 
 import enum
 from dataclasses import dataclass, field
@@ -11,7 +11,8 @@ from src.lib.cards import validate_cards, parse_card, stringify_card, sum_card_p
 from src.lib.combinations import get_trick_combination, CombinationType, build_action_space, build_combinations
 from typing import List, Tuple, Optional
 
-
+# todo umbenennen in BSWRoundErrorCode
+#  70, 71 und 80 in BSWGameErrorCode packen
 class BSWErrorCode(enum.IntEnum):
     """
     Fehlercodes für Logs der Brettspielwelt.
@@ -101,9 +102,9 @@ class BSWErrorCode(enum.IntEnum):
     PLAYER_CHANGED  = 80
     """Mindestens ein Spieler hat während der Partie gewechselt."""
 
-
+# todo als start_hands, given_schupf_cards und history als einzelne Karten, nicht als String
 @dataclass
-class BSWRoundData:
+class BSWDataset:
     """
     Datencontainer für eine validierte Runde.
 
@@ -128,8 +129,8 @@ class BSWRoundData:
     game_id: int = -1
     round_index: int = -1
     player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
-    start_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
-    given_schupf_cards: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    start_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])  # todo umbenennen in hands, als einzelne Karten, nicht als String
+    given_schupf_cards: List[str] = field(default_factory=lambda: ["", "", "", ""])  # todo als einzelne Karten, nicht als String
     tichu_positions: List[int] = field(default_factory=lambda: [-3, -3, -3, -3])
     wish_value: int = 0
     dragon_recipient: int = -1
@@ -137,7 +138,7 @@ class BSWRoundData:
     loser_index: int = -1,
     is_double_victory: bool = False,
     score: Tuple[int, int] = (0, 0)
-    history: List[Tuple[int, str, int]] = field(default_factory=list)
+    history: List[Tuple[int, str, int]] = field(default_factory=list)  # todo Karten als einzelne Karten, nicht als String
     year: int = -1
     month: int = -1
     error_code: BSWErrorCode = BSWErrorCode.NO_ERROR
@@ -190,10 +191,11 @@ def _schupf(start_hands: List[List[str]], given_schupf_cards: List[List[str]]) -
     return hands
 
 
-def validate_bswlog(bw_log: BSWLog) -> List[BSWRoundData]:
+def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
     """
     Validiert die geparsten Runden einer Partie auf Plausibilität.
 
+    # todo rausnehmen
     Es wird keine Runden-übergreifende Prüfung durchgeführt (d.h., ob die Partie zu Ende und nicht über das Ziel
     hinaus gespielt wurde, oder ob es einen Spielerwechsel während der Partie gab).
 
@@ -202,7 +204,7 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWRoundData]:
     :param bw_log: Die geparsten Logdatei (eine Partie).
     :return: Die validierten Rundendaten einer Partie.
     """
-    game_data = []
+    datasets = []
     for log_entry in bw_log:
         error_code = BSWErrorCode.NO_ERROR
 
@@ -580,7 +582,7 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWRoundData]:
                 remaining_cards = [stringify_card(card) for card in cards]
             sorted_start_hands.append(" ".join(grand_cards + remaining_cards))
 
-        game_data.append(BSWRoundData(
+        datasets.append(BSWDataset(
             game_id=log_entry.game_id,
             round_index=log_entry.round_index,
             player_names=player_names,
@@ -589,9 +591,9 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWRoundData]:
             tichu_positions=tichu_positions,
             wish_value=wish_value,
             dragon_recipient=log_entry.dragon_recipient,
-            winner_index = winner_index,
-            loser_index = loser_index,
-            is_double_victory = is_double_victory,
+            winner_index=winner_index,
+            loser_index=loser_index,
+            is_double_victory=is_double_victory,
             score=score,
             history=history,
             year=log_entry.year,
@@ -600,4 +602,19 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWRoundData]:
             error_content=log_entry.content if error_code != BSWErrorCode.NO_ERROR else None,
         ))
 
-    return game_data
+    return datasets
+
+    # todo 
+    # # Fehlercode für die Partie ermitteln
+    # total_score = sum(round_data.score[0] for round_data in datasets), sum(round_data.score[1] for round_data in datasets)
+    # if total_score[0] < 1000 and total_score[1] < 1000:
+    #     game_error_code = BSWGameErrorCode.GAME_NOT_FINISHED
+    # elif total_score[0] - datasets[-1].score[0] >= 1000 or total_score[1] - datasets[-1].score[1] >= 1000:
+    #     game_error_code = BSWGameErrorCode.GAME_OVERPLAYED
+    # elif any(round_data.player_names != datasets[0].player_names for round_data in datasets):
+    #     game_error_code = BSWGameErrorCode.PLAYER_CHANGED
+    # elif any(round_data.error_code != BSWErrorCode.NO_ERROR for round_data in datasets):
+    #     game_error_code = BSWGameErrorCode.ROUND_FAILED
+    # else:
+    #     game_error_code = BSWGameErrorCode.NO_ERROR
+    # return datasets, game_error_code

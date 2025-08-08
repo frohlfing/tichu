@@ -2,15 +2,71 @@
 Verwaltet eine SQLite-Datenbank mit den von der Brettspielwelt importierten Spieldaten.
 """
 
-__all__ = "BSWDatabase",
+__all__ = "BSWDatabase", "deserialize_cards", "deserialize_history",
 
 import os
 import sqlite3
 from src.lib.bsw.download import logfiles, count_logfiles
 from src.lib.bsw.parse import parse_logfile
-from src.lib.bsw.validate import BSWErrorCode, BSWRoundData, validate_bswlog
+from src.lib.bsw.validate import BSWErrorCode, BSWDataset, validate_bswlog
 from tqdm import tqdm
 from typing import List, Tuple, Generator, Optional
+
+
+def serialize_cards(cards: str) -> str:
+    """
+    Serialisiert die Karten zu einem String.
+    
+    :param cards: Kartenlabels mit Leerzeichen getrennt.
+    :return: Kartenlabels ohne Leerzeichen.
+    """
+    return "".join(cards.split(" "))
+
+
+def deserialize_cards(s: str) -> str:
+    """
+    Deserialisiert die Karten.
+    
+    :param s: Kartenlabels ohne Leerzeichen.
+    :return: Kartenlabels mit Leerzeichen getrennt.
+    """
+    return " ".join([s[i:i + 2] for i in range(0, len(s), 2)])
+
+
+def serialize_history(history: List[Tuple[int, str, int]]) -> str:
+    """
+    Serialisiert die Historie.
+    
+    :param history: Die Historie als Liste.
+    :return: Historie als String, z.B "3:R6R3Ph|2|3:R6R3Ph;0|2;3".
+    """
+    turns = []
+    for player_index, cards, trick_collector_index in history:
+        turn = f"{player_index}"
+        if cards:
+            turn += f":{serialize_cards(cards)}"
+        if trick_collector_index != -1:
+            turn += f";{trick_collector_index}"
+        turns.append(turn)
+    return "|".join(turns)
+
+
+def deserialize_history(s) -> List[Tuple[int, str, int]]:
+    """
+    Serialisiert die Historie.
+
+    :param s: Historie als String, z.B "3:R6R3Ph|2|3:R6R3Ph;0|2;3".
+    :return: Die Historie als Liste.
+    """
+    history = []
+    for turn in s.split("|"):
+        parts = turn.split(";")
+        trick_collector_index = int(parts[1]) if len(parts) == 2 else -1
+        parts = parts[0].split(":")
+        cards = deserialize_cards(parts[1]) if len(parts) == 2 else ""
+        player_index = int(parts[0])
+        history.append((player_index, cards, trick_collector_index))
+    return history
 
 
 class BSWDatabase:
@@ -177,7 +233,7 @@ class BSWDatabase:
             self.commit()
             self.close()
 
-    def datasets(self) -> Generator[dict]:
+    def datasets(self) -> Generator[BSWDataset]:
         """
         Liefert die in der DB gespeicherten Partien aus.
 
@@ -186,11 +242,45 @@ class BSWDatabase:
         self.open()
         cursor = self.cursor()
         try:
-            cursor.execute("SELECT * FROM games ORDER BY id")
+            cursor.execute("""
+                SELECT r.game_id, r.round_index, 
+                   g.player_id_0, g.player_id_1, g.player_id_2, g.player_id_3, 
+                   p0.name AS player_name_0, p1.name AS player_name_1, p2.name AS player_name_2, p3.name AS player_name_3, 
+                   hand_cards_0, hand_cards_1, hand_cards_2, hand_cards_3,
+                   schupf_cards_0, schupf_cards_1, schupf_cards_2, schupf_cards_3, 
+                   tichu_pos_0, tichu_pos_1, tichu_pos_2, tichu_pos_3, 
+                   r.wish_value, r.dragon_recipient, r.winner_index, r.loser_index, r.is_double_victory,
+                   r.score_20, r.score_31, g.score_20 AS total_score_20, g.score_31 AS total_score_31, 
+                   r.history,
+                   g.log_year, g.log_month
+                FROM games AS g
+                INNER JOIN rounds AS r ON g.id = r.game_id
+                INNER JOIN players AS p0 ON g.player_id_0 = p0.id 
+                INNER JOIN players AS p1 ON g.player_id_1 = p1.id 
+                INNER JOIN players AS p2 ON g.player_id_2 = p2.id 
+                INNER JOIN players AS p3 ON g.player_id_3 = p3.id 
+                WHERE g.error_code = 0 AND g.player_changed = 0 
+            """)
             columns = [desc[0] for desc in cursor.description]
             for row in cursor:
                 ds = dict(zip(columns, row))
-                yield ds
+                yield BSWDataset(
+                    game_id=ds["game_id"],
+                    round_index=ds["round_index"],
+                    player_names=[ds["player_name_0"], ds["player_name_1"], ds["player_name_2"], ds["player_name_3"]],
+                    start_hands=[deserialize_cards(ds[f"hand_cards_{player_index}"]) for player_index in range(4)],
+                    given_schupf_cards=[deserialize_cards(ds[f"schupf_cards_{player_index}"]) for player_index in range(4)],
+                    tichu_positions=[ds["tichu_pos_0"], ds["tichu_pos_1"], ds["tichu_pos_2"], ds["tichu_pos_3"]],
+                    wish_value=ds["wish_value"],
+                    dragon_recipient=ds["dragon_recipient"],
+                    winner_index=ds["winner_index"],
+                    loser_index=ds["loser_index"],
+                    is_double_victory=ds["is_double_victory"],
+                    score=(ds["score_20"],ds["score_31"]),
+                    history=deserialize_history(ds["history"]),
+                    year=ds["log_year"],
+                    month=ds["log_month"],
+                )
         finally:
             self.close()
 
@@ -439,7 +529,7 @@ class BSWDatabase:
         return game_id
 
     @staticmethod
-    def _save_round(cursor: sqlite3.Cursor, ds: BSWRoundData, player_ids: List[int]) -> int:
+    def _save_round(cursor: sqlite3.Cursor, ds: BSWDataset, player_ids: List[int]) -> int:
         """
         Speichert die Runde in der Datenbank.
 
@@ -448,20 +538,11 @@ class BSWDatabase:
         :param player_ids: Die IDs der 4 Spieler.
         :return: Die Runden-ID.
         """
-        # Karten serialisieren
-        hands_str = ["".join(ds.start_hands[player_index].split(" ")) for player_index in range(4)]
-        schupf_str = ["".join(ds.given_schupf_cards[player_index].split(" ")) for player_index in range(4)]
+        # Karten und Historie serialisieren
 
-        # Spielzüge serialisieren (z.B 3:R6R3Ph|2|3:R6R3Ph;0|2;3)
-        history = []
-        for player_index, cards, trick_collector_index in ds.history:
-            turn = f"{player_index}"
-            if cards:
-                turn += f":{"".join(cards.split(" "))}"
-            if trick_collector_index != -1:
-                turn += f";{trick_collector_index}"
-            history.append(turn)
-        history_str = "|".join(history)
+        hands_str = [serialize_cards(ds.start_hands[player_index]) for player_index in range(4)]
+        schupf_str = [serialize_cards(ds.given_schupf_cards[player_index]) for player_index in range(4)]
+        history_str = serialize_history(ds.history)
 
         # Datensatz speichern
         cursor.execute("SELECT id FROM rounds WHERE game_id = ? AND round_index = ?", (ds.game_id, ds.round_index))

@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from src import config
 from src.lib.bsw.database import BSWDatabase
+from time import time
 
 
 def main(args: argparse.Namespace):
@@ -23,7 +24,19 @@ def main(args: argparse.Namespace):
     print(f"Ab Datum: {y1:04d}-{m1:02d}")
     print(f"Bis Datum: {y2:04d}-{m2:02d}")
     print(f"SQLite-Datenbank: {database}")
-    db.replay(y1, m1, y2, m2)
+
+    print("Variante 1")
+    time_start = time()
+    c = 0
+    for round_data in db.datasets():
+        if c > 10000:
+            break
+        c += 1
+        #print(round_data)
+
+    delay = time() - time_start
+    print(f"delay={delay * 1000:.6f} ms")
+
     print("fertig")
 
 
