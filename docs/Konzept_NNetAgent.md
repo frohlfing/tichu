@@ -377,20 +377,18 @@ Legende:
 
 #### 6.1.1 Anzahl der Logdateien
 
-Es stehen **2.411.514 Logdateien** (ca. 7 GB) vom Spiele-Portal "Brettspielwelt" zur Verfügung (alle Logdateien bis 2025-07, einschließlich).   
+Es stehen **2.411.514 Logdateien** (ca. 7 GB) vom Spiele-Portal "Brettspielwelt" zur Verfügung (seit 2007-01, alle Logdateien bis einschließlich 2025-07).   
 Jede Logdatei hat die Daten einer Partie. 
 
 Das Parsen der Dateien dauert insgesamt 40 Minuten (1ms / Datei). 
 
 #### 6.1.2 Anzahl der Runden
 
-TODO: Wenn genaue Rundenanzahl bekannt ist, nachrechnen.
+Es liegen **22.458.253 Runden** vor. 
 
-Es liegen **ca. 22.500.000 Runden** vor. 
+Im Schnitt wurden demnach 9,3 Runden pro Partie gespielt.  
 
-Im Schnitt wurden demnach 9,33 Runden pro Partie gespielt.  
-
-Da es 4 Spieler gibt, gibt es 4 verschiedene Perspektiven und somit die 4-fache Datenmenge: **ca. 90.000.000 "Perspektiv-Runden"**.
+Da es 4 Spieler gibt, gibt es 4 verschiedene Perspektiven und somit die 4-fache Datenmenge: **89.833.012 "Perspektiv-Runden"**.
 
 #### 6.1.3 Anzahl der Stiche und Spielzüge
 
@@ -398,13 +396,53 @@ Im Spiel mit 4 HeuristicAgents fallen ca. 10.8 Stiche/Runde (so häufig wurden K
 
 Ich schätze 6 Spielzüge (Kartenlegen oder Passen) pro Stich. Das ergibt 64.8 Spielzüge pro Runde.
 
-Bezogen auf die Perspektiv-Runden habe ich ca. **972.000.000 Stiche** bzw. **5.832.000.000 Spielzüge**.
+Bezogen auf die Perspektiv-Runden habe ich geschätzt **970.000.000 Stiche** bzw. **5.821.000.000 Spielzüge**.
 
 ### 6.2 Datenaufbereitung
 
 Nach dem Download wurde jede Logdatei geparst (in ein Objekt eingelesen), validiert und in eine SQLite-DB gepumpt. 
 
-Dieser Vorgang hat TODO Stunden gedauert, durchschnittlich also TODO Sekunden pro Partie.
+Dieser Vorgang dauerte 16 Stunden und 37 Minuten (ca. 25ms / Partie):
+
+*   Anzahl Partien gesamt: 2.411.514
+*   Anzahl Partien fehlerhaft: 39.300 (1.63%)
+*   Anzahl Runden gesamt: 22.458.253
+*   Anzahl Runden fehlerhaft: 41.736 (0.19%)
+*   Gesamtzeit: 997 Minuten
+*   Zeit pro Partie: 24.794 ms
+
+### 6.2.1 Fehler
+
+| Fehlercode                 |     Fehler |
+|----------------------------|-----------:|
+| SCORE_NOT_POSSIBLE:        |     17.234 |
+| WISH_NOT_FOLLOWED:         |        209 |
+| SMALLER_OF_AMBIGUOUS_RANK: |     21.267 |
+| SCORE_MISMATCH:            |      2.362 |
+| ANNOUNCEMENT_NOT_POSSIBLE: |        286 |
+| DRAGON_GIVEN_TO_OWN_TEAM:  |        306 |
+| HISTORY_TOO_LONG:          |         60 |
+| DUPLICATE_CARD:            |         10 |
+| PLAYER_NOT_ON_TURN:        |          2 |
+| **Gesamt:**                | **41.376** |
+
+
+Spielerwechsel bei fehlerfreien Partien:
+
+```sqlite
+select  player_changed, count(*)
+from games
+where error_code = 0
+group by player_changed
+```
+| player_changed  |    Anzahl |
+|:---------------:|----------:|
+|        0        | 2.141.248 |
+|        1        |   155.958 |
+
+Es bleiben 2.397.550 (89%) Partien übrig, die ohne Fehler und ohne Spielerwechsel sind. Das si
+
+Die SQLite-Datenbankdatei ist 14.842.700 KB = 14,155 GB groß.
 
 Mit dem **Replay-Simulator** kann eine in der Datenbank gespeicherte Runde nachgespielt werden. 
 

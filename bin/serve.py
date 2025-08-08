@@ -2,11 +2,6 @@
 
 """
 Dieses Skript startet den Webserver.
-
-**Start des Servers**:
-   ```
-   python server.py
-   ```
 """
 
 import argparse
@@ -82,7 +77,6 @@ async def main(args: argparse.Namespace):
             # Fallback für seltene Fälle, wo add_signal_handler nicht verfügbar ist.
             logger.warning("loop.add_signal_handler nicht implementiert, verwende signal.signal().")
             signal.signal(signal.SIGINT, shutdown)
-
 
     # Server starten (mit AppRunner und TCPSite, das bietet mehr Kontrolle)
     runner = AppRunner(app)

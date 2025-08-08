@@ -30,12 +30,12 @@ def main(args: argparse.Namespace):
 
 
 if __name__ == "__main__":
-    print(f"BW Downloader")
+    print(f"BSW Downloader")
 
     # Argumente parsen
     today_ = datetime.today().strftime("%Y-%m")
     path_ = os.path.join(config.DATA_PATH, "bsw", "tichulog")
-    parser = argparse.ArgumentParser(description="BW Downloader")
+    parser = argparse.ArgumentParser(description="BSW Downloader")
     parser.add_argument("--ym1", default="2007-01", help=f"ab Datum im Format yyyy-mm (Default: 2007-01")
     parser.add_argument("--ym2", default=f"{today_}", help=f"bis Datum im Format yyyy-mm (Default: heute)")
     parser.add_argument("--path", default=f"{path_}", help=f"Zielverzeichnis (Default: {path_})")

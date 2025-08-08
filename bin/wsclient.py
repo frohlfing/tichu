@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 
 """
-Dieses Modul implementiert einen WebSocket-Client für den Tichu-Server zu Test-Zwecken.
-
-**Start des Clients**:
-   ```
-   python wsclient.py
-   ```
+Dieses Skript implementiert einen WebSocket-Client für den Tichu-Server zu Test-Zwecken.
 """
 
 import argparse

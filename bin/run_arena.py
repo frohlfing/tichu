@@ -2,11 +2,6 @@
 
 """
 Dieses Skript öffnet eine Arena und lässt Agenten gegeneinander spielen.
-
-**Start des Wettkampfes**:
-   ```
-   python main.py
-   ```
 """
 
 import argparse
