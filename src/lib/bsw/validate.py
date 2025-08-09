@@ -112,7 +112,7 @@ class BSWGameErrorCode(enum.IntEnum):
     # Spieler
 
     PLAYER_CHANGED  = 90
-    """Mindestens ein Spieler wurde während der Partie ausgewechselt."""
+    """Mindestens ein Spieler hat während der Partie gewechselt."""
 
 
 # todo als start_hands, given_schupf_cards und history als einzelne Karten, nicht als String
