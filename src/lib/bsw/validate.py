@@ -2,7 +2,7 @@
 Validieren der geparsten Brettspielwelt-Logs.
 """
 
-__all__ = "BSWErrorCode", "BSWDataset", "validate_bswlog",
+__all__ = "BSWRoundErrorCode", "BSWGameErrorCode", "BSWDataset", "validate_bswlog",
 
 import enum
 from dataclasses import dataclass, field
@@ -11,16 +11,15 @@ from src.lib.cards import validate_cards, parse_card, stringify_card, sum_card_p
 from src.lib.combinations import get_trick_combination, CombinationType, build_action_space, build_combinations
 from typing import List, Tuple, Optional
 
-# todo umbenennen in BSWRoundErrorCode
-#  70, 71 und 80 in BSWGameErrorCode packen
-class BSWErrorCode(enum.IntEnum):
+
+class BSWRoundErrorCode(enum.IntEnum):
     """
     Fehlercodes für Logs der Brettspielwelt.
     """
     NO_ERROR = 0
     """Kein Fehler"""
 
-    # 1) Karten
+    # Karten
 
     INVALID_CARD_LABEL = 10
     """Unbekanntes Kartenlabel."""
@@ -37,7 +36,7 @@ class BSWErrorCode(enum.IntEnum):
     CARD_ALREADY_PLAYED = 14
     """Karte bereits gespielt."""
 
-    # 2) Spielzüge
+    # Spielzüge
 
     PASS_NOT_POSSIBLE = 20
     """Passen nicht möglich."""
@@ -60,7 +59,7 @@ class BSWErrorCode(enum.IntEnum):
     HISTORY_TOO_LONG = 26
     """Karten ausgespielt, obwohl die Runde vorbei ist (wurde korrigiert)."""
 
-    # 3) Drache verschenken
+    # Drache verschenken
 
     DRAGON_NOT_GIVEN = 30
     """Drache hat den Stich nicht gewonnen, wurde aber nicht verschenkt."""
@@ -71,36 +70,50 @@ class BSWErrorCode(enum.IntEnum):
     DRAGON_GIVEN_WITHOUT_BEAT = 32
     "Drache verschenkt, aber niemand hat durch den Drachen ein Stich gewonnen."
 
-    # 4) Wunsch
+    # Wunsch
 
     WISH_WITHOUT_MAHJONG = 40
     """Wunsch geäußert, aber kein Mahjong gespielt."""
 
-    # 5) Tichu-Ansage
+    # Tichu-Ansage
 
     ANNOUNCEMENT_NOT_POSSIBLE = 50
     """Tichu-Ansage an der geloggten Position nicht möglich (wurde korrigiert)."""
 
-    # 6) Endergebnis
+    # Rundenergebnis
 
-    SCORE_MISMATCH = 60
-    """Geloggtes Rundenergebnis stimmt nicht mit dem berechneten Ergebnis überein (wurde korrigiert)."""
-
-    SCORE_NOT_POSSIBLE = 61
+    SCORE_NOT_POSSIBLE = 60
     """Rechenfehler! Geloggtes Rundenergebnis ist nicht möglich (wurde korrigiert)."""
 
-    # 7) Endergebnis der Partie
+    SCORE_MISMATCH = 61
+    """Geloggtes Rundenergebnis stimmt nicht mit dem berechneten Ergebnis überein (wurde korrigiert)."""
 
-    GAME_OVERPLAYED  = 70
+
+class BSWGameErrorCode(enum.IntEnum):
+    """
+    Fehlercodes für Logs der Brettspielwelt.
+    """
+    NO_ERROR = 0
+    """Kein Fehler"""
+
+    # Endergebnis
+
+    GAME_NOT_FINISHED  = 70
+    """Partie nicht zu Ende gespielt."""
+
+    GAME_OVERPLAYED  = 71
     """Ein oder mehrere Runden gespielt, obwohl die Partie bereits entschieden war."""
 
-    GAME_NOT_FINISHED  = 71
-    """Partie nicht zu ende gespielt."""
+    # Runden
 
-    # 8) Spieler
+    ROUND_FAILED = 80
+    """Mindestens eine Runde ist fehlerhaft."""
 
-    PLAYER_CHANGED  = 80
-    """Mindestens ein Spieler hat während der Partie gewechselt."""
+    # Spieler
+
+    PLAYER_CHANGED  = 90
+    """Mindestens ein Spieler wurde während der Partie ausgewechselt."""
+
 
 # todo als start_hands, given_schupf_cards und history als einzelne Karten, nicht als String
 @dataclass
@@ -141,7 +154,7 @@ class BSWDataset:
     history: List[Tuple[int, str, int]] = field(default_factory=list)  # todo Karten als einzelne Karten, nicht als String
     year: int = -1
     month: int = -1
-    error_code: BSWErrorCode = BSWErrorCode.NO_ERROR
+    error_code: BSWRoundErrorCode = BSWRoundErrorCode.NO_ERROR
     error_content: Optional[str] = None
 
 
@@ -191,22 +204,18 @@ def _schupf(start_hands: List[List[str]], given_schupf_cards: List[List[str]]) -
     return hands
 
 
-def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
+def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]:
     """
     Validiert die geparsten Runden einer Partie auf Plausibilität.
-
-    # todo rausnehmen
-    Es wird keine Runden-übergreifende Prüfung durchgeführt (d.h., ob die Partie zu Ende und nicht über das Ziel
-    hinaus gespielt wurde, oder ob es einen Spielerwechsel während der Partie gab).
 
     Der erste zutreffende Fehler wird dokumentiert.
 
     :param bw_log: Die geparsten Logdatei (eine Partie).
-    :return: Die validierten Rundendaten einer Partie.
+    :return: Die validierten Rundendaten der Partie und der Fehlercode der Partie.
     """
     datasets = []
     for log_entry in bw_log:
-        error_code = BSWErrorCode.NO_ERROR
+        error_code = BSWRoundErrorCode.NO_ERROR
 
         # Karten aufsplitten
         grand_tichu_hands: List[List[str]] = []
@@ -225,47 +234,47 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
 
             # Grand-Hand-Karten
             if not validate_cards(log_entry.grand_tichu_hands[player_index]):  # Kartenlabel
-                error_code = BSWErrorCode.INVALID_CARD_LABEL
+                error_code = BSWRoundErrorCode.INVALID_CARD_LABEL
                 break
             elif len(grand_cards) != 8:  # Anzahl
-                error_code = BSWErrorCode.INVALID_CARD_COUNT
+                error_code = BSWRoundErrorCode.INVALID_CARD_COUNT
                 break
             elif len(set(grand_cards)) != 8:  # Duplikate
-                error_code = BSWErrorCode.DUPLICATE_CARD
+                error_code = BSWRoundErrorCode.DUPLICATE_CARD
                 break
             elif any(label not in start_cards for label in grand_cards):  # sind Handkarten?
-                error_code = BSWErrorCode.CARD_NOT_IN_HAND
+                error_code = BSWRoundErrorCode.CARD_NOT_IN_HAND
                 break
 
             # Startkarten
             elif not validate_cards(log_entry.start_hands[player_index]):  # Kartenlabel
-                error_code = BSWErrorCode.INVALID_CARD_LABEL
+                error_code = BSWRoundErrorCode.INVALID_CARD_LABEL
                 break
             elif len(start_cards) != 14:  # Anzahl
-                error_code = BSWErrorCode.INVALID_CARD_LABEL
+                error_code = BSWRoundErrorCode.INVALID_CARD_LABEL
                 break
             elif len(set(start_cards)) != 14:  # Duplikate
-                error_code = BSWErrorCode.DUPLICATE_CARD
+                error_code = BSWRoundErrorCode.DUPLICATE_CARD
                 break
 
             # Tauschkarten
             elif not validate_cards(log_entry.given_schupf_cards[player_index]):  # Kartenlabel
-                error_code = BSWErrorCode.INVALID_CARD_LABEL
+                error_code = BSWRoundErrorCode.INVALID_CARD_LABEL
                 break
             elif len(given_cards) != 3:  # Anzahl
-                error_code = BSWErrorCode.INVALID_CARD_LABEL
+                error_code = BSWRoundErrorCode.INVALID_CARD_LABEL
                 break
             elif len(set(given_cards)) != 3:  # Duplikate
-                error_code = BSWErrorCode.DUPLICATE_CARD
+                error_code = BSWRoundErrorCode.DUPLICATE_CARD
                 break
             elif any(label not in start_cards for label in given_cards):  # sind Handkarten?
-                error_code = BSWErrorCode.CARD_NOT_IN_HAND
+                error_code = BSWRoundErrorCode.CARD_NOT_IN_HAND
                 break
 
         # Sind alle Karten verteilt und keine mehrfach vergeben?
-        if error_code == BSWErrorCode.NO_ERROR:
+        if error_code == BSWRoundErrorCode.NO_ERROR:
             if len(set(start_hands[0] + start_hands[1] + start_hands[2] + start_hands[3])) != 56:
-                error_code = BSWErrorCode.DUPLICATE_CARD
+                error_code = BSWRoundErrorCode.DUPLICATE_CARD
 
         # Handkarten nach dem Schupfen ermitteln
         hands = _schupf(start_hands, given_schupf_cards)
@@ -337,20 +346,20 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
 
                 # Im Anspiel gepasst?
                 if trick_owner_index == -1:
-                    error_code = BSWErrorCode.PASS_NOT_POSSIBLE
+                    error_code = BSWRoundErrorCode.PASS_NOT_POSSIBLE
                     break
 
                 # Wunsch beachtet?
                 if wish_value > 0:
                     action_space = build_action_space(combinations[player_index], trick_combination, wish_value)
                     if action_space[0][1][0] != CombinationType.PASS:  # Wunsch wurde nicht beachtet!
-                        error_code = BSWErrorCode.WISH_NOT_FOLLOWED
+                        error_code = BSWRoundErrorCode.WISH_NOT_FOLLOWED
                         break
 
                 # Prüfen, ob der Spieler dran war
                 if player_index != current_turn_index:
-                    if error_code == BSWErrorCode.NO_ERROR:
-                        error_code = BSWErrorCode.PLAYER_NOT_ON_TURN
+                    if error_code == BSWRoundErrorCode.NO_ERROR:
+                        error_code = BSWRoundErrorCode.PLAYER_NOT_ON_TURN
                     break
             else:
                 # Spieler hat Karten gespielt
@@ -363,20 +372,20 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
                 # Karten prüfen
                 cards = card_str.split(" ")
                 if not validate_cards(card_str):  # Kartenlabel bekannt?
-                    if error_code == BSWErrorCode.NO_ERROR:
-                        error_code = BSWErrorCode.INVALID_CARD_LABEL
+                    if error_code == BSWRoundErrorCode.NO_ERROR:
+                        error_code = BSWRoundErrorCode.INVALID_CARD_LABEL
                     break
                 elif len(cards) != len(set(cards)):  # Duplikate?
-                    if error_code == BSWErrorCode.NO_ERROR:
-                        error_code = BSWErrorCode.DUPLICATE_CARD
+                    if error_code == BSWRoundErrorCode.NO_ERROR:
+                        error_code = BSWRoundErrorCode.DUPLICATE_CARD
                     break
                 elif any(label not in hands[player_index] for label in cards):  # gehören die Karten zur Hand?
-                    if error_code == BSWErrorCode.NO_ERROR:
-                        error_code = BSWErrorCode.CARD_NOT_IN_HAND
+                    if error_code == BSWRoundErrorCode.NO_ERROR:
+                        error_code = BSWRoundErrorCode.CARD_NOT_IN_HAND
                     break
                 elif any(label in played_cards for label in cards):  # bereits gespielt?
-                    if error_code == BSWErrorCode.NO_ERROR:
-                        error_code = BSWErrorCode.CARD_ALREADY_PLAYED
+                    if error_code == BSWRoundErrorCode.NO_ERROR:
+                        error_code = BSWRoundErrorCode.CARD_ALREADY_PLAYED
                     break
 
                 # Gespielte Karten merken
@@ -387,13 +396,13 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
                 combination = get_trick_combination(parsed_cards, trick_combination[2], shift_phoenix=True)
                 action_space = build_action_space(combinations[player_index], trick_combination, wish_value)
                 if not any(set(parsed_cards) == set(playable_cards) for playable_cards, _playable_combination in action_space):
-                    if error_code == BSWErrorCode.NO_ERROR:
+                    if error_code == BSWRoundErrorCode.NO_ERROR:
                         if wish_value > 0 and is_wish_in(wish_value, action_space[0][0]):
-                            error_code = BSWErrorCode.WISH_NOT_FOLLOWED  # Wunsch wurde nicht beachtet
+                            error_code = BSWRoundErrorCode.WISH_NOT_FOLLOWED  # Wunsch wurde nicht beachtet
                         elif is_trick_rank_ambiguous:
-                            error_code = BSWErrorCode.SMALLER_OF_AMBIGUOUS_RANK  # es wurde der kleinere Rang bei einem mehrdeutigen Stich angenommen
+                            error_code = BSWRoundErrorCode.SMALLER_OF_AMBIGUOUS_RANK  # es wurde der kleinere Rang bei einem mehrdeutigen Stich angenommen
                         else:
-                            error_code = BSWErrorCode.COMBINATION_NOT_PLAYABLE
+                            error_code = BSWRoundErrorCode.COMBINATION_NOT_PLAYABLE
                     break
 
                 # Wenn kein Anspiel ist, kann das Zugrecht durch eine Bombe erobert werden
@@ -402,8 +411,8 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
 
                 # Prüfen, ob der Spieler dran war
                 if player_index != current_turn_index:
-                    if error_code == BSWErrorCode.NO_ERROR:
-                        error_code = BSWErrorCode.PLAYER_NOT_ON_TURN
+                    if error_code == BSWRoundErrorCode.NO_ERROR:
+                        error_code = BSWRoundErrorCode.PLAYER_NOT_ON_TURN
                     break
 
                 # Handkarten aktualisieren
@@ -474,11 +483,11 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
 
         # Historie zu kurz oder zu lang?
         if not is_round_over:
-            if error_code == BSWErrorCode.NO_ERROR:
-                error_code = BSWErrorCode.HISTORY_TOO_SHORT
+            if error_code == BSWRoundErrorCode.NO_ERROR:
+                error_code = BSWRoundErrorCode.HISTORY_TOO_SHORT
         elif history_too_long:
-            if error_code == BSWErrorCode.NO_ERROR:
-                error_code = BSWErrorCode.HISTORY_TOO_LONG
+            if error_code == BSWRoundErrorCode.NO_ERROR:
+                error_code = BSWRoundErrorCode.HISTORY_TOO_LONG
 
         # Runde ist beendet
 
@@ -495,16 +504,16 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
         if dragon_giver != -1 and log_entry.dragon_recipient == -1:
             # Drache hat Stich gewonnen, wurde aber nicht verschenkt
             if not (history[-1][1] == "Dr" and is_double_victory):  # Ausnahme: Drache im letzten Stich führt zum Doppelsieg (dann wird der Drache nicht verschenkt, weil egal)
-                if error_code == BSWErrorCode.NO_ERROR:
-                    error_code = BSWErrorCode.DRAGON_NOT_GIVEN
+                if error_code == BSWRoundErrorCode.NO_ERROR:
+                    error_code = BSWRoundErrorCode.DRAGON_NOT_GIVEN
         elif dragon_giver != -1 and log_entry.dragon_recipient not in [(dragon_giver + 1) % 4, (dragon_giver + 3) % 4]:
             # Drache hat Stich gewonnen, wurde aber an das eigene Team verschenkt
-            if error_code == BSWErrorCode.NO_ERROR:
-                error_code = BSWErrorCode.DRAGON_GIVEN_TO_OWN_TEAM
+            if error_code == BSWRoundErrorCode.NO_ERROR:
+                error_code = BSWRoundErrorCode.DRAGON_GIVEN_TO_OWN_TEAM
         elif dragon_giver == -1 and log_entry.dragon_recipient != -1:
             # Drache hat keinen Stich gewonnen, wurde aber verschenkt
-            if error_code == BSWErrorCode.NO_ERROR:
-                error_code = BSWErrorCode.DRAGON_GIVEN_WITHOUT_BEAT
+            if error_code == BSWRoundErrorCode.NO_ERROR:
+                error_code = BSWRoundErrorCode.DRAGON_GIVEN_WITHOUT_BEAT
 
         # Falls der Mahjong gespielt wurde, aber kein Wunsch geäußert wurde (was legitim ist), 0 für "ohne Wunsch" eintragen.
         wish_value = log_entry.wish_value
@@ -512,13 +521,13 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
             if "Ma" in played_cards:
                 log_entry.wish_value = 0
             else:
-                error_code = BSWErrorCode.WISH_WITHOUT_MAHJONG
+                error_code = BSWRoundErrorCode.WISH_WITHOUT_MAHJONG
 
         # Position der Tichu-Ansage prüfen und korrigieren
         for player_index in range(4):
             if tichu_positions[player_index] - first_pos[player_index] > 1:
-                if error_code == BSWErrorCode.NO_ERROR:
-                    error_code = BSWErrorCode.ANNOUNCEMENT_NOT_POSSIBLE
+                if error_code == BSWRoundErrorCode.NO_ERROR:
+                    error_code = BSWRoundErrorCode.ANNOUNCEMENT_NOT_POSSIBLE
                 tichu_positions[player_index] = first_pos[player_index]
 
         # Endwertung der Runde
@@ -546,13 +555,16 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
         # Rundenergebnis mit dem geloggten Eintrag vergleichen
         score = points[2] + points[0], points[3] + points[1]
         if score != log_entry.score:
-            if error_code == BSWErrorCode.NO_ERROR:
+            if error_code == BSWRoundErrorCode.NO_ERROR:
                 # Wer hat Tichu angesagt?
                 announcements = [0, 0, 0, 0]
                 for player_index in range(4):
                     if log_entry.tichu_positions[player_index] != -3:
                         announcements[player_index] = 2 if log_entry.tichu_positions[player_index] == -2 else 1
-                error_code = BSWErrorCode.SCORE_MISMATCH if _can_score_be_ok(log_entry.score, announcements) else BSWErrorCode.SCORE_NOT_POSSIBLE
+                if not _can_score_be_ok(log_entry.score, announcements):
+                    error_code = BSWRoundErrorCode.SCORE_NOT_POSSIBLE
+                else:
+                    error_code = BSWRoundErrorCode.SCORE_MISMATCH
 
         # Spielerliste prüfen
         player_names = []
@@ -575,7 +587,7 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
             grand_cards = grand_tichu_hands[player_index]
             start_cards = start_hands[player_index]
             remaining_cards = [label for label in start_cards if label not in grand_cards]
-            if error_code != BSWErrorCode.INVALID_CARD_LABEL:
+            if error_code != BSWRoundErrorCode.INVALID_CARD_LABEL:
                 cards = sorted([parse_card(label) for label in grand_cards], reverse=True)
                 grand_cards = [stringify_card(card) for card in cards]
                 cards = sorted([parse_card(label) for label in remaining_cards], reverse=True)
@@ -599,22 +611,21 @@ def validate_bswlog(bw_log: BSWLog) -> List[BSWDataset]:
             year=log_entry.year,
             month=log_entry.month,
             error_code=error_code,
-            error_content=log_entry.content if error_code != BSWErrorCode.NO_ERROR else None,
+            error_content=log_entry.content if error_code != BSWRoundErrorCode.NO_ERROR else None,
         ))
 
-    return datasets
+    # Fehlercode für die Partie ermitteln
+    total_score = (sum(dataset.score[0] for dataset in datasets),
+                   sum(dataset.score[1] for dataset in datasets))
+    if total_score[0] < 1000 and total_score[1] < 1000:
+        game_error_code = BSWGameErrorCode.GAME_NOT_FINISHED
+    elif total_score[0] - datasets[-1].score[0] >= 1000 or total_score[1] - datasets[-1].score[1] >= 1000:
+        game_error_code = BSWGameErrorCode.GAME_OVERPLAYED
+    elif any(dataset.error_code != BSWRoundErrorCode.NO_ERROR for dataset in datasets):
+        game_error_code = BSWGameErrorCode.ROUND_FAILED
+    elif any(dataset.player_names != datasets[0].player_names for dataset in datasets):
+        game_error_code = BSWGameErrorCode.PLAYER_CHANGED
+    else:
+        game_error_code = BSWGameErrorCode.NO_ERROR
 
-    # todo 
-    # # Fehlercode für die Partie ermitteln
-    # total_score = sum(round_data.score[0] for round_data in datasets), sum(round_data.score[1] for round_data in datasets)
-    # if total_score[0] < 1000 and total_score[1] < 1000:
-    #     game_error_code = BSWGameErrorCode.GAME_NOT_FINISHED
-    # elif total_score[0] - datasets[-1].score[0] >= 1000 or total_score[1] - datasets[-1].score[1] >= 1000:
-    #     game_error_code = BSWGameErrorCode.GAME_OVERPLAYED
-    # elif any(round_data.player_names != datasets[0].player_names for round_data in datasets):
-    #     game_error_code = BSWGameErrorCode.PLAYER_CHANGED
-    # elif any(round_data.error_code != BSWErrorCode.NO_ERROR for round_data in datasets):
-    #     game_error_code = BSWGameErrorCode.ROUND_FAILED
-    # else:
-    #     game_error_code = BSWGameErrorCode.NO_ERROR
-    # return datasets, game_error_code
+    return datasets, game_error_code

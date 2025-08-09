@@ -2,13 +2,13 @@
 Verwaltet eine SQLite-Datenbank mit den von der Brettspielwelt importierten Spieldaten.
 """
 
-__all__ = "BSWDatabase", "deserialize_cards", "deserialize_history",
+__all__ = "deserialize_cards", "deserialize_history", "BSWDatabase",
 
 import os
 import sqlite3
 from src.lib.bsw.download import logfiles, count_logfiles
 from src.lib.bsw.parse import parse_logfile
-from src.lib.bsw.validate import BSWErrorCode, BSWDataset, validate_bswlog
+from src.lib.bsw.validate import BSWRoundErrorCode, BSWGameErrorCode, BSWDataset, validate_bswlog
 from tqdm import tqdm
 from typing import List, Tuple, Generator, Optional
 
@@ -174,42 +174,29 @@ class BSWDatabase:
                     games_empty += 1
 
                 # Validieren
-                game_data = validate_bswlog(bsw_log)
-
-                # Runden-übergreifende Angaben für die Partie ermitteln
-                player_changed = any(round_data.player_names != game_data[0].player_names for round_data in game_data)
-                total_score = (sum(round_data.score[0] for round_data in game_data), sum(round_data.score[1] for round_data in game_data))
-                game_error_code = BSWErrorCode.NO_ERROR
-                if total_score[0] < 1000 and total_score[1] < 1000:
-                    game_error_code = BSWErrorCode.GAME_NOT_FINISHED
-                else:
-                    last_score = game_data[-1].score
-                    if total_score[0] - last_score[0] >= 1000 or total_score[1] - last_score[1] >= 1000:
-                        game_error_code = BSWErrorCode.GAME_OVERPLAYED
-                    else:
-                        # den Fehlercode der ersten fehlerhaften Runde ermitteln
-                        for round_data in game_data:
-                            if round_data.error_code != BSWErrorCode.NO_ERROR:
-                                game_error_code = round_data.error_code
-                                break
+                datasets, game_error_code = validate_bswlog(bsw_log)
 
                 # Fehlerhafte Partien zählen
-                if game_error_code != BSWErrorCode.NO_ERROR:
+                if game_error_code != BSWGameErrorCode.NO_ERROR:
                     games_fails += 1
 
+                # Endergebnis der Partie berechnen
+                total_score = (sum(dataset.score[0] for dataset in datasets),
+                               sum(dataset.score[1] for dataset in datasets))
+
                 # Datenbank aktualisieren
-                for round_data in game_data:
+                for dataset in datasets:
                     # Tabelle für die Spieler aktualisieren und Spieler-IDs ermitteln
                     player_ids = []
                     for player_index in range(4):
-                        player_ids.append(self._save_player(cursor, round_data.player_names[player_index]))
+                        player_ids.append(self._save_player(cursor, dataset.player_names[player_index]))
 
                     # Partie speichern
-                    if round_data.round_index == 0:
-                        self._save_game(cursor, round_data.game_id, player_ids, player_changed, total_score, round_data.year, round_data.month, game_error_code)
+                    if dataset.round_index == 0:
+                        self._save_game(cursor, dataset.game_id, player_ids, total_score, dataset.year, dataset.month, game_error_code)
 
                     # Runde speichern
-                    self._save_round(cursor, round_data, player_ids)
+                    self._save_round(cursor, dataset, player_ids)
 
                 # Transaktion alle 1000 Dateien committen
                 log_file_counter += 1
@@ -259,7 +246,7 @@ class BSWDatabase:
                 INNER JOIN players AS p1 ON g.player_id_1 = p1.id 
                 INNER JOIN players AS p2 ON g.player_id_2 = p2.id 
                 INNER JOIN players AS p3 ON g.player_id_3 = p3.id 
-                WHERE g.error_code = 0 AND g.player_changed = 0 
+                WHERE g.error_code = 0 
             """)
             columns = [desc[0] for desc in cursor.description]
             for row in cursor:
@@ -308,11 +295,10 @@ class BSWDatabase:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS games (
                 id              INTEGER PRIMARY KEY,  -- ID der Partie
-                player_id_0     INTEGER NOT NULL,     -- ID des Spielers an Position 0
-                player_id_1     INTEGER NOT NULL,     -- ID des Spielers an Position 1
-                player_id_2     INTEGER NOT NULL,     -- ID des Spielers an Position 2
-                player_id_3     INTEGER NOT NULL,     -- ID des Spielers an Position 3
-                player_changed  INTEGER NOT NULL,     -- 1 == Spielerwechsel, 0 == kein Spielerwechsel
+                player_id_0     INTEGER NOT NULL,     -- ID des Spielers zu Beginn der Partie an Position 0
+                player_id_1     INTEGER NOT NULL,     -- ID des Spielers zu Beginn der Partie an Position 1
+                player_id_2     INTEGER NOT NULL,     -- ID des Spielers zu Beginn der Partie an Position 2
+                player_id_3     INTEGER NOT NULL,     -- ID des Spielers zu Beginn der Partie an Position 3
                 score_20        INTEGER NOT NULL,     -- Endergebnis Team 20  # todo kann raus, wenn der Replay-Simulator auf das gleiche Ergebnis kommt
                 score_31        INTEGER NOT NULL,     -- Endergebnis Team 31  # todo 
                 log_year        INTEGER NOT NULL,     -- Jahr der Logdatei
@@ -389,7 +375,6 @@ class BSWDatabase:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_player_id_1        ON games (player_id_1);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_player_id_2        ON games (player_id_2);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_player_id_3        ON games (player_id_3);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_player_changed     ON games (player_changed);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_log_year_month     ON games (log_year, log_month);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_error_code         ON games (error_code);")
 
@@ -439,12 +424,13 @@ class BSWDatabase:
             50: "Tichu-Ansage an der geloggten Position nicht möglich (wurde korrigiert)",
             60: "Geloggtes Rundenergebnis stimmt nicht mit dem berechneten Ergebnis überein (wurde korrigiert)",
             61: "Rechenfehler! Geloggtes Rundenergebnis ist nicht möglich (wurde korrigiert)",
-            70: "Ein oder mehrere Runden gespielt, obwohl die Partie bereits entschieden war",
-            71: "Partie nicht zu Ende gespielt",
-            80: "Mindestens ein Spieler hat während der Partie gewechselt"
+            70: "Partie nicht zu Ende gespielt",
+            71: "Ein oder mehrere Runden gespielt, obwohl die Partie bereits entschieden war",
+            80: "Mindestens eine Runde ist fehlerhaft",
+            90: "Mindestens ein Spieler hat während der Partie gewechselt",
         }
 
-        for code in BSWErrorCode:
+        for code in BSWRoundErrorCode:
             cursor.execute("SELECT code FROM errors WHERE code = ?", (code.value,))
             result = cursor.fetchone()
             if result:
@@ -473,18 +459,17 @@ class BSWDatabase:
         return player_id
 
     @staticmethod
-    def _save_game(cursor: sqlite3.Cursor, game_id: int, player_ids: List[int], player_changed: bool, score: Tuple[int, int], year: int, month: int, error_code: BSWErrorCode) -> int:
+    def _save_game(cursor: sqlite3.Cursor, game_id: int, player_ids: List[int], score: Tuple[int, int], year: int, month: int, error_code: BSWGameErrorCode) -> int:
         """
         Speichert eine Partie in der Datenbank.
 
         :param cursor: Datenbank-Cursor.
         :param game_id: ID der Partie.
         :param player_ids: Die IDs der 4 Spieler, die zu Beginn der Partie mitgespielt haben.
-        :param player_changed: True, wenn Spielerwechsel während der Partie stattgefunden haben, sonst False.
         :param score: Endergebnis der Partie (Team20, Team31).
         :param year: Jahr der Logdatei.
         :param month: Monat der Logdatei.
-        :param error_code: Fehlercode der ersten fehlerhaften Runde (0 == kein Fehler).
+        :param error_code: Fehlercode der Partie (0 == kein Fehler).
         """
         cursor.execute("SELECT id FROM games WHERE id = ?", (game_id,))
         result = cursor.fetchone()
@@ -492,14 +477,12 @@ class BSWDatabase:
             cursor.execute("""
                 UPDATE games SET
                     player_id_0=?, player_id_1=?, player_id_2=?, player_id_3=?,
-                    player_changed=?,
                     score_20=?, score_31=?,
                     log_year=?, log_month=?,
                     error_code=?
                 WHERE id = ?
                 """,(
                    player_ids[0], player_ids[1], player_ids[2], player_ids[3],
-                   int(player_changed),
                    score[0], score[1],
                    year, month,
                    error_code.value,
@@ -511,16 +494,14 @@ class BSWDatabase:
                 INSERT INTO games (
                     id, 
                     player_id_0, player_id_1, player_id_2, player_id_3,
-                    player_changed,
                     score_20, score_31, 
                     log_year, log_month, 
                     error_code
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,(
                     game_id,
                     player_ids[0], player_ids[1], player_ids[2], player_ids[3],
-                    int(player_changed),
                     score[0], score[1],
                     year, month,
                     error_code.value

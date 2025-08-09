@@ -28,11 +28,11 @@ def main(args: argparse.Namespace):
     print("Variante 1")
     time_start = time()
     c = 0
-    for round_data in db.datasets():
+    for dataset in db.datasets():
         if c > 10000:
             break
         c += 1
-        #print(round_data)
+        print(dataset)
 
     delay = time() - time_start
     print(f"delay={delay * 1000:.6f} ms")
