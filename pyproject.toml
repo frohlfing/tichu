@@ -9,8 +9,6 @@ version = "0.2.0"
 [tool.setuptools]
 packages = ["src"]
 
-dynamic = ["dependencies"]  # auf requirements.txt verweisen
-
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }  # Datei aktualisieren: `pip freeze > requirements.txt`
 

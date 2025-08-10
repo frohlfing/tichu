@@ -16,6 +16,8 @@ def download_logfiles(path: str, y1: int, m1: int, y2: int, m2: int):
     """
     Lädt Tichu-Logdateien vom Spiele-Portal "Brettspielwelt" herunter.
 
+    Hierbei wird ein Fortschrittsbalken angezeigt.
+
     Der erste existierende Eintrag ist 2007-01-09 19:03 (siehe http://tichulog.brettspielwelt.de/200701),
     der letzte ist unter http://tichulog.brettspielwelt.de/ verlinkt.
 

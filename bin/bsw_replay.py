@@ -11,6 +11,8 @@ from src import config
 from src.lib.bsw.database import BSWDatabase
 from time import time
 
+from src.lib.cards import stringify_cards
+
 
 def main(args: argparse.Namespace):
     """Main-Routine"""
@@ -25,19 +27,27 @@ def main(args: argparse.Namespace):
     print(f"Bis Datum: {y2:04d}-{m2:02d}")
     print(f"SQLite-Datenbank: {database}")
 
-    print("Variante 1")
     time_start = time()
     c = 0
-    for dataset in db.datasets():
-        if c > 10000:
+    for datasets in db.datasets():
+        if c > 1000:
             break
         c += 1
-        print(dataset)
+        for dataset in datasets:
+            print(stringify_cards(dataset.start_hands[0]))
+            print(stringify_cards(dataset.start_hands[1]))
+            print(stringify_cards(dataset.start_hands[2]))
+            print(stringify_cards(dataset.start_hands[3]))
+            print(stringify_cards(dataset.given_schupf_cards[0]))
+            print(stringify_cards(dataset.given_schupf_cards[1]))
+            print(stringify_cards(dataset.given_schupf_cards[2]))
+            print(stringify_cards(dataset.given_schupf_cards[3]))
+            for player_index, cards, trick_collector_index in dataset.history:
+                print(player_index, stringify_cards(cards), trick_collector_index)
+            print(dataset)
 
     delay = time() - time_start
     print(f"delay={delay * 1000:.6f} ms")
-
-    print("fertig")
 
 
 if __name__ == "__main__":

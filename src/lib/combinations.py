@@ -145,7 +145,7 @@ def get_trick_combination(cards: Cards, trick_rank: int, shift_phoenix: bool = F
         return CombinationType.PASS, 0, 0
 
     # Karten absteigend sortieren
-    cards.sort(reverse=True)  # Der Phönix ist jetzt, falls vorhanden, die erste Karte von rechts!
+    cards.sort(reverse=True)  # Der Phönix ist jetzt, falls vorhanden, die erste Karte von links!
 
     # Typ ermitteln
     if n == 1:
