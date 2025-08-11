@@ -265,6 +265,16 @@ class GameEngine:
     # Partie spielen
     # ------------------------------------------------------
 
+    # todo game_loop so umbauen wie im replay-simulator:
+    #  Karten ausspielen:
+    #   1) Tich ansagen
+    #   2) reguläre Zug.
+    #   3) alle Spieler, die eine Bombe haben, könnten jetzt eine Bombe werfen (evtl. vorher Tich ansagen) (wieder extra Funktion player.bomb() hinzufügen).
+    #      Wenn Bombe geworfen wird, Punkt 3 wiederholen.
+    #   4) Nächsten Spieler ermitteln. Spieler ohne Handkarten überspringen, dabei aber Punkt 4 berücksichtigen.
+    #   5) Stich kassieren, wenn der aktuelle Spieler auf seinen Stich schaut.
+    #   6) Abbruch, wenn Runde beendet
+
     # noinspection PyUnusedLocal
     async def run_game_loop(self) -> Optional[PublicState]:
         """
@@ -338,6 +348,7 @@ class GameEngine:
                 #   2| 2  3  -  1
                 #   3| 1  2  3  -
                 for player_index in range(4):  # Nehmer
+                    pub.count_hand_cards[player_index] = 14
                     priv = privs[player_index]
                     priv.received_schupf_cards = (
                         privs[(player_index + 1) % 4].given_schupf_cards[2],
@@ -347,7 +358,6 @@ class GameEngine:
                     assert not set(priv.received_schupf_cards).intersection(priv.hand_cards)  # darf keine Schnittmenge bilden
                     priv.hand_cards += priv.received_schupf_cards
                     assert len(priv.hand_cards) == 14
-                    pub.count_hand_cards[player_index] = 14
 
                 # Startspieler bekannt geben
                 for player_index in range(4):
@@ -378,7 +388,7 @@ class GameEngine:
                         first = self._random.integer(0, 4)  # zufällige Zahl zwischen 0 und 3
                         for i in range(4):
                             player_index = (first + i) % 4  # mit irgendeinem Spieler zufällig beginnen
-                            if (player_index != pub.current_turn_index or (player_index == pub.trick_owner_index and pub.trick_combination == (CombinationType.SINGLE, 1, 15))) and self._private_states[player_index].has_bomb:
+                            if (player_index != pub.current_turn_index or (player_index == pub.trick_owner_index and pub.trick_combination == (CombinationType.SINGLE, 1, 15))) and privs[player_index].has_bomb:
                                 bomb = await self._players[player_index].play()
                                 if bomb[1][0] == CombinationType.PASS:
                                     bomb = None
@@ -442,9 +452,9 @@ class GameEngine:
                         if combination[0] != CombinationType.PASS:
                             # Handkarten aktualisieren
                             assert pub.count_hand_cards[pub.current_turn_index] == len(privs[pub.current_turn_index].hand_cards)
-                            privs[pub.current_turn_index].hand_cards = [card for card in privs[pub.current_turn_index].hand_cards if card not in cards]
                             assert pub.count_hand_cards[pub.current_turn_index] >= combination[1]
                             pub.count_hand_cards[pub.current_turn_index] -= combination[1]
+                            privs[pub.current_turn_index].hand_cards = [card for card in privs[pub.current_turn_index].hand_cards if card not in cards]
                             assert pub.count_hand_cards[pub.current_turn_index] == len(privs[pub.current_turn_index].hand_cards)
 
                             # Stich aktualisieren
@@ -675,8 +685,8 @@ class GameEngine:
         # 8 Karten aufnehmen
         n = 8
         offset = player_index * 14
-        priv.hand_cards = self._mixed_deck[offset:offset + n]
         pub.count_hand_cards[player_index] = n
+        priv.hand_cards = self._mixed_deck[offset:offset + n]
         if clients_joined:
             await self._broadcast("hand_cards_dealt", {"player_index": player_index, "count": n})
 
@@ -690,18 +700,19 @@ class GameEngine:
         # die restlichen Karten aufnehmen
         n = 14
         offset = player_index * 14
-        priv.hand_cards = self._mixed_deck[offset:offset + n]
         pub.count_hand_cards[player_index] = n
+        priv.hand_cards = self._mixed_deck[offset:offset + n]
         if clients_joined:
             await self._broadcast("hand_cards_dealt", {"player_index": player_index, "count": n})
 
         # jetzt muss der Spieler schupfen (Tauschkarten abgeben)
         assert len(priv.hand_cards) == 14
-        priv.given_schupf_cards = await player.schupf()
-        assert len(priv.given_schupf_cards) == 3
+        schupf_cards = await player.schupf()
+        assert len(schupf_cards) == 3
+        pub.count_hand_cards[player_index] = 11
         priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
         assert len(priv.hand_cards) == 11
-        self._public_state.count_hand_cards[player_index] = 11
+        priv.given_schupf_cards = schupf_cards
         if clients_joined:
             delay = round((time() - time_start) * 1000)  # in ms
             if delay < config.AGENT_THINKING_TIME[0]:

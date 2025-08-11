@@ -125,7 +125,7 @@ def logfiles(path: str, y1: Optional[int] = None, m1: Optional[int] = None, y2: 
                     continue
                 game_id = int(parts[1][:-4])
 
-                # Logdatei öffnen und Inhalt zurückgeben
+                # Logdatei öffnen und Inhalt ausliefern
                 yield game_id, year, month, zf.read(name).decode()
 
 

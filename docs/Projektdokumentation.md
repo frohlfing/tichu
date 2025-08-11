@@ -104,7 +104,7 @@ Zusatzregeln und Unterschiede zum offiziellen Regelwerk:
 * Laut offiziellem Regelwerk kann ein einfaches Tichu schon vor und während des Schupfens angesagt werden. 
   Fairerweise müssen dann aber alle Spieler die Möglichkeit haben, ihre Schupfkarten noch einmal zu wählen. 
   Aber das ist offiziell nicht geregelt und auch lästig für alle. Daher die Regel: Einfaches Tichu erst nach dem Schupfen.    
-* Laut offiziellem Regelwerk KANN ein Wunsch geäußert werden, nicht, nicht MUSS. So ist es derzeit aber nicht umgesetzt. 
+* Laut offiziellem Regelwerk KANN ein Wunsch geäußert werden, nicht MUSS. So ist es derzeit aber nicht umgesetzt. 
 * Der Hund bleibt liegen und wird erst mit dem nachfolgenden Stich abgeräumt.
 * Um auch beim **Phönix als Einzelkarte** ganzzahlige Ränge zu haben, wird gerundet (ist für das Spiel egal):   
     *   Vor dem Ausspielen ist der Rang 15 (schlägt das Ass, aber nicht den Drachen). 

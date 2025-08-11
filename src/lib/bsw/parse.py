@@ -43,7 +43,7 @@ class BSWLogEntry:
     :ivar player_names: Die Namen der 4 Spieler dieser Runde.
     :ivar grand_tichu_hands: Die ersten 8 Handkarten der vier Spieler zu Beginn der Runde.
     :ivar start_hands: Die 14 Handkarten der Spieler vor dem Schupfen.
-    :ivar given_schupf_cards: Abgegebene Tauschkarten (an rechten Gegner, Partner, linken Gegner).
+    :ivar schupf_hands: Abgegebene Tauschkarten der Spieler (an rechten Gegner, Partner, linken Gegner).
     :ivar tichu_positions: Position in der Historie, an der Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor oder während des Schupfens).
     :ivar bomb_owners: Gibt für jeden Spieler an, ob eine Bombe auf der Hand ist.
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, -1 == kein Eintrag).
@@ -61,7 +61,7 @@ class BSWLogEntry:
     player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
     grand_tichu_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
     start_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
-    given_schupf_cards: List[str] = field(default_factory=lambda: ["", "", "", ""])
+    schupf_hands: List[str] = field(default_factory=lambda: ["", "", "", ""])
     tichu_positions: List[int] = field(default_factory=lambda: [-3, -3, -3, -3])
     bomb_owners: List[bool] = field(default_factory=lambda: [False, False, False, False])
     wish_value: int = 0
@@ -131,13 +131,13 @@ def parse_logfile(game_id: int, year: int, month: int, content: str) -> Optional
                     if j == -1:
                         raise BSWParserError("Leerzeichen erwartet", game_id, year, month, line_index)
                     name = line[3:j].strip()
-                    cards = line[j + 1:].replace("10", "Z")
+                    card_str = line[j + 1:].replace("10", "Z")
                     # Name des Spielers und Handkarten übernehmen
                     if k == 8:
                         log_entry.player_names[player_index] = name
-                        log_entry.grand_tichu_hands[player_index] = cards
+                        log_entry.grand_tichu_hands[player_index] = card_str
                     else:
-                        log_entry.start_hands[player_index] = cards
+                        log_entry.start_hands[player_index] = card_str
                     line_index += 1
 
             # Es folgen Zeilen mit "Grosses Tichu:", danach mit "Tichu:", sofern Tichu angesagt wurde, z.B.:
@@ -187,13 +187,13 @@ def parse_logfile(game_id: int, year: int, month: int, content: str) -> Optional
                 j = len(s)
                 if j != 3:
                     raise BSWParserError("Drei Tauschkarten erwartet", game_id, year, month, line_index)
-                cards = ["", "", ""]
+                card_labels = ["", "", ""]
                 # Tauschkarten ermitteln
                 for k in range(0, 3):
                     _player_name, card_label = s[k].split(": ")
-                    cards[k] = card_label.replace("10", "Z")
+                    card_labels[k] = card_label.replace("10", "Z")
                 # Tauschkarten übernehmen
-                log_entry.given_schupf_cards[player_index] = " ".join(cards)
+                log_entry.schupf_hands[player_index] = " ".join(card_labels)
                 line_index += 1
 
             # Nun werden die Spieler mit einer Bombe aufgelistet, z.B
@@ -227,7 +227,7 @@ def parse_logfile(game_id: int, year: int, month: int, content: str) -> Optional
             # Rundenverlauf
             while True:
                 line = lines[line_index].strip()
-                if line[:3] in ["(0)", "(1)", "(2)", "(3)"]:  # normaler Spielzug (z.B. "(1)charliexyz passt." oder "(2)Amb4lamps23: R8 S8")
+                if line[:3] in ["(0)", "(1)", "(2)", "(3)"]:  # normaler Spielzug (z.B. "(1)charliexyz passt." oder "(2)Amb4lamps23: R8 S8 B8")
                     # Index des Spielers ermitteln
                     player_index = int(line[1])
                     j = line.find(" ")
@@ -235,9 +235,9 @@ def parse_logfile(game_id: int, year: int, month: int, content: str) -> Optional
                         raise BSWParserError("Leerzeichen erwartet", game_id, year, month, line_index)
                     # Aktion auswerten (Karten gespielt oder gepasst?)
                     action = line[j + 1:].rstrip(".")  # 201205/1150668.tch endet in dieser Zeile, sodass der Punkt fehlt
-                    cards = action.replace("10", "Z") if action != "passt" else ""
+                    card_str = action.replace("10", "Z") if action != "passt" else ""
                     # Spielzug übernehmen
-                    log_entry.history.append((player_index, cards))
+                    log_entry.history.append((player_index, card_str))
                     line_index += 1
 
                 elif line.startswith("Wunsch:"):  # Wunsch geäußert (z.B. "Wunsch:2")

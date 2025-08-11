@@ -9,9 +9,9 @@ import os
 from datetime import datetime
 from src import config
 from src.lib.bsw.database import BSWDatabase
-from time import time
-
+from src.lib.bsw.replay import replay_play
 from src.lib.cards import stringify_cards
+from time import time
 
 
 def main(args: argparse.Namespace):
@@ -29,23 +29,12 @@ def main(args: argparse.Namespace):
 
     time_start = time()
     c = 0
-    for datasets in db.datasets():
+    for game in db.games():
         if c > 1000:
             break
         c += 1
-        for dataset in datasets:
-            print(stringify_cards(dataset.start_hands[0]))
-            print(stringify_cards(dataset.start_hands[1]))
-            print(stringify_cards(dataset.start_hands[2]))
-            print(stringify_cards(dataset.start_hands[3]))
-            print(stringify_cards(dataset.given_schupf_cards[0]))
-            print(stringify_cards(dataset.given_schupf_cards[1]))
-            print(stringify_cards(dataset.given_schupf_cards[2]))
-            print(stringify_cards(dataset.given_schupf_cards[3]))
-            for player_index, cards, trick_collector_index in dataset.history:
-                print(player_index, stringify_cards(cards), trick_collector_index)
-            print(dataset)
-
+        for action in replay_play(game):
+            print(action)
     delay = time() - time_start
     print(f"delay={delay * 1000:.6f} ms")
 

@@ -233,7 +233,7 @@ def process_and_insert_data(cursor: sqlite3.Cursor, all_rounds_data: List[BWLogE
         total_moves += num_turns
 
         # --- 3. Daten für die `schupf_actions`-Tabelle vorbereiten und einfügen ---
-        for giver_index, schupf_tuple in enumerate(round_data.given_schupf_cards):
+        for giver_index, schupf_tuple in enumerate(round_data.schupf_hands):
             recipients = [(giver_index + 1) % 4, (giver_index + 2) % 4, (giver_index + 3) % 4]
             for i, card_str in enumerate(schupf_tuple):
                 if card_str:

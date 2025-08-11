@@ -222,7 +222,7 @@ class BSWDatabase:
             self.commit()
             self.close()
 
-    def datasets(self) -> Generator[List[BSWDataset]]:
+    def games(self) -> Generator[List[BSWDataset]]:
         """
         Liefert die Rundendaten pro Partie aus.
 
@@ -234,6 +234,7 @@ class BSWDatabase:
         game_cursor = self.cursor()
         round_cursor = self.cursor()
         try:
+            # Alle fehlerfreien Partien abfragen
             game_cursor.execute("""
                 SELECT g.*, p0.name AS player_name_0, p1.name AS player_name_1, p2.name AS player_name_2, p3.name AS player_name_3
                 FROM games AS g
@@ -248,6 +249,8 @@ class BSWDatabase:
             round_columns = [desc[0] for desc in round_cursor.execute("SELECT * FROM rounds LIMIT 1").description]
             for game_row in game_cursor:
                 g = dict(zip(game_columns, game_row))
+
+                # Alle Rundendaten der aktuellen Partie abfragen
                 datasets = []
                 round_cursor.execute("SELECT * FROM rounds WHERE game_id = ? ORDER BY id", (g["id"],))
                 for round_row in round_cursor:
@@ -257,7 +260,7 @@ class BSWDatabase:
                         round_index=r["round_index"],
                         player_names=[g["player_name_0"], g["player_name_1"], g["player_name_2"], g["player_name_3"]],
                         start_hands=[deserialize_cards(r[f"hand_cards_{player_index}"]) for player_index in range(4)],
-                        given_schupf_cards=[deserialize_cards(r[f"schupf_cards_{player_index}"]) for player_index in range(4)],
+                        schupf_hands=[deserialize_cards(r[f"schupf_cards_{player_index}"]) for player_index in range(4)],
                         tichu_positions=[r["tichu_pos_0"], r["tichu_pos_1"], r["tichu_pos_2"], r["tichu_pos_3"]],
                         wish_value=r["wish_value"],
                         dragon_recipient=r["dragon_recipient"],
@@ -269,6 +272,8 @@ class BSWDatabase:
                         year=g["log_year"],
                         month=g["log_month"],
                     ))
+
+                # Rundendaten der aktuellen Partie ausliefern
                 yield datasets
         finally:
             self.close()
@@ -331,7 +336,7 @@ class BSWDatabase:
                 tichu_pos_2       INTEGER NOT NULL,   -- Tichu-Ansage-Position Spieler 2
                 tichu_pos_3       INTEGER NOT NULL,   -- Tichu-Ansage-Position Spieler 3
                 wish_value        INTEGER NOT NULL,   -- Gewünschter Kartenwert (2–14, 0 = ohne Wunsch, -1 = kein Mahjong)
-                dragon_recipient  INTEGER NOT NULL,   -- Index des Spielers, der den Drachen erhielt (-1 = niemand)
+                dragon_recipient  INTEGER NOT NULL,   -- Index des Spielers, der den Drachen erhielt (-1 = niemand)  # todo kann raus, wenn der Replay-Simulator funktioniert
                 winner_index      INTEGER NOT NULL,   -- Index des Spielers, der als Erster ausspielt (-1 = niemand)  # todo kann raus, wenn der Replay-Simulator funktioniert
                 loser_index       INTEGER NOT NULL,   -- Index des Spielers, der als Letzter übrig bleibt (-1 = niemand)  # todo
                 is_double_victory INTEGER NOT NULL,   -- 1 == Doppelsieg, 0 == normales Ende # todo
@@ -524,7 +529,7 @@ class BSWDatabase:
         # Karten und Historie serialisieren
 
         hands_str = [serialize_cards(ds.start_hands[player_index]) for player_index in range(4)]
-        schupf_str = [serialize_cards(ds.given_schupf_cards[player_index]) for player_index in range(4)]
+        schupf_str = [serialize_cards(ds.schupf_hands[player_index]) for player_index in range(4)]
         history_str = serialize_history(ds.history)
 
         # Datensatz speichern

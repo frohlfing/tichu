@@ -124,7 +124,7 @@ class BSWDataset:
     :ivar round_index: Index der Runde innerhalb der Partie.
     :ivar player_names: Die Namen der 4 Spieler dieser Runde.
     :ivar start_hands: Handkarten der Spieler vor dem Schupfen (zuerst die 8 Grand-Tichu-Karten, danach die restlichen).
-    :ivar given_schupf_cards: Abgegebene Tauschkarten (an rechten Gegner, Partner, linken Gegner).
+    :ivar schupf_hands: Abgegebene Tauschkarten der Spieler (an rechten Gegner, Partner, linken Gegner).
     :ivar tichu_positions: Position in der Historie, an der Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor oder während des Schupfens).
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == ohne Wunsch, -1 == kein Mahjong gespielt).
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde nicht verschenkt).
@@ -142,7 +142,7 @@ class BSWDataset:
     round_index: int = -1
     player_names: List[str] = field(default_factory=lambda: ["", "", "", ""])
     start_hands: List[Cards] = field(default_factory=lambda: [[], [], [], []])
-    given_schupf_cards: List[Cards] = field(default_factory=lambda: [[], [], [], []])
+    schupf_hands: List[Cards] = field(default_factory=lambda: [[], [], [], []])
     tichu_positions: List[int] = field(default_factory=lambda: [-3, -3, -3, -3])
     wish_value: int = 0
     dragon_recipient: int = -1
@@ -222,7 +222,7 @@ def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]
         for player_index in range(4):
             grand_hands.append(log_entry.grand_tichu_hands[player_index].split(" "))
             start_hands.append(log_entry.start_hands[player_index].split(" "))
-            schupf_hands.append(log_entry.given_schupf_cards[player_index].split(" "))
+            schupf_hands.append(log_entry.schupf_hands[player_index].split(" "))
 
         # Handkarten prüfen
         for player_index in range(4):
@@ -256,7 +256,7 @@ def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]
                 break
 
             # Tauschkarten
-            elif not validate_cards(log_entry.given_schupf_cards[player_index]):  # Kartenlabel
+            elif not validate_cards(log_entry.schupf_hands[player_index]):  # Kartenlabel
                 error_code = BSWRoundErrorCode.INVALID_CARD_LABEL
                 break
             elif len(schupf_card_labels) != 3:  # Anzahl
@@ -311,7 +311,7 @@ def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]
         is_round_over = False
         is_double_victory = False
         history_too_long = False
-        for player_index, card_str in log_entry.history:
+        for player_index, card_str in log_entry.history:  # card_str ist z.B. "B2 S2 R2" für Karten ausgespielt oder "" für passen
             if is_round_over:
                 # Runde ist vorbei, aber es gibt noch weitere Einträge in der Historie
                 if card_str == "":
@@ -609,7 +609,7 @@ def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]
             round_index=log_entry.round_index,
             player_names=player_names,
             start_hands=sorted_start_hands,
-            given_schupf_cards=given_schupf_hands,
+            schupf_hands=given_schupf_hands,
             tichu_positions=tichu_positions,
             wish_value=wish_value,
             dragon_recipient=log_entry.dragon_recipient,
