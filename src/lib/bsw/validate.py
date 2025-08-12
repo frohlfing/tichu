@@ -80,6 +80,9 @@ class BSWRoundErrorCode(enum.IntEnum):
     ANNOUNCEMENT_NOT_POSSIBLE = 50
     """Tichu-Ansage an der geloggten Position nicht möglich (wurde korrigiert)."""
 
+    ANNOUNCEMENT_NONSENSE = 51
+    """Tichu-Ansage, obwohl ein Mitspieler bereits fertig ist."""
+
     # Rundenergebnis
 
     SCORE_NOT_POSSIBLE = 60
@@ -126,7 +129,7 @@ class BSWDataset:
     :ivar start_hands: Handkarten der Spieler vor dem Schupfen (zuerst die 8 Grand-Tichu-Karten, danach die restlichen).
     :ivar schupf_hands: Abgegebene Tauschkarten der Spieler (an rechten Gegner, Partner, linken Gegner).
     :ivar tichu_positions: Position in der Historie, an der Tichu angesagt wurde (-3 == kein Tichu, -2 == großes Tichu, -1 == Ansage vor oder während des Schupfens).
-    :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, 0 == ohne Wunsch, -1 == kein Mahjong gespielt).
+    :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, -1 == kein Mahjong gespielt, 0 == ohne Wunsch).
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommen hat (-1 == Drache wurde nicht verschenkt).
     :ivar winner_index: Index des Spielers, der zuerst in der aktuellen Runde fertig wurde (-1 == kein Spieler).
     :ivar loser_index: Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == kein Spieler).
@@ -307,6 +310,7 @@ def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]
         wish_value = -1
         dragon_giver= -1  # Index des Spielers, der den Drachen verschenkt hat
         winner_index = -1
+        winner_position = -1
         loser_index = -1
         is_round_over = False
         is_double_victory = False
@@ -368,9 +372,9 @@ def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]
                 if first_pos[player_index] == -1:
                     first_pos[player_index] = len(history)
 
-                # Karten prüfen
+                # Kartenlabel bekannt?
                 card_labels = card_str.split(" ")
-                if not validate_cards(card_str):  # Kartenlabel bekannt?
+                if not validate_cards(card_str):
                     if error_code == BSWRoundErrorCode.NO_ERROR:
                         error_code = BSWRoundErrorCode.INVALID_CARD_LABEL
                     history.append((player_index, [], -1))
@@ -380,6 +384,7 @@ def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]
                 cards = [parse_card(label) for label in card_labels]
                 history.append((player_index, cards, -1))
 
+                # Karten prüfen
                 if len(card_labels) != len(set(card_labels)):  # Duplikate?
                     if error_code == BSWRoundErrorCode.NO_ERROR:
                         error_code = BSWRoundErrorCode.DUPLICATE_CARD
@@ -443,16 +448,17 @@ def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]
                     finished_players = num_hand_cards.count(0)
                     if finished_players == 1:
                         winner_index = player_index
+                        winner_position = len(history) - 1
                     elif finished_players == 2:
                         if num_hand_cards[(player_index + 2) % 4] == 0:
                             is_double_victory = True
                             is_round_over = True
                     else:
+                        is_round_over = True
                         for i in range(4):
                             if num_hand_cards[i] > 0:
                                 loser_index = i
                                 break
-                        is_round_over = True
                     # Falls die Runde vorbei ist, zum nächsten Eintrag in der Historie springen.
                     # Dürfte es nicht mehr geben ud somit den Schleifendurchlauf beenden.
                     if is_round_over:
@@ -528,12 +534,18 @@ def validate_bswlog(bw_log: BSWLog) -> Tuple[List[BSWDataset], BSWGameErrorCode]
             else:
                 error_code = BSWRoundErrorCode.WISH_WITHOUT_MAHJONG
 
-        # Position der Tichu-Ansage prüfen und korrigieren
+        # Position der Tichu-Ansage prüfen
         for player_index in range(4):
-            if tichu_positions[player_index] - first_pos[player_index] > 1:
-                if error_code == BSWRoundErrorCode.NO_ERROR:
-                    error_code = BSWRoundErrorCode.ANNOUNCEMENT_NOT_POSSIBLE
+            if tichu_positions[player_index] > first_pos[player_index]:
+                # Wenn die Ansage direkt nach dem ersen Zug erfolgt, lassen wir es gelten, ansonst ist es ein Fehler.
+                if tichu_positions[player_index] - first_pos[player_index] > 1:
+                    if error_code == BSWRoundErrorCode.NO_ERROR:
+                        error_code = BSWRoundErrorCode.ANNOUNCEMENT_NOT_POSSIBLE
+                # Position korrigieren
                 tichu_positions[player_index] = first_pos[player_index]
+            if tichu_positions[player_index] > winner_position:
+                if error_code == BSWRoundErrorCode.NO_ERROR:
+                    error_code = BSWRoundErrorCode.ANNOUNCEMENT_NONSENSE
 
         # Endwertung der Runde
         if is_double_victory:

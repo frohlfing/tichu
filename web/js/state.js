@@ -31,8 +31,8 @@
  * @property {number} start_player_index - Index des Spielers mit Mahjong (-1 = steht noch nicht fest).
  * @property {Array<number>} count_hand_cards - Anzahl der Handkarten pro Spieler.
  * @property {Cards} played_cards - Bereits gespielte Karten in der Runde.
- * @property {Array<number>} announcements - Tichu-Ansagen pro Spieler (0 = keine Ansage, 1 = einfaches, 2 = großes).
- * @property {number} wish_value - Gewünschter Kartenwert (2–14, 0 = kein Wunsch, negativ = erfüllt).
+ * @property {Array<number>} announcements - Tichu-Ansagen pro Spieler (0 = keine Ansage, 1 = einfaches Tichu, 2 = großes Tichu).
+ * @property {number} wish_value - Gewünschter Kartenwert (2–14, -1 == kein Mahjong, 0 == ohne Wunsch oder erfüllt).
  * @property {number} dragon_recipient - Index des Spielers, der den Drachen geschenkt bekommen hat (-1 = noch niemand).
  * @property {number} trick_owner_index - Index des Spielers, der den Stich besitzt (-1 = leerer Stich).
  * @property {Cards} trick_cards - Die obersten Karten im Stich.
@@ -77,7 +77,7 @@ const State = (() => {
         count_hand_cards: [0, 0, 0, 0],
         played_cards: /** @type Cards */ [],
         announcements: [0, 0, 0, 0],
-        wish_value: 0,
+        wish_value: -1,
         dragon_recipient: -1,
         trick_owner_index: -1,
         trick_cards: /** @type Cards */ [],
@@ -179,7 +179,7 @@ const State = (() => {
         _publicState.count_hand_cards = [0, 0, 0, 0];
         _publicState.played_cards = /** @type Cards */ [];
         _publicState.announcements = [0, 0, 0, 0];
-        _publicState.wish_value = 0;
+        _publicState.wish_value = -1;
         _publicState.dragon_recipient = -1;
         _publicState.trick_owner_index = -1;
         _publicState.trick_cards = /** @type Cards */ [];
@@ -363,19 +363,19 @@ const State = (() => {
         _publicState.announcements[playerIndex] = announcement;
     }
     
-    /** @returns {number} wish_value - Gewünschter Kartenwert (2–14, 0 = kein Wunsch, negativ = erfüllt). */
+    /** @returns {number} wish_value - Gewünschter Kartenwert (2–14, -1 == kein Mahjong, 0 == ohne Wunsch oder erfüllt). */
     function getWishValue(){
         return _publicState.wish_value;
     }
 
-    /** @param {number} value - Gewünschter Kartenwert (2–14, 0 = kein Wunsch, negativ = erfüllt). */
+    /** @param {number} value - Gewünschter Kartenwert (2–14, -1 == kein Mahjong, 0 == ohne Wunsch oder erfüllt). */
     function setWishValue(value) {
         _publicState.wish_value = value;
     }
 
     /** Markiert den Wunsch als erfüllt. */
-    function setWishFulfilled(value) {
-        _publicState.wish_value = -_publicState.wish_value;
+    function setWishFulfilled(value) {  // todo kann mit setWishValue(0) ersetzt werden
+        _publicState.wish_value = 0;
     }
 
     /** @returns {number} dragon_recipient - Index des Spielers, der den Drachen geschenkt bekommen hat (-1 = noch niemand). */

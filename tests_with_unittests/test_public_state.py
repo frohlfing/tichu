@@ -36,7 +36,7 @@ class TestPublicState(unittest.TestCase):
         played_cards.append((13, 1))
         self.assertEqual(played_cards, self.pub.played_cards)
         self.assertEqual([2, 2, 1, 0], self.pub.count_hand_cards)
-        self.assertEqual(-13, self.pub.wish_value)
+        self.assertEqual(0, self.pub.wish_value)
         self.assertEqual([(2, ([], (CombinationType.PASS, 0, 0))), (0, combi1)], self.pub.tricks)
         self.assertEqual(0, self.pub.trick_owner_index)
         self.assertEqual(combi1[1], self.pub.trick_combination)
@@ -60,7 +60,7 @@ class TestPublicState(unittest.TestCase):
         self.pub.start_player_index = 0
         played_cards = other_cards(parse_cards("Ph RK R9 G9"))
         self.pub.played_cards = played_cards.copy()
-        self.pub.wish_value = -13
+        self.pub.wish_value = 0
         self.pub.dragon_recipient = 1
 
         # 1. Spieler wird fertig
@@ -100,7 +100,7 @@ class TestPublicState(unittest.TestCase):
         self.pub.start_player_index = 0
         played_cards = other_cards(parse_cards("RK R9 G9"))
         self.pub.played_cards = played_cards.copy()
-        self.pub.wish_value = -13
+        self.pub.wish_value = 0
         self.pub.dragon_recipient = 1
         self.pub.winner_index = 3
 

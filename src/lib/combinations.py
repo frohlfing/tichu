@@ -396,7 +396,7 @@ def build_action_space(combis: List[Tuple[Cards, Combination]], trick_combinatio
     
     :param combis: Kombinationsmöglichkeiten der Hand, ([(Karten, (Typ, Länge, Rang)), ...]).
     :param trick_combination: Typ, Länge, Rang des aktuellen Stichs ((0,0,0) falls kein Stich liegt).
-    :param wish_value: Wunsch (2 bis 14, 0 == kein Wunsch geäußert, negativ == bereits erfüllt).
+    :param wish_value: Wunsch (2 bis 14, -1 == noch kein Mahjong gespielt, 0 == ohne Wunsch oder bereits erfüllt).
     :return: ([], (0,0,0)) für Passen sofern möglich + spielbare Kombinationsmöglichkeiten.
     """
     assert 0 <= trick_combination[0] <= 7

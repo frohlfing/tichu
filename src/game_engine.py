@@ -409,8 +409,8 @@ class GameEngine:
                             # Der Spieler hat bereits die Bombe geworfen, es muss nicht nochmal nach einer Kombination gefragt werden.
                             cards, combination = bomb
                         else:
-                            # Falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden.
-                            if pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
+                            # Tichu-Ansage abfragen (falls noch alle mitspielen, und falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde).
+                            if pub.winner_index == -1 and pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
                                 if await self._players[pub.current_turn_index].announce():
                                     # Spieler hat Tichu angesagt
                                     pub.announcements[pub.current_turn_index] = 1
@@ -488,10 +488,10 @@ class GameEngine:
                             bomb = None
 
                             # Wunsch erfüllt?
-                            assert pub.wish_value == 0 or -2 >= pub.wish_value >= -14 or 2 <= pub.wish_value <= 14
+                            assert pub.wish_value == -1 or pub.wish_value == 0 or 2 <= pub.wish_value <= 14
                             if pub.wish_value > 0 and is_wish_in(pub.wish_value, cards):
                                 assert CARD_MAH in pub.played_cards
-                                pub.wish_value = -pub.wish_value
+                                pub.wish_value = 0
                                 if clients_joined:
                                     await self._broadcast("wish_fulfilled")
 
@@ -520,7 +520,7 @@ class GameEngine:
 
                             # Falls ein MahJong ausgespielt wurde, muss ein Wunsch geäußert werden.
                             if CARD_MAH in cards:
-                                assert pub.wish_value == 0
+                                assert pub.wish_value == -1
                                 pub.wish_value = await self._players[pub.current_turn_index].wish()
                                 assert 2 <= pub.wish_value <= 14
                                 if clients_joined:
@@ -710,9 +710,10 @@ class GameEngine:
         schupf_cards = await player.schupf()
         assert len(schupf_cards) == 3
         pub.count_hand_cards[player_index] = 11
+        priv.given_schupf_cards = schupf_cards
         priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
         assert len(priv.hand_cards) == 11
-        priv.given_schupf_cards = schupf_cards
+
         if clients_joined:
             delay = round((time() - time_start) * 1000)  # in ms
             if delay < config.AGENT_THINKING_TIME[0]:

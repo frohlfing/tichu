@@ -158,11 +158,7 @@ class BSWDatabase:
         # Aktualisierung starten
         log_file_counter = 0
         try:
-            progress_bar = tqdm(
-                logfiles(path, y1, m1, y2, m2),
-                total=count_logfiles(path, y1, m1, y2, m2),
-                desc="Verarbeite Log-Dateien",
-                unit=" Datei")
+            progress_bar = tqdm(logfiles(path, y1, m1, y2, m2), total=count_logfiles(path, y1, m1, y2, m2), unit=" Datei", desc="Importiere Log-Dateien")
             logfiles_total = 0
             games_fails = 0
             games_empty = 0
@@ -176,29 +172,29 @@ class BSWDatabase:
                     games_empty += 1
 
                 # Validieren
-                datasets, game_error_code = validate_bswlog(bsw_log)
+                game, game_error_code = validate_bswlog(bsw_log)
 
                 # Fehlerhafte Partien zählen
                 if game_error_code != BSWGameErrorCode.NO_ERROR:
                     games_fails += 1
 
                 # Endergebnis der Partie berechnen
-                total_score = (sum(dataset.score[0] for dataset in datasets),
-                               sum(dataset.score[1] for dataset in datasets))
+                total_score = (sum(r.score[0] for r in game),
+                               sum(r.score[1] for r in game))
 
                 # Datenbank aktualisieren
-                for dataset in datasets:
+                for r in game:
                     # Tabelle für die Spieler aktualisieren und Spieler-IDs ermitteln
                     player_ids = []
                     for player_index in range(4):
-                        player_ids.append(self._save_player(cursor, dataset.player_names[player_index]))
+                        player_ids.append(self._save_player(cursor, r.player_names[player_index]))
 
                     # Partie speichern
-                    if dataset.round_index == 0:
-                        self._save_game(cursor, dataset.game_id, player_ids, total_score, dataset.year, dataset.month, game_error_code)
+                    if r.round_index == 0:
+                        self._save_game(cursor, r.game_id, player_ids, total_score, r.year, r.month, game_error_code)
 
                     # Runde speichern
-                    self._save_round(cursor, dataset, player_ids)
+                    self._save_round(cursor, r, player_ids)
 
                 # Transaktion alle 1000 Dateien committen
                 log_file_counter += 1
@@ -271,12 +267,52 @@ class BSWDatabase:
                         history=deserialize_history(r["history"]),
                         year=g["log_year"],
                         month=g["log_month"],
+                        error_code=r["error_code"],
+                        error_content=r["error_content"],
                     ))
 
                 # Rundendaten der aktuellen Partie ausliefern
                 yield datasets
         finally:
             self.close()
+
+    # def fix(self):
+    #     self.open()
+    #     cursor = self.cursor()
+    #     cursor2 = self.cursor()
+    #     path = os.path.join(config.DATA_PATH, "bsw", "tichulog")
+    #     try:
+    #         # Alle fehlerfreien Partien abfragen
+    #         cursor.execute("SELECT r.*, g.log_year, g.log_month FROM rounds as r inner join games as g on g.id = r.game_id WHERE r.error_code = 51")
+    #         columns = [desc[0] for desc in cursor.description]
+    #         for row in tqdm(cursor, total=2018):
+    #             r = dict(zip(columns, row))
+    #             assert r["error_content"] is None
+    #             for game_id, year, month, content in logfiles(path, r["log_year"], r["log_month"], r["log_year"], r["log_month"]):
+    #                 if game_id == r["game_id"]:
+    #                     bsw_log = parse_logfile(game_id, year, month, content)
+    #                     error_content = bsw_log[r["round_index"]].content
+    #                     cursor2.execute("UPDATE rounds SET error_content = ? WHERE id = ?", (error_content, r["id"]))
+    #                     break
+    #         self.commit()
+    #     finally:
+    #         self.close()
+    #
+    # def fix2(self):
+    #     self.open()
+    #     cursor = self.cursor()
+    #     cursor2 = self.cursor()
+    #     path = os.path.join(config.DATA_PATH, "bsw", "tichulog")
+    #     try:
+    #         # Alle fehlerfreien Partien abfragen
+    #         cursor.execute("SELECT game_id FROM rounds WHERE error_code = 51")
+    #         columns = [desc[0] for desc in cursor.description]
+    #         for row in tqdm(cursor, total=2018):
+    #             r = dict(zip(columns, row))
+    #             cursor2.execute("UPDATE games SET error_code = 80 WHERE id = ? AND (error_code = 0 or error_code = 90)", (r["game_id"],))
+    #         self.commit()
+    #     finally:
+    #         self.close()
 
     def count(self):
         """
@@ -335,7 +371,7 @@ class BSWDatabase:
                 tichu_pos_1       INTEGER NOT NULL,   -- Tichu-Ansage-Position Spieler 1
                 tichu_pos_2       INTEGER NOT NULL,   -- Tichu-Ansage-Position Spieler 2
                 tichu_pos_3       INTEGER NOT NULL,   -- Tichu-Ansage-Position Spieler 3
-                wish_value        INTEGER NOT NULL,   -- Gewünschter Kartenwert (2–14, 0 = ohne Wunsch, -1 = kein Mahjong)
+                wish_value        INTEGER NOT NULL,   -- Gewünschter Kartenwert (2–14, -1 = kein Mahjong gespielt, 0 = ohne Wunsch)
                 dragon_recipient  INTEGER NOT NULL,   -- Index des Spielers, der den Drachen erhielt (-1 = niemand)  # todo kann raus, wenn der Replay-Simulator funktioniert
                 winner_index      INTEGER NOT NULL,   -- Index des Spielers, der als Erster ausspielt (-1 = niemand)  # todo kann raus, wenn der Replay-Simulator funktioniert
                 loser_index       INTEGER NOT NULL,   -- Index des Spielers, der als Letzter übrig bleibt (-1 = niemand)  # todo
@@ -429,6 +465,7 @@ class BSWDatabase:
             32: "Drache verschenkt, aber niemand hat durch den Drachen ein Stich gewonnen",
             40: "Wunsch geäußert, aber kein Mahjong gespielt",
             50: "Tichu-Ansage an der geloggten Position nicht möglich (wurde korrigiert)",
+            51: "Tichu-Ansage, obwohl ein Mitspieler bereits fertig ist.",
             60: "Rechenfehler! Geloggtes Rundenergebnis ist nicht möglich (wurde korrigiert)",
             61: "Geloggtes Rundenergebnis stimmt nicht mit dem berechneten Ergebnis überein (wurde korrigiert)",
             70: "Partie nicht zu Ende gespielt",

@@ -22,7 +22,7 @@ def test_public_state_initialization(initial_pub_state):
     assert pub.count_hand_cards == [0, 0, 0, 0]
     assert pub.played_cards == []
     assert pub.announcements == [0, 0, 0, 0]
-    assert pub.wish_value == 0
+    assert pub.wish_value == -1
     assert pub.dragon_recipient == -1
     assert pub.trick_owner_index == -1
     assert pub.trick_cards == []  # hängt von der Implementierung ab, ob dies noch genutzt wird
@@ -141,7 +141,7 @@ def test_reset_round(initial_pub_state):
     assert pub.count_hand_cards == [0, 0, 0, 0]
     assert pub.played_cards == []
     assert pub.announcements == [0, 0, 0, 0]
-    assert pub.wish_value == 0
+    assert pub.wish_value == -1
     assert pub.dragon_recipient == -1
     assert pub.trick_owner_index == -1
     assert pub.trick_cards == []

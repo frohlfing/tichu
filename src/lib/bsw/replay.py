@@ -5,11 +5,11 @@ Replay-Simulator für die Brettspielwelt-Datenbank
 __all__ =  "replay_play"
 
 from src.lib.bsw.validate import BSWDataset
-from src.lib.cards import Cards, CardSuit, stringify_cards, CARD_MAH, sum_card_points, is_wish_in, other_cards
+from src.lib.cards import Cards, CARD_MAH, sum_card_points, is_wish_in
 from src.lib.combinations import Combination, CombinationType, get_trick_combination
 from src.public_state import PublicState
 from src.private_state import PrivateState
-from typing import List, Tuple, Generator, Optional
+from typing import List, Tuple, Generator
 
 
 def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateState, Tuple[Cards, Combination]]]:
@@ -55,7 +55,7 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
         # Falls noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden.
         for player_index in range(4):
             priv = privs[player_index]
-            if not pub.announcements[pub.current_turn_index]:
+            if not pub.announcements[player_index]:
                 announcement = r.tichu_positions[player_index] == -1
                 # todo yield pub, priv, announcement
                 if announcement:
@@ -67,9 +67,9 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
             schupf_cards = r.schupf_hands[player_index]
             # todo yield pub, priv, (schupf_cards[0], schupf_cards[1], schupf_cards[2])
             pub.count_hand_cards[player_index] = 11
+            priv.given_schupf_cards = schupf_cards[0], schupf_cards[1], schupf_cards[2]
             priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
             assert len(priv.hand_cards) == 11
-            priv.given_schupf_cards = schupf_cards[0], schupf_cards[1], schupf_cards[2]
 
         # Tauscharten aufnehmen
         for player_index in range(4):
@@ -97,19 +97,20 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
                 pub.current_turn_index = current_player_index
             assert current_player_index == pub.current_turn_index
 
-            # Falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden.
+            # Tichu-Ansage abfragen (falls noch alle mitspielen, und falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde)
             for player_index in range(4):
-                if pub.count_hand_cards[pub.current_turn_index] == 14 and not pub.announcements[pub.current_turn_index]:
+                if pub.count_hand_cards[player_index] == 14 and not pub.announcements[player_index]:
                     priv = privs[player_index]
                     announcement = r.tichu_positions[player_index] == history_index
-                    # todo yield pub, priv, announcement
+                    # todo if pub.winner_index == -1:
+                    #  yield pub, priv, announcement
                     if announcement:
                         pub.announcements[player_index] = 1
 
             # Spielzug durchführen
             priv = privs[pub.current_turn_index]
             action = cards, combination
-            yield pub, priv, action  # Entscheidungspunkt "play" ausliefern
+            yield pub, priv, action  # Entscheidungspunkt "play" ausliefern  # todo nur bei regulären Zug, wenn keine Bombe dazwischengeworfen wurde
 
             # todo tricks kann raus aus dem Spielstatus - der Status ist eine Momentaufnahme (inkl. aktuellen Stich, aber weiter zurück nicht)
             if pub.trick_owner_index == -1:  # neuer Stich?
@@ -144,10 +145,26 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
 
                 # Wunsch erfüllt?
                 if pub.wish_value > 0 and is_wish_in(pub.wish_value, cards):
-                    pub.wish_value = -pub.wish_value
+                    pub.wish_value = 0
 
-                # Falls ein MahJong ausgespielt wurde, darf ein Wunsch geäußert werden (wenn es nicht der letzte Zug war).
-                if CARD_MAH in cards and history_index < len(r.history) - 1:
+                # Runde vorbei?
+                if pub.count_hand_cards[pub.current_turn_index] == 0:
+                    n = pub.count_active_players
+                    if n == 3:
+                        pub.winner_index = pub.current_turn_index
+                    elif n == 2:
+                        if (pub.current_turn_index + 2) % 4 == pub.winner_index:  # Doppelsieg?
+                            pub.is_round_over = True
+                            pub.is_double_victory = True
+                    else:
+                        pub.is_round_over = True
+                        for player_index in range(4):
+                            if pub.count_hand_cards[player_index] > 0:
+                                pub.loser_index = player_index
+                                break
+
+                # Falls ein MahJong ausgespielt wurde, darf ein Wunsch geäußert werden.
+                if not pub.is_round_over and CARD_MAH in cards:
                     pub.wish_value = r.wish_value
 
             if trick_collector_index != -1:
@@ -172,20 +189,8 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
                 pub.current_turn_index = (pub.current_turn_index + 1) % 4
 
             # Spieler ohne Handkarten überspringen
-            finished_players = 0
             while pub.count_hand_cards[pub.current_turn_index] == 0:
                 pub.current_turn_index = (pub.current_turn_index + 1) % 4
-                finished_players += 1
-            if finished_players == 2:
-                if (pub.current_turn_index + 2) % 4 == pub.winner_index:  # Doppelsieg?
-                    pub.is_round_over = True
-                    pub.is_double_victory = True
-            elif finished_players == 1:
-                pub.is_round_over = True
-                for player_index in range(4):
-                    if pub.count_hand_cards[player_index] > 0:
-                        pub.loser_index = player_index
-                        break
 
         # Runde ist beendet
         assert pub.is_round_over
@@ -222,10 +227,14 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
         #pub.played_cards
         for player_index in range(4):
             pos = r.tichu_positions[player_index]
-            assert pub.announcements[player_index] == 2 if pos == -2 else 1 if pos >= -1 else 0
-        assert pub.wish_value == r.wish_value  # todo wish_value in pub muss undefiniert werden
+            if pub.announcements[player_index] != (2 if pos == -2 else 1 if pos >= -1 else 0):
+                raise ValueError(f"Partie {r.game_id}, Runde {r.round_index}: Tichu-Ansage von Spieler {player_index} ist falsch: {pub.announcements[player_index]} != {2 if pos == -2 else 1 if pos >= -1 else 0}")
+
         assert pub.dragon_recipient == r.dragon_recipient
-        assert pub.is_double_victory == r.is_double_victory
+
+        if pub.is_double_victory != bool(r.is_double_victory):
+            raise ValueError(f"Partie {r.game_id}, Runde {r.round_index}: Doppelsieg ist falsch: {pub.is_double_victory} != {r.is_double_victory}")
+
         assert score == r.score
         assert pub.winner_index == r.winner_index
         assert pub.loser_index == r.loser_index

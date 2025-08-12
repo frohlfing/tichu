@@ -7,7 +7,7 @@ from typing import Tuple
 
 from src.players.agent import Agent
 from src.lib.cards import Cards
-from src.lib.combinations import Combination, CombinationType
+from src.lib.combinations import Combination, CombinationType, build_action_space
 
 # Annahme: Diese Funktionen existieren in einem data_processing Modul
 from src.data_processing.vectorization import create_feature_vector
@@ -48,7 +48,7 @@ class NNetAgent(Agent):
         # `build_action_space` wird von der GameEngine aufgerufen und das Ergebnis
         # wird hierher übergeben. Nehmen wir an, es ist in `self.pub.action_space`
         # oder wird direkt als Parameter übergeben.
-        # Für das Beispiel nehmen wir an, der `action_space` ist verfügbar.
+        # Für das Beispiel nehmen wir an, der `action_space` verfügbar ist.
         action_space = build_action_space(self.priv.combinations, self.pub.trick_combination, self.pub.wish_value)
 
         best_action = None

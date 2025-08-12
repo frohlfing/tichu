@@ -7,6 +7,9 @@ Dieses Skript spielt eine auf der Brettspielwelt gespielte Partie nach und gibt 
 import argparse
 import os
 from datetime import datetime
+
+from tqdm import tqdm
+
 from src import config
 from src.lib.bsw.database import BSWDatabase
 from src.lib.bsw.replay import replay_play
@@ -29,14 +32,17 @@ def main(args: argparse.Namespace):
 
     time_start = time()
     c = 0
-    for game in db.games():
-        if c > 1000:
-            break
-        c += 1
+    for game in tqdm(db.games(), total=db.count(), unit=" Datei", desc="Spiele Partien"):
+        #if game[0].game_id < 3114:
+        #    continue
+        #if c > 1000:
+        #    break
         for action in replay_play(game):
-            print(action)
+            c += 1
+            #print(action)
     delay = time() - time_start
     print(f"delay={delay * 1000:.6f} ms")
+    print(f"c={c}")
 
 
 if __name__ == "__main__":

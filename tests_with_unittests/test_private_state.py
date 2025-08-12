@@ -97,7 +97,7 @@ class TestPrivateState(unittest.TestCase):
         self.priv._hand = cards
         self.pub._number_of_cards = [1, 14, 14, 14]
         self.pub.current_turn_index = 0
-        self.assertEqual(0, self.pub.wish_value)
+        self.assertEqual(-1, self.pub.wish_value)
         self.priv.play(combi)
         self.pub.play(combi)
         self.pub.set_wish(4)

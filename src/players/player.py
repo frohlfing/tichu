@@ -125,7 +125,7 @@ class Player:
         Die Engine ruft diese Methode nur auf, wenn der Spieler sich einen Kartenwert wünschen muss.
         Die Bedingung ist::
             pub.current_turn_index == priv.player_index and
-            pub.wish_value == 0 and
+            pub.wish_value == -1 and
             (1,0) in pub.trick_cards
 
         Die Engine verlässt sich darauf, dass die Antwort valide ist.
