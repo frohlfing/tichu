@@ -8,24 +8,22 @@ import argparse
 import os
 from datetime import datetime
 from src import config
-from src.lib.bsw.database import BSWDatabase
+from src.lib.bsw.db_import import import_logfiles
 
 
 def main(args: argparse.Namespace):
-    """Main-Routine"""
     # Argumente auswerten
     y1, m1 = map(int, args.ym1.split("-"))
     y2, m2 = map(int, args.ym2.split("-"))
     path = args.path # Pfad zu den heruntergeladenen Log-Archiven
     database = args.database # SQLite-Datenbankdatei
-    db = BSWDatabase(database)
 
-    # Aktualisierung starten
+    # Import starten
     print(f"Ab Datum: {y1:04d}-{m1:02d}")
     print(f"Bis Datum: {y2:04d}-{m2:02d}")
     print(f"Zip-Archiven: {path}")
     print(f"SQLite-Datenbank: {database}")
-    db.import_logfiles(path, y1, m1, y2, m2)
+    import_logfiles(database, path, y1, m1, y2, m2)
     print("fertig")
 
 

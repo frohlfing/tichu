@@ -1,18 +1,22 @@
 """
-Replay-Simulator für die Brettspielwelt-Datenbank
+Replay-Simulator für die Tichu-Datenbank
 """
 
-__all__ =  "replay_play"
+__all__ =  "replay_simulator"
 
-from src.lib.bsw.validate import BSWDataset
+import os
+
+from src import config
+from src.lib.bsw.database import GameEntity
 from src.lib.cards import Cards, CARD_MAH, sum_card_points, is_wish_in
 from src.lib.combinations import Combination, CombinationType, get_trick_combination
 from src.public_state import PublicState
 from src.private_state import PrivateState
-from typing import List, Tuple, Generator
+from typing import Tuple, Generator
+import io
 
 
-def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateState, Tuple[Cards, Combination]]]:
+def replay_simulator(game: GameEntity) -> Generator[Tuple[PublicState, PrivateState, Tuple[Cards, Combination]]]:
     """
     Spielt eine auf der Brettspielwelt gespielte Partie nach und gibt jeden Entscheidungspunkt für das Ausspielen der Karten zurück.
 
@@ -21,12 +25,11 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
     """
 
     # Spielzustand initialisieren
-    r = game[0]
-    pub = PublicState(table_name=f"BSW Replay {r.game_id}", player_names=r.player_names, is_running=True)
+    pub = PublicState(table_name=f"BSW Replay {game.id}", player_names=[p.name for p in game.players], is_running=True)
     privs = [PrivateState(player_index=i) for i in range(4)]
 
     # Partie spielen
-    for r in game:
+    for r in game.rounds:
         # Neue Runde...
 
         # Status für eine neue Runde zurücksetzen
@@ -43,7 +46,16 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
         for player_index in range(4):
             priv = privs[player_index]
             announcement = r.tichu_positions[player_index] == -2
-            # todo yield pub, priv, announcement
+            # todo Entscheidungspunkt für "announce_grand_tichu" ausliefern
+            #  yield pub, priv, announcement
+            #  Überlegung:
+            #  In der Projektdoku steht: "Laut offiziellem Regelwerk kann ein einfaches Tichu schon vor und während des Schupfens angesagt werden.
+            #  Fairerweise müssen dann aber alle Spieler die Möglichkeit haben, ihre Schupfkarten noch einmal zu wählen.
+            #  Aber das ist offiziell nicht geregelt und auch lästig für alle. Daher die Regel: Einfaches Tichu erst nach dem Schupfen."
+            #  Folge: Diese Fälle im Datensatz als neuen "Fehler ANNOUNCEMENT_PREMATURE" definieren und überspringen.
+            #  Aber dieser Fall ist noch nicht definitiv entschieden.
+            #  Neuer Gedanke: ANNOUNCEMENT_PREMATURE sollte auch zutreffen, wenn jemand Tichu ansagt und danach passt.
+            #  Das bringt nichts, er hätte noch warten können! Oder bringt es doch was, was ich nicht sehe?
             if announcement:
                 pub.announcements[player_index] = 2
 
@@ -57,7 +69,8 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
             priv = privs[player_index]
             if not pub.announcements[player_index]:
                 announcement = r.tichu_positions[player_index] == -1
-                # todo yield pub, priv, announcement
+                # todo Entscheidungspunkt für "announce_tichu" ausliefern
+                #  yield pub, priv, announcement
                 if announcement:
                     pub.announcements[player_index] = 1
 
@@ -65,7 +78,8 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
         for player_index in range(4):
             priv = privs[player_index]
             schupf_cards = r.schupf_hands[player_index]
-            # todo yield pub, priv, (schupf_cards[0], schupf_cards[1], schupf_cards[2])
+            # todo Entscheidungspunkt für "schupf" ausliefern
+            #  yield pub, priv, (schupf_cards[0], schupf_cards[1], schupf_cards[2])
             pub.count_hand_cards[player_index] = 11
             priv.given_schupf_cards = schupf_cards[0], schupf_cards[1], schupf_cards[2]
             priv.hand_cards = [card for card in priv.hand_cards if card not in priv.given_schupf_cards]
@@ -89,28 +103,36 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
 
         # Los geht's - das eigentliche Spiel kann beginnen.
         pub.current_turn_index = pub.start_player_index
+
         for history_index, (current_player_index, cards, trick_collector_index) in enumerate(r.history):
             combination = get_trick_combination(cards, pub.trick_combination[2])
-
-            # Das Zugrecht kann durch eine Bombe erobert werden.
-            if combination[0] == CombinationType.BOMB:
-                pub.current_turn_index = current_player_index
-            assert current_player_index == pub.current_turn_index
+            priv = privs[pub.current_turn_index]
 
             # Tichu-Ansage abfragen (falls noch alle mitspielen, und falls noch alle Karten auf der Hand sind und noch nichts angesagt wurde)
             for player_index in range(4):
                 if pub.count_hand_cards[player_index] == 14 and not pub.announcements[player_index]:
                     priv = privs[player_index]
                     announcement = r.tichu_positions[player_index] == history_index
-                    # todo if pub.winner_index == -1:
+                    # todo Entscheidungspunkt für "announce_tichu" ausliefern
                     #  yield pub, priv, announcement
                     if announcement:
                         pub.announcements[player_index] = 1
 
             # Spielzug durchführen
-            priv = privs[pub.current_turn_index]
             action = cards, combination
-            yield pub, priv, action  # Entscheidungspunkt "play" ausliefern  # todo nur bei regulären Zug, wenn keine Bombe dazwischengeworfen wurde
+
+            # todo Für alle Spieler, die eine Bombe haben, Entscheidungspunkt "bomb" liefern
+            #  yield pub, priv, action
+
+            # Das Zugrecht kann durch eine Bombe erobert werden.
+            if current_player_index != pub.current_turn_index:
+                assert combination[0] == CombinationType.BOMB
+                pub.current_turn_index = current_player_index
+                priv = privs[pub.current_turn_index]
+            else:
+                assert current_player_index == pub.current_turn_index
+                # Entscheidungspunkt "play" ausliefern
+                yield pub, priv, action
 
             # todo tricks kann raus aus dem Spielstatus - der Status ist eine Momentaufnahme (inkl. aktuellen Stich, aber weiter zurück nicht)
             if pub.trick_owner_index == -1:  # neuer Stich?
@@ -165,13 +187,15 @@ def replay_play(game: List[BSWDataset]) -> Generator[Tuple[PublicState, PrivateS
 
                 # Falls ein MahJong ausgespielt wurde, darf ein Wunsch geäußert werden.
                 if not pub.is_round_over and CARD_MAH in cards:
+                    # todo Entscheidungspunkt für "wish" ausliefern
                     pub.wish_value = r.wish_value
 
             if trick_collector_index != -1:
                 # Stich kassieren
                 if pub.trick_combination == (CombinationType.SINGLE, 1, 15) and not pub.is_double_victory:  # Drache kassiert? Muss verschenkt werden, wenn kein Doppelsieg!
                     # Stich verschenken
-                    # todo yield pub, priv, trick_collector_index  # give_dragon_away
+                    # todo Entscheidungspunkt für "give_dragon_away" ausliefern
+                    #  yield pub, priv, trick_collector_index
                     pub.dragon_recipient = trick_collector_index
                 # Punkte erhalten
                 pub.points[trick_collector_index] += pub.trick_points

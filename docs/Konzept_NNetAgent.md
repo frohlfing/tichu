@@ -239,7 +239,7 @@ Der Output des Value-Netzes hat ein Label. Es ist die Punkte-Differenz der beide
 also ein kontinuierlicher Zahlenwert (Float, Skalar).
 
 Das Netz ordnet dem Input einen kontinuierlichen numerischen Wert zu. Dies ist eine **Regression**. 
-Ich brauche daher die `lineare` Aktivierungsfunktion.
+Ich verwende daher die `lineare` Aktivierungsfunktion.
 
 #### 4.2.1 Interpretation
 
@@ -423,14 +423,10 @@ Ausgewogenheit der Daten:
 *   Team31 schupft nach Regel "rechts gerade, links ungerade" bzw. "rechts ungerade, links gerade"
 
 Spieloptionen:
-*   Wunsch wurde nicht geäußert, obwohl Mahjong gespielt wurde
 *   Einfaches Tichu angesagt während des Schupfens
 *   Zwei Tichu-Ansagen aus einem Team (großes + großes)
 *   Zwei Tichu-Ansagen aus einem Team (großes + einfaches) 
 *   Zwei Tichu-Ansagen aus einem Team (einfaches + einfaches)
-
-Inhaltliche Fehler:
-*   Regelbrüche (welcher Fehler hat der Replay-Simulator entdeckt?) 
  
 Gute Spieler finden 
 *   Finde die Spieler mit viel Spielerfahrung

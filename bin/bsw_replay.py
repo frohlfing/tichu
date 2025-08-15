@@ -7,23 +7,19 @@ Dieses Skript spielt eine auf der Brettspielwelt gespielte Partie nach und gibt 
 import argparse
 import os
 from datetime import datetime
-
-from tqdm import tqdm
-
 from src import config
-from src.lib.bsw.database import BSWDatabase
-from src.lib.bsw.replay import replay_play
-from src.lib.cards import stringify_cards
+from src.lib.bsw.database import TichuDatabase
+from src.lib.bsw.replay import replay_simulator
 from time import time
+from tqdm import tqdm
 
 
 def main(args: argparse.Namespace):
-    """Main-Routine"""
     # Argumente auswerten
     y1, m1 = map(int, args.ym1.split("-"))
     y2, m2 = map(int, args.ym2.split("-"))
     database = args.database # SQLite-Datenbankdatei
-    db = BSWDatabase(database)
+    db = TichuDatabase(database)
 
     # Simulation starten
     print(f"Ab Datum: {y1:04d}-{m1:02d}")
@@ -37,7 +33,7 @@ def main(args: argparse.Namespace):
         #    continue
         #if c > 1000:
         #    break
-        for action in replay_play(game):
+        for action in replay_simulator(game):
             c += 1
             #print(action)
     delay = time() - time_start

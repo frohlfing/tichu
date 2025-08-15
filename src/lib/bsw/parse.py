@@ -2,7 +2,7 @@
 Parsen der vom Spiele-Portal "Brettspielwelt" heruntergeladenen Tichu-Logdateien.
 """
 
-__all__ = "BSWLog", "BSWLogEntry", "BSWParserError", "parse_logfile",
+__all__ = "BSWParserError", "BSWLog", "BSWLogEntry", "parse_logfile",
 
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional

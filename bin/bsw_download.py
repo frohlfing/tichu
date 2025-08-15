@@ -15,7 +15,6 @@ from src.lib.bsw.download import download_logfiles
 
 
 def main(args: argparse.Namespace):
-    """Main-Routine"""
     # Argumente auswerten
     y1, m1 = map(int, args.ym1.split("-"))
     y2, m2 = map(int, args.ym2.split("-"))

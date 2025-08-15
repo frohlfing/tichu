@@ -109,6 +109,8 @@ Zusatzregeln und Unterschiede zum offiziellen Regelwerk:
 * Um auch beim **Phönix als Einzelkarte** ganzzahlige Ränge zu haben, wird gerundet (ist für das Spiel egal):   
     *   Vor dem Ausspielen ist der Rang 15 (schlägt das Ass, aber nicht den Drachen). 
     *   Nach dem Ausspielen ist der Rang wie die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.
+* Laut englischen Tichu‑Regeln nach Chris Mellor / Aaron D. Fungi bestimmt der ausspielende Spieler, wo der Phönix einsortiert wird.
+  Diese Implementierung fragt NICHT den Spieler! Falls der Phönix keine eindeutige Position in der Kartenkombination hat, wird automatisch der höhere Rang gewählt. 
 
 ### 2.3 Sonderfälle
 
@@ -117,7 +119,7 @@ Diese Punkte stammen aus dem offiziellen Regelwerk:
 *   **Kein Vierling:** Es gibt keinen Vierling, daher ist ein Drilling mit Phönix nicht möglich.
 *   **Full House Restriktion:** Ein Fullhouse darf nicht aus einer 4er-Bombe mit Phönix gebildet werden (Drilling und Pärchen dürfen nicht den gleichen Rang haben).
 *   **Wunscherfüllung:** Der Wunsch muss zwar erfüllt werden, wenn man am Zug ist (sofern möglich), aber nicht in dem Moment, wenn man eine Bombe wirft. 
-*   **Phönix als Einzelkarte**: 
+* **Phönix als Einzelkarte**: 
     *   Vor dem Ausspielen ist der Rang 14.5 (schlägt das Ass, aber nicht den Drachen). 
     *   Nach dem Ausspielen ist der Rang 0.5 höher als die gestochene Karte. Im Anspiel (erste Karte im Stich) hat der Phönix den Rang 1.5.
 
@@ -954,6 +956,17 @@ Zur Dokumentation von JavaScript wird [JSDoc](https://jsdoc.app/) angewendet.
 | **Funktion** / **Klassenmethode**        | `snake_case()` |
 | **Variable** / **Parameter**             | `snake_case()` |
 | **Konstante**                            | `UPPER_CASE`   |
+
+#### Datenbank
+
+| Objekt                                | Namensschema                                                                         |
+|---------------------------------------|--------------------------------------------------------------------------------------|
+| **Tabelle**                           | snake_case, plural (z.B. `players`)                                                  |
+| **Zuordnungstabelle** (Pivot-Tabelle) | Tabellennamen alphabetisch sortiert, mit Unterstrich getrennt (z.B. `games_players`) |
+| **Spalte**                            | snake_case                                                                           |
+| **Primary Key**                       | `id`                                                                                 |
+| **Foreign Key**                       | Singular der Fremd-Tabelle + `_id`                                                   |
+| **Index**                             | `idx_<table>_<column(s)>]`                                                           | |
 
 #### Web-Frontend
 
