@@ -29,11 +29,13 @@ def main(args: argparse.Namespace):
     time_start = time()
     c = 0
     for game in tqdm(db.games(), total=db.count(), unit=" Datei", desc="Spiele Partien"):
+        #if game.error_code:
+        #    continue
         #if game[0].game_id < 3114:
         #    continue
         #if c > 1000:
         #    break
-        for action in replay_simulator(game):
+        for _action in replay_simulator(game):
             c += 1
             #print(action)
     delay = time() - time_start

@@ -29,16 +29,12 @@ def import_logfiles(database: str, path: str, y1: int, m1: int, y2: int, m2: int
     db.open()
 
     # Aktualisierung starten
-    log_file_counter = 0
     try:
         progress_bar = tqdm(logfiles(path, y1, m1, y2, m2), total=count_logfiles(path, y1, m1, y2, m2), unit=" Datei", desc="Importiere Log-Dateien")
-        logfiles_total = 0
+        logfile_counter = 0
         games_fails = 0
         games_empty = 0
         for game_id, year, month, content in progress_bar:
-            # Logdateien zählen
-            logfiles_total += 1
-
             # Parsen
             bsw_log = parse_logfile(game_id, year, month, content)
             if len(bsw_log) > 0:
@@ -55,21 +51,26 @@ def import_logfiles(database: str, path: str, y1: int, m1: int, y2: int, m2: int
                 games_empty += 1
 
             # Transaktion alle 1000 Dateien committen
-            log_file_counter += 1
-            if log_file_counter % 1000 == 0:
-                progress_bar.set_postfix_str(f"Commit DB...")
+            logfile_counter += 1
+            if logfile_counter % 1000 == 0:
                 db.commit()
 
             # Fortschritt aktualisieren
             progress_bar.set_postfix({
-                "Logdateien": logfiles_total,
+                "Logdateien": logfile_counter,
                 "Leere": games_empty,
                 "Fehler": games_fails,
                 "Datei": f"{year:04d}{month:02d}/{game_id}.tch"
             })
 
+        # Transaktion abschliessen.
+        db.commit()
+
         # Indizes erst am Ende einrichten, damit der Import schneller durchläuft.
         db.create_indexes()
+
+        # Aggregierte Felder aktualisieren.
+        db.update_aggregated_fields()
 
     # Alle verbleibenden Änderungen speichern und Datenbank schließen.
     finally:

@@ -4,16 +4,12 @@ Replay-Simulator für die Tichu-Datenbank
 
 __all__ =  "replay_simulator"
 
-import os
-
-from src import config
 from src.lib.bsw.database import GameEntity
 from src.lib.cards import Cards, CARD_MAH, sum_card_points, is_wish_in
 from src.lib.combinations import Combination, CombinationType, get_trick_combination
 from src.public_state import PublicState
 from src.private_state import PrivateState
 from typing import Tuple, Generator
-import io
 
 
 def replay_simulator(game: GameEntity) -> Generator[Tuple[PublicState, PrivateState, Tuple[Cards, Combination]]]:
@@ -44,7 +40,7 @@ def replay_simulator(game: GameEntity) -> Generator[Tuple[PublicState, PrivateSt
 
         # Möchte der Spieler ein großes Tichu ansagen?
         for player_index in range(4):
-            priv = privs[player_index]
+            #priv = privs[player_index]
             announcement = r.tichu_positions[player_index] == -2
             # todo Entscheidungspunkt für "announce_grand_tichu" ausliefern
             #  yield pub, priv, announcement
@@ -66,7 +62,7 @@ def replay_simulator(game: GameEntity) -> Generator[Tuple[PublicState, PrivateSt
 
         # Falls noch nichts angesagt wurde, darf ein einfaches Tichu angesagt werden.
         for player_index in range(4):
-            priv = privs[player_index]
+            #priv = privs[player_index]
             if not pub.announcements[player_index]:
                 announcement = r.tichu_positions[player_index] == -1
                 # todo Entscheidungspunkt für "announce_tichu" ausliefern

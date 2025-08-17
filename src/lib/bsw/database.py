@@ -7,11 +7,11 @@ Entitäten (GameEntity, etc.) und dem normalisierten Datenbankschema.
 __all__ = "deserialize_cards", "deserialize_history", "update_elo", "TichuDatabase", "GameEntity", "RoundEntity", "PlayerEntity", "ETLErrorCode"
 
 import enum
-import numpy as np
 import os
 import sqlite3
 from dataclasses import dataclass, field
 from src.lib.cards import Cards, parse_card, stringify_card
+from tqdm import tqdm
 from typing import List, Tuple, Generator, Optional
 
 
@@ -219,15 +219,12 @@ class PlayerEntity:
     :ivar elo: Die Elo-Zahl (Spielstärke) des Spielers.
     :ivar num_games: Anzahl der gespielten Partien.
     :ivar num_rounds: Anzahl der gespielten Runden.
-    :ivar grand_tichu_rate: Wie oft sagt der Spieler Grand-Tichu an?
     :ivar grand_tichu_success_rate: Wie oft gewinnt er sein großes Tichu?
-    :ivar tichu_rate: Wie oft sagt der Spieler ein einfaches Tichu an?
     :ivar tichu_success_rate: Wie oft gewinnt er sein einfaches Tichu?
     :ivar tichu_suicidal_rate: Wie oft hat der Spieler Tichu angesagt, obwohl bereits ein Mitspieler fertig war?
     :ivar tichu_premature_rate: Wie oft hat der Spieler Tichu angesagt, ohne direkt danach Karten auszuspielen?
     :ivar games_win_rate: Wie oft gewinnt er eine Partie?
-    :ivar avg_score_diff_per_round: Durchschnittliche Punktedifferenz pro Runde.
-    :ivar std_score_diff_per_round: Standardabweichung der Punktedifferenz pro Runde.
+    :ivar avg_score_diff: Durchschnittliche Punktedifferenz einer Runde.
     """
     id: int = 0  # wird beim Speichern generiert, wenn 0
     name: str = ""
@@ -235,15 +232,12 @@ class PlayerEntity:
     elo: float = 1500.0
     num_games: int = 0
     num_rounds: int = 0
-    grand_tichu_rate: float = 0.0
     grand_tichu_success_rate: float = 0.0
-    tichu_rate: float = 0.0
     tichu_success_rate: float = 0.0
     tichu_suicidal_rate: float = 0.0
     tichu_premature_rate: float = 0.0
     games_win_rate: float = 0.0
-    avg_score_diff_per_round: float = 0.0
-    std_score_diff_per_round: float = 0.0
+    avg_score_diff: float = 0.0
 
 
 @dataclass
@@ -320,16 +314,8 @@ class GameEntity:
     :ivar error_code: ETL-Fehlercode (0 == kein Fehler).
     :ivar total_score: Endergebnis (Team20, Team31).
     :ivar num_rounds: Anzahl der gespielten Runden in dieser Partie.
-    :ivar num_tricks: Anzahl der Stiche insgesamt in dieser Partie.
     :ivar avg_tricks_per_round: Durchschnittliche Anzahl Stiche pro Runde.
-    :ivar std_tricks_per_round: Standardabweichung der Stiche pro Runde.
-    :ivar min_tricks_in_round: Minimale Anzahl Stiche in einer Runde.
-    :ivar max_tricks_in_round: Maximale Anzahl Stiche in einer Runde.
-    :ivar num_turns: Anzahl der Spielzüge insgesamt in dieser Partie.
     :ivar avg_turns_per_round: Durchschnittliche Anzahl Spielzüge pro Runde.
-    :ivar std_turns_per_round: Standardabweichung der Spielzüge pro Runde.
-    :ivar min_turns_in_round: Minimale Anzahl Spielzüge in einer Runde.
-    :ivar max_turns_in_round: Maximale Anzahl Spielzüge in einer Runde.
     """
     id: int = 0  # wird beim Speichern generiert, wenn 0
     players: List[PlayerEntity] = field(default_factory=lambda: [PlayerEntity(), PlayerEntity(), PlayerEntity(), PlayerEntity()])
@@ -341,16 +327,8 @@ class GameEntity:
     # Aggregierte Daten (werden beim Speichern automatisch berechnet)
     total_score: Tuple[int, int] = (0, 0)
     num_rounds: int = 0
-    num_tricks: int = 0
     avg_tricks_per_round: float = 0.0
-    std_tricks_per_round: float = 0.0
-    min_tricks_in_round: int = 0
-    max_tricks_in_round: int = 0
-    num_turns: int = 0
     avg_turns_per_round: float = 0.0
-    std_turns_per_round: float = 0.0
-    min_turns_in_round: int = 0
-    max_turns_in_round: int = 0
     
     
 class TichuDatabase:
@@ -389,6 +367,7 @@ class TichuDatabase:
         db_exists = os.path.exists(self._database)
         os.makedirs(os.path.dirname(self._database), exist_ok=True)
         self._conn = sqlite3.connect(self._database)
+        self._conn.row_factory = sqlite3.Row  # um auf die Spalten per Name zugreifen zu können
 
         # Tabellen einrichten
         if not db_exists:
@@ -434,44 +413,31 @@ class TichuDatabase:
         player_cursor = self.cursor()
         try:
             # Alle fehlerfreien Partien abfragen
-            game_cursor.execute("""
-                SELECT *
-                FROM games
-                WHERE error_code = 0
-                ORDER BY id
-            """)
-            game_columns = [desc[0] for desc in game_cursor.description]
-            round_columns = [desc[0] for desc in round_cursor.execute("SELECT * FROM rounds LIMIT 1").description]
-            player_columns = [desc[0] for desc in round_cursor.execute("SELECT * FROM players LIMIT 1").description]
-            for game_row in game_cursor:
-                g = dict(zip(game_columns, game_row))  # todo geht das nicht auch anders?
-
+            game_cursor.execute("SELECT * FROM games WHERE error_code = 0 ORDER BY id")
+            for g in game_cursor:
                 # Hole die Start-Spieler der Partie
                 player_cursor.execute("""
                     SELECT p.* 
-                    FROM players p
-                    JOIN games_players gp ON p.id = gp.player_id
+                    FROM players AS p
+                    INNER JOIN games_players AS gp ON p.id = gp.player_id
                     WHERE gp.game_id = ? 
                     ORDER BY gp.player_index
                 """, (g["id"],))
                 players = []
-                for player_row in player_cursor.fetchall():
-                    p = dict(zip(player_columns, player_row))
+                for p in player_cursor.fetchall():
                     players.append(PlayerEntity(
                         id=p["id"],
                         name=p["name"],
+                        # Aggregierte Daten
                         elo=p["elo"],
                         num_games=p["num_games"],
                         num_rounds=p["num_rounds"],
-                        grand_tichu_rate=p["grand_tichu_rate"],
                         grand_tichu_success_rate=p["grand_tichu_success_rate"],
-                        tichu_rate=p["tichu_rate"],
                         tichu_success_rate=p["tichu_success_rate"],
                         tichu_suicidal_rate=p["tichu_suicidal_rate"],
                         tichu_premature_rate=p["tichu_premature_rate"],
                         games_win_rate=p["games_win_rate"],
-                        avg_score_diff_per_round=p["avg_score_diff_per_round"],
-                        std_score_diff_per_round=p["std_score_diff_per_round"],
+                        avg_score_diff=p["avg_score_diff"],
                     ))
 
                 game = GameEntity(
@@ -484,25 +450,36 @@ class TichuDatabase:
                     # Aggregierte Daten
                     total_score=g["total_score"],
                     num_rounds=g["num_rounds"],
-                    num_tricks=g["num_tricks"],
                     avg_tricks_per_round=g["avg_tricks_per_round"],
-                    std_tricks_per_round=g["std_tricks_per_round"],
-                    min_tricks_in_round=g["min_tricks_in_round"],
-                    max_tricks_in_round=g["max_tricks_in_round"],
-                    num_turns=g["num_turns"],
                     avg_turns_per_round=g["avg_turns_per_round"],
-                    std_turns_per_round=g["std_turns_per_round"],
-                    min_turns_in_round=g["min_turns_in_round"],
-                    max_turns_in_round=g["max_turns_in_round"],
                 )
 
                 # Alle Rundendaten der Partie abfragen
                 round_cursor.execute("SELECT * FROM rounds WHERE game_id = ? ORDER BY id", (g["id"],))
-                for round_row in round_cursor:
-                    r = dict(zip(round_columns, round_row))
-
-                    # todo: Hier muss man noch die Spieler pro Runde holen, falls Spielerwechsel modelliert werden sollen.
-                    #  Da wir sie hier aber filtern, können wir die Startspieler annehmen.
+                for r in round_cursor:
+                    # Hole die neuen Spieler, falls ein Spielerwechsel stattfand.
+                    if g["player_changed"]:
+                        player_cursor.execute("""
+                            SELECT p.*, s.player_index 
+                            FROM players AS p
+                            INNER JOIN swaps AS s ON p.id = s.player_id
+                            WHERE s.round_id = ?
+                        """, (r["id"],))
+                        for p in player_cursor.fetchall():
+                            players[p["player_index"]] = PlayerEntity(
+                                id=p["id"],
+                                name=p["name"],
+                                # Aggregierte Daten
+                                elo=p["elo"],
+                                num_games=p["num_games"],
+                                num_rounds=p["num_rounds"],
+                                grand_tichu_success_rate=p["grand_tichu_success_rate"],
+                                tichu_success_rate=p["tichu_success_rate"],
+                                tichu_suicidal_rate=p["tichu_suicidal_rate"],
+                                tichu_premature_rate=p["tichu_premature_rate"],
+                                games_win_rate=p["games_win_rate"],
+                                avg_score_diff=p["avg_score_diff"],
+                            )
 
                     game.rounds.append(RoundEntity(
                         game_id=r["game_id"],
@@ -546,8 +523,8 @@ class TichuDatabase:
         cursor = self.cursor()
         try:
             cursor.execute("SELECT count(*) FROM games WHERE error_code = 0")
-            result = cursor.fetchone()
-            total = result[0] if result else 0
+            row = cursor.fetchone()
+            total = row[0] if row else 0
         finally:
             self.close()
         return total
@@ -572,16 +549,8 @@ class TichuDatabase:
                 total_score_20              INTEGER,            -- Endergebnis Team 20
                 total_score_31              INTEGER,            -- Endergebnis Team 31
                 num_rounds                  INTEGER,            -- Anzahl der gespielten Runden
-                num_tricks                  INTEGER,            -- Anzahl der Stiche insgesamt
                 avg_tricks_per_round        REAL,               -- Durchschnittliche Anzahl Stiche pro Runde
-                std_tricks_per_round        REAL,               -- Standardabweichung der Stiche pro Runde
-                min_tricks_in_round         INTEGER,            -- Minimale Anzahl Stiche in einer Runde
-                max_tricks_in_round         INTEGER,            -- Maximale Anzahl Stiche in einer Runde
-                num_turns                   INTEGER,            -- Anzahl der Spielzüge insgesamt
-                avg_turns_per_round         REAL,               -- Durchschnittliche Anzahl Spielzüge pro Runde
-                std_turns_per_round         REAL,               -- Standardabweichung der Spielzüge pro Runde
-                min_turns_in_round          INTEGER,            -- Minimale Anzahl Spielzüge in einer Runde
-                max_turns_in_round          INTEGER             -- Maximale Anzahl Spielzüge in einer Runde
+                avg_turns_per_round         REAL                -- Durchschnittliche Anzahl Spielzüge pro Runde
             );
         """)
 
@@ -623,8 +592,8 @@ class TichuDatabase:
                 error_code                  INTEGER NOT NULL,   -- Fehlercode der Runde (0 == kein Fehler)
                 error_context               TEXT,               -- Betroffener Abschnitt aus der Quelle (NULL, wenn kein Fehler)
                 -- Aggregierte Daten
-                num_tricks                  INTEGER NOT NULL,   -- Anzahl der Stiche in dieser Runde
-                num_turns                   INTEGER NOT NULL,    -- Anzahl der Spielzüge in dieser Runde
+                num_tricks                  INTEGER,            -- Anzahl der Stiche in dieser Runde
+                num_turns                   INTEGER,            -- Anzahl der Spielzüge in dieser Runde
                 FOREIGN KEY (game_id)       REFERENCES games(id)
             );
         """)
@@ -640,16 +609,13 @@ class TichuDatabase:
                 -- -- Aggregierte Daten                         
                 elo                         REAL,               -- Elo-Zahl des Spielers
                 num_games                   INTEGER,            -- Anzahl der gespielten Partien
-                num_rounds                  INTEGER,            -- Anzahl der gespielten Runden
-                grand_tichu_rate            REAL,               -- Wie oft sagt der Spieler Grand-Tichu an?
-                grand_tichu_success_rate    REAL,               -- Wie oft gewinnt er sein großes Tichu?
-                tichu_rate                  REAL,               -- Wie oft sagt der Spieler ein einfaches Tichu an?
-                tichu_success_rate          REAL,               -- Wie oft gewinnt er sein einfaches Tichu?
+                num_rounds                  INTEGER,            -- Anzahl der gespielten RundenTichu an?
+                grand_tichu_success_rate    REAL,               -- Wie oft gewinnt er ein großes Tichu?
+                tichu_success_rate          REAL,               -- Wie oft gewinnt er ein einfaches Tichu?
                 tichu_suicidal_rate         REAL,               -- Wie oft hat der Spieler Tichu angesagt, obwohl bereits ein Mitspieler fertig war?
                 tichu_premature_rate        REAL,               -- Wie oft hat der Spieler Tichu angesagt, ohne direkt danach Karten auszuspielen?
                 games_win_rate              REAL,               -- Wie oft gewinnt er eine Partie?
-                avg_score_diff_per_round    REAL,               -- Durchschnittliche Punktedifferenz pro Runde
-                std_score_diff_per_round    REAL,               -- Standardabweichung der Punktedifferenz pro Runde
+                avg_score_diff              REAL                -- Durchschnittliche Punktedifferenz einer Runde
             );
         """)
 
@@ -659,33 +625,35 @@ class TichuDatabase:
         # Namenskonvention: Pluralform der Tabellenname in alphabetischer Reihenfolge, mit Unterstrich getrennt
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS games_players (
+                id                          INTEGER PRIMARY KEY AUTOINCREMENT,
                 game_id                     INTEGER NOT NULL,
                 player_id                   INTEGER NOT NULL,
                 player_index                INTEGER NOT NULL,
-                PRIMARY KEY (game_id, player_id),
                 FOREIGN KEY (game_id)       REFERENCES games(id),
                 FOREIGN KEY (player_id)     REFERENCES players(id)
             );
         """)
 
         cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_games_players_game_id_player_index ON games_players (game_id, player_index);")
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_games_players_player_id_game_id ON games_players (player_id, game_id);")
 
         # Tabelle für Spielerwechsel
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS swaps (
                 id                          INTEGER PRIMARY KEY AUTOINCREMENT,
                 round_id                    INTEGER NOT NULL,
+                player_id                   INTEGER NOT NULL,
                 player_index                INTEGER NOT NULL,
                 old_player_id               INTEGER NOT NULL,
-                player_id                   INTEGER NOT NULL,
                 FOREIGN KEY (round_id)      REFERENCES rounds(id),
-                FOREIGN KEY (old_player_id) REFERENCES players(id),
-                FOREIGN KEY (player_id)     REFERENCES players(id)
+                FOREIGN KEY (player_id)     REFERENCES players(id),
+                FOREIGN KEY (old_player_id) REFERENCES players(id)
             );
         """)
 
-        # Sinnvoll? Oder sparen wir uns das, weil wir es eh nicht verwenden? Oder drin lassen für die Community?
         cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_swaps_round_id_player_index ON swaps (round_id, player_index);")
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_swaps_player_id_round_id ON swaps (player_id, round_id);")
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_swaps_old_player_id_round_id ON swaps (old_player_id, round_id);")
 
         # Mapping-Tabelle für Error-Codes
 
@@ -748,7 +716,9 @@ class TichuDatabase:
         # games
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_log_year_log_month   ON games (log_year, log_month);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_error_code           ON games (error_code);")
-        # todo Indezies für die Analyse-Felder hinzufügen
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_num_rounds           ON games (num_rounds);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_avg_tricks_per_round ON games (avg_tricks_per_round);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_avg_turns_per_round  ON games (avg_turns_per_round);")
 
         # rounds
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_rounds_num_bombs           ON rounds (num_bombs);")
@@ -767,20 +737,20 @@ class TichuDatabase:
 
         # players
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_elo                ON players (elo);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_num_games          ON players (num_games);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_num_rounds         ON players (num_rounds);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_grand_tichu_success_rate ON players (grand_tichu_success_rate);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_tichu_success_rate ON players (tichu_success_rate);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_tichu_suicidal_rate ON players (tichu_suicidal_rate);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_tichu_premature_rate ON players (tichu_premature_rate);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_games_win_rate     ON players (games_win_rate);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_avg_score_diff_per_round ON players (avg_score_diff_per_round);")
-        # todo Indezies für players anlegen
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_players_avg_score_diff     ON players (avg_score_diff);")
 
         # games_players
-        # todo sind diese Indezies für die FOREIGN-KEYs zu empfehlen? Oder unnötig?
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_players_game_id      ON games_players (game_id);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_players_player_id    ON games_players (player_id);")
+        # keine zusätzlichen Indizes nötig
 
         # swaps
-        # todo sind diese Indezies für die FOREIGN-KEYs zu empfehlen? Oder unnötig?
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_swaps_round_id             ON swaps (round_id);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_swaps_old_player_id        ON swaps (old_player_id);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_swaps_player_id            ON swaps (player_id);")
+        # keine zusätzlichen Indizes nötig
 
         self.commit()
 
@@ -796,6 +766,7 @@ class TichuDatabase:
         
         # Runden speichern
         for r in game.rounds:
+            r.game_id = game.id
             self._save_round_record(r)
 
         # Spieler speichern
@@ -804,19 +775,21 @@ class TichuDatabase:
         for p in game.players:
             self._save_player_record(p)
 
-        # Zuordnung Partie/Spieler speichern
+        # Zuordnung zwischen Partie und Spieler speichern
         for player_index in range(4):
-            self._save_game_player_record(game.id, player_index, game.players[player_index].id)
+            self._save_game_player_record(game.id, game.players[player_index].id, player_index)
 
         # Spielerwechsel speichern
-        players = game.players
+        old_players = game.players
         for r in game.rounds:
             for player_index in range(4):
-                if r.players[player_index].name != players[player_index].name:
-                    old_player_id = players[player_index].id
-                    player_id = r.players[player_index].id
-                    self._save_swap_record(r.id, player_index, old_player_id, player_id)
-            players = r.players
+                p = r.players[player_index]
+                if p.name == old_players[player_index].name:
+                    p.id = old_players[player_index].id
+                else:
+                    self._save_player_record(p)
+                    self._save_swap_record(r.id, p.id, player_index, old_players[player_index].id)
+            old_players = r.players
 
         return game.id
 
@@ -838,45 +811,18 @@ class TichuDatabase:
         else:
             row = None  # kein Unique-Key vorhanden, über den gesucht werden könnte
 
-        # Aggregierte Daten berechnen
-        g.total_score = (sum(r.score[0] for r in g.rounds),
-                         sum(r.score[1] for r in g.rounds))  # Endergebnis der Partie
-        g.num_rounds = len(g.rounds)  # Anzahl der gespielten Runden
-        # Statistische Angaben über die Stiche
-        tricks_per_round = [sum(1 for turn in r.history if turn[2] != -1) for r in g.rounds]
-        g.num_tricks = sum(tricks_per_round)
-        g.avg_tricks_per_round = g.num_tricks / g.num_rounds if g.num_rounds > 0 else 0.0
-        g.std_tricks_per_round = float(np.std(tricks_per_round, ddof=1)) if g.num_rounds > 0 else 0.0
-        g.min_tricks_in_round = min(tricks_per_round) if g.num_rounds > 0 else 0
-        g.max_tricks_in_round = max(tricks_per_round) if g.num_rounds > 0 else 0
-        # Statistische Angaben über die Spielzüge
-        turns_per_round = [len(r.history) for r in g.rounds]
-        g.num_turns = sum(turns_per_round)
-        g.avg_turns_per_round = g.num_turns / g.num_rounds if g.num_rounds > 0 else 0.0
-        g.std_turns_per_round = float(np.std(turns_per_round)) if g.num_rounds > 0 else 0.0
-        g.min_turns_in_round = min(turns_per_round) if g.num_rounds > 0 else 0
-        g.max_turns_in_round = max(turns_per_round) if g.num_rounds > 0 else 0
-
         # Datensatz speichern.
         if row:
             cursor.execute("""
                 UPDATE games SET
                     log_year=?, log_month=?,
                     player_changed=?,
-                    error_code=?,
-                    total_score_20=?, total_score_31=?,
-                    num_rounds=?,
-                    num_tricks=?, avg_tricks_per_round=?, std_tricks_per_round=?, min_tricks_in_round=?, max_tricks_in_round=?,
-                    num_turns=?, avg_turns_per_round=?, std_turns_per_round=?, min_turns_in_round=?, max_turns_in_round=?
+                    error_code=?
                 WHERE id = ?
                 """, (
                     g.year, g.month,
                     g.player_changed,
                     g.error_code.value,
-                    g.total_score[0], g.total_score[1],
-                    g.num_rounds,
-                    g.num_tricks, g.avg_tricks_per_round, g.std_tricks_per_round, g.min_tricks_in_round, g.max_tricks_in_round,
-                    g.num_turns, g.avg_turns_per_round, g.std_turns_per_round, g.min_turns_in_round, g.max_turns_in_round,
                     g.id,
             )
         )
@@ -886,22 +832,14 @@ class TichuDatabase:
                     id, 
                     log_year, log_month, 
                     player_changed, 
-                    error_code,
-                    total_score_20, total_score_31, 
-                    num_rounds,
-                    num_tricks, avg_tricks_per_round, std_tricks_per_round, min_tricks_in_round, max_tricks_in_round,
-                    num_turns, avg_turns_per_round, std_turns_per_round, min_turns_in_round, max_turns_in_round
+                    error_code
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?)
                 """, (
                     g.id if g.id else None,
                     g.year, g.month,
                     g.player_changed,
                     g.error_code.value,
-                    g.total_score[0], g.total_score[1],
-                    g.num_rounds,
-                    g.num_tricks, g.avg_tricks_per_round, g.std_tricks_per_round, g.min_tricks_in_round, g.max_tricks_in_round,
-                    g.num_turns, g.avg_turns_per_round, g.std_turns_per_round, g.min_turns_in_round, g.max_turns_in_round,
                 )
             )
             if not g.id:
@@ -919,7 +857,7 @@ class TichuDatabase:
         :param r: Die Runde.
         :return: Die ID der Runde in der Datenbank.
         """
-        # Unique-Key muss gesetzt sein.
+        # Die Felder für den Unique-Key müssen befüllt sein.
         if r.game_id is None:
             raise ValueError("`r.game_id` muss gesetzt sein.")
         if r.round_index is None:
@@ -936,16 +874,11 @@ class TichuDatabase:
             cursor.execute("SELECT id FROM rounds WHERE id = ?", (r.id,))
             row = cursor.fetchone()
         else:
-            # todo beim ersten großen Import dies auskommentieren und row = None setzen
             # Versuchen, die Datensatz-ID anhand des Unique-Keys zu ermitteln
             cursor.execute("SELECT id FROM rounds WHERE game_id = ? AND round_index = ?", (r.game_id, r.round_index))
             row = cursor.fetchone()
             if row:
                 r.id = row[0]
-
-        # Aggregierte Daten berechnen
-        num_tricks = sum(1 for turn in r.history if turn[2] != -1)  # Anzahl der Stiche
-        num_turns = len(r.history)  # Anzahl der Spielzüge
 
         # Datensatz speichern
         if row:
@@ -958,14 +891,13 @@ class TichuDatabase:
                     tichu_pos_0=?, tichu_pos_1=?, tichu_pos_2=?, tichu_pos_3=?,
                     tichu_suicidal=?, tichu_premature=?,
                     wish_value=?, 
-                    gift_relative_index=?, 
+                    dragon_giver=?, dragon_recipient=?, gift_relative_index=?, 
                     is_phoenix_low=?,
-                    winner_index=?, winner_position=?, score_diff=?, loser_index=?, 
+                    winner_index=?, winner_position=?, loser_index=?, 
                     is_double_victory=?, 
-                    score_20=?, score_31=?, 
+                    score_20=?, score_31=?, score_diff=?,
                     history=?,
-                    error_code=?, error_context=?,
-                    num_tricks=?, num_turns=?
+                    error_code=?, error_context=?
                 WHERE id = ?
                 """, (
                     r.game_id, r.round_index,
@@ -978,11 +910,10 @@ class TichuDatabase:
                     r.dragon_giver, r.dragon_recipient, r.gift_relative_index,
                     r.is_phoenix_low,
                     r.winner_index, r.winner_position, r.loser_index,
-                    int(r.is_double_victory),
+                    r.is_double_victory,
                     r.score[0], r.score[1], r.score_diff,
                     history_str,
                     r.error_code.value, r.error_context,
-                    num_tricks, num_turns,
                     r.id,
                 )
             )
@@ -992,6 +923,7 @@ class TichuDatabase:
                     id, 
                     game_id, round_index, 
                     hand_cards_0, hand_cards_1, hand_cards_2, hand_cards_3,
+                    num_bombs,
                     schupf_cards_0, schupf_cards_1, schupf_cards_2, schupf_cards_3,
                     tichu_pos_0, tichu_pos_1, tichu_pos_2, tichu_pos_3,
                     tichu_suicidal, tichu_premature,
@@ -1002,10 +934,9 @@ class TichuDatabase:
                     is_double_victory, 
                     score_20, score_31, score_diff, 
                     history,
-                    error_code, error_context,
-                    num_tricks, num_turns
+                    error_code, error_context
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     r.id if r.id else None,
                     r.game_id, r.round_index,
@@ -1018,11 +949,10 @@ class TichuDatabase:
                     r.dragon_giver, r.dragon_recipient, r.gift_relative_index,
                     r.is_phoenix_low,
                     r.winner_index, r.winner_position, r.loser_index,
-                    int(r.is_double_victory),
+                    r.is_double_victory,
                     r.score[0], r.score[1], r.score_diff,
                     history_str,
                     r.error_code.value, r.error_context,
-                    num_tricks, num_turns,
                 )
             )
             if not r.id:
@@ -1040,7 +970,7 @@ class TichuDatabase:
         :param p: Der Spieler.
         :return: Die ID des Spielers in der Datenbank.
         """
-        # Unique-Key muss gesetzt sein.
+        # Der Name für den Unique-Key muss befüllt sein.
         if p.name.strip() == "":
             raise ValueError("`p.name` muss gesetzt sein.")
 
@@ -1056,43 +986,14 @@ class TichuDatabase:
             if row:
                 p.id = row[0]
 
-        # Aggregierte Daten berechnen
-        # todo Werte berechnen
-        p.elo = 1500.0  # Die Elo-Zahl (Spielstärke) des Spielers.
-        p.num_games = 0  # Anzahl der gespielten Runden.
-        p.num_rounds = 0  # Anzahl der gespielten Partien.
-        p.grand_tichu_rate = 0.0  # Wie oft sagt der Spieler Grand-Tichu an?
-        p.grand_tichu_success_rate = 0.0  # Wie oft gewinnt er sein großes Tichu?
-        p.tichu_rate = 0.0  # Wie oft sagt der Spieler ein einfaches Tichu an?
-        p.tichu_success_rate = 0.0  # Wie oft gewinnt er sein einfaches Tichu?
-        p.tichu_suicidal_rate = 0.0  # Wie oft hat der Spieler Tichu angesagt, obwohl bereits ein Mitspieler fertig war?
-        p.tichu_premature_rate = 0.0  # Wie oft hat der Spieler Tichu angesagt, ohne direkt danach Karten auszuspielen?
-        p.games_win_rate = 0.0  # Wie oft gewinnt er eine Partie?
-        p.avg_score_diff_per_round = 0.0  # Durchschnittliche Punktedifferenz pro Runde.
-        p.std_score_diff_per_round = 0.0  # Standardabweichung der Punktedifferenz pro Runde.
-
         # Datensatz speichern.
         if row:
             cursor.execute("""
                 UPDATE players SET
-                    name=?,
-                    elo=?,
-                    num_games=?, num_rounds=?,
-                    grand_tichu_rate=?, grand_tichu_success_rate=?,
-                    tichu_rate=?, tichu_success_rate=?,
-                    tichu_suicidal_rate=?, tichu_premature_rate=?,
-                    games_win_rate=?,
-                    avg_score_diff_per_round=?, std_score_diff_per_round=?
+                    name=?
                 WHERE id = ?
                 """, (
                     p.name,
-                    p.elo,
-                    p.num_games, p.num_rounds,
-                    p.grand_tichu_rate, p.grand_tichu_success_rate,
-                    p.tichu_rate, p.tichu_success_rate,
-                    p.tichu_suicidal_rate, p.tichu_premature_rate,
-                    p.games_win_rate,
-                    p.avg_score_diff_per_round, p.std_score_diff_per_round,
                     p.id
                 )
             )
@@ -1100,26 +1001,12 @@ class TichuDatabase:
             cursor.execute("""
                 INSERT INTO players (
                     id,  
-                    name,
-                    elo,
-                    num_games, num_rounds,
-                    grand_tichu_rate, grand_tichu_success_rate,
-                    tichu_rate, tichu_success_rate,
-                    tichu_suicidal_rate, tichu_premature_rate,
-                    games_win_rate,
-                    avg_score_diff_per_round, std_score_diff_per_round
+                    name
                 ) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?)
                 """, (
                     p.id if p.id else None,
                     p.name,
-                    p.elo,
-                    p.num_games, p.num_rounds,
-                    p.grand_tichu_rate, p.grand_tichu_success_rate,
-                    p.tichu_rate, p.tichu_success_rate,
-                    p.tichu_suicidal_rate, p.tichu_premature_rate,
-                    p.games_win_rate,
-                    p.avg_score_diff_per_round, p.std_score_diff_per_round,
                 )
             )
             if not p.id:
@@ -1127,78 +1014,257 @@ class TichuDatabase:
 
         return p.id
 
-    def _save_game_player_record(self, game_id: int, player_index: int, player_id: int):
+    def _save_game_player_record(self, game_id: int, player_id: int, player_index: int) -> id:
         """
-        Speichert die Zuordnung zw. Partie und Spieler.
+        Speichert die Zuordnung zwischen Partie und Spieler.
+
         :param game_id: Die ID der Partie.
-        :param player_index: Der Index des Spielers in dieser Partie.
         :param player_id: Die ID des Spielers.
+        :param player_index: Der Index des Spielers in dieser Partie.
+        :return: Die ID der Zuordnung.
         """
+        # Die Felder für den Unique-Key müssen befüllt sein.
         if not game_id:
             raise ValueError("`r.game_id` muss gesetzt sein.")
-        if player_index == -1:
-            raise ValueError("`player_index` muss gesetzt sein.")
         if not player_id:
             raise ValueError("`player_id` muss gesetzt sein.")
+        if player_index == -1:
+            raise ValueError("`player_index` muss gesetzt sein.")
 
         # Versuchen, die ID anhand des Unique-Keys zu ermitteln.
         cursor = self.cursor()
-        cursor.execute("SELECT * FROM games_players WHERE game_id = ? AND player_index = ?", (game_id, player_index))
+        cursor.execute("SELECT id FROM games_players WHERE game_id = ? AND player_index = ?", (game_id, player_index))
         row = cursor.fetchone()
+        if not row:
+            cursor.execute("SELECT id FROM games_players WHERE player_id = ? AND game_id = ?", (player_id, game_id))
+            row = cursor.fetchone()
+
         if row:
-            # Datensatz aktualisieren.
-            cursor.execute("UPDATE games_players SET player_id=? WHERE game_id = ? AND player_index = ?", (
-                player_id,
+            # Zuordnung aktualisieren.
+            pivot_id = row[0]
+            cursor.execute("UPDATE games_players SET game_id=?, player_id=?, player_index=? WHERE id = ?", (
                 game_id,
+                player_id,
                 player_index,
+                pivot_id,
             ))
         else:
-            # Datensatz hinzufügen.
-            cursor.execute("INSERT INTO games_players (game_id, player_index, player_id) VALUES (?, ?, ?)", (
+            # Zuordnung hinzufügen.
+            cursor.execute("INSERT INTO games_players (game_id, player_id, player_index) VALUES (?, ?, ?)", (
                 game_id,
-                player_index,
                 player_id,
+                player_index,
             ))
+            pivot_id = cursor.lastrowid
 
-    def _save_swap_record(self, round_id: int, player_index: int, old_player_id: int, player_id: int) -> int:
+        return pivot_id
+
+    def _save_swap_record(self, round_id: int, player_id: int, player_index: int, old_player_id: int) -> int:
         """
         Speichert den Spielerwechsel.
 
         :param round_id: Die ID der Runde.
+        :param player_id: Die ID des neuen Spielers.
         :param player_index: Der Index des Spielers.
         :param old_player_id: Die ID des bisherigen Spielers.
-        :param player_id: Die ID des neuen Spielers.
         :return: Die ID des Eintrags.
         """
+        # Die Felder für den Unique-Key müssen befüllt sein.
         if not round_id:
             raise ValueError("`r.round_id` muss gesetzt sein.")
+        if not player_id:
+            raise ValueError("`player_id` muss gesetzt sein.")
         if player_index == -1:
             raise ValueError("`player_index` muss gesetzt sein.")
         if not old_player_id:
             raise ValueError("`old_player_id` muss gesetzt sein.")
-        if not player_id:
-            raise ValueError("`player_id` muss gesetzt sein.")
 
         # Versuchen, die ID anhand des Unique-Keys zu ermitteln.
         cursor = self.cursor()
         cursor.execute("SELECT id FROM swaps WHERE round_id = ? AND player_index = ?", (round_id, player_index))
         row = cursor.fetchone()
+        if not row:
+            cursor.execute("SELECT id FROM swaps WHERE player_id = ? AND round_id = ?", (player_id, round_id))
+            row = cursor.fetchone()
+            if not row:
+                cursor.execute("SELECT id FROM swaps WHERE old_player_id = ? AND round_id = ?", (old_player_id, round_id))
+                row = cursor.fetchone()
+
         if row:
             # Datensatz aktualisieren.
             swap_id = row[0]
-            cursor.execute("UPDATE swaps SET old_player_id=?, player_id=? WHERE id = ?",(
-                old_player_id,
+            cursor.execute("UPDATE swaps SET round_id=?, player_id=?, player_index=?, old_player_id=? WHERE id = ?",(
+                round_id,
                 player_id,
+                player_index,
+                old_player_id,
                 swap_id
             ))
         else:
             # Datensatz hinzufügen.
-            cursor.execute("INSERT INTO swaps (round_id, player_index, old_player_id, player_id) VALUES (?, ?, ?, ?)",(
+            cursor.execute("INSERT INTO swaps (round_id, player_id, player_index, old_player_id) VALUES (?, ?, ?, ?)",(
                 round_id,
+                player_id,
                 player_index,
                 old_player_id,
-                player_id,
+
             ))
             swap_id = cursor.lastrowid
 
         return swap_id
+
+    def update_aggregated_fields(self):
+        """
+        Aktualisiert die aggregierten Felder in der Datenbank.
+
+        Hierbei wird ein Fortschrittsbalken angezeigt.
+        """
+        self.open()
+        loop_cursor = self.cursor()
+        cursor = self.cursor()
+        cursor2 = self.cursor()
+        try:
+            # 1) Runden und Partien aktualisieren
+
+            # Anzahl Partien
+            cursor.execute("SELECT count(*) FROM games")
+            row = cursor.fetchone()
+            total = row[0] if row else 0
+
+            # Partien durchlaufen...
+            loop_counter = 0
+            loop_cursor.execute("SELECT * FROM games ORDER BY id")
+            for loop_row in tqdm(loop_cursor, total=total, unit=" Partien", desc="Aggregiere Daten für Partien"):
+                game_id = loop_row[0]
+
+                # 1.1) Die Runden der Partie aktualisieren.
+                # Das "|"-Zeichen trennt die Stiche in der History. Ein ";"-Zeichen steht vor dem Stiche-Einsammler.
+                cursor.execute("""
+                    UPDATE rounds SET
+                        num_tricks = LENGTH(history) - LENGTH(REPLACE(history, '|', '')) + 1, -- Anzahl der Stiche
+                        num_turns = LENGTH(history) - LENGTH(REPLACE(history, ';', ''))  -- Anzahl der Spielzüge
+                    WHERE game_id = ?""", (game_id,)
+                )
+
+                # 1.2) Die Partie aktualisieren.
+                cursor.execute("SELECT SUM(score_20), SUM(score_31), count(*), SUM(num_tricks), SUM(num_turns) FROM rounds WHERE game_id = ?", (game_id,))
+                row = cursor.fetchone()
+                total_score_20, total_score_31, num_rounds, num_tricks, num_turns = row
+                cursor.execute("""
+                    UPDATE games SET
+                        total_score_20=?, total_score_31=?,
+                        num_rounds=?,
+                        avg_tricks_per_round=?,
+                        avg_turns_per_round=?
+                    WHERE id = ?""", (
+                        total_score_20, total_score_31,  # Endergebnis der Partie
+                        num_rounds,  # Anzahl der Runden
+                        num_tricks / num_rounds if num_rounds > 0 else 0.0,  # avg_tricks_per_round
+                        num_turns / num_rounds if num_rounds > 0 else 0.0,  # avg_turns_per_round
+                        game_id,
+                    )
+                )
+
+                # Transaktion alle 1000 Partien committen
+                loop_counter += 1
+                if loop_counter % 1000 == 0:
+                    self.commit()
+
+            # 2) Die Spieler aktualisieren.
+
+            # Anzahl Spieler
+            cursor.execute("SELECT count(*) FROM players")
+            row = cursor.fetchone()
+            total = row[0] if row else 0
+
+            # Spieler durchlaufen...
+            loop_counter = 0
+            loop_cursor.execute("SELECT * FROM players ORDER BY id")
+            for loop_row in tqdm(loop_cursor, total=total, unit=" Spieler", desc="Aggregiere Daten für Spieler"):
+                player_id = loop_row[0]
+
+                # Alle Partien des Spielers durchlaufen.
+                # Es werden nur die fehlerfreien Partien untersucht, und nur die ohne Spielerwechsel.
+                num_games = 0  # Anzahl der gespielten Partien
+                num_wins = 0  # Anzahl der gewonnenen Partien
+                elo = 1500.0  # Elo-Zahl
+
+                num_rounds = 0  # Anzahl der gespielten Runden.
+                num_grand_tichus_success = 0  # Wie oft gewinnt er sein großes Tichu?
+                num_tichus_success = 0  # Wie oft gewinnt er sein einfaches Tichu?
+                num_tichus_suicidal = 0  # Wie oft hat der Spieler Tichu angesagt, obwohl bereits ein Mitspieler fertig war?
+                num_tichus_premature = 0  # Wie oft hat der Spieler Tichu angesagt, ohne direkt danach Karten auszuspielen?
+                sum_score_diff = 0  # Punktedifferenz über alle Runden summiert
+                cursor.execute("""
+                    SELECT g.id, gp.player_index, g.player_changed, g.total_score_20, g.total_score_31
+                    FROM games AS g
+                    INNER JOIN games_players AS gp ON g.id = gp.game_id
+                    WHERE gp.player_id = ? AND g.error_code = 0 AND g.player_changed = 0
+                    ORDER BY g.id
+                """, (player_id,))  # nach game_id sortiert, also chronologisch (für Elo wichtig)
+                for row in cursor.fetchall():
+                    game_id, player_index, player_changed, total_score_20, total_score_31 = row
+                    num_games += 1
+                    if (player_index in [2, 0] and total_score_20 > total_score_31) or (player_index in [3, 1] and total_score_31 > total_score_20):
+                        num_wins += 1
+
+                    # alle Runden des Spielers durchlaufen...
+                    # tichus_premature ist fehlerbehaftet (wird überschätzt):
+                    # Wenn mehrere Spieler in der Runde Tichu angesagt haben, und einer übereifrig war, werden hier alle Spieler schlecht bewertet.
+                    cursor2.execute(f"""
+                        SELECT 
+                            COUNT(*) AS num_rounds,
+                            SUM(CASE WHEN tichu_pos_{player_index} = -2 AND winner_index = ? THEN 1 ELSE 0 END) AS num_grand_tichus_success,
+                            SUM(CASE WHEN tichu_pos_{player_index} > -2 AND winner_index = ? THEN 1 ELSE 0 END) AS num_tichus_success,
+                            SUM(CASE WHEN tichu_pos_{player_index} > winner_position THEN 1 ELSE 0 END) AS num_tichus_suicidal,
+                            SUM(CASE WHEN tichu_pos_{player_index} >= 0 AND tichu_premature = 1 THEN 1 ELSE 0 END) AS num_tichus_premature,
+                            SUM(score_diff) AS total_score_diff
+                        FROM rounds
+                        WHERE game_id = ?
+                    """, (player_index, player_index, game_id,))
+                    row2 = cursor2.fetchone()
+                    num_rounds += row2[0]
+                    num_grand_tichus_success += row2[1]
+                    num_tichus_success += row2[2]
+                    num_tichus_suicidal += row2[3]
+                    num_tichus_premature += row2[4]
+                    if player_index in [2, 0]:
+                        sum_score_diff += row2[5]
+                    else:
+                        sum_score_diff -= row2[5]
+
+                # todo Elo muss noch berechnet werden
+
+                cursor.execute("""
+                    UPDATE players SET
+                        elo=?,
+                        num_games=?, 
+                        num_rounds=?,
+                        grand_tichu_success_rate=?,
+                        tichu_success_rate=?,
+                        tichu_suicidal_rate=?, 
+                        tichu_premature_rate=?,
+                        games_win_rate=?,
+                        avg_score_diff=?
+                    WHERE id = ?
+                    """, (
+                        elo,
+                        num_games,
+                        num_rounds,
+                        num_grand_tichus_success / num_rounds if num_rounds > 0 else 0.0,  # grand_tichu_success_rate
+                        num_tichus_success / num_rounds if num_rounds > 0 else 0.0,  # tichu_success_rate
+                        num_tichus_suicidal / num_rounds if num_rounds > 0 else 0.0,  # tichu_suicidal_rate
+                        num_tichus_premature / num_rounds if num_rounds > 0 else 0.0,  # tichu_premature_rate
+                        num_wins / num_games if num_games > 0 else 0.0,  # games_win_rate
+                        sum_score_diff / num_rounds if num_rounds > 0 else 0.0,  # avg_score_diff
+                        player_id,
+                    )
+                )
+
+                # Transaktion alle 1000 Spieler committen
+                loop_counter += 1
+                if loop_counter % 1000 == 0:
+                    self.commit()
+
+        finally:
+            self.commit()

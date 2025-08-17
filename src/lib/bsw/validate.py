@@ -4,8 +4,6 @@ Validieren der geparsten Brettspielwelt-Logs.
 
 __all__ = "validate_bswlog",
 
-import numpy as np
-
 from src.lib.bsw.database import GameEntity, ETLErrorCode, RoundEntity, PlayerEntity
 from src.lib.bsw.parse import BSWLog
 from src.lib.cards import validate_cards, parse_card, sum_card_points, is_wish_in, Cards, CARD_DRA
@@ -267,16 +265,18 @@ def validate_bswlog(bw_log: BSWLog) -> GameEntity:
                 combination = get_trick_combination(cards, trick_combination[2], shift_phoenix=True)
                 action_space = build_action_space(combinations[player_index], trick_combination, wish_value)
                 if not any(set(cards) == set(playable_cards) for playable_cards, _playable_combination in action_space):
-                    if error_code == ETLErrorCode.NO_ERROR:
-                        if wish_value > 0 and is_wish_in(wish_value, action_space[0][0]):
+                    if wish_value > 0 and is_wish_in(wish_value, action_space[0][0]):
+                        if error_code == ETLErrorCode.NO_ERROR:
                             error_code = ETLErrorCode.WISH_NOT_FOLLOWED  # Wunsch wurde nicht beachtet
-                        elif trick_alternative_rank and combination[0] == trick_combination[0] and combination[1] == trick_combination[1] and combination[2] > trick_alternative_rank:
-                            # Der Rang des Stichs ist mehrdeutig. Meine Engine ordnet den Phönix automatisch dem höheren Rang zu.
-                            # Offensichtlich hat der Spieler auf Brettspielwelt aber den kleineren Rang gewählt.
-                            is_phoenix_low = True  # Phönix mimt den niedrigeren Rang
-                        else:
+                        break
+                    elif trick_alternative_rank and combination[0] == trick_combination[0] and combination[1] == trick_combination[1] and combination[2] > trick_alternative_rank:
+                        # Der Rang des Stichs ist mehrdeutig. Meine Engine ordnet den Phönix automatisch dem höheren Rang zu.
+                        # Offensichtlich hat der Spieler auf Brettspielwelt aber den kleineren Rang gewählt.
+                        is_phoenix_low = True  # Phönix mimt den niedrigeren Rang
+                    else:
+                        if error_code == ETLErrorCode.NO_ERROR:
                             error_code = ETLErrorCode.COMBINATION_NOT_PLAYABLE
-                    break
+                        break
 
                 # Wenn kein Anspiel ist, kann das Zugrecht durch eine Bombe erobert werden
                 if trick_owner_index != -1 and combination[0] == CombinationType.BOMB:
@@ -303,10 +303,8 @@ def validate_bswlog(bw_log: BSWLog) -> GameEntity:
                     trick_alternative_rank = cards[4][0]  # Rang des Fullhouses, würde der Phönix zum rechten Pärchen gehören
                 elif combination[0] == CombinationType.STREET and cards[0][0] == 16 and cards[-1][0] > 2:
                     trick_alternative_rank = cards[1][0]  # Rang der Straße, wäre der Phönix am Straßenanfang einsortiert
-                # is_trick_rank_ambiguous = (
-                #     (combination[0] == CombinationType.FULLHOUSE and cards[2][0] == 16) or
-                #     (combination[0] == CombinationType.STREET and cards[0][0] == 16)
-                # )
+                else:
+                    trick_alternative_rank = 0
 
                 # Wunsch erfüllt?
                 if wish_value > 0 and is_wish_in(wish_value, cards):
