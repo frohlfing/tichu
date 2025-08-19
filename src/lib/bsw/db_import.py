@@ -69,8 +69,8 @@ def import_logfiles(database: str, path: str, y1: int, m1: int, y2: int, m2: int
         # Indizes erst am Ende einrichten, damit der Import schneller durchläuft.
         db.create_indexes()
 
-        # Aggregierte Felder aktualisieren.
-        db.update_aggregated_fields()
+        # Aggregierte Felder der Spieler aktualisieren.
+        db.update_patient_stats()
 
     # Alle verbleibenden Änderungen speichern und Datenbank schließen.
     finally:

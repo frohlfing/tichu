@@ -4,7 +4,7 @@ Validieren der geparsten Brettspielwelt-Logs.
 
 __all__ = "validate_bswlog",
 
-from src.lib.bsw.database import GameEntity, ETLErrorCode, RoundEntity, PlayerEntity
+from src.lib.bsw.database import GameEntity, ETLErrorCode, RoundEntity, PlayerEntity, PlayerRoundEntity
 from src.lib.bsw.parse import BSWLog
 from src.lib.cards import validate_cards, parse_card, sum_card_points, is_wish_in, Cards, CARD_DRA
 from src.lib.combinations import get_trick_combination, CombinationType, build_action_space, build_combinations
@@ -139,12 +139,12 @@ def validate_bswlog(bw_log: BSWLog) -> GameEntity:
 
         # Kombinationsmöglichkeiten berechnen und die Bombenblätter markieren
         combinations = []
-        bomb_hands = []
+        has_bombs = []
         for player_index in range(4):
             card_labels = hands[player_index]
             combis = build_combinations([parse_card(label) for label in card_labels])
             combinations.append(combis)
-            bomb_hands.append(True if combis and combis[0][1][0] == CombinationType.BOMB else False)
+            has_bombs.append(True if combis and combis[0][1][0] == CombinationType.BOMB else False)
 
         # Startspieler ermitteln
         current_turn_index = -1
@@ -462,11 +462,6 @@ def validate_bswlog(bw_log: BSWLog) -> GameEntity:
                 name = f"{log_entry.player_names[player_index]} ({i})"
             player_names.append(name)
 
-            if log_entry.round_index == 0:
-                g.players[player_index].name = name
-            elif g.players[player_index].name != name:
-                g.player_changed = True
-
         # Startkarten so sortieren, dass erst die Grand-Tichu-Karten aufgelistet sind
         sorted_start_hands: List[Cards] = [[], [], [], []]
         if error_code != ETLErrorCode.INVALID_CARD_LABEL:
@@ -478,9 +473,6 @@ def validate_bswlog(bw_log: BSWLog) -> GameEntity:
                 sorted_remaining_cards = sorted([parse_card(label) for label in remaining_card_labels], reverse=True)
                 sorted_start_hands[player_index] = sorted_grand_cards + sorted_remaining_cards
 
-        # Die Anzahl der Bombenblätter angeben, damit Runden mit Bomben leicht gefiltert werden können.
-        num_bombs = sum(bomb_hands)
-
         # Labels der Schupfkarten umwandeln
         given_schupf_hands: List[Cards] = [[], [], [], []]
         if error_code != ETLErrorCode.INVALID_CARD_LABEL:
@@ -488,45 +480,30 @@ def validate_bswlog(bw_log: BSWLog) -> GameEntity:
                 schupf_card_labels = schupf_hands[player_index]
                 given_schupf_hands[player_index] = [parse_card(label) for label in schupf_card_labels]
 
-        # Flags, ob jemand ein dummes Tichu angesagt hat
-        tichu_suicidal = any(tichu_positions[player_index] > winner_position for player_index in range(4))  # Tichu angesagt, obwohl schon jemand fertig war
-        tichu_premature = False
+        players = []
         for player_index in range(4):
-            tichu_pos = tichu_positions[player_index]
-            turn_player_index, turn_cards, _ = history[tichu_pos]
-            if turn_player_index != player_index or not turn_cards:
-                tichu_premature = True  # Der Spieler hat nach seiner Tichu-Ansage keine Karten ausgespielt.
-                break
-
-        # Den relativen Index des Spielers ermitteln, der den Drachen bekommen hat.
-        # Diese Entscheidung des Spielers lässt sich auch über die Historie ermitteln.
-        # Ich gebe dies trotzdem explizit an, damit ich leichter einen ausgewogenen Datensatz für die Drachenfrage erzeugen kann.
-        gift_relative_index = (log_entry.dragon_recipient - dragon_giver + 4) % 4
-
-        # Punktedifferenz - das ist die Zielvariable für das Value-Netz.
-        score_diff = score[0] - score[1]
+            players.append(PlayerRoundEntity(
+                player_index=player_index,
+                player=PlayerEntity(name=player_names[player_index]),
+                start_cards=sorted_start_hands[player_index],
+                schupf_cards=given_schupf_hands[player_index],
+                has_bomb=has_bombs[player_index],
+                tichu_position=tichu_positions[player_index],
+            ))
 
         g.rounds.append(RoundEntity(
             game_id=log_entry.game_id,
             round_index=log_entry.round_index,
-            players=[PlayerEntity(name=player_names[i]) for i in range(4)],
-            start_hands=sorted_start_hands,
-            num_bombs=num_bombs,
-            schupf_hands=given_schupf_hands,
-            tichu_positions=tichu_positions,
-            tichu_suicidal=tichu_suicidal,
-            tichu_premature=tichu_premature,
+            players=players,
             wish_value=wish_value,
             dragon_giver=dragon_giver,
             dragon_recipient=log_entry.dragon_recipient,
-            gift_relative_index=gift_relative_index,
             is_phoenix_low=is_phoenix_low,
             winner_index=winner_index,
             winner_position=winner_position,
             loser_index=loser_index,
             is_double_victory=is_double_victory,
             score=score,
-            score_diff=score_diff,
             history=history,
             error_code=error_code,
             error_context=log_entry.content if error_code != ETLErrorCode.NO_ERROR else None,

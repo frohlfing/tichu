@@ -114,7 +114,7 @@ def logfiles(path: str, y1: Optional[int] = None, m1: Optional[int] = None, y2: 
         # Zip-Archiv öffnen und alle Logdateien durchlaufen
         zip_path = os.path.join(path, zip_name)
         with ZipFile(zip_path, 'r') as zf:
-            for name in sorted(zf.namelist()):  # z.B. "202507/2410688.tch"
+            for name in sorted(zf.namelist(), key=lambda s: int(s.split("/")[1][:-4]) if s.endswith(".tch") else 0):  # z.B. "202507/2410688.tch"
                 if not name.endswith(".tch"):
                     continue
 

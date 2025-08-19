@@ -959,14 +959,16 @@ Zur Dokumentation von JavaScript wird [JSDoc](https://jsdoc.app/) angewendet.
 
 #### Datenbank
 
-| Objekt                                | Namensschema                                                                         |
-|---------------------------------------|--------------------------------------------------------------------------------------|
-| **Tabelle**                           | snake_case, plural (z.B. `players`)                                                  |
-| **Zuordnungstabelle** (Pivot-Tabelle) | Tabellennamen alphabetisch sortiert, mit Unterstrich getrennt (z.B. `games_players`) |
-| **Spalte**                            | snake_case                                                                           |
-| **Primary Key**                       | `id`                                                                                 |
-| **Foreign Key**                       | Singular der Fremd-Tabelle + `_id`                                                   |
-| **Index**                             | `idx_<table>_<column(s)>]`                                                           | |
+| Objekt                                | Namensschema                                                                          |
+|---------------------------------------|---------------------------------------------------------------------------------------|
+| **Tabelle**                           | snake_case, plural (z.B. `players`)                                                   |
+| **Entität**                           | PascalCase, singular, + `Entity` (z.B. `PlayerEntity`)                                |
+| **Zuordnungstabelle** (Pivot-Tabelle) | Tabellennamen alphabetisch sortiert, mit Unterstrich getrennt (z.B. `players_rounds`) |
+| **Entität für Zuordnungstabelle**     | Singular + `Entity` (z.B. `PlayerRoundEntity`)                                        |
+| **Spalte**                            | snake_case                                                                            |
+| **Primary Key**                       | `id`                                                                                  |
+| **Foreign Key**                       | Singular der Fremd-Tabelle + `_id`                                                    |
+| **Index**                             | `idx_<table>_<column(s)>]`                                                            |
 
 #### Web-Frontend
 
