@@ -710,7 +710,7 @@ class TichuDatabase:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_error_code ON games (error_code);")
         #cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_num_rounds ON games (num_rounds);")
         #cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_avg_tricks_per_round ON games (avg_tricks_per_round);")
-        #cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_avg_turns_per_round  ON games (avg_turns_per_round);")
+        #cursor.execute("CREATE INDEX IF NOT EXISTS idx_games_avg_turns_per_round ON games (avg_turns_per_round);")
 
         self.commit()
 
@@ -1191,3 +1191,73 @@ class TichuDatabase:
 
         finally:
             self.commit()
+
+
+    # def update_patient_elo(self):
+    #     """
+    #     Aktualisiert die Elo-Zahl der Spieler.
+    #
+    #     Es werden nur die fehlerfreien Partien berücksichtigt, und nur die ohne Spielerwechsel.
+    #     Hierbei wird ein Fortschrittsbalken angezeigt.
+    #     """
+    #     self.open()
+    #     loop_cursor = self.cursor()
+    #     player_cursor = self.cursor()
+    #     cursor = self.cursor()
+    #     try:
+    #         # Anzahl Partien ermitteln
+    #         cursor.execute("SELECT count(*) FROM games WHERE error_code = 0 AND player_changed = 0")
+    #         row = cursor.fetchone()
+    #         total = row[0] if row else 0
+    #
+    #         # Partien durchlaufen...
+    #         loop_counter = 0
+    #         loop_cursor.execute("SELECT id, total_score_20, total_score_31 FROM games WHERE error_code = 0 AND player_changed = 0 ORDER BY id")
+    #         for loop_row in tqdm(loop_cursor, total=total, unit=" Spieler", desc="Aggregiere Daten für Spieler"):
+    #             game_id = loop_row["id"]
+    #             total_score = loop_row["total_score_20"], loop_row["total_score_31"]
+    #
+    #             # Werte ermitteln
+    #             player_cursor.execute("""
+    #                 SELECT pr.player_index, pr.player_id, p.elo
+    #                 FROM players AS p
+    #                 INNER JOIN players_rounds AS pr ON p.id = pr.player_id
+    #                 INNER JOIN rounds AS r ON pr.round_id = r.id
+    #                 WHERE r.game_id = ? AND r.round_index = 0
+    #                 ORDER BY pr.player_index
+    #                 """, (game_id,))
+    #             for p in cursor.fetchall():
+    #                 # todo elo berechnen
+    #                 elo = 1500.0
+    #
+    #             # Werte speichern
+    #             cursor.execute("""
+    #                 UPDATE players SET
+    #                     elo=?,
+    #                 WHERE id = ?
+    #                 """, (
+    #                     elo,
+    #                     p["player_id"],
+    #                 )
+    #             )
+    #
+    #             # Transaktion alle 1000 Spieler committen
+    #             loop_counter += 1
+    #             if loop_counter % 1000 == 0:
+    #                 self.commit()
+    #
+    #     finally:
+    #         self.commit()
+
+    def clone(self, database: str):
+        """
+        Übernimmt alle Daten der gegebenen DB.
+
+        :param database: SQLite-Datenbankdatei.
+        """
+        cursor = self.cursor()
+        cursor.execute(f"ATTACH DATABASE '{database}' AS db")
+        for table in ["players", "games", "rounds", "players_rounds"]:
+            cursor.execute(f"INSERT INTO {table} SELECT * FROM db.{table}")
+        self.commit()
+        cursor.execute("DETACH DATABASE db")

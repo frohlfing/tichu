@@ -375,10 +375,7 @@ Legende:
 
 Die Datenbeschaffung und Analyse der Daten sind im Jupyter Notebook [BSW_01_Analyse.ipynb](../notebooks/BSW_01_Analyse.ipynb) dokumentiert.
 
-
-### 6.3 Datenanalyse
-
-#### 6.3.1 Analyse-Fragen
+### 6.1 Analyse-Fragen
 
 Um die Trainingszeit und den Speicherbedarf abzuschätzen:
 *   Anzahl Partien, Runden, Stiche und Spielzüge insgesamt.
@@ -432,11 +429,51 @@ Gute Spieler finden
 *   Finde die Spieler mit viel Spielerfahrung
 *   Finde die Top 10% der Spieler basierend auf avg_score_diff.
 
-#### 6.3.2 Analyse-Ergebnis
+#### 6.1.1 Analyse-Ergebnis
 
 Hier sind die Ergebnisse zusammengefasst:
 
 TODO
+
+### 6.2  Spielstärke messen
+
+Ziel: Die beste Metrik zur Messung der Spielstärke finden und validieren, um eine fundierte Auswahl für die Trainingsdaten treffen zu können.
+
+*   Schritt 1) Skript `scripts/build_analysis_db.py` zur Datenerhebung
+    Erstellt eine Analyse-Datenbank, die die Entwicklung mehrerer potenzieller Spielstärke-Metriken für jeden Spieler über die Zeit festhält.
+    *   Schema für `analytics.sqlite`:
+        *   Tabelle: `player_time_series`:
+            ```
+            id (INTEGER PRIMARY KEY AUTOINCREMENT)
+            game_id (INTEGER) - Der "Zeitstempel" der Messung.
+            player_id (INTEGER)
+            games_played (INTEGER) - Die Anzahl der Partien, die der Spieler bis zu diesem Zeitpunkt gespielt hat.
+            elo_v1 (REAL) - Elo nach diesem Spiel (z.B. k_dyn mit Standard 400.0)
+            elo_v2 (REAL) - Elo nach diesem Spiel (z.B. k_dyn mit Faktor 200.0)
+            elo_v3 (REAL) - Elo nach diesem Spiel (z.B. k_dyn mit Faktor 600.0)
+            elo_v4 (REAL) - Elo nach diesem Spiel (z.B. fester k=20)
+            cumulative_win_rate (REAL) - Die Gewinnrate des Spielers bis zu diesem Spiel.
+            cumulative_avg_score_diff (REAL) - Die durchschnittliche Score-Differenz des Spielers bis zu diesem Spiel.
+            ```
+        *    Tabelle: `player_final_stats`:  Enthält nur die finalen Werte jedes Spielers nach der letzten Partie. Das ist nützlich für die spätere Selektion
+
+    *   In-Memory-Dictionary für jeden Spieler:
+    ```
+    player_stats = {
+        pid: {
+            'elo_v1': 1500.0, 'max_elo_v1': 1500.0,
+            'elo_v2': 1500.0, 'max_elo_v2': 1500.0,
+            # ... etc.
+            'games_played': 0,
+            'games_won': 0,
+            'total_score_diff': 0
+        }
+    }
+    ```
+    
+*   Schritt 2: Analyse-Notebook (`notebooks/BSW_02_Spielstaerke_Analyse.ipynb`)
+    Dieses Notebook führt jetzt unsere definierte Analyse durch.
+
 
 ### 6.4 Feature- und Label-Vektoren speichern
 
@@ -518,7 +555,7 @@ TODO
 
 # Anhang
 
-## A1. Kartenkombinationen
+## A0. Kartenkombinationen
 
 <pre>
 Rang der Karten
@@ -578,6 +615,37 @@ Anzahl=58
 Gesamtanzahl = 226 Kombinationsmöglichkeiten
 </pre>
 
+## A1. Der Workflow für den Trainingsprozess
+
+1) **Datenaufbereiten:** Fehlerhafte Sätze entfernen, Missings füllen.
+2) **Datenselektion:** Nur die hochwertigsten Daten übernehmen; z.B. auf  100 Mio. Datensätze beschränken. Dabei darauf achten, dass die Klassen ausgewogen sind, d.h., dass die verschiedenen Ausprägungen der Zielvariablen gleichhäufig vorkommen.
+3) **Feature Engineering:** Ausreißer identifizieren und behandeln, kontinuierliche Werte skalieren, kategoriale Variablen in Vektoren umwandeln.  
+4) **Datenaufteilung:** z.B. 80% für Training,  10% für Validierung und 10% für Test.
+   *   Trainings-Set (80 Mio.): Die Daten, die das Netz sieht, um zu lernen.
+   *   Validierungs-Set (10 Mio.): Die Daten, die nach jeder Epoche verwendet werden, um die Leistung des Modells auf ungesehenen Daten zu prüfen und zu entscheiden, ob es besser wird (für Early Stopping).
+   *   Test-Set (10 Mio.): Die Daten, die am allerletzten Ende, nach Abschluss des gesamten Trainings, ein einziges Mal verwendet werden, um die finale, unvoreingenommene Leistung des besten Modells zu bewerten. Diese Daten darf das Modell während des Trainings und der Hyperparameter-Optimierung niemals sehen.
+5) **Hyperparameter festlegen:** 
+   *   Max. Anzahl Epochen festlegen , z.B. 50 Epochen (eine Epoche ist ein Trainings-Loop, s.u.)
+   *   Stichprobengröße n festlegen, z.B. 10 Mio. Datensätze
+   *   Batchgröße festlegen, z.B. 4096 Datensätze
+   *   Anzahl Steps berechnen: Steps = Stichprobengröße / Batchgröße, z.B. 10 Mio. / 4096 = 2441
+6) **Trainings-Loop** (Epoche 1 bis max. 50):
+     *   **Step-Loop** (von 1 bis 2441); die 2441 Durchläufe macht `model.fit(trainings_daten, epochs=1, ...)` mit einem Aufruf:
+         *   Nimm einen Batch von 4096 Datenpunkten und füttere sie durch das Netz.
+         *   Mache eine Vorhersage und vergleiche sie mit den wahren Labels. Berechne den Fehler (Loss).
+         *   "Fitte" das Netz: Passe die Gewichte des Netzes leicht an, um diesen Fehler zu reduzieren (das macht der Optimizer, z.B. Adam, mit Backpropagation).
+         *   Am Ende der Epoche (nach allen 2441 Steps) sind die Gewichte des Netzes also 2441 Mal leicht in die richtige Richtung "geschubst" worden. 
+     *   **Validierungs-Phase:**
+         *   Nimm das Validierungs-Set und mache Vorhersagen für alle Validierungsdaten (ohne die Gewichte anzupassen).
+         *   Berechne den Validierungs-Loss (`validation_loss`) und andere Metriken, z.B. Accuracy `(validation_accuracy`).
+         *   Logge und plotte den Trainings-Loss und den Validierungs-Loss.
+         *   Speicher das trainierte Modell unter einer laufenden Nummer (der sogenannte Checkpoint), wenn das Modell in dieser Epoche besser war als in allen vorherigen (basierend auf dem `validation_loss`).
+         *   Prüfe auf "Early Stopping": Wenn sich der Validierungs-Fehler über mehrere Epochen hinweg nicht mehr verbessert (oder sogar wieder schlechter wird, ein Zeichen für Overfitting), brichst du das Training ab.
+7) **Finale Evaluierung:**
+   *   Nimm das beste Modell (das mit dem niedrigsten Validierungs-Loss) aus dem Checkpoint.
+   *   Evaluiere es ein einziges Mal auf dem Test-Set.
+       Das Ergebnis auf dem Test-Set ist deine finale, unvoreingenommene Messung der Modell-Performance.
+   
 ## A2. Kategoriale, diskrete und stetige Variablen
 
 **Binäre Variable (Boolean):**
@@ -812,9 +880,23 @@ Wenn das Histogramm eine Normalverteilung zeigt (Glockenkurve), ist die Z-Score-
 
 ### A4.1 Klassifikation
 
-**Binary Classification (Binäre Klassifikation):**
+**Klasse vs. Label:**
 
-Es gibt nur zwei mögliche Klassen, und genau eine muss gewählt werden.
+Supermarkt-Beispiel: 
+*   Label: Die Beschriftung auf einem Produkt.
+*   Klasse: Das Regal, in dem die Produkte mit dem entsprechenden Label einsortiert werden.
+
+*   Die Ausgabeschicht des Modells hat Neuronen, die den Klassen entsprechen.
+*   Du sprichst von Klassen, wenn du die Struktur des Outputs beschreibst, und von Labels, wenn du die Daten beschreibst, mit denen du trainierst.
+   
+*   Ein Trainingsdatensatz besteht aus Paaren von (X, y). Der Eingangsvektor X ist der Feature-Vektor. Der Zielvektor y ist der Label-Vektor."
+*   Ein Vektor *hat* nicht Features/Labels, er *ist* ein Feature-Vektor oder ein Label-Vektor.
+    *   Die einzelnen Zahlen innerhalb des Feature-Vektors sind die Features.
+    *   Der Vektor, der die "richtige Antwort" repräsentiert, ist das Label (oder der Label-Vektor). Die einzelnen Zahlen in diesem Vektor entsprechen den Klassen, die für diesen Datenpunkt "aktiv" sind.
+
+**Binary Classification (Binär-Klassifikation):**
+
+Es gibt genau zwei Klassen, und jeder Datenpunkt hat genau ein einziges Label.
 *   Beispiel: Ist diese E-Mail ein Spam oder kein Spam?
 *   Output: 1 Neuron
 *   Aktivierungsfunktion: `Sigmoid`. Quetscht den Wert in den Bereich zwischen 0 und 1.
@@ -822,7 +904,7 @@ Es gibt nur zwei mögliche Klassen, und genau eine muss gewählt werden.
 
 **Multi-Class Classification (Multi-Klassen-Klassifikation):**
 
-Es gibt mehr als zwei mögliche Klassen, aber es kann immer nur genau eine die richtige sein.
+Es gibt mehr als zwei Klassen, aber jeder Datenpunkt hat nur ein einziges Label.
 *   Beispiel: Welches Tier ist auf diesem Bild: eine Katze, ein Hund oder ein Vogel?
 *   Output: N Neuronen (eines pro Klasse)
 *   Aktivierungsfunktion: `Softmax`. Wandelt die Werte in eine Wahrscheinlichkeitsverteilung um, bei der die Summe aller Werte exakt 1 ergibt.
@@ -830,7 +912,9 @@ Es gibt mehr als zwei mögliche Klassen, aber es kann immer nur genau eine die r
 
 **Multi-Label Classification (Multi-Label-Klassifikation):**
 
-Es gibt N mögliche Klassen (Labels), und ein Datenpunkt kann beliebig viele davon gleichzeitig haben (auch keine).
+Eine Multi-Label-Klassifikation ist konzeptionell eine Sammlung von mehreren unabhängigen Binär-Klassifikationen, die alle denselben Input bekommen. 
+
+Es gibt mehrere Klassen, und ein Datenpunkt kann mehrere Labels haben (auch keine).
 *   Beispiel: Welche Genres hat dieser Film: Komödie, Action, Romanze, Horror? (Ein Film kann Action UND Komödie sein).
 *   Dein Tichu-Problem: Welche Karten gehören zu diesem Spielzug? (Ein Zug kann die Karte S8 UND B8 enthalten).
 *   Output: N Neuronen (eines pro Label).
