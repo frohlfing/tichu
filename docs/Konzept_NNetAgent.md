@@ -373,7 +373,7 @@ Legende:
 
 ## 6. Daten 
 
-Die Datenbeschaffung und Analyse der Daten sind im Jupyter Notebook [BSW_01_Analyse.ipynb](../notebooks/BSW_01_Analyse.ipynb) dokumentiert.
+Die Datenbeschaffung und Analyse der Daten sind im Jupyter Notebook [BSW_01_Analyse.ipynb](../notebooks/BSW_01_Datenbestand.ipynb) dokumentiert.
 
 ### 6.1 Analyse-Fragen
 
@@ -839,13 +839,6 @@ Die Werte des **0.5- und 99.5-Perzentils*** sind oft exzellente Kandidaten für 
 Beispiel: Deine Analyse ergibt: `min = -800, max = 750, 0.5-Perzentil = -380, 99.5-Perzentil = +410`
 Deine Clipping-Grenzen könnten sein: `min_grenze = -400, max_grenze = 400` (runde auf schöne Zahlen in der Nähe der Perzentile).
 
-```python
-import numpy as np
-data = np.array([-550, -300, 120, 680])
-clipped = np.clip(data, -400, 400)
-print(clipped)  # Ergebnis: [-400, -300, 120, 400]
-```
-
 ### A3.4 Skalieren
 
 Warum ist Skalieren notwendig?
@@ -872,9 +865,11 @@ Wie skaliert man am besten? Es gibt zwei Hauptmethoden: Normalisierung und Stand
     *   Formel: `skalierter_wert = z_score = (wert - mittelwert) / standardabweichung`
     *   Ergebnis: Die skalierten Werte haben einen Mittelwert von 0 und eine Standardabweichung von 1. Die meisten Werte liegen typischerweise zwischen -3 und +3.
 
-Wenn das Histogramm eine lineare oder gleichmäßige Verteilung zeigt, ist die Min-Max-Normalisierung sinnvoll ([0, 1] bei rein positiven Werten, sonst [-1, 1]).
- 
-Wenn das Histogramm eine Normalverteilung zeigt (Glockenkurve), ist die Z-Score-Standardisierung optimal.
+**Faustregel: Welche Method sollte man nehmen?**
+
+*   Haben die Daten eine natürliche, feste Begrenzung und kaum Ausreißer (z.B. Bildpixel, Prozentsätze)? -> Normalisierung (Min-Max) ist eine gute Option.
+
+*   Haben die Daten keine feste Begrenzung, eine glockenförmige (auch nicht-normale) Verteilung und/oder Ausreißer (z.B. Scores, Geldbeträge, Messwerte)? -> Standardisierung (Z-Score) ist fast immer die bessere, robustere Wahl.
 
 ## A4. Aufgabentypen
 
