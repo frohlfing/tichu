@@ -41,12 +41,12 @@ def import_logfiles(database: str, path: str, y1: int, m1: int, y2: int, m2: int
                 # Validieren
                 game = validate_bswlog(bsw_log)
 
+                # Datenbank aktualisieren
+                db.save_game(game)
+
                 # Fehlerhafte Partien zählen
                 if game.error_code != ETLErrorCode.NO_ERROR:
                     games_fails += 1
-
-                # Datenbank aktualisieren
-                db.save_game(game)
             else:
                 games_empty += 1
 

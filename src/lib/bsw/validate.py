@@ -509,14 +509,4 @@ def validate_bswlog(bw_log: BSWLog) -> GameEntity:
             error_context=log_entry.content if error_code != ETLErrorCode.NO_ERROR else None,
         ))
 
-    # Fehlercode für die Partie bestimmen
-    total_score = (sum(r.score[0] for r in g.rounds),
-                   sum(r.score[1] for r in g.rounds))  # Endergebnis der Partie
-    if total_score[0] < 1000 and total_score[1] < 1000:
-        g.error_code = ETLErrorCode.GAME_NOT_FINISHED
-    elif total_score[0] - g.rounds[-1].score[0] >= 1000 or total_score[1] - g.rounds[-1].score[1] >= 1000:
-        g.error_code = ETLErrorCode.GAME_OVERPLAYED
-    elif any(r.error_code != ETLErrorCode.NO_ERROR for r in g.rounds):
-        g.error_code = ETLErrorCode.ROUND_FAILED
-
     return g

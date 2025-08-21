@@ -861,7 +861,7 @@ Wie skaliert man am besten? Es gibt zwei Hauptmethoden: Normalisierung und Stand
     *   Formel: `skalierter_wert = 2 * ((wert - min_wert) / (max_wert - min_wert)) - 1`
     *   Ergebnis: Alle Werte liegen exakt zwischen 1- und 1 (die Daten sind um den Nullpunkt zentriert)
 
-*   Standardisierung (Z-Score-Normalisierung):
+*   Standardisierung (Z-Score-Skalierung):
     *   Formel: `skalierter_wert = z_score = (wert - mittelwert) / standardabweichung`
     *   Ergebnis: Die skalierten Werte haben einen Mittelwert von 0 und eine Standardabweichung von 1. Die meisten Werte liegen typischerweise zwischen -3 und +3.
 

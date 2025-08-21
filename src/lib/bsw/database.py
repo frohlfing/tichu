@@ -302,6 +302,7 @@ class RoundEntity:
     :ivar game_id: ID der Partie.
     :ivar round_index: Index der Runde innerhalb der Partie.
     :ivar players: Die 4 Spieler dieser Runde.
+    :ivar score_cum: Rundenergebnis (Team20, Team31) zu Beginn der Runde.
     :ivar wish_value: Der gewünschte Kartenwert (2 bis 14, -1 == kein Mahjong gespielt, 0 == ohne Wunsch).
     :ivar dragon_giver: Index des Spielers, der den Drachen verschenkt (-1 == Drache wird nicht verschenkt).
     :ivar dragon_recipient: Index des Spielers, der den Drachen bekommt (-1 == Drache wird nicht verschenkt).
@@ -321,6 +322,7 @@ class RoundEntity:
     game_id: int = 0  # wird beim Speichern generiert, wenn 0
     round_index: int = -1  # wird beim Speichern gesetzt
     players: List[PlayerRoundEntity] = field(default_factory=lambda: [PlayerRoundEntity(), PlayerRoundEntity(), PlayerRoundEntity(), PlayerRoundEntity()])
+    score_cum: Tuple[int, int] = (0, 0)  # wird beim Speichern ermittelt
     wish_value: int = -1
     dragon_giver: int = -1
     dragon_recipient: int = -1
@@ -470,6 +472,7 @@ class TichuDatabase:
                         id=r["id"],
                         game_id=r["game_id"],
                         round_index=r["round_index"],
+                        score_cum=(r["score_cum_20"], r["score_cum_31"]),
                         wish_value=r["wish_value"],
                         dragon_giver=r["dragon_giver"],
                         dragon_recipient=r["dragon_recipient"],
@@ -605,6 +608,8 @@ class TichuDatabase:
                 id                          INTEGER PRIMARY KEY AUTOINCREMENT,
                 game_id                     INTEGER NOT NULL,   -- ID der Partie
                 round_index                 INTEGER NOT NULL,   -- Index der Runde innerhalb der Partie (0, 1, 2, ...)
+                score_cum_20                INTEGER NOT NULL,   -- Rundenergebnis Team 20 zu Beginn der Runde
+                score_cum_31                INTEGER NOT NULL,   -- Rundenergebnis Team 31 zu Beginn der Runde
                 wish_value                  INTEGER NOT NULL,   -- Gewünschter Kartenwert (2–14, -1 = kein Mahjong gespielt, 0 = ohne Wunsch)
                 dragon_giver                INTEGER NOT NULL,   -- Index des Spielers, der den Drachen verschenkt (-1 == Drache wurde nicht verschenkt)
                 dragon_recipient            INTEGER NOT NULL,   -- Index des Spielers, der den Drachen bekommt (-1 == Drache wurde nicht verschenkt)
@@ -743,12 +748,28 @@ class TichuDatabase:
                     # derselbe Spieler wie in der Vorrunde
                     pr.player.id = players[player_index].id
 
-        # Endergebnis und Gewinner-Team ermitteln
-        game.total_score = sum(r.score[0] for r in game.rounds), sum(r.score[1] for r in game.rounds)
+        # Kumulative Scores berechnen
+        score_cum = 0, 0
+        for r in game.rounds:
+            r.score_cum = score_cum
+            score_cum = score_cum[0] + r.score[0], score_cum[1] + r.score[1]
+
+        # Endergebnis übernehmen
+        game.total_score = score_cum
+
+        #  Gewinner-Team ermitteln
         if game.total_score[0] >= 1000 or game.total_score[1] >= 1000:
             game.winner_team = 20 if game.total_score[0] > game.total_score[1] else 31 if game.total_score[0] < game.total_score[1] else 0
         else:
             game.winner_team = -1
+
+        # Fehlercode für die Partie bestimmen
+        if game.total_score[0] < 1000 and game.total_score[1] < 1000:
+            game.error_code = ETLErrorCode.GAME_NOT_FINISHED
+        elif any(r.score_cum[0] >= 1000 or r.score_cum[1] >= 1000 for r in game.rounds):
+            game.error_code = ETLErrorCode.GAME_OVERPLAYED
+        elif any(r.error_code != ETLErrorCode.NO_ERROR for r in game.rounds):
+            game.error_code = ETLErrorCode.ROUND_FAILED
 
         # Weitere Analyse-Daten aggregieren
         game.num_rounds = len(game.rounds)
@@ -892,6 +913,7 @@ class TichuDatabase:
             cursor.execute("""
                 UPDATE rounds SET
                     game_id=?, round_index=?, 
+                    score_cum_20=?, score_cum_31=?,
                     wish_value=?, 
                     dragon_giver=?, dragon_recipient=?, gift_relative_index=?, 
                     is_phoenix_low=?,
@@ -903,6 +925,7 @@ class TichuDatabase:
                 WHERE id = ?
                 """, (
                     r.game_id, r.round_index,
+                    r.score_cum[0], r.score_cum[1],
                     r.wish_value,
                     r.dragon_giver, r.dragon_recipient, r.gift_relative_index,
                     r.is_phoenix_low,
@@ -919,6 +942,7 @@ class TichuDatabase:
                 INSERT INTO rounds (
                     id, 
                     game_id, round_index, 
+                    score_cum_20, score_cum_31,
                     wish_value, 
                     dragon_giver, dragon_recipient, gift_relative_index, 
                     is_phoenix_low,
@@ -928,10 +952,11 @@ class TichuDatabase:
                     history,
                     error_code, error_context
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     r.id if r.id else None,
                     r.game_id, r.round_index,
+                    r.score_cum[0], r.score_cum[1],
                     r.wish_value,
                     r.dragon_giver, r.dragon_recipient, r.gift_relative_index,
                     r.is_phoenix_low,
