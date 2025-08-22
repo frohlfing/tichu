@@ -150,7 +150,7 @@ Daraus bilde ich den Feature-Vektor (Input für das NN).
 | `loser_index`           | `int`                                                  | Index des Spielers, der in der aktuellen Runde als letztes übrig blieb (-1 == Runde läuft noch oder wurde mit Doppelsieg beendet).               | `-1`              | `PublicState`  | Nicht relevant (wird erst am Ende der Runde gesetzt, wenn keine Entscheidungen mehr getroffen werden).                                                                                               |                                                                                                                                                        |
 | `is_round_over`         | `bool`                                                 | Gibt an, ob die aktuelle Runde beendet ist.                                                                                                      | `False`           | `PublicState`  | Nicht relevant.                                                                                                                                                                                      |                                                                                                                                                        |
 | `is_double_victory`     | `bool`                                                 | Gibt an, ob die Runde durch einen Doppelsieg beendet wurde.                                                                                      | `False`           | `PublicState`  | Nicht relevant.                                                                                                                                                                                      |                                                                                                                                                        |
-| `game_score`            | `GameScore` = `Tuple[List[int], List[int]]`            | Punktetabelle der Partie (für Team 20 und Team 31 jeweils eine Liste der Rundenergebnisse). Max. mögliche Punktedifferenz: 800 Punkte (#1).      | `([], [])`        | `PublicState`  | 2 Features: Für eigenes Team und gegnerisches Team jeweils ein Float (für den letzte Eintrag aus der Liste), skaliert.                                                                               |                                                                                                                                                        |
+| `game_score`            | `GameScore` = `Tuple[List[int], List[int]]`            | Punktetabelle der Partie (für Team 20 und Team 31 jeweils eine Liste der Rundenergebnisse). Max. mögliche Punktedifferenz: 800 Punkte (#1).      | `([], [])`        | `PublicState`  | 2 Features: Für eigenes Team und gegnerisches Team jeweils ein Float (für den letzte Eintrag aus der Liste), skaliert.                                                                               | Dies ist gleich `score_cum` (der kumulative Score als Input zu Beginn der nächsten Runde). Und `score_diff` als Zielvariable.                          |s
 | `trick_counter`         | `int`                                                  | Anzahl der abgeräumten Stiche insgesamt über alle Runden der Partie (nur für statistische Zwecke).                                               | `0`               | `PublicState`  | Nicht relevant.                                                                                                                                                                                      |                                                                                                                                                        |
 | `player_index`          | `int`                                                  | Der Index dieses Spielers am Tisch (zwischen 0 und 3).                                                                                           | (Pflichtargument) | `PrivateState` | Nicht relevant.                                                                                                                                                                                      |                                                                                                                                                        |
 | `hand_cards`            | `Cards` = `List[Card]`                                 | Die aktuellen Handkarten des Spielers (absteigend sortiert).                                                                                     | `[]`              | `PrivateState` | 56 Features: Multi-Hot-Vektor der Länge 56. 1 für jede Karte auf der Hand, sonst 0.                                                                                                                  |                                                                                                                                                        |
@@ -314,7 +314,7 @@ Dies ist eine Multi-Foot- und Multi-Head-Architektur mit geteiltem Körper.
        |                    |
        |        +-----------+-----------+
        |        |                       |
-[Concat(RTG, Gedanke]                   |
+[Concat(RTG, Gedanke)]                  |
 +---------------------+       +---------------------+
 |    POLICY HEAD      |       |     VALUE HEAD      |
 | Dense Layer (512 N) |       | Dense Layer (256 N) |
@@ -483,7 +483,10 @@ Dabei werden die Ausreißer entsprechend behandelt und kontinuierliche Daten ska
 Folgende Features sind kontinuierlich und werden skaliert:
 *   `trick_points: int`
 *   `points: [int, int, int, int]`
-*   `game_score: Tuple[List[int], List[int]]`
+*   `score_cum: [int, int]`  (`= sum(game_score[0]), sum(game_score[1])`)
+
+Dieses Output-Label ist kontinuierlich und wird skaliert:
+*   `score_diff: [int, int]`  (`= game_score[0] - sum(game_score[1]`)
 
 ### 6.5 Datensätze in Trainings-, Validierungs- und Testdaten aufteilen
 
@@ -826,50 +829,59 @@ else:
 
 ### A3.3. Clipping
 
-Ausreißer auf einen plausiblen Wert drücken.
+Ausreißer entfernen oder auf einen plausiblen Wert drücken.
 
 *    **Bei Normalisierung:** Clipping ist essenziell. Ein Fehler könnte zu einem absurden Wert von z.B. 9999 führen. 
      Ohne Clipping würde dieser eine Datenpunkt deine gesamte Statistik (min, max, mean, std_dev) zerstören und das Training ruinieren. 
 *    **Bei Standardisierung:** Clipping ist sehr nützlich. Es verhindert, dass extreme Ausreißer den Mittelwert und 
      die Standardabweichung verzerren. Wenn der Mittelwert und die Standardabweichung stabiler sind, ist die resultierende 
-     Skalierung für die Mehrheit der Daten aussagekräftiger. 
+     Skalierung für die Mehrheit der Daten aussagekräftiger.
 
-Die Werte des **0.5- und 99.5-Perzentils*** sind oft exzellente Kandidaten für deine Clipping-Grenzen.
+Die Werte des **1%- und 99%-Perzentils** sind oft exzellente Kandidaten für deine Clipping-Grenzen.
 
-Beispiel: Deine Analyse ergibt: `min = -800, max = 750, 0.5-Perzentil = -380, 99.5-Perzentil = +410`
+Beispiel: Deine Analyse ergibt: `min = -800, max = 750, 1%-Perzentil = -380, 99%-Perzentil = +410`
 Deine Clipping-Grenzen könnten sein: `min_grenze = -400, max_grenze = 400` (runde auf schöne Zahlen in der Nähe der Perzentile).
 
 ### A3.4 Skalieren
 
 Warum ist Skalieren notwendig?
 
-Neuronale Netze funktionieren am besten mit Zahlen, die in einem kleinen Bereich um 0 liegen (typischerweise 
-zwischen -1 und 1 oder 0 und 1). Wenn deine Zielwerte aber z.B. im Bereich von -400 bis +400 liegen, sind die 
-Fehler (`loss = (vorhersage - ziel)^2`) riesig (z.B. `(100 - (-200))^2 = 90000`). Diese riesigen Fehlerwerte 
+Neuronale Netze funktionieren am besten mit Zahlen, die in einem kleinen Bereich um 0 liegen (typischerweise
+zwischen -1 und 1 oder 0 und 1). Wenn deine Zielwerte aber z.B. im Bereich von -400 bis +400 liegen, sind die
+Fehler (`loss = (vorhersage - ziel)^2`) riesig (z.B. `(100 - (-200))^2 = 90000`). Diese riesigen Fehlerwerte
 führen zu extrem großen Gradienten (Anpassungssignalen) während des Backpropagation-Prozesses.
 
-Die Folge (**Exploding Gradients**): Die Gewichte des Netzes werden bei jedem Schritt massiv geändert. Das 
+Die Folge (**Exploding Gradients**): Die Gewichte des Netzes werden bei jedem Schritt massiv geändert. Das
 Training wird instabil, die Gewichte können "explodieren" (ins Unendliche wachsen), und das Modell lernt gar nichts.
 
-Wie skaliert man am besten? Es gibt zwei Hauptmethoden: Normalisierung und Standardisierung.
+Wie skaliert man am besten? Es gibt zwei Hauptmethoden für das **Feature Scaling**: Normalisierung und Standardisierung.
 
-*   Normalisierung (Min-Max-Skalierung im Bereich [0, 1]):
+Beides sind lineare Transformationen. Sie erhalten die relativen Abstände der Punkte zueinander. (Genauer gesagt: Der Abstand zwischen den transformierten Punkten ist proportional zum Abstand der originalen Punkte.)
+
+*   Normalisierung (Min-Max-Skalierung im Bereich [0, 1]): 
     *   Formel: `skalierter_wert = (wert - min_wert) / (max_wert - min_wert)`
-    *   Ergebnis: Alle Werte liegen exakt zwischen 0 und 1.
+    *   Ergebnis: Alle Werte liegen exakt zwischen 0 und 1. Der Mittelwert ist nicht notwendigerweise 0,5.
 
 *   Normalisierung (Min-Max-Skalierung im Bereich [-1, 1]):
     *   Formel: `skalierter_wert = 2 * ((wert - min_wert) / (max_wert - min_wert)) - 1`
-    *   Ergebnis: Alle Werte liegen exakt zwischen 1- und 1 (die Daten sind um den Nullpunkt zentriert)
+    *   Ergebnis: Alle Werte liegen exakt zwischen -1 und 1. Der Mittelwert der normalisierten Daten ist nicht notwendigerweise 0.
 
-*   Standardisierung (Z-Score-Skalierung):
+*   Standardisierung (Z-Score-Skalierung): 
     *   Formel: `skalierter_wert = z_score = (wert - mittelwert) / standardabweichung`
     *   Ergebnis: Die skalierten Werte haben einen Mittelwert von 0 und eine Standardabweichung von 1. Die meisten Werte liegen typischerweise zwischen -3 und +3.
 
-**Faustregel: Welche Method sollte man nehmen?**
+**Welche Method sollte man wann nehmen?**
 
-*   Haben die Daten eine natürliche, feste Begrenzung und kaum Ausreißer (z.B. Bildpixel, Prozentsätze)? -> Normalisierung (Min-Max) ist eine gute Option.
+*   **Normalisierung** 
+    * Ist oft besser für die Ziel-Labels (y), wenn der Output des Netzes auf einen bestimmten Bereich beschränkt sein soll (z.B. mit einer Sigmoid-Aktivierung, die auf [0, 1] abbildet).
+    * Ist auch eine gute Wahl für Input-Features (X), die von Natur aus einen festen, begrenzten Wertebereich ohne Ausreißer haben (z.B. Pixelwerte).
 
-*   Haben die Daten keine feste Begrenzung, eine glockenförmige (auch nicht-normale) Verteilung und/oder Ausreißer (z.B. Scores, Geldbeträge, Messwerte)? -> Standardisierung (Z-Score) ist fast immer die bessere, robustere Wahl.
+*   **Standardisierung** 
+    * Fast immer besser für die Input-Features (X), besonders wenn diese einer glockenähnlichen Verteilung folgen oder Ausreißer enthalten.
+      - Grund: Die Zentrierung des Nullpunktes ist für die Effizienz des Gradient-Descent-Algorithmus, der das Netz trainiert, von großem Vorteil. 
+      Die meisten Aktivierungsfunktionen (wie `ReLU`, `tanh`) in den Hidden Layers sind um den Nullpunkt herum am "sensibelsten" und lernen dort am effizientesten, 
+      was Instabilitäten im Training (wie das "Vanishing/Exploding Gradient"-Problem) reduzieren kann.
+    * Für ein Ziel-Label einer Regression mit linearer Aktivierungsfunktion.  
 
 ## A4. Aufgabentypen
 
