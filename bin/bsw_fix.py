@@ -1,4 +1,4 @@
-# scripts/analyze_premature_tichu.py
+#!/usr/bin/env python
 
 import os
 import sqlite3
@@ -17,17 +17,19 @@ def fix():
         print(f"Fehler: Datenbank nicht gefunden unter {DB_PATH}")
         return
 
-    print(f"Öffne Datenbank: {DB_PATH}")
+    # Datenbankverbindung herstellen
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row  # Für Zugriff auf Spalten per Namen
-
     read_cursor = conn.cursor()
     write_cursor = conn.cursor()
 
+    # Anzahl Datensätze ermitteln
     read_cursor.execute("SELECT COUNT(*) FROM rounds")
-    total_rounds = read_cursor.fetchone()[0]
+    row = read_cursor.fetchone()
+    total_rounds = row[0] if row else 0
 
     try:
+        # Datensätze durchlaufen
         read_cursor.execute("""
             SELECT id, game_id, score_20, score_31 
             FROM rounds 
@@ -46,6 +48,7 @@ def fix():
                 cumulative_score_20 = 0
                 cumulative_score_31 = 0
 
+            # Daten schreiben
             write_cursor.execute("UPDATE rounds SET score_cum_20 = ?, score_cum_31 = ? WHERE id = ?", (
                 cumulative_score_20,
                 cumulative_score_31,

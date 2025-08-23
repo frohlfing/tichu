@@ -5,7 +5,7 @@ Entitäten (GameEntity, etc.) und dem normalisierten Datenbankschema.
 """
 
 __all__ = "deserialize_cards", "deserialize_history", \
-    "update_elo", \
+    "update_elo", "get_k_factor", \
     "ETLErrorCode", "get_error_descriptions", \
     "TichuDatabase", "GameEntity", "RoundEntity", "PlayerRoundEntity", "PlayerEntity",
 
@@ -15,9 +15,12 @@ import os
 import re
 import sqlite3
 from dataclasses import dataclass, field
+
+from traitlets import Union
+
 from src.lib.cards import Cards, parse_card, stringify_card
 from tqdm import tqdm
-from typing import List, Tuple, Generator, Optional, Dict
+from typing import List, Tuple, Generator, Optional, Dict, Iterable
 
 
 def serialize_cards(cards: Cards) -> str:
@@ -76,40 +79,44 @@ def deserialize_history(s) -> List[Tuple[int, Cards, int]]:
     return history
 
 
-def update_elo(r: Tuple[float, float, float, float], score: Tuple[float, float], k: Tuple[float, float, float, float] = (20.0, 20.0, 20.0, 20.0)) -> Tuple[float, float, float, float]:
+def update_elo(elo_values: List[float], k_factors: List[float], winner_team: int) -> Tuple[float, float, float, float]:
     """
     Aktualisiert die Spielstärke der Tichu-Spieler nach einer Elo‑basierenden Berechnung.
 
     Grundformel zur Aktualisierung der Elo-Zahl:
-        Eigene aktualisiertes Elo-Zahl = r_own + k * (s - e)
+        Eigene aktualisierte Elo-Zahl = r_own + k * (s - e)
         k: K‑Faktor
         s: Tatsächliches Ergebnis der Partie
         e: Erwartetes Ergebnis der Partie = 1 / (1 + 10^((r_opp - r_own) / 400.0))
         r_own: Eigene bisherige Elo-Zahl
         r_opp: Elo-Zahl des Gegners
 
-    :param r: Bisherige Spielstärken der 4 Spieler.
-    :param score: Das Endergebnis der Partie.
-    :param k: Der K‑Faktor für jeden Spieler, der festlegt, wie stark sich ein Ergebnis auswirkt (niedriger Wert == Profi, hoher Wert == Anfänger).
+    :param elo_values: Bisherige Spielstärken der 4 Spieler.
+    :param k_factors: Der K‑Faktor für jeden der 4 Spieler, der festlegt, wie stark sich ein Ergebnis auswirkt (niedriger Wert == Profi, hoher Wert == Anfänger).
+    :param winner_team: Das Gewinner-Team (20 == Team20, 31 == Team31, 0 == Unentschieden, -1 == Partie nicht beendet).
     :return: Neue Spielstärken der 4 Spieler
     """
-    r20 = (r[2] + r[0]) / 2.0  # Mittelwert der Ratings von Team 20
-    r31 = (r[3] + r[1]) / 2.0  # Mittelwert der Ratings von Team 31
+    if len(elo_values) != 4:
+        raise ValueError("Die Anzahl der Elo-Zahlen muss 4 sein.")
+    if len(k_factors) != 4:
+        raise ValueError("Die Anzahl der k-Faktoren muss 4 sein.")
+    r20 = (elo_values[2] + elo_values[0]) / 2.0  # Mittelwert der Ratings von Team 20
+    r31 = (elo_values[3] + elo_values[1]) / 2.0  # Mittelwert der Ratings von Team 31
     e20 = 1.0 / (1.0 + 10 ** ((r31 - r20) / 400.0))  # erwartete Gewinnwahrscheinlichkeit für Team 20 (zw. 0.0 und 1.0)
-    s20 = 1 if score[0] > score[1] else 0 if score[0] < score[1] else 0.5  # tatsächlicher Gewinn für Team 20 (1 == Sieg, 0.5 == Unentschieden, 0 == Niederlage)
+    s20 = 1.0 if winner_team == 20 else 0.0 if winner_team == 31 else 0.5  # tatsächlicher Gewinn für Team 20 (1 == Sieg, 0.5 == Unentschieden, 0 == Niederlage)
     diff20 = s20 - e20  # Abweichung für Team 10
     diff31 = -diff20  # Abweichung für Team 31
-    return (r[0] + k[0] * diff20,
-            r[1] + k[1] * diff31,
-            r[2] + k[2] * diff20,
-            r[3] + k[3] * diff31)
+    return (elo_values[0] + k_factors[0] * diff20,
+            elo_values[1] + k_factors[1] * diff31,
+            elo_values[2] + k_factors[2] * diff20,
+            elo_values[3] + k_factors[3] * diff31)
 
 
-def get_k_factor(games_played: int, max_elo: float) -> float:
+def get_k_factor(num_games: int, max_elo: float) -> float:
     """
     Bestimmt den K-Faktor basierend auf der Anzahl der gespielten Partien.
 
-    :param games_played: Anzahl der gespielten Partien.
+    :param num_games: Anzahl der gespielten Partien.
     :param max_elo: Die höchste Elo-Zahl, die der Spieler erreicht hat.
     :return: Der K-Faktor.
     """
@@ -118,7 +125,7 @@ def get_k_factor(games_played: int, max_elo: float) -> float:
     # k = 20: für alle Spieler mit mindestens dreißig gewerteten Partien und einer maximalen Elo-Zahl < 2400. Dieser k-Wert trifft für die meisten Spieler zu.
     # k = 10: für alle Top-Spieler, die eine Elo-Zahl ≥ 2400 erreicht haben, selbst wenn die Elo-Zahl wieder unter diesen Wert fällt.
     # Quelle: https://de.wikipedia.org/wiki/Elo-Zahl
-    if games_played < 30:
+    if num_games < 30:
         return 40.0  # Anfänger, Rating soll sich schnell anpassen
 
     if max_elo < 2400:
