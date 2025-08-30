@@ -15,9 +15,6 @@ import os
 import re
 import sqlite3
 from dataclasses import dataclass, field
-
-from traitlets import Union
-
 from src.lib.cards import Cards, parse_card, stringify_card
 from tqdm import tqdm
 from typing import List, Tuple, Generator, Optional, Dict, Iterable
@@ -104,7 +101,7 @@ def update_elo(elo_values: List[float], k_factors: List[float], winner_team: int
     r31 = (elo_values[3] + elo_values[1]) / 2.0  # Mittelwert der Ratings von Team 31
     e20 = 1.0 / (1.0 + 10 ** ((r31 - r20) / 400.0))  # erwartete Gewinnwahrscheinlichkeit für Team 20 (zw. 0.0 und 1.0)
     s20 = 1.0 if winner_team == 20 else 0.0 if winner_team == 31 else 0.5  # tatsächlicher Gewinn für Team 20 (1 == Sieg, 0.5 == Unentschieden, 0 == Niederlage)
-    diff20 = s20 - e20  # Abweichung für Team 10
+    diff20 = s20 - e20  # Abweichung für Team 20
     diff31 = -diff20  # Abweichung für Team 31
     return (elo_values[0] + k_factors[0] * diff20,
             elo_values[1] + k_factors[1] * diff31,
@@ -573,7 +570,7 @@ class TichuDatabase:
                 elo                         REAL,               -- Elo-Zahl des Spielers
                 -- Aggregierte Daten                         
                 num_games                   INTEGER,            -- Anzahl der gespielten Partien
-                win_rate              REAL,               -- Wie oft gewann er eine Partie?
+                win_rate                    REAL,               -- Wie oft gewann er eine Partie?
                 num_rounds                  INTEGER,            -- Anzahl der gespielten Runden
                 avg_score_diff              REAL,               -- Durchschnittliche Punktedifferenz einer Runde
                 num_grand_tichus            INTEGER,            -- Wie oft hat eir ein großes Tichu angesagt?
